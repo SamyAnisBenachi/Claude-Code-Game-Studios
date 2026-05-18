@@ -1,3 +1,178 @@
+# PROMPT 1112 State Banner -- Sprint 17 S17-UI-HUD-OPP-MANA-CLEANUP-001 Partial Disposition
+
+Updated 2026-05-18 by PROMPT 1112. Source-of-truth at disposition:
+`origin/main@4bd4f569bf0f8e54a18b6f1a9c95336aefff34d9` (PROMPT 1111
+integration tip `integrate(s17): merge PROMPT 1105 HUD class-reveal
+projection (PARTIAL, AC3 carried) into main (PROMPT 1111)` merging
+PROMPT 1105 worker `c6b7d70a2733c1fa3b0af271c8e309397cf592a6`
+`dev-story(s17-hud-opp-mana-cleanup): HUD class-reveal projection
+for opp figurine + OPP label (PROMPT 1105)` onto `origin/main` via
+no-ff merge; strict fast-forward descendant of `origin/main@30f166f`
+PROMPT 1106 card-slot inset wiring integration tip, of
+`origin/main@9a9b1dc` PROMPT 1110 card-slot inset wiring story-done
+tip, of `origin/main@72d56bc` PROMPT 1108 server start-of-turn-debug
+story-done tip, and of `origin/main@dc8adb6` PROMPT 1107 server
+warn->debug integration tip). Worktree: in-place edits on the
+primary checkout. Branch:
+`paperwork/s17-hud-opp-mana-partial-disposition-1112` from base
+`origin/main@4bd4f56`.
+
+PROMPT 1112 is a paperwork-only Sprint 17 PARTIAL DISPOSITION for
+`S17-UI-HUD-OPP-MANA-CLEANUP-001` (Should Have, story 018 in
+`production/epics/hud/`; AUDIT-1076-10 + AUDIT-1076-16 + AUDIT-1076-17
+bundle). **This is NOT a `/story-done` closure.** PROMPT 1112 records
+the PROMPT 1105 worker + PROMPT 1111 integration partial result on
+the story file, in `production/sprint-status.yaml`, in
+`production/session-state/*`, and surfaces a follow-up candidate
+slug for the carried AC. The row remains OPEN / Partial /
+In Progress; `/story-done` is deferred per the AC3 carry gating.
+
+**Partial result delivered on origin/main@4bd4f56 by PROMPT 1111:**
+AC1 + AC2 + AC4..AC15 DELIVERED. HUD class-reveal projection landed
+in `client/src/ui/hud/mod.rs`: new resource `HudClassReveal { local:
+Option<ClassId>, opponent: Option<ClassId> }`; three new systems
+(`sync_class_reveal_from_lobby_view_system` MessageDrain that reads
+`Res<LobbyViewState>.revealed_classes` + `Res<ClientSessionIdentity>`
+and skips while `HudMode::Frozen` so incremental lobby reveals
+cannot overwrite during GAME_OVER; `sync_class_reveal_from_snapshot_system`
+MessageDrain after `handle_game_snapshot_system` that reads
+`MessageReader<PresentationGameSnapshotMessage>` and always runs so
+`S2CGameSnapshot` reconnect rebuilds remain authoritative even at
+GAME_OVER per ADR-011 binding; `sync_class_reveal_hud_system`
+StateSync after `sync_gold_text_system` and `sync_figurine_image_system`
+that applies `HudClassReveal` to the opponent figurine `ImageNode`
+via `hud_figurine_asset(opp_class)` and to the `opponent_gold_prefix`
+`Text` via `format_opp_class_display(opp_class)` returning
+`"OPP {ClassId:?}"`). Worker chose the prefix entity (not the value
+entity) for the OPP label re-skin so the existing opponent-gold
+readout contract guarded by `reconnect_snapshot_rebuild_test.rs`
+remains intact. 8 new integration tests in
+`tests/integration/hud/opp_figurine_label_mana_repaint_test.rs`
+cover AC1 / AC2 / AC4 / AC5 / AC6 / AC7 / AC8 + opponent figurine
+marker singleton guard; PROMPT 1111 integration `cargo test`
+PASS 8/8 + 27/27 sub-tests across 6 sibling HUD test bins +
+`cargo check -p client` OK 8.78s 0 errors 0 warnings.
+
+**AC3 (mana microbadge removal, AUDIT-1076-17) EXPLICITLY NOT
+DELIVERED -- carried.** The floating `Reserve N + / Current N`
+microbadge spawn site lives in `client/src/ui/hand/mod.rs` reserve
+strip (`spawn_reserve_strip` ~L3505, per-card `Reserve N Current N`
+text ~L3530, updater ~L4108-L4110). This is semantically distinct
+from the HUD canonical `MANA n / N` strip, which is preserved
+unchanged. The reserve strip is a hand-ui per-card overlay, not a
+HUD-owned widget. `client/src/ui/hand/` is on the story's
+"Forbidden files" list for the HUD-owned worker, so PROMPT 1105
+correctly invoked the worker-contract pause-and-escalate branch.
+PROMPT 1111 integration explicitly did NOT touch
+`client/src/ui/hand/mod.rs` and recorded AC3 carried in the no-ff
+merge commit message.
+
+**Follow-up candidate slug**: `S18-UI-HAND-RESERVE-STRIP-CLEANUP-001`
+(preferred per PROMPT 1111 recommendation; Sprint 17 is in Polish
+and AC3 is a hand-ui cleanup decision rather than a hot defect).
+Alternative `S17-UI-HAND-RESERVE-STRIP-CLEANUP-001` only if a
+producer explicitly authorises and Sprint 17 has remaining capacity.
+PROMPT 1112 records the slug as a candidate only -- the story file
+is NOT authored or activated by PROMPT 1112.
+
+**AC16 (HUD epic story count refresh)** is deferred to future
+`/story-done` paperwork (gated on AC3 landing on origin/main OR
+producer explicit accept-into-Sprint-18 of AC3 carry-forward).
+
+Sprint 17 progress after PROMPT 1112: 2 of 9 active rows DONE
+(S17-SERVER-START-OF-TURN-DEBUG-001 by PROMPT 1108 +
+S17-UI-CARD-SLOT-INSET-WIRING-001 by PROMPT 1110) + 1 of 9 active
+rows PARTIAL / IN_PROGRESS (S17-UI-HUD-OPP-MANA-CLEANUP-001 here)
++ 6 rows preserved as ready / not closed; Must Have 0/2 done +
+Should Have 1 done + 1 partial / 4 + Nice to Have 1/3 done. Rows
+preserved as ready and NOT closed or marked partial by PROMPT 1112:
+`S11-HUD-TIMER-EYEBALL-VISUAL-001` (Must Have human-operator-blocked
+Sprint 13 -> 14 -> 15 -> 16 -> 17 carry; no LLM `/story-done`
+authorised), `S17-UI-CARD-DISPLAY-ART-HELPER-001` (Must Have),
+`S17-UI-QA-SNAPSHOT-MARKER-SPLIT-001`, `S17-UI-BID-BUTTON-PHASE-RACE-001`
+(2 of remaining 3 Should Have), `S17-OPS-VULKAN-VALIDATION-GATING-001`,
+`S17-UI-HAND-B0004-CLEANUP-001` (2 of remaining 2 Nice to Have).
+
+All non-claims preserved verbatim: `S8-QA-001-W1` OPEN, `QA-COND-0005`
+and `QA-COND-0006` accepted-risk, `PAW-TD-*-a` preserved (specifically
+`PAW-TD-004-a` opp figurine placeholder), `TQ-S12-C1..C7` preserved
+(`TQ-S12-C7` explicitly NOT closed), PROMPT 683-era runtime
+divergence preserved, PROMPT 761 `Polish->Release` FAIL preserved
+with NO retry, PROMPT 1054 P1 UI snapshot retest BLOCKED-HUMAN
+preserved, 24 PROMPT 1022 QA snapshot audit findings preserved, no
+LLM closure of `S11-HUD-TIMER-EYEBALL-VISUAL-001`. AUDIT-1076-10 +
+AUDIT-1076-16 functionally discharged on origin/main by PROMPT 1111
+integration; AUDIT-1076-17 remains OPEN / explicitly carried with
+AC3 (mana microbadge removal). All other AUDIT-1076-* preserved as
+open / report-only outside AUDIT-1076-15 (discharged PROMPT 1107 /
+1108) and AUDIT-1076-10 / 16 (discharged PROMPT 1111). All
+SOURCE-1077-* preserved as open / report-only outside SOURCE-1077-06
+(discharged PROMPT 1106 / 1110). Stage `Polish` UNCHANGED;
+`production/stage.txt` NOT modified.
+
+Files changed by PROMPT 1112:
+
+- `production/epics/hud/story-018-opp-figurine-mana-cleanup.md`
+  (Status banner Draft -> Partial / In Progress; AC1 + AC2 +
+  AC4..AC15 flipped to `[x]` with per-AC delivery evidence
+  annotations; AC3 flipped to `[~]` with explicit `NOT DELIVERED --
+  EXPLICITLY CARRIED` rationale + follow-up candidate slugs; AC16
+  left `[ ]` with deferred-to-/story-done rationale; new Partial
+  Integration Notes section added before Closure Trail covering
+  disposition + AC status table + AC3 carry classification +
+  follow-up candidate + files changed + forbidden changes observed;
+  Closure Trail section updated to reference PROMPT 1112; final
+  status line flipped DRAFT -> PARTIAL).
+- `production/sprint-status.yaml` (S17-UI-HUD-OPP-MANA-CLEANUP-001
+  row in stories: block flipped `status: ready -> in_progress`
+  with `partial_disposition` note + worker / integration /
+  `integrated_commit` / `partial_disposition_prompt` metadata + 6
+  notes describing PARTIAL disposition + AC3 carry classification +
+  follow-up candidate + integration gates + non-claims;
+  `sprint_17_partial_disposition:` block appended at EOF following
+  the `sprint_17_story_done:` precedent pattern with `stories_partial`
+  entry covering AC1..AC16 outcomes, `ac3_carry_classification`
+  block, `rows_not_closed_or_partial_by_prompt_1112` enumerating the
+  other 8 Sprint 17 active rows, `follow_up_candidate_for_ac3`
+  block, `conditions_carried_forward_unchanged` +
+  `explicitly_not_claimed` + `files_changed_by_prompt_1112` +
+  `forbidden_changes_observed` sections).
+- `production/session-state/active.md` (this PROMPT 1112 banner
+  prepended above PROMPT 1110 banner).
+- `production/session-state/codex-orchestrator-state.md` (PROMPT 1112
+  paragraph prepended above PROMPT 1110 paragraph).
+- `reports/PROMPT-1112-s17-hud-opp-mana-partial-disposition.md`
+  (mandatory final report; reports/ is gitignored; not staged or
+  committed).
+
+Forbidden changes observed by PROMPT 1112: `client/`, `server/`,
+`shared/`, `tests/` NOT modified (zero code changes; paperwork-only);
+`Cargo.toml`, `Cargo.lock`, `.cargo/`, `Trunk.toml`, `.github/` NOT
+modified; `production/stage.txt` NOT modified (remains `Polish`);
+`production/sprints/sprint-17.md` NOT modified;
+`production/qa/qa-plan-sprint-17.md` NOT modified;
+`production/qa/smoke-*.md` / `team-qa-*.md` / `evidence/*` NOT
+modified (`sprint-17-hud-opp-mana-cleanup/evidence.md` preserved
+verbatim on origin/main via PROMPT 1111 integration);
+`production/gate-checks/*` NOT modified (PROMPT 761 FAIL preserved);
+`docs/architecture/adr-*.md` NOT modified; no Sprint 17 story file
+under `production/epics/` other than this one modified;
+`S11-HUD-TIMER-EYEBALL-VISUAL-001` story 014 NOT modified
+(human-operator-blocked carry preserved verbatim); existing
+`sprint_17_activation:` / `sprint_17_story_done:` PROMPT 1108 +
+PROMPT 1110 entries / `sprint_16_*` / `sprint_15_*` / `sprint_14_*`
+/ `sprint_13_*` blocks in `production/sprint-status.yaml` NOT
+modified (preserved verbatim above the new
+`sprint_17_partial_disposition:` block); no `/story-done`,
+`/smoke-check`, `/team-qa`, `/gate-check`, `/release-check`,
+`/qa-plan`, `/story-readiness`, `/dev-story` run by PROMPT 1112; no
+cargo / trunk / CI command run; no Polish->Release retry; no
+candidate story file authored for the follow-up slugs.
+
+Final status line: `1112: S17-HUD-OPP-MANA-PARTIAL-DISPOSITION: RECORDED_PARTIAL`.
+
+---
+
 # PROMPT 1110 State Banner -- Sprint 17 S17-UI-CARD-SLOT-INSET-WIRING-001 Story-Done
 
 Updated 2026-05-18 by PROMPT 1110. Source-of-truth at closure:
