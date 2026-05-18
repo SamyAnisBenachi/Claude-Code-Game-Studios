@@ -1239,36 +1239,26 @@ mod tests {
         );
     }
 
-    // Opt-in integration check: read a real sidecar file from disk (typically
-    // the BOM-encoded one left by a previous PROMPT 1170 build script run)
-    // and assert that the fixed parser still resolves it to the expected repo
-    // root. Skipped by default because it depends on machine-local paths; set
-    // both env vars to enable:
-    //
-    //   CCGS_TEST_REAL_SIDECAR_DIR  -- absolute dir that contains the sidecar
-    //   CCGS_TEST_REAL_SIDECAR_ROOT -- expected absolute repo root path
-    //
-    // Run with: cargo test -p dev-launcher-app -- --ignored
+    // Hermetic replacement for the former opt-in real-host sidecar check. It
+    // still exercises read_sidecar_root against an actual on-disk sidecar file,
+    // but the file lives in an isolated temp directory owned by this test.
     #[test]
-    #[ignore]
-    fn read_sidecar_root_against_real_on_disk_file_opt_in() {
-        let dir = match env::var("CCGS_TEST_REAL_SIDECAR_DIR") {
-            Ok(v) => PathBuf::from(v),
-            Err(_) => return,
-        };
-        let expected = match env::var("CCGS_TEST_REAL_SIDECAR_ROOT") {
-            Ok(v) => PathBuf::from(v),
-            Err(_) => return,
-        };
+    fn read_sidecar_root_against_on_disk_file() {
+        let dir = unique_temp_dir("real-sidecar");
+        let sidecar = dir.join(SIDECAR_FILENAME);
+        let expected = dir.join("repo-root");
+        fs::write(&sidecar, format!("  {}  \r\n", expected.display())).expect("write sidecar");
+
         let got = read_sidecar_root(&dir).expect("read_sidecar_root returned None");
         assert_eq!(
             got,
             expected,
-            "real sidecar at {} resolved to {} but expected {}",
+            "sidecar at {} resolved to {} but expected {}",
             dir.display(),
             got.display(),
             expected.display(),
         );
+        let _ = fs::remove_dir_all(&dir);
     }
 
     #[test]
