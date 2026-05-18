@@ -612,6 +612,29 @@ pub const fn card_slot_hit_target(kind: CardSlotKind) -> UiRect {
 /// positions its slot via explicit `left` / `top` offsets); a consumer
 /// that wants relative positioning can override the field on the returned
 /// Node.
+///
+/// ## Inset / GlobalZIndex companions
+///
+/// Sprint 17 row `S17-UI-CARD-SLOT-INSET-WIRING-001` (SOURCE-1077-06)
+/// adds two net-additive sibling builders that consume the geometry
+/// catalog's `image_inset_px`, `text_inset_px`, and `z_layer` fields:
+/// [`card_slot_image_inset_node`] and [`card_slot_text_inset_node`].
+/// Each returns a `(Node, GlobalZIndex)` bundle suitable for direct
+/// `Commands::spawn` use so per-surface migration siblings (the
+/// Sprint 17+ Backlog family `S17-UI-CARD-SLOT-MIGRATION-*`) reduce
+/// to a thin re-author of three component-set inserts instead of
+/// re-authoring child-positioning arithmetic per consumer site.
+///
+/// ## Padding catalog status
+///
+/// `card_slot_geometry(kind)` does NOT currently expose a padding
+/// rectangle (only `image_inset_px`, `text_inset_px`, and
+/// `hit_target_inset_px`). The sibling inset builders below therefore
+/// emit no `Node.padding` field — child layout is driven by the
+/// inset rectangles themselves via [`PositionType::Absolute`]. A
+/// future revision that promotes padding into [`CardSlotGeometry`]
+/// would land in a separate row; this row does not retune the
+/// geometry catalog (AC8).
 pub fn card_slot_node(kind: CardSlotKind) -> Node {
     let geometry = card_slot_geometry(kind);
     Node {
@@ -623,6 +646,99 @@ pub fn card_slot_node(kind: CardSlotKind) -> Node {
         border: UiRect::all(Val::Px(geometry.border_thickness_px)),
         ..default()
     }
+}
+
+/// Builds the per-kind **image-inset child** for a card slot.
+///
+/// Returns a `(Node, GlobalZIndex)` bundle. The Node is
+/// [`PositionType::Absolute`] and its `left` / `right` / `top` /
+/// `bottom` fields are read verbatim from
+/// `card_slot_geometry(kind).image_inset_px`; the bundle's
+/// [`GlobalZIndex`] is read verbatim from
+/// `card_slot_geometry(kind).z_layer`. No numeric literal is authored
+/// inside this builder — every value flows through the geometry
+/// catalog so the canonical inset / z-layer constants edit in one
+/// place (AC1 / AC3 / AC8).
+///
+/// This builder is **net-additive** relative to the Sprint 16 story
+/// 009 primitive: it does NOT touch [`card_slot_node`] (the outer
+/// rectangle builder), it does NOT migrate any consumer surface, and
+/// it does NOT retune any [`card_slot_geometry`] constant. Per-surface
+/// migration of `HandFan` / `DraftGrid` / `AuctionFeatured` /
+/// `BoardStagedGhost` remains owned by the Sprint 17+ Backlog family
+/// `S17-UI-CARD-SLOT-MIGRATION-*`; this builder is the canonical
+/// child-positioning primitive those rows will consume.
+///
+/// ## Output shape
+///
+/// ```rust,ignore
+/// // Spawn an image child sized to the canonical inset for the kind.
+/// commands.entity(card_root).with_children(|parent| {
+///     parent.spawn(card_slot_image_inset_node(CardSlotKind::ShopSlot));
+/// });
+/// ```
+///
+/// The returned Node carries no `width` / `height` fields — width and
+/// height are *derived* from the four absolute-position edges (the
+/// rectangle bounded by `left` / `right` / `top` / `bottom` of the
+/// parent's interior). This matches how the geometry catalog stores
+/// the inset (a [`UiRect`] of four side values, not a width / height
+/// pair). See AC6 for the per-side equality assertions.
+pub fn card_slot_image_inset_node(kind: CardSlotKind) -> (Node, GlobalZIndex) {
+    let geometry = card_slot_geometry(kind);
+    let inset = geometry.image_inset_px;
+    (
+        Node {
+            position_type: PositionType::Absolute,
+            left: inset.left,
+            right: inset.right,
+            top: inset.top,
+            bottom: inset.bottom,
+            ..default()
+        },
+        geometry.z_layer,
+    )
+}
+
+/// Builds the per-kind **text-inset child** for a card slot.
+///
+/// Returns a `(Node, GlobalZIndex)` bundle. The Node is
+/// [`PositionType::Absolute`] and its `left` / `right` / `top` /
+/// `bottom` fields are read verbatim from
+/// `card_slot_geometry(kind).text_inset_px`; the bundle's
+/// [`GlobalZIndex`] is read verbatim from
+/// `card_slot_geometry(kind).z_layer`. No numeric literal is authored
+/// inside this builder — every value flows through the geometry
+/// catalog (AC2 / AC3 / AC8).
+///
+/// This builder is the text-region counterpart to
+/// [`card_slot_image_inset_node`]; the two share the same
+/// [`GlobalZIndex`] for a given kind so the image and text children
+/// composite into the same z-layer as their parent card slot.
+/// Per-surface migration of consumer sites remains owned by the
+/// Sprint 17+ Backlog family `S17-UI-CARD-SLOT-MIGRATION-*`.
+///
+/// ## Output shape
+///
+/// ```rust,ignore
+/// commands.entity(card_root).with_children(|parent| {
+///     parent.spawn(card_slot_text_inset_node(CardSlotKind::ShopSlot));
+/// });
+/// ```
+pub fn card_slot_text_inset_node(kind: CardSlotKind) -> (Node, GlobalZIndex) {
+    let geometry = card_slot_geometry(kind);
+    let inset = geometry.text_inset_px;
+    (
+        Node {
+            position_type: PositionType::Absolute,
+            left: inset.left,
+            right: inset.right,
+            top: inset.top,
+            bottom: inset.bottom,
+            ..default()
+        },
+        geometry.z_layer,
+    )
 }
 
 // ---------------------------------------------------------------------------
@@ -727,5 +843,93 @@ mod tests {
         let node = card_slot_node(CardSlotKind::ShopSlot);
         assert_eq!(node.width, Val::Px(geometry.outer_width_px));
         assert_eq!(node.height, Val::Px(geometry.outer_height_px));
+    }
+
+    // -----------------------------------------------------------------
+    // Sprint 17 S17-UI-CARD-SLOT-INSET-WIRING-001 (SOURCE-1077-06) —
+    // sibling inset builders + GlobalZIndex wiring.
+    // -----------------------------------------------------------------
+
+    #[test]
+    fn s17_image_inset_node_matches_geometry_per_kind() {
+        // AC1 / AC6(a): the image-inset builder's Node is
+        // PositionType::Absolute and its four edge fields equal the
+        // geometry catalog's image_inset_px for every kind.
+        for kind in ALL_CARD_SLOT_KINDS {
+            let geometry = card_slot_geometry(kind);
+            let (node, _z) = card_slot_image_inset_node(kind);
+            assert_eq!(
+                node.position_type,
+                PositionType::Absolute,
+                "image inset node must be Absolute for {kind:?}",
+            );
+            assert_eq!(
+                node.left, geometry.image_inset_px.left,
+                "image inset left drift for {kind:?}",
+            );
+            assert_eq!(
+                node.right, geometry.image_inset_px.right,
+                "image inset right drift for {kind:?}",
+            );
+            assert_eq!(
+                node.top, geometry.image_inset_px.top,
+                "image inset top drift for {kind:?}",
+            );
+            assert_eq!(
+                node.bottom, geometry.image_inset_px.bottom,
+                "image inset bottom drift for {kind:?}",
+            );
+        }
+    }
+
+    #[test]
+    fn s17_text_inset_node_matches_geometry_per_kind() {
+        // AC2 / AC6(b): the text-inset builder's Node is
+        // PositionType::Absolute and its four edge fields equal the
+        // geometry catalog's text_inset_px for every kind.
+        for kind in ALL_CARD_SLOT_KINDS {
+            let geometry = card_slot_geometry(kind);
+            let (node, _z) = card_slot_text_inset_node(kind);
+            assert_eq!(
+                node.position_type,
+                PositionType::Absolute,
+                "text inset node must be Absolute for {kind:?}",
+            );
+            assert_eq!(
+                node.left, geometry.text_inset_px.left,
+                "text inset left drift for {kind:?}",
+            );
+            assert_eq!(
+                node.right, geometry.text_inset_px.right,
+                "text inset right drift for {kind:?}",
+            );
+            assert_eq!(
+                node.top, geometry.text_inset_px.top,
+                "text inset top drift for {kind:?}",
+            );
+            assert_eq!(
+                node.bottom, geometry.text_inset_px.bottom,
+                "text inset bottom drift for {kind:?}",
+            );
+        }
+    }
+
+    #[test]
+    fn s17_inset_builders_thread_global_z_index_from_geometry_per_kind() {
+        // AC3 / AC6(c): both inset builders emit a GlobalZIndex equal
+        // to card_slot_geometry(kind).z_layer.
+        for kind in ALL_CARD_SLOT_KINDS {
+            let geometry = card_slot_geometry(kind);
+            let (_image_node, image_z) = card_slot_image_inset_node(kind);
+            let (_text_node, text_z) = card_slot_text_inset_node(kind);
+            assert_eq!(
+                image_z.0, geometry.z_layer.0,
+                "image inset GlobalZIndex drift for {kind:?}",
+            );
+            assert_eq!(
+                text_z.0, geometry.z_layer.0,
+                "text inset GlobalZIndex drift for {kind:?}",
+            );
+        }
     }
 }
