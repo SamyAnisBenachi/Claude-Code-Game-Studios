@@ -411,14 +411,15 @@ pub fn handle_placement_submission(
     let hands = hands.as_deref();
 
     for submission in submissions.read() {
+        let placements_len = submission.placements.len();
         tracing::info!(
             target: "server::game",
             player_id = submission.player.0,
-            placements_len = submission.placements.len(),
+            placements_len,
             phase = ?phase,
             "handle_placement_submission: PlacementSubmissionReceived consumer enter"
         );
-        if process_placement_submission(
+        let result = process_placement_submission(
             &mut pending,
             submission.player,
             submission.placements.clone(),
@@ -430,11 +431,32 @@ pub fn handle_placement_submission(
             catalog,
             economies,
             hands,
-        ) == PlacementSubmissionResult::Accepted
-        {
-            submitted.write(PlacementSubmitted {
-                player: submission.player,
-            });
+        );
+        match result {
+            PlacementSubmissionResult::Accepted => {
+                tracing::info!(
+                    target: "server::game::placement",
+                    player_id = submission.player.0,
+                    placements_len,
+                    "handle_placement_submission: submission accepted (audit: R2 placement transition audit)"
+                );
+                submitted.write(PlacementSubmitted {
+                    player: submission.player,
+                });
+            }
+            rejected => {
+                // R2 observability fix (PROMPT 1079): silent rejection of valid-looking
+                // C2SSubmitPlacement was indistinguishable from a buffer race in audit logs.
+                // Emit a warn with the structured reason so the close_placement_phase audit
+                // line (pending_submissions=0) can be diagnosed without reading source.
+                tracing::warn!(
+                    target: "server::game::placement",
+                    player_id = submission.player.0,
+                    placements_len,
+                    reason = ?rejected,
+                    "handle_placement_submission: submission rejected (audit: R2 placement transition audit)"
+                );
+            }
         }
     }
 }
@@ -590,11 +612,20 @@ pub fn close_placement_phase(
         );
     }
 
+    // R3 reveal consistency fix (PROMPT 1079): only broadcast reveal entries for
+    // placements that will produce a server-side entity (BoardCell minions/traps/
+    // structures and LaneWide fields). Effect-only targets (Instant, TargetUnit,
+    // TargetObj) have no spawn handler in the current build, so including them in
+    // the reveal causes clients to render a ghost placement with no backing unit
+    // (the "grey square" symptom from AUDIT-1076-03). The internal
+    // PlacementCommitted event below still carries the full committed sequence so
+    // combat / future spell handling can process effect-only commits.
     let reveal = S2CPlacementReveal {
         placements: committed_sequence
             .iter()
-            .map(|(_, placements)| placements)
-            .flat_map(|placements| placements.iter().map(AcceptedPlacement::reveal))
+            .flat_map(|(_, placements)| placements.iter())
+            .filter(|placement| placement_yields_entity(&placement.target))
+            .map(AcceptedPlacement::reveal)
             .collect(),
     };
 
@@ -641,7 +672,11 @@ pub fn close_placement_phase(
     );
 
     let committed_placements_len = committed_placements.len();
+    let total_committed_placement_records: usize =
+        committed_sequence.iter().map(|(_, ps)| ps.len()).sum();
     let spawned_units_len = spawned_units.len();
+    let effect_only_placements_len =
+        total_committed_placement_records.saturating_sub(spawned_units_len);
     committed.write(PlacementCommitted {
         round_number,
         committed_placements,
@@ -653,7 +688,10 @@ pub fn close_placement_phase(
         target: "server::game::placement",
         round = round_number,
         committed_players = committed_placements_len,
+        committed_placement_records = total_committed_placement_records,
         spawned_units = spawned_units_len,
+        reveal_placements = reveal_placements_len,
+        effect_only_placements = effect_only_placements_len,
         "close_placement_phase: PlacementCommitted dispatched; pending cleared (audit: R2 placement transition audit)"
     );
 }
@@ -1021,10 +1059,39 @@ fn spawn_committed_placement(
                 .id();
             occupancy.fields.insert((placement.owner_id, *lane), entity);
             trace.push(PlacementCommitTraceEntry::UnitSpawned { entity });
-            None
+            // R3 spawn-accounting fix (PROMPT 1079): the LaneWide branch already
+            // spawned an entity and registered occupancy, but previously returned
+            // `None`, causing `spawned_units` to under-report Field placements.
+            // Field placements occupy the entire lane, so there is no specific
+            // cell — use the LaneWide sentinel `0` (outside the valid 1..=cell_max
+            // range) and document the convention in `CommittedPlacementUnit`.
+            Some(CommittedPlacementUnit {
+                entity,
+                player: placement.owner_id,
+                card_id: placement.card_id,
+                lane: *lane,
+                cell: LANE_WIDE_CELL_SENTINEL,
+            })
         }
         PlayTarget::Instant | PlayTarget::TargetUnit { .. } | PlayTarget::TargetObj { .. } => None,
     }
+}
+
+/// Sentinel for the `cell` field of `CommittedPlacementUnit` when the underlying
+/// placement target is `PlayTarget::LaneWide` (Field cards). Values in this
+/// position are outside the valid `BoardConfig::cell_min..=cell_max` range so
+/// downstream consumers can distinguish lane-wide placements from board-cell
+/// placements without an extra enum.
+pub const LANE_WIDE_CELL_SENTINEL: u8 = 0;
+
+/// Returns whether a placement target produces a server-authoritative entity at
+/// commit time. Used by `close_placement_phase` to filter the placement reveal
+/// so clients never see a placed-card entry without a matching spawned unit.
+fn placement_yields_entity(target: &PlayTarget) -> bool {
+    matches!(
+        target,
+        PlayTarget::BoardCell { .. } | PlayTarget::LaneWide { .. }
+    )
 }
 
 fn apply_spawned_occupancy(

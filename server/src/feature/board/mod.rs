@@ -28,7 +28,7 @@ pub use placement::{
     validate_spawn_range, AcceptedPlacement, CommittedPlacementUnit, FakeObjectiveDestroyed,
     PendingPlacements, PlacementCommitTrace, PlacementCommitTraceEntry, PlacementCommitted,
     PlacementSubmissionReceived, PlacementSubmissionResult, PlayerSubmission,
-    SpawnRangeProjectionChange, MAX_FAKE_OBJECTIVES_DESTROYED,
+    SpawnRangeProjectionChange, LANE_WIDE_CELL_SENTINEL, MAX_FAKE_OBJECTIVES_DESTROYED,
 };
 pub use plugin::{BoardPlugin, BoardSystemSet};
 pub use state::{
