@@ -2,14 +2,18 @@
 
 > **Epic**: DevOps (Operational Hardening)
 > **Story ID**: S17-OPS-VULKAN-VALIDATION-GATING-001
-> **Status**: Draft -- Sprint 17 Nice to Have candidate; NOT activated by this authoring run
+> **Status**: Done -- closed by PROMPT 1125 paperwork-only `/story-done` against `origin/main@c300b141247307cbd0fbc7f507a175db308026b2` (PROMPT 1124 tip). Source-side remediation discharged by PROMPT 1103 worker + PROMPT 1109 integration (`origin/main@0cab942`). AC1 + AC2 + AC4..AC10 PASS; AC3 ADVISORY-DEFERRED to the Sprint 17 smoke harness per the Config / Data row classification.
 > **Layer**: Client / DevOps -- WGPU plugin configuration
 > **Type**: Tech Debt / Ops Hygiene -- silence log spam on every client launch
-> **Sprint**: Sprint 17 Nice to Have row per `production/sprints/sprint-17.md` §"Nice to Have". Activation is a separate explicit prompt (PROMPT 1093 pattern).
+> **Sprint**: Sprint 17 Nice to Have row per `production/sprints/sprint-17.md` §"Nice to Have". Activated by PROMPT 1099 against `origin/main@bc3db29` (Sprint 17 activation tip).
 > **Authored**: 2026-05-18 by PROMPT 1095
 > **Authoring source-of-truth**: `origin/main@7d36191fe94adf99d3448a58185d8079d828c29e`
 > **Estimated effort**: ~0.15d (small ops hygiene; single edit at `App::new()` site)
 > **Source audit**: PROMPT 1076 `reports/PROMPT-1076-latest-user-test-log-snapshot-deep-audit.md` §"Per-finding evidence" AUDIT-1076-18 (P3)
+> **Worker**: PROMPT 1103 (`work/s17-vulkan-validation-gating` @ `c34cc041759385b75d6356ebbae7e3f336cb85a5`); `reports/PROMPT-1103-s17-vulkan-validation-gating.md`
+> **Integration**: PROMPT 1109 (`integrate/s17-vulkan-validation-gating-1109` @ `0cab9421bd11b86c05cd804d62739e2e13a55278`); `reports/PROMPT-1109-s17-vulkan-validation-gating-integration.md`
+> **Story-Done**: PROMPT 1125 (paperwork-only closure on a fresh worktree from `origin/main@c300b14`); `reports/PROMPT-1125-s17-vulkan-validation-gating-story-done.md`
+> **Evidence**: `production/qa/evidence/sprint-17-vulkan-validation-gating/evidence.md`
 
 ---
 
@@ -203,7 +207,7 @@ This is the **most parallel-safe Sprint 17 row** alongside
 
 All criteria are independently checkable.
 
-- [ ] **AC1 -- Vulkan validation flag is OFF by default**: GIVEN
+- [x] **AC1 -- Vulkan validation flag is OFF by default**: GIVEN
   the post-implementation client built with default features
   (`cargo build -p client` OR `trunk build`), WHEN launched and
   the stderr/stdout is inspected, THEN there are ZERO
@@ -212,7 +216,7 @@ All criteria are independently checkable.
   equivalent Vulkan validation-layer warnings emitted by WGPU /
   Bevy 0.18 at `App` startup).
 
-- [ ] **AC2 -- Validation can be opted in**: GIVEN the post-
+- [x] **AC2 -- Validation can be opted in**: GIVEN the post-
   implementation client, WHEN built either (a) in debug mode
   with `cfg!(debug_assertions)`, OR (b) with
   `cargo build -p client --features wgpu-validation` (per the
@@ -225,7 +229,7 @@ All criteria are independently checkable.
   is expected behaviour for the opt-in path and is documented
   in the commit message / evidence file.
 
-- [ ] **AC3 -- Sprint 17 smoke confirms zero validation
+- [~] **AC3 -- Sprint 17 smoke confirms zero validation
   warnings**: GIVEN the post-implementation default-build client
   is launched as part of the Sprint 17 smoke harness (a later
   Sprint 17 prompt, NOT this row's `/dev-story` worker), WHEN
@@ -234,14 +238,14 @@ All criteria are independently checkable.
   satisfied by the Sprint 17 smoke run, not by this row's
   `/dev-story` worker.
 
-- [ ] **AC4 -- WGPU plugin still functions normally**: GIVEN
+- [x] **AC4 -- WGPU plugin still functions normally**: GIVEN
   the post-implementation default-build client, WHEN launched,
   THEN the existing rendering capability is unchanged: HUD
   paints, board renders, hand fan visible, etc. The
   `liv-bevy-018` review confirms no other WGPU plugin
   configuration was altered.
 
-- [ ] **AC5 -- No new workspace Cargo dependency**: GIVEN
+- [x] **AC5 -- No new workspace Cargo dependency**: GIVEN
   `git diff <activation HEAD>..HEAD`, WHEN inspected, THEN the
   workspace root `Cargo.toml` is unchanged (or carries at most
   a new client feature entry that does not affect server /
@@ -249,13 +253,13 @@ All criteria are independently checkable.
   `client/Cargo.toml` (if the implementing worker chooses the
   feature-gated strategy).
 
-- [ ] **AC6 -- No protocol or server change**: GIVEN
+- [x] **AC6 -- No protocol or server change**: GIVEN
   `git diff <activation HEAD>..HEAD`, WHEN inspected, THEN
   there are zero changes under `server/`, `shared/`, or
   `tests/integration/server/`. The implementation is client-side
   only.
 
-- [ ] **AC7 -- No accept-risk closure claimed**: GIVEN the
+- [x] **AC7 -- No accept-risk closure claimed**: GIVEN the
   commit message and any evidence document, WHEN inspected,
   THEN they explicitly do NOT claim closure of `S8-QA-001-W1`,
   `QA-COND-0005`, `QA-COND-0006`, `PAW-TD-*-a`, or any other
@@ -264,7 +268,7 @@ All criteria are independently checkable.
   advance, and Polish->Release gate-check retry are explicitly
   out of scope.
 
-- [ ] **AC8 -- Sprint 17 disposition preserved**: GIVEN the
+- [x] **AC8 -- Sprint 17 disposition preserved**: GIVEN the
   implementation commit(s), WHEN
   `production/sprint-status.yaml`, `production/sprints/sprint-17.md`,
   `production/stage.txt`, `production/session-state/*`,
@@ -272,7 +276,7 @@ All criteria are independently checkable.
   `docs/architecture/adr-*.md` are diffed, THEN none are modified
   by this story's `/dev-story` worker.
 
-- [ ] **AC9 -- Worker branch scope contained**: GIVEN the worker
+- [x] **AC9 -- Worker branch scope contained**: GIVEN the worker
   branch (slug recommendation:
   `work/s17-vulkan-validation-gating`), WHEN inspected, THEN it
   pushes only the worker branch — never `main`. Files changed
@@ -280,7 +284,7 @@ All criteria are independently checkable.
   equivalent `App::new()` site) and optionally
   `client/Cargo.toml`.
 
-- [ ] **AC10 -- Cargo resource policy applied for every Cargo
+- [x] **AC10 -- Cargo resource policy applied for every Cargo
   command**: future implementation MUST set the Cargo resource
   policy env vars (`CARGO_TARGET_DIR=
   D:\_DEV\cargo-target\ccgs-msvc`, `CARGO_PROFILE_DEV_DEBUG=0`,
@@ -418,41 +422,267 @@ where `N` is the prompt number that ran `/dev-story`.
 
 ---
 
+## Completion Notes
+
+### PROMPT 1103 worker + PROMPT 1109 integration outcome
+
+**Strategy chosen by worker (PROMPT 1103)**: `--features
+wgpu-validation` Cargo feature gate, OFF by default. The story
+permitted either `cfg!(debug_assertions)` or the feature gate;
+the worker chose the feature gate because AC1 requires zero
+`VK_LAYER_KHRONOS_validation` warnings on the default
+`cargo build -p client` invocation (the audit-reproducing
+configuration). `cfg!(debug_assertions)` would have left the
+flag ON in dev builds and therefore would not satisfy AC1
+against that profile; the feature gate is the only strategy
+that unambiguously satisfies AC1 + AC2 + the Sprint 17 plan
+wording "gated on a cargo feature so prod / CI logs stay clean".
+
+**Owned-file change set on origin/main** (3 paths; verified by
+`git ls-tree -r origin/main --name-only | grep -i vulkan` +
+`grep -n "wgpu-validation\|InstanceFlags\|RenderPlugin"
+client/Cargo.toml client/src/main.rs` at PROMPT 1125 closure
+time on a fresh worktree from `origin/main@c300b14`):
+
+| Path | Change |
+|---|---|
+| `client/Cargo.toml` | `wgpu-validation = []` added under `[features]` with S17-OPS comment block at lines 34-40. |
+| `client/src/main.rs` | `use bevy::render::settings::{InstanceFlags, RenderCreation, WgpuSettings};` + `use bevy::render::RenderPlugin;` at lines 9-10; `instance_flags = if cfg!(feature = "wgpu-validation") { InstanceFlags::from_build_config() } else { InstanceFlags::empty() }` at lines 60-64; `.set(RenderPlugin { render_creation: RenderCreation::Automatic(WgpuSettings { instance_flags, ..default() }), ..default() })` on the `DefaultPlugins` builder at line 74. |
+| `production/qa/evidence/sprint-17-vulkan-validation-gating/evidence.md` (NEW by worker) | Full AC mapping + launch-log excerpts + commit-message rationale. |
+
+### Test evidence at origin/main@c300b14
+
+- **PROMPT 1103 worker `cargo build -p client` (default features)** +
+  non-interactive 8s launch — PASS. Grep `VK_LAYER_KHRONOS_validation`
+  match count = **0** (AC1). Renderer still selects RTX 5090 Vulkan
+  adapter; window + every client plugin loaded (AC4).
+- **PROMPT 1103 worker `cargo build -p client --features
+  wgpu-validation`** + non-interactive 8s launch — PASS. Grep match
+  count = **1**. Opt-in observability preserved on a host without
+  the validation layer (AC2 expected behaviour).
+- **PROMPT 1103 worker `cargo check -p client`** — PASS, no new
+  warnings on touched files.
+- **PROMPT 1109 integration `cargo check -p client`** — PASS
+  (11.32s + 11.66s after forward-merge).
+- **PROMPT 1109 integration `cargo build -p client` (default
+  features)** — PASS (59.58s + 1m10s after forward-merge).
+- **PROMPT 1109 integration `cargo build -p client --features
+  wgpu-validation`** — PASS (1m46s + 1m09s after forward-merge).
+- **PROMPT 1109 integration `git diff --check origin/main...HEAD`** —
+  clean. **`git diff --cached --check`** — clean.
+- **`git diff origin/main...HEAD` after forward-merge** — exactly
+  the 3 expected files.
+- **AC3 binding evidence**: deferred to the Sprint 17 smoke harness
+  (Config / Data row classification per
+  `.claude/docs/coding-standards.md` Test Evidence by Story Type
+  matrix; smoke check pass is the ADVISORY gate for Config / Data
+  rows). PROMPT 1125 paperwork-only closure proceeds on AC1 + AC2
+  + AC4..AC10 PASS; AC3 carries forward into the existing Sprint
+  17 smoke prompt scope.
+
+### Cargo resource policy (AC10)
+
+PROMPT 1103 worker applied all 5 Cargo resource policy env vars
+(`CARGO_TARGET_DIR=D:\_DEV\cargo-target\ccgs-msvc` +
+`CARGO_PROFILE_DEV_DEBUG=0` + `CARGO_PROFILE_TEST_DEBUG=0` +
+`CARGO_INCREMENTAL=0` +
+`RUSTFLAGS='-C debuginfo=0 -C link-arg=/DEBUG:NONE'`) before
+every cargo invocation; D: free space >= 760 GB at preflight;
+stray `target/` directory created by the first env-unloaded
+invocation was removed before re-running under the policy.
+PROMPT 1109 integration applied the same env vars; D: free ~745
+GB at integration start. Build correctness gate unaffected.
+PROMPT 1125 itself did NOT invoke Cargo (paperwork-only
+closure).
+
+### Per-AC outcome
+
+- **AC1** Vulkan validation flag OFF by default: **PASS** (grep
+  match count = 0 on PROMPT 1103 worker default-build launch log;
+  reverified by PROMPT 1109 integration cargo build).
+- **AC2** Validation can be opted in via `--features
+  wgpu-validation`: **PASS** (grep match count = 1 on PROMPT 1103
+  worker opt-in launch log; documented opt-in behaviour on a host
+  without the validation layer).
+- **AC3** Sprint 17 smoke confirms zero validation warnings:
+  **ADVISORY-DEFERRED** to the Sprint 17 smoke harness (Config /
+  Data row classification; not BLOCKING for PROMPT 1125 closure).
+- **AC4** WGPU plugin still functions normally: **PASS**
+  (Vulkan `AdapterInfo`, window creation, every client plugin
+  loaded in both launch logs; integration cargo build also
+  confirms).
+- **AC5** No new workspace Cargo dependency: **PASS** (workspace
+  root `Cargo.toml` unchanged; only `client/Cargo.toml` touched;
+  `Cargo.lock` unchanged — the `wgpu-validation` feature toggles
+  `InstanceFlags` and pulls no new dependency).
+- **AC6** No protocol or server change: **PASS** (PROMPT 1109
+  `git diff` confirms zero changes under `server/`, `shared/`,
+  `tests/integration/server/`).
+- **AC7** No accept-risk closure claimed: **PASS** (PROMPT 1103
+  worker commit + evidence file + PROMPT 1109 integration merge
+  commit + PROMPT 1125 paperwork all explicitly preserve
+  `S8-QA-001-W1`, `QA-COND-0005`, `QA-COND-0006`, `PAW-TD-*-a`,
+  `TQ-S12-C1..C7`, PROMPT 761 Polish->Release FAIL,
+  `S11-HUD-TIMER-EYEBALL-VISUAL-001` carry, all AUDIT-1076-*
+  findings outside AUDIT-1076-18, all SOURCE-1077-*, all 24
+  PROMPT 1022 findings).
+- **AC8** Sprint 17 disposition preserved by worker +
+  integration: **PASS** (PROMPT 1103 + PROMPT 1109 diffs touched
+  zero files under `production/sprint-status.yaml`,
+  `production/sprints/sprint-17.md`, `production/stage.txt`,
+  `production/session-state/*`,
+  `production/qa/qa-plan-sprint-17.md`,
+  `production/qa/smoke-*.md`, `production/qa/team-qa-*.md`,
+  `production/gate-checks/*`, `docs/architecture/adr-*.md`.
+  PROMPT 1125 is the first authorised modifier of
+  `production/sprint-status.yaml` + `production/session-state/*`
+  for this row).
+- **AC9** Worker branch scope contained: **PASS** (PROMPT 1103
+  worker pushed `work/s17-vulkan-validation-gating` only —
+  never `main`. Integration into `origin/main` performed
+  separately by PROMPT 1109 via
+  `integrate/s17-vulkan-validation-gating-1109` →
+  `0cab9421bd11b86c05cd804d62739e2e13a55278`).
+- **AC10** Cargo resource policy applied: **PASS-WORKER +
+  PASS-INTEGRATION**. PROMPT 1103 worker applied all 5 env vars
+  before every cargo invocation; PROMPT 1109 integration also
+  applied the policy (see Cargo resource policy section above).
+  PROMPT 1125 paperwork-only closure did NOT invoke Cargo.
+
+### Branch-state note (preserved verbatim)
+
+PROMPT 1125 paperwork performed on a fresh worktree
+`D:/_DEV/claude-code-game-studios-worktrees/vulkan-validation-gating-story-done-1125`
+on branch `worker/vulkan-validation-gating-story-done-1125` from
+`origin/main@c300b14` to avoid acting on the root checkout's
+local divergent `main` (per the PROMPT 1123/1124-recorded
+branch-state anomaly where local-only commits sit on the root
+checkout's local main without push). The root checkout is NOT
+touched by PROMPT 1125.
+
 ## Closure Trail
 
-Closure trail is appended by future `/story-readiness`,
-`/dev-story`, and `/story-done` prompts. No closure trail is
-authored by PROMPT 1095.
+PROMPT 1125 closes this story as Done via paperwork-only
+`/story-done` against `origin/main@c300b141247307cbd0fbc7f507a175db308026b2`
+(PROMPT 1124 `story-done(s17): close
+S17-UI-QA-SNAPSHOT-MARKER-SPLIT-001 (PROMPT 1124)`). Source-side
+remediation discharged by PROMPT 1103 worker
+(`c34cc041759385b75d6356ebbae7e3f336cb85a5` `dev-story(s17):
+gate Vulkan validation behind cargo feature
+(S17-OPS-VULKAN-VALIDATION-GATING-001 / AUDIT-1076-18, PROMPT
+1103)`) + PROMPT 1109 integration
+(`0cab9421bd11b86c05cd804d62739e2e13a55278` `integrate(s17):
+bring origin/main 5345164 (PROMPTS 1106 1113 1114 1115 1116
+1117 1118 1119 1120 1121) forward into PROMPT 1103 Vulkan
+validation gating integration branch (PROMPT 1109)`).
+
+### Numbered closure trail
+
+1. **PROMPT 1095** — `sprint-plan(s17)`: net-new Sprint 17
+   story authoring batch authored story 007; not activated by
+   this run.
+2. **PROMPT 1097** — paperwork-only main integration onto
+   `origin/main@bc3db29`.
+3. **PROMPT 1099** — `activate(s17)`: flipped Sprint 17 from
+   draft to active on `origin/main@cb62a9e`.
+4. **PROMPT 1100** — `qa-plan(s17)`: authored Sprint 17 QA plan
+   on `origin/main@ff47075`.
+5. **PROMPT 1101** — `/story-readiness` rerun against Sprint 17
+   activation HEAD bc3db29 (story marked READY).
+6. **PROMPT 1103** — `/dev-story`: feature-gated Vulkan
+   validation behind `--features wgpu-validation`; worker
+   branch `work/s17-vulkan-validation-gating` @ `c34cc04`.
+7. **PROMPT 1109** — paperwork-only integration onto
+   `origin/main`; tip `0cab9421bd11b86c05cd804d62739e2e13a55278`.
+8. **PROMPT 1125** — paperwork-only `/story-done` closure on a
+   fresh worktree from `origin/main@c300b14`; this row.
 
 ### Conditions carried forward unchanged
 
 - Sprint 16 disposition `closed-with-conditions` (UNCHANGED).
-- Sprint 17 stage `Polish` (UNCHANGED).
-- PROMPT 761 Polish->Release gate-check `FAIL` preserved.
-- `S8-QA-001-W1` OPEN preserved.
+- Sprint 17 stage `Polish` (UNCHANGED; `production/stage.txt`
+  NOT touched by PROMPT 1125).
+- Sprint 17 disposition `active` (UNCHANGED; Sprint 17 NOT
+  closed-out by PROMPT 1125).
+- PROMPT 761 Polish->Release gate-check `FAIL` preserved at
+  `production/gate-checks/gate-polish-release-2026-05-12.md`;
+  NO retry by PROMPT 1125.
+- `S8-QA-001-W1` OPEN preserved (two-client GAME_OVER closure
+  remains gap).
 - `QA-COND-0005` + `QA-COND-0006` accepted-risk preserved.
-- `PAW-TD-*-a` placeholder-art accept-risk preserved.
-- `TQ-S12-C1..C7` preserved verbatim.
+- `PAW-TD-*-a` placeholder-art accept-risk preserved across
+  PAW-002..PAW-006.
+- `TQ-S12-C1..C7` preserved verbatim. TQ-S12-C7 explicitly NOT
+  closed by PROMPT 1125.
 - Sprint 15 / 14 / 13 / 12 / 11 / 10 dispositions preserved
   unchanged.
-- HUD timer row `S11-HUD-TIMER-EYEBALL-VISUAL-001` human-
-  operator-blocked carry preserved; NOT closed by this row.
+- HUD timer row `S11-HUD-TIMER-EYEBALL-VISUAL-001`
+  human-operator-blocked carry preserved; NOT closed by PROMPT
+  1125.
+- S17-UI-HUD-OPP-MANA-CLEANUP-001 PROMPT 1112 PARTIAL
+  disposition with AC3 carry preserved verbatim; NOT closed by
+  PROMPT 1125.
+- PROMPT 1108 + PROMPT 1110 + PROMPT 1117 + PROMPT 1120 +
+  PROMPT 1121 + PROMPT 1124 `sprint_17_story_done` entries
+  preserved verbatim.
+- PROMPT 1112 `sprint_17_partial_disposition` entry
+  (S17-UI-HUD-OPP-MANA-CLEANUP-001 PARTIAL / AC3 carried; row
+  remains OPEN) preserved verbatim.
 - 24 PROMPT 1022 audit findings preserved as report-only; NOT
   closed by this row.
+- AUDIT-1076-18 (P3) discharged on origin/main by PROMPT 1103
+  worker + PROMPT 1109 integration; row paperwork closed by
+  PROMPT 1125. Other AUDIT-1076-* findings preserved outside
+  the already-discharged subset (14 PROMPT 1118/1120; 15 PROMPT
+  1107/1108; 10 + 16 PROMPT 1111). AUDIT-1076-17 remains OPEN
+  carried with AC3 of S17-UI-HUD-OPP-MANA-CLEANUP-001.
+- SOURCE-1077-01/02/03/04 discharged by PROMPT 1114/1117;
+  SOURCE-1077-06 by PROMPT 1106/1110; SOURCE-1077-08/09/16 by
+  PROMPT 1123/1124; SOURCE-1077-10 by PROMPT 1119/1121.
+  SOURCE-1077-05/07/11/12/13/14/15 deferred to Sprint 18+.
+- External `shop_auction_ui_plugin_scaffold_formulas_test`
+  baseline drift `87 vs 82` preserved verbatim by PROMPT 1124
+  paperwork and NOT silently fixed by PROMPT 1125.
 
-### Explicitly NOT claimed by this story or its `/dev-story` worker
+### Explicitly NOT claimed by this story or PROMPT 1125
 
-- Closure of any AUDIT-1076-* finding outside AUDIT-1076-18.
-- Closure of any SOURCE-1077-* finding.
+- Closure of any AUDIT-1076-* finding outside AUDIT-1076-18 by
+  PROMPT 1125.
+- Closure of any SOURCE-1077-* finding by PROMPT 1125.
 - Closure of any of the 24 PROMPT 1022 audit findings.
 - Sprint 17 close-out.
 - Removal of Vulkan / WGPU validation capability (the opt-in
-  path remains).
+  path remains via `--features wgpu-validation`).
 - Public release readiness; release-candidate readiness; full
   game completion.
 - Broad / Standard-tier accessibility completion; playtest /
   fun-hypothesis validation; full playable-client manual QA;
   two-client GAME_OVER closure; final-art completion;
   Polish->Release gate-check retry; stage advance.
+- AC3 binding closure (deferred to the Sprint 17 smoke harness
+  per Config / Data row classification; ADVISORY-DEFERRED).
+- Fix of external
+  `shop_auction_ui_plugin_scaffold_formulas_test` baseline
+  drift (preserved verbatim by PROMPT 1124 paperwork; recommend
+  separate follow-up story for counter reconciliation).
+- Closure of S11-HUD-TIMER-EYEBALL-VISUAL-001
+  (human-operator-blocked carry; no LLM `/story-done`
+  authorised).
+- Closure of S17-UI-HUD-OPP-MANA-CLEANUP-001 (PROMPT 1112
+  PARTIAL disposition preserved verbatim; row remains OPEN;
+  PROMPT 1125 does NOT modify the PARTIAL disposition or
+  activate the follow-up candidate slug).
+- Any change to `client/` / `server/` / `shared/` / `tests/` /
+  `Cargo.toml` / `Cargo.lock` / `.cargo/` / `.github/` /
+  `Trunk.toml` by PROMPT 1125 (paperwork-only closure).
+- Any change to `production/stage.txt`, `production/sprints/*`,
+  `production/qa/qa-plan-sprint-17.md`,
+  `production/qa/smoke-*.md`, `production/qa/team-qa-*.md`,
+  `production/gate-checks/*`, `docs/architecture/adr-*.md`,
+  `production/qa/evidence/sprint-17-vulkan-validation-gating/*`
+  by PROMPT 1125.
+- Any `/story-readiness`, `/dev-story`, `/smoke-check`,
+  `/team-qa`, `/gate-check`, `/release-check`, `/qa-plan`,
+  cargo, trunk, or CI command run by PROMPT 1125.
 
-`007: S17-OPS-VULKAN-VALIDATION-GATING-001: DRAFT`
+`007: S17-OPS-VULKAN-VALIDATION-GATING-001: DONE`

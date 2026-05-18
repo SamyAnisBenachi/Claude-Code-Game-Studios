@@ -1,3 +1,190 @@
+# PROMPT 1125 State Banner -- Sprint 17 S17-OPS-VULKAN-VALIDATION-GATING-001 Story-Done
+
+Updated 2026-05-18 by PROMPT 1125. Source-of-truth at closure:
+`origin/main@c300b141247307cbd0fbc7f507a175db308026b2` (PROMPT 1124
+paperwork-only /story-done tip `story-done(s17): close
+S17-UI-QA-SNAPSHOT-MARKER-SPLIT-001 (PROMPT 1124)`), the latest
+origin/main HEAD at the start of this closure window. The source-side
+remediation for this row was delivered earlier by PROMPT 1103 worker
+(`c34cc041759385b75d6356ebbae7e3f336cb85a5` `dev-story(s17): gate
+Vulkan validation behind cargo feature
+(S17-OPS-VULKAN-VALIDATION-GATING-001 / AUDIT-1076-18, PROMPT 1103)`)
++ PROMPT 1109 integration
+(`0cab9421bd11b86c05cd804d62739e2e13a55278` `integrate(s17): bring
+origin/main 5345164 (PROMPTS 1106 1113 1114 1115 1116 1117 1118
+1119 1120 1121) forward into PROMPT 1103 Vulkan validation gating
+integration branch (PROMPT 1109)`). Strict fast-forward descendant
+chain (PROMPT 1109 integration tip `0cab942` -> PROMPT 1106
+`30f166f` -> PROMPT 1107 `dc8adb6` -> PROMPT 1108 `72d56bc` ->
+PROMPT 1110 `9a9b1dc` -> PROMPT 1111 `4bd4f56` -> PROMPT 1112
+`f2ba917` -> PROMPT 1114 `30c9e0f` -> PROMPT 1117 `2250add` ->
+PROMPT 1118 `29ad4c6` -> PROMPT 1119 `d35d24d` -> PROMPT 1120
+`89ce149` -> PROMPT 1121 `5345164` -> PROMPT 1123 `74c25b6` ->
+PROMPT 1124 `c300b14`). Branch:
+`worker/vulkan-validation-gating-story-done-1125` (fresh worktree
+from `origin/main@c300b14`, NOT in-place on the root checkout's
+local `main` per the PROMPT 1123/1124-recorded branch-state
+anomaly where local-only commits sit on the root checkout's local
+main without push).
+
+PROMPT 1125 is a paperwork-only Sprint 17 `/story-done` closure for
+`S17-OPS-VULKAN-VALIDATION-GATING-001` (Nice to Have; story 007 in
+`production/epics/devops/`; AUDIT-1076-18 P3 Vulkan validation-
+layer warning gating). Closure paperwork records the PROMPT 1103
+worker + PROMPT 1109 integration result on the story file, in
+`production/sprint-status.yaml`, in `production/session-state/*`,
+and authors the mandatory final report under `reports/`
+(gitignored).
+
+**Result delivered on origin/main@0cab942 by PROMPT 1109:**
+
+- **Source-side remediation for AUDIT-1076-18 applied** across 2
+  client paths + 1 evidence path:
+  1. `client/Cargo.toml`: new `wgpu-validation = []` Cargo feature
+     under `[features]`; S17-OPS comment block at lines 34-40 (OFF
+     by default; opt-in via `cargo build -p client --features
+     wgpu-validation`).
+  2. `client/src/main.rs`: `use bevy::render::settings::{
+     InstanceFlags, RenderCreation, WgpuSettings}` + `use
+     bevy::render::RenderPlugin` imports at lines 9-10;
+     `let instance_flags = if cfg!(feature = "wgpu-validation") {
+     InstanceFlags::from_build_config() } else {
+     InstanceFlags::empty() }` at lines 60-64; `.set(RenderPlugin
+     { render_creation: RenderCreation::Automatic(WgpuSettings {
+     instance_flags, ..default() }), ..default() })` override on
+     the `DefaultPlugins` builder at line 74.
+  3. `production/qa/evidence/sprint-17-vulkan-validation-gating/evidence.md`
+     (NEW by worker): full AC mapping + launch-log excerpts +
+     commit-message rationale.
+- **Strategy chosen by worker (PROMPT 1103)**: feature gate over
+  `cfg!(debug_assertions)` because AC1 requires zero
+  `VK_LAYER_KHRONOS_validation` warnings on the default
+  `cargo build -p client` invocation (the audit-reproducing
+  configuration), which `cfg!(debug_assertions)` would not satisfy
+  in dev builds. The feature gate is the only strategy that
+  unambiguously satisfies AC1 + AC2 + the Sprint 17 plan wording
+  "gated on a cargo feature so prod / CI logs stay clean".
+- **PROMPT 1109 was the trunk integrator**: `--no-ff` merge of
+  `origin/work/s17-vulkan-validation-gating@c34cc04` onto
+  origin/main produced first tip `78cfc80`; origin/main moved
+  underneath to `30f166f` then `5345164` during the build/push
+  window; PROMPT 1109 forward-merged origin/main onto the
+  integration branch (no destructive ops; no rebase; no force
+  push) producing tip `0cab942` which was fast-forwarded onto
+  both `integrate/s17-vulkan-validation-gating-1109` and `main`.
+- **PROMPT 1123 mid-run rebase preserved this row's feature
+  definition**: PROMPT 1123 (PROMPT 1124's integration prompt)
+  rebased PROMPT 1122 worker onto `origin/main@0cab942` mid-run
+  before push so `wgpu-validation` feature + S17-OPS comment
+  block at `client/Cargo.toml:34-40` auto-merged cleanly with
+  marker-split [[test]] registrations.
+
+**Test evidence at origin/main@0cab942:**
+
+- **PROMPT 1103 worker `cargo build -p client` (default features)**
+  + non-interactive 8s launch — PASS. Grep
+  `VK_LAYER_KHRONOS_validation` match count = **0** (AC1).
+  Renderer still selects RTX 5090 Vulkan adapter; window + every
+  client plugin loaded (AC4).
+- **PROMPT 1103 worker `cargo build -p client --features
+  wgpu-validation`** + non-interactive 8s launch — PASS. Grep
+  match count = **1**. Opt-in observability preserved on a host
+  without the validation layer (AC2).
+- **PROMPT 1109 integration `cargo check -p client`** — PASS
+  (11.32s; reverified 11.66s after forward-merge).
+- **PROMPT 1109 integration `cargo build -p client`** — PASS
+  (59.58s; reverified 1m10s after forward-merge).
+- **PROMPT 1109 integration `cargo build -p client --features
+  wgpu-validation`** — PASS (1m46s; reverified 1m09s after
+  forward-merge).
+- **PROMPT 1109 integration `git diff --check origin/main...HEAD`**
+  / `git diff --cached --check` — clean.
+- **`git diff origin/main...HEAD`** after forward-merge: exactly
+  the 3 expected paths (`client/Cargo.toml` +
+  `client/src/main.rs` +
+  `production/qa/evidence/sprint-17-vulkan-validation-gating/evidence.md`).
+- **AC3 binding gate**: ADVISORY-DEFERRED to the Sprint 17 smoke
+  harness (Config / Data row classification per
+  `.claude/docs/coding-standards.md` Test Evidence by Story Type
+  matrix; smoke check pass is the ADVISORY gate; not BLOCKING
+  for PROMPT 1125 closure).
+- Evidence file:
+  `production/qa/evidence/sprint-17-vulkan-validation-gating/evidence.md`.
+
+**Cargo resource policy (AC10):** PROMPT 1103 worker applied all
+5 env vars (`CARGO_TARGET_DIR=D:\_DEV\cargo-target\ccgs-msvc` +
+`CARGO_PROFILE_DEV_DEBUG=0` + `CARGO_PROFILE_TEST_DEBUG=0` +
+`CARGO_INCREMENTAL=0` + `RUSTFLAGS='-C debuginfo=0 -C
+link-arg=/DEBUG:NONE'`) before every cargo invocation; D: free
+>= 760 GB at preflight; stray `target/` from a first env-unloaded
+invocation was removed before re-running under policy. PROMPT
+1109 integration applied the same policy; D: free ~745 GB at
+integration start. Build correctness gate unaffected. PROMPT 1125
+itself did NOT invoke Cargo (paperwork-only closure).
+
+**Conditions carried forward unchanged:** Sprint 17 active
+(UNCHANGED; Sprint 17 NOT closed-out); stage Polish (UNCHANGED;
+`production/stage.txt` NOT touched); PROMPT 761 Polish->Release
+FAIL preserved; `S8-QA-001-W1` OPEN; `QA-COND-0005` +
+`QA-COND-0006` accept-risk; `PAW-TD-*-a` accept-risk; `TQ-S12-C1
+..C7` preserved (TQ-S12-C7 explicitly NOT closed); Sprint 16 / 15
+/ 14 / 13 / 12 / 11 / 10 dispositions preserved; PROMPT 1108 +
+PROMPT 1110 + PROMPT 1117 + PROMPT 1120 + PROMPT 1121 + PROMPT
+1124 `sprint_17_story_done` entries preserved verbatim; PROMPT
+1112 `sprint_17_partial_disposition` entry
+(S17-UI-HUD-OPP-MANA-CLEANUP-001 PARTIAL with AC3 carried)
+preserved verbatim — row remains OPEN, NOT closed by PROMPT 1125;
+`S11-HUD-TIMER-EYEBALL-VISUAL-001` human-operator-blocked carry
+preserved — NOT closed by PROMPT 1125; 24 PROMPT 1022 audit
+findings preserved as report-only; AUDIT-1076-18 discharged on
+origin/main by PROMPT 1109 integration; other AUDIT-1076-*
+findings preserved outside the already-discharged subset
+(14 PROMPT 1118/1120; 15 PROMPT 1107/1108; 10 + 16 PROMPT 1111);
+AUDIT-1076-17 OPEN carried with AC3 of
+S17-UI-HUD-OPP-MANA-CLEANUP-001; SOURCE-1077-* findings preserved
+outside already-discharged subset (01/02/03/04 by PROMPT
+1114/1117; 06 by PROMPT 1106/1110; 08/09/16 by PROMPT 1123/1124;
+10 by PROMPT 1119/1121); SOURCE-1077-05/07/11/12/13/14/15
+deferred to Sprint 18+; PROMPT 1112 AC3 hand reserve-strip carry
+preserved OPEN; external
+`shop_auction_ui_plugin_scaffold_formulas_test` baseline drift
+`87 vs 82` preserved verbatim by PROMPT 1124 paperwork and NOT
+silently fixed by PROMPT 1125; PROMPT 1042 Pass affordance
+preserved.
+
+**Sprint 17 progress after this row:** 7 of 9 active rows done
+(Must Have 1/2 + Should Have 3/4 + Nice to Have 3/3); 1 of 9
+partial / in_progress (S17-UI-HUD-OPP-MANA-CLEANUP-001 carried
+via PROMPT 1112); 1 row preserved as ready / not closed
+(S11-HUD-TIMER-EYEBALL-VISUAL-001 human-operator-blocked carry).
+
+**Files changed by PROMPT 1125 (paperwork only):**
+
+- `production/epics/devops/story-007-vulkan-validation-gating.md`
+  (Status banner Draft -> Done; AC1..AC10 -> `[x]` except AC3 ->
+  `[~]` ADVISORY-DEFERRED; Completion Notes section inserted
+  before Closure Trail; Closure Trail extended with numbered
+  closure trail PROMPT 1095 / 1097 / 1099 / 1100 / 1101 / 1103 /
+  1109 / 1125 + extended Conditions carried forward unchanged
+  section; final status line DRAFT -> DONE).
+- `production/sprint-status.yaml`
+  (S17-OPS-VULKAN-VALIDATION-GATING-001 row flipped `status:
+  ready -> done` with closure metadata; new `sprint_17_story_done`
+  entry for PROMPT 1125 appended after the PROMPT 1124 entry and
+  before `sprint_17_partial_disposition:`).
+- `production/session-state/active.md` (this PROMPT 1125 banner
+  prepended above the prior PROMPT 1124 banner).
+- `production/session-state/codex-orchestrator-state.md` (PROMPT
+  1125 paragraph prepended above the prior PROMPT 1124
+  paragraph).
+- `reports/PROMPT-1125-s17-vulkan-validation-gating-story-done.md`
+  (mandatory final report; `reports/` is gitignored).
+
+**Final status line:** `1125:
+S17-VULKAN-VALIDATION-GATING-STORY-DONE: DONE`
+
+---
+
 # PROMPT 1124 State Banner -- Sprint 17 S17-UI-QA-SNAPSHOT-MARKER-SPLIT-001 Story-Done
 
 Updated 2026-05-18 by PROMPT 1124. Source-of-truth at closure:
