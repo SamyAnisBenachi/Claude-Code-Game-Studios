@@ -1,3 +1,61 @@
+# PROMPT 1301 State Banner -- Sprint 18 Activated (Polish stage)
+
+Updated 2026-05-18 by PROMPT 1301. Source-of-truth at activation:
+`origin/main@1345c6b8b1cbd543dbd63d279186c93924ca54db` (PROMPT 1292
+Sprint 18 plan draft main-land tip). Worktree:
+`.claude/worktrees/prompt-1301-sprint-18-activation`. PROMPT 1293
+Sprint 18 activation readiness verdict PASS preserved at
+`reports/PROMPT-1293-sprint-18-activation-readiness.md` (gitignored).
+
+Top-level `production/sprint-status.yaml` flipped: `sprint: 17 -> 18`;
+`status: closed-with-conditions -> active`; `stage: Polish` PRESERVED
+verbatim. `production/stage.txt` NOT modified. PROMPT 761 `Polish ->
+Release` gate-check FAIL preserved at
+`production/gate-checks/gate-polish-release-2026-05-12.md` with NO retry.
+`sprint_18_activation:` block appended at EOF. Sprint 17 closeout
+(PROMPT 1279) and closeout evidence reconcile (PROMPT 1289 / PROMPT
+1291 main-land 4efe800) blocks preserved verbatim.
+
+Sprint 18 active set: 4 Must Have + 6 Should Have + 2 Nice to Have =
+12 rows (~5.4d / 7.5d capacity). 1 Nice to Have plan candidate row
+dropped at activation: `S18-UI-HAND-RESERVE-STRIP-CLEANUP-001`
+(no story file on origin/main; story-authoring-needed; deferred to
+Sprint 19 planning per Sprint 18 plan Section 2.3 constraint).
+
+Section 0 blockers discharged: PROMPT 1284 post-fmt smoke evidence
+discharged through PROMPT 1289 / PROMPT 1291 closeout evidence
+reconcile (ancestor of activation tip); PROMPT 1289 reconcile on
+origin/main; Sprint 18 plan draft landed via PROMPT 1292 at 1345c6b.
+
+Carried conditions preserved verbatim: S11-HUD-TIMER-EYEBALL-VISUAL-001
+Sprint 13 -> 14 -> 15 -> 16 -> 17 -> 18 human-operator-blocked carry
+(no LLM /story-done authorised); S17-UI-HUD-OPP-MANA-CLEANUP-001
+parent-row paperwork gap (no silent closure); S8-QA-001-W1 OPEN;
+QA-COND-0005 accepted-risk; QA-COND-0006 accepted-risk; PAW-TD-*-a
+accepted-risk; TQ-S12-C1..C7 preserved (TQ-S12-C7 NOT closed);
+PROMPT 683-era runtime divergence preserved; Sprint 12 story 019
+cannot-reproduce preserved; PROMPT 1054 BLOCKED-HUMAN-OPERATOR
+preserved.
+
+Non-claims preserved: no public release readiness, no RC readiness,
+no full game completion, no Polish->Release retry, no stage advance,
+no LLM closure of S11-HUD-TIMER-EYEBALL-VISUAL-001, no silent closure
+of S17-UI-HUD-OPP-MANA-CLEANUP-001 parent row, no closure of any
+PROMPT 1022 / 1076 / 1077 finding outside concrete repairs already on
+origin/main, no Sprint 10 through Sprint 17 row reopen, no Sprint 17
+close-out reopen.
+
+Paperwork-only activation; no client/server/shared/tests/Cargo/CI/
+stage.txt/qa-plan/gate-checks/qa-evidence/story file edit; no cargo or
+trunk command invoked. Cargo policy: N/A.
+
+Current next action: `/qa-plan sprint-18` after the PROMPT 1301
+activation lands on `origin/main`. No `/dev-story`, `/story-done`,
+`/smoke-check`, `/team-qa`, `/gate-check`, or `/release-check` is
+authorised before the Sprint 18 QA plan exists on `origin/main`.
+Parallel branch-only / audit prompts PROMPT 1294-1299 and integration
+PROMPT 1300 are safe to continue in parallel with the QA plan.
+
 # PROMPT 1279 State Banner -- Sprint 17 Closed With Conditions
 
 Updated 2026-05-18 by PROMPT 1279. Source-of-truth at close-out:
