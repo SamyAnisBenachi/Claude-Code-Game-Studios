@@ -71,7 +71,9 @@ fn full_snapshot_rebuild_populates_all_hud_zones_without_respawning_entities() {
     assert_eq!(text(&app, after.opponent_gold_parent), "15g");
     assert_eq!(text(&app, after.mana_label), "6 / 10");
     assert_eq!(text(&app, after.reserve_label), "");
-    assert_eq!(text(&app, after.phase_label), "PLACEMENT");
+    // PROMPT 1250 (S18-HUD-PHASE-CHIP-DISAMBIGUATION-001): Placement
+    // chip stem is now `PLACE`.
+    assert_eq!(text(&app, after.phase_label), "PLACE");
     assert_eq!(text(&app, after.round_counter), "R7");
     assert_eq!(
         app.world().get::<Visibility>(after.root),

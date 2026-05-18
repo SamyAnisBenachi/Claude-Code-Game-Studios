@@ -219,7 +219,9 @@ fn test_resolution_hud_contrast_has_no_phase_dimming_regression() {
 
     let entities = hud_entities(&app);
     assert_eq!(app.world().resource::<HudMode>(), &HudMode::EconomyBasic);
-    assert_eq!(text(&app, entities.phase_label), "RESOLUTION");
+    // PROMPT 1250 (S18-HUD-PHASE-CHIP-DISAMBIGUATION-001): Resolution
+    // chip stem is now `RESOLVE`.
+    assert_eq!(text(&app, entities.phase_label), "RESOLVE");
     assert_eq!(text(&app, entities.round_counter), "R9");
     assert_eq!(text(&app, entities.own_gold_span), "");
     assert_eq!(text(&app, entities.opponent_gold_span), "");

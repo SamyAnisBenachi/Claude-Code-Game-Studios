@@ -30,7 +30,9 @@ fn lobby_to_draft_initial_shows_hud_and_preserves_alive_dots() {
         Some(&Visibility::Visible)
     );
     assert_eq!(app.world().resource::<HudMode>(), &HudMode::EconomyBasic);
-    assert_eq!(text(&app, entities.phase_label), "DRAFT INITIAL");
+    // PROMPT 1250 (S18-HUD-PHASE-CHIP-DISAMBIGUATION-001): DraftInitial
+    // now reads as `KEEP-9` so the chip is unambiguous next to `SHOP`.
+    assert_eq!(text(&app, entities.phase_label), "KEEP-9");
     assert_eq!(text(&app, entities.round_counter), "R1");
     assert_all_dots_alive(&app, entities);
 }
@@ -52,9 +54,9 @@ fn resolution_to_draft_shop_uses_basic_gold_format() {
 
     let entities = hud_entities(&app);
     assert_eq!(app.world().resource::<HudMode>(), &HudMode::EconomyBasic);
-    // PROMPT 1139 (UI-1129-18): DraftShop now reads `DRAFT SHOP` to
-    // disambiguate from `DRAFT INITIAL`.
-    assert_eq!(text(&app, entities.phase_label), "DRAFT SHOP");
+    // PROMPT 1250 (S18-HUD-PHASE-CHIP-DISAMBIGUATION-001): DraftShop
+    // now reads as `SHOP` so the chip stem is unique vs. `KEEP-9`.
+    assert_eq!(text(&app, entities.phase_label), "SHOP");
     assert_eq!(text(&app, entities.own_gold_parent), "11g");
     assert_eq!(text(&app, entities.own_gold_span), "");
     assert_eq!(text(&app, entities.opponent_gold_parent), "8g");
@@ -96,14 +98,16 @@ fn placement_to_resolution_keeps_hud_visible_and_zones_intact() {
         .world()
         .get::<Visibility>(entities.reserve_label)
         .expect("reserve label visibility should exist");
-    assert_eq!(text(&app, entities.phase_label), "PLACEMENT");
+    // PROMPT 1250: concise stems — Placement → `PLACE`, Resolution →
+    // `RESOLVE`.
+    assert_eq!(text(&app, entities.phase_label), "PLACE");
 
     set_phase(&mut app, RoundPhase::Resolution, 6);
     app.update();
 
     let entities = hud_entities(&app);
     assert_eq!(app.world().resource::<HudMode>(), &HudMode::EconomyBasic);
-    assert_eq!(text(&app, entities.phase_label), "RESOLUTION");
+    assert_eq!(text(&app, entities.phase_label), "RESOLVE");
     assert_eq!(
         app.world().get::<Visibility>(entities.root),
         Some(&Visibility::Visible)
