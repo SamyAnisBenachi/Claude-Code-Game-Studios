@@ -626,6 +626,9 @@ pub struct ShopAuctionUiEntities {
     pub shop_phase_title: Entity,
     pub shop_empty_state: Entity,
     pub shop_slots: [Entity; SHOP_AUCTION_UI_SHOP_SLOT_COUNT],
+    /// PROMPT 1085 — child affordance label per shop slot. Index matches
+    /// the parent slot entity in `shop_slots`.
+    pub shop_slot_affordance_labels: [Entity; SHOP_AUCTION_UI_SHOP_SLOT_COUNT],
     pub shop_refresh_button: Entity,
     pub shop_ready_button: Entity,
     pub shop_ready_status: Entity,
@@ -635,6 +638,10 @@ pub struct ShopAuctionUiEntities {
     pub auction_featured_card_frame: Entity,
     pub auction_featured_card_stats: Entity,
     pub auction_featured_card_keyword: Entity,
+    /// PROMPT 1085 — explicit current-price readout on the featured card.
+    pub auction_featured_card_price_label: Entity,
+    /// PROMPT 1085 — numeric time-left readout on the featured card.
+    pub auction_featured_card_timer_label: Entity,
     pub auction_status_text: Entity,
     pub auction_timer_bar: Entity,
     pub auction_bid_status_text: Entity,
@@ -798,6 +805,24 @@ pub struct AuctionFeaturedCardStats;
 /// so AC4's numeric hierarchy assertion is observable.
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct AuctionFeaturedCardKeyword;
+
+/// PROMPT 1085 — prominent current-price readout overlaid on the featured
+/// auction card. Audit AUDIT-1076-04: the prior layout encoded the price
+/// inline with the card name on the featured-card root `Text`, which
+/// collapsed against the card's `ImageNode` background and was unreadable.
+/// The dedicated price label is the canonical surface so `"Bid: Ng"` is
+/// always visible while the auction is active or settling.
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AuctionFeaturedCardPriceLabel;
+
+/// PROMPT 1085 — numeric time-left readout overlaid on the featured
+/// auction card. Audit AUDIT-1076-04 §State / Value Correlation Audit
+/// noted "no visible countdown for auction" — the timer-bar width was the
+/// only countdown surface and the bid row hid it. The numeric label sits
+/// inside the card so the remaining bid window is legible regardless of
+/// the bar's pixel state.
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AuctionFeaturedCardTimerLabel;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum AuctionFreeGoldCounterKind {
@@ -1034,6 +1059,19 @@ pub struct ShopPhaseTitle;
 /// a blank rectangle that looks like Placement.
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ShopEmptyState;
+
+/// PROMPT 1085 — explicit per-slot affordance label rendered beneath each
+/// shop tile. Carries the human-readable buy / locked-reason copy so the
+/// player can tell at a glance whether a slot is purchasable and, if not,
+/// why ("Need Ng", "Hand full", "Refreshing…", etc.). Audit AUDIT-1076-04
+/// + AUDIT-1076-13: shop tiles previously painted a single Text node that
+/// collapsed with the slot's `ImageNode` background so the user could not
+/// see purchase intent at all. The child label lives below the well and is
+/// the canonical surface for the disabled-reason feedback path.
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ShopSlotAffordanceLabel {
+    pub slot_index: u8,
+}
 
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ShopRefreshButtonState {
@@ -3088,7 +3126,9 @@ pub fn sync_shop_panel_system(
         Query<
             (
                 Entity,
+                &ShopSlotIndex,
                 Option<&ShopSlotCard>,
+                Option<&ShopSlotGoldCost>,
                 &mut ShopSlotState,
                 &mut Visibility,
                 &mut Text,
@@ -3147,9 +3187,17 @@ pub fn sync_shop_panel_system(
         );
     }
 
+    // PROMPT 1085 — collect per-slot affordance copy in the same pass that
+    // computes slot visibility / state, then apply via `p2` (the generic
+    // `Query<&mut Text>` already used by refresh / ready labels) so we
+    // don't grow the ParamSet beyond the four queries already wired.
+    let mut affordance_text: [String; SHOP_AUCTION_UI_SHOP_SLOT_COUNT] = Default::default();
+
     {
         let mut slots = shop_ui.p1();
-        for (slot_entity, card, mut slot_state, mut visibility, mut text) in &mut slots {
+        for (slot_entity, slot_index, card, cost, mut slot_state, mut visibility, mut text) in
+            &mut slots
+        {
             // PROMPT 1042 — slot wells stay hidden until `S2CShopSlots`
             // delivers offers; while waiting, the shop_empty_state copy
             // ("Waiting for shop offers...") is the placeholder so 3
@@ -3171,6 +3219,34 @@ pub fn sync_shop_panel_system(
             if *slot_state == ShopSlotState::Refreshing {
                 text.0.clear();
                 text.0.push_str("Refreshing...");
+            }
+
+            // PROMPT 1085 — compute the affordance / disabled-reason copy
+            // surfaced by the child `ShopSlotAffordanceLabel` so the player
+            // can read purchase intent at a glance.
+            let idx = slot_index.0 as usize;
+            if idx < affordance_text.len() {
+                affordance_text[idx] = shop_slot_affordance_copy(
+                    *slot_state,
+                    card.map(|c| c.0),
+                    cost.map(|c| c.0),
+                    hand_view.hand_size,
+                    &economy,
+                );
+            }
+        }
+    }
+
+    {
+        let mut texts = shop_ui.p2();
+        for (index, label_entity) in entities.shop_slot_affordance_labels.iter().enumerate() {
+            if let Ok(mut text) = texts.get_mut(*label_entity) {
+                text.0.clear();
+                if interactive {
+                    if let Some(copy) = affordance_text.get(index) {
+                        text.0.push_str(copy);
+                    }
+                }
             }
         }
     }
@@ -3420,6 +3496,18 @@ pub fn sync_auction_panel_system(
             entities.auction_featured_card_keyword,
             visibility_for(auction_visible),
         );
+        // PROMPT 1085 — price + timer labels follow the featured-card
+        // visibility so they paint together with the card.
+        set_visibility(
+            &mut visibility,
+            entities.auction_featured_card_price_label,
+            visibility_for(auction_visible),
+        );
+        set_visibility(
+            &mut visibility,
+            entities.auction_featured_card_timer_label,
+            visibility_for(auction_visible),
+        );
         set_visibility(
             &mut visibility,
             entities.auction_status_text,
@@ -3497,6 +3585,25 @@ pub fn sync_auction_panel_system(
                 ));
             } else {
                 clear_card_display_art(&mut commands, entities.auction_featured_card);
+            }
+        }
+
+        // PROMPT 1085 — current-price + numeric time-left labels. Always
+        // re-written each frame while auction_visible so we don't leak the
+        // prior auction's copy when a new card arrives. When no card is
+        // buffered, both labels are cleared.
+        if let Ok(mut text) = texts.get_mut(entities.auction_featured_card_price_label) {
+            text.0.clear();
+            if auction_visible && auction_state.card_id.is_some() {
+                text.0
+                    .push_str(&format!("Bid: {}g", auction_state.current_price));
+            }
+        }
+        if let Ok(mut text) = texts.get_mut(entities.auction_featured_card_timer_label) {
+            text.0.clear();
+            if auction_visible && auction_state.card_id.is_some() {
+                text.0
+                    .push_str(&auction_featured_timer_label(&auction_state));
             }
         }
 
@@ -3931,7 +4038,8 @@ pub fn spawn_shop_auction_ui(
         .insert(ImageNode::new(asset_server.load(SHOP_PANEL_CHROME_ASSET)));
     let shop_phase_title = spawn_shop_phase_title(&mut commands, shop_panel);
     let shop_empty_state = spawn_shop_empty_state(&mut commands, shop_panel);
-    let shop_slots = spawn_shop_slots(&mut commands, &asset_server, shop_panel);
+    let (shop_slots, shop_slot_affordance_labels) =
+        spawn_shop_slots(&mut commands, &asset_server, shop_panel);
     let shop_refresh_button = spawn_shop_refresh_button(&mut commands, shop_panel);
     let shop_ready_button = spawn_shop_ready_button(&mut commands, shop_panel);
     let shop_ready_status = spawn_shop_ready_status(&mut commands, shop_panel);
@@ -3949,21 +4057,23 @@ pub fn spawn_shop_auction_ui(
     commands
         .entity(auction_panel)
         .insert(ImageNode::new(asset_server.load(SHOP_PANEL_CHROME_ASSET)));
-    let (
-        auction_featured_card,
-        auction_featured_card_frame,
-        auction_featured_card_stats,
-        auction_featured_card_keyword,
-        auction_status_text,
-        auction_timer_bar,
-        auction_bid_status_text,
-        auction_free_gold_counter_group,
-        auction_free_gold_counters,
-        auction_free_gold_counter_labels,
-        auction_free_gold_counter_values,
-        auction_bid_buttons,
-        auction_pass_button,
-    ) = spawn_auction_contents(
+    let AuctionContents {
+        featured_card: auction_featured_card,
+        featured_card_frame: auction_featured_card_frame,
+        featured_card_stats: auction_featured_card_stats,
+        featured_card_keyword: auction_featured_card_keyword,
+        featured_card_price_label: auction_featured_card_price_label,
+        featured_card_timer_label: auction_featured_card_timer_label,
+        status_text: auction_status_text,
+        timer_bar: auction_timer_bar,
+        bid_status_text: auction_bid_status_text,
+        free_gold_counter_group: auction_free_gold_counter_group,
+        free_gold_counters: auction_free_gold_counters,
+        free_gold_counter_labels: auction_free_gold_counter_labels,
+        free_gold_counter_values: auction_free_gold_counter_values,
+        bid_buttons: auction_bid_buttons,
+        pass_button: auction_pass_button,
+    } = spawn_auction_contents(
         &mut commands,
         &asset_server,
         &refresh_config.bid_increments,
@@ -4024,6 +4134,7 @@ pub fn spawn_shop_auction_ui(
         shop_phase_title,
         shop_empty_state,
         shop_slots,
+        shop_slot_affordance_labels,
         shop_refresh_button,
         shop_ready_button,
         shop_ready_status,
@@ -4033,6 +4144,8 @@ pub fn spawn_shop_auction_ui(
         auction_featured_card_frame,
         auction_featured_card_stats,
         auction_featured_card_keyword,
+        auction_featured_card_price_label,
+        auction_featured_card_timer_label,
         auction_status_text,
         auction_timer_bar,
         auction_bid_status_text,
@@ -4390,9 +4503,18 @@ fn spawn_shop_slots(
     commands: &mut Commands,
     asset_server: &AssetServer,
     parent: Entity,
-) -> [Entity; SHOP_AUCTION_UI_SHOP_SLOT_COUNT] {
-    std::array::from_fn(|index| {
-        commands
+) -> (
+    [Entity; SHOP_AUCTION_UI_SHOP_SLOT_COUNT],
+    [Entity; SHOP_AUCTION_UI_SHOP_SLOT_COUNT],
+) {
+    let mut affordance_labels = [Entity::PLACEHOLDER; SHOP_AUCTION_UI_SHOP_SLOT_COUNT];
+    let slots = std::array::from_fn(|index| {
+        // PROMPT 1085 — `BackgroundColor` is the visual floor so the tile
+        // is always distinguishable from the panel chrome, even if the
+        // `SHOP_SLOT_WELL_IDLE_ASSET` ImageNode handle is still loading
+        // (the asset is tiny and load-cheap, but the player should never
+        // see a black void during the load race window — AUDIT-1076-04).
+        let slot = commands
             .spawn((
                 Name::new(format!("Shop Auction Shop Slot {index}")),
                 ShopAuctionUiEntity,
@@ -4402,14 +4524,39 @@ fn spawn_shop_slots(
                 Interaction::None,
                 shop_slot_node(index),
                 ImageNode::new(asset_server.load(SHOP_SLOT_WELL_IDLE_ASSET)),
+                BackgroundColor(Color::srgba(0.10, 0.13, 0.18, 0.95)),
+                BorderColor::all(Color::srgba(0.86, 0.90, 0.96, 0.40)),
                 Text::new("Empty"),
                 shop_auction_text_font(typography::CAPTION),
                 TextColor(Color::srgb(0.92, 0.94, 0.96)),
                 Visibility::Hidden,
                 ChildOf(parent),
             ))
-            .id()
-    })
+            .id();
+
+        // PROMPT 1085 — child affordance label, parented to the slot so it
+        // inherits visibility from the parent well. Text is set by
+        // `sync_shop_panel_system` based on `ShopSlotState` + economy.
+        let affordance = commands
+            .spawn((
+                Name::new(format!("Shop Auction Shop Slot {index} Affordance")),
+                ShopAuctionUiEntity,
+                ShopSlotAffordanceLabel {
+                    slot_index: index as u8,
+                },
+                Text::new(""),
+                shop_auction_text_font(typography::CAPTION),
+                TextColor(Color::srgb(1.0, 0.94, 0.78)),
+                shop_slot_affordance_label_node(),
+                Visibility::Inherited,
+                ChildOf(slot),
+            ))
+            .id();
+
+        affordance_labels[index] = affordance;
+        slot
+    });
+    (slots, affordance_labels)
 }
 
 fn spawn_shop_refresh_button(commands: &mut Commands, parent: Entity) -> Entity {
@@ -4518,21 +4665,14 @@ fn spawn_auction_contents(
     asset_server: &AssetServer,
     bid_increments: &[u32; 3],
     parent: Entity,
-) -> (
-    Entity,
-    Entity,
-    Entity,
-    Entity,
-    Entity,
-    Entity,
-    Entity,
-    Entity,
-    [Entity; AUCTION_FREE_GOLD_COUNTER_COUNT],
-    [Entity; AUCTION_FREE_GOLD_COUNTER_COUNT],
-    [Entity; AUCTION_FREE_GOLD_COUNTER_COUNT],
-    [Entity; 3],
-    Entity,
-) {
+) -> AuctionContents {
+    // PROMPT 1085 — solid `BackgroundColor` is the visual floor for the
+    // featured card. Audit AUDIT-1076-04 observed an "empty black modal"
+    // during DraftAuction even when `S2CAuctionCard` had arrived; the prior
+    // root node had no background, so when the card-art `ImageNode` was
+    // still loading or absent (missing-asset path), nothing painted at all
+    // and the player saw a black slab. The fallback color paints a dark
+    // neutral so the card outline is always discernible.
     let featured_card = commands
         .spawn((
             Name::new("Shop Auction Featured Auction Card"),
@@ -4542,6 +4682,7 @@ fn spawn_auction_contents(
             shop_auction_text_font(typography::H1),
             TextColor(Color::srgb(0.98, 0.94, 0.80)),
             auction_featured_card_node(),
+            BackgroundColor(Color::srgba(0.07, 0.10, 0.14, 0.95)),
             BorderColor::all(auction_featured_card_accent_color()),
             Visibility::Hidden,
             ChildOf(parent),
@@ -4598,6 +4739,36 @@ fn spawn_auction_contents(
             TextColor(Color::srgb(0.86, 0.90, 0.96)),
             auction_featured_card_keyword_node(),
             Visibility::Hidden,
+            ChildOf(featured_card),
+        ))
+        .id();
+
+    // PROMPT 1085 — current-price + numeric time-left readouts anchored
+    // inside the featured card so the bid economics are always legible.
+    let featured_card_price_label = commands
+        .spawn((
+            Name::new("Shop Auction Featured Card Price"),
+            ShopAuctionUiEntity,
+            AuctionFeaturedCardPriceLabel,
+            Text::new(""),
+            shop_auction_text_font(typography::H2),
+            TextColor(Color::srgb(0.98, 0.93, 0.40)),
+            auction_featured_card_price_label_node(),
+            Visibility::Inherited,
+            ChildOf(featured_card),
+        ))
+        .id();
+
+    let featured_card_timer_label = commands
+        .spawn((
+            Name::new("Shop Auction Featured Card Timer"),
+            ShopAuctionUiEntity,
+            AuctionFeaturedCardTimerLabel,
+            Text::new(""),
+            shop_auction_text_font(typography::CAPTION),
+            TextColor(Color::srgb(0.86, 0.90, 0.96)),
+            auction_featured_card_timer_label_node(),
+            Visibility::Inherited,
             ChildOf(featured_card),
         ))
         .id();
@@ -4710,11 +4881,13 @@ fn spawn_auction_contents(
         ))
         .id();
 
-    (
+    AuctionContents {
         featured_card,
         featured_card_frame,
         featured_card_stats,
         featured_card_keyword,
+        featured_card_price_label,
+        featured_card_timer_label,
         status_text,
         timer_bar,
         bid_status_text,
@@ -4724,7 +4897,29 @@ fn spawn_auction_contents(
         free_gold_counter_values,
         bid_buttons,
         pass_button,
-    )
+    }
+}
+
+/// PROMPT 1085 — bundle of auction-panel sub-entities returned by
+/// [`spawn_auction_contents`]. Replaced the previous 13-tuple return so
+/// new sub-nodes (price / timer labels) can land without churning every
+/// caller.
+struct AuctionContents {
+    featured_card: Entity,
+    featured_card_frame: Entity,
+    featured_card_stats: Entity,
+    featured_card_keyword: Entity,
+    featured_card_price_label: Entity,
+    featured_card_timer_label: Entity,
+    status_text: Entity,
+    timer_bar: Entity,
+    bid_status_text: Entity,
+    free_gold_counter_group: Entity,
+    free_gold_counters: [Entity; AUCTION_FREE_GOLD_COUNTER_COUNT],
+    free_gold_counter_labels: [Entity; AUCTION_FREE_GOLD_COUNTER_COUNT],
+    free_gold_counter_values: [Entity; AUCTION_FREE_GOLD_COUNTER_COUNT],
+    bid_buttons: [Entity; 3],
+    pass_button: Entity,
 }
 
 fn spawn_auction_free_gold_counter_group(
@@ -5022,6 +5217,20 @@ fn shop_slot_node(index: usize) -> Node {
     node
 }
 
+fn shop_slot_affordance_label_node() -> Node {
+    // PROMPT 1085 — affordance copy band anchored to the bottom inside-edge
+    // of the parent shop slot well. Caption-height row so the buy /
+    // disabled-reason copy reads as a short tag below the card art.
+    Node {
+        position_type: PositionType::Absolute,
+        left: Val::Px(spacing::SPACING_XS),
+        right: Val::Px(spacing::SPACING_XS),
+        bottom: Val::Px(spacing::SPACING_XS / 2.0),
+        height: Val::Px(typography::CAPTION * typography::LINE_HEIGHT_DEFAULT_RATIO),
+        ..default()
+    }
+}
+
 fn shop_refresh_button_node() -> Node {
     Node {
         position_type: PositionType::Absolute,
@@ -5181,6 +5390,36 @@ fn auction_featured_card_keyword_node() -> Node {
         right: Val::Px(spacing::SPACING_LG),
         bottom: Val::Px(spacing::SPACING_SM),
         height: Val::Px(typography::BODY * typography::LINE_HEIGHT_DEFAULT_RATIO),
+        ..default()
+    }
+}
+
+fn auction_featured_card_price_label_node() -> Node {
+    // PROMPT 1085 — prominent current-price line anchored to the top of
+    // the featured card, opposite the name banner so the player can read
+    // "Bid: Ng" without scanning down to the bid row. Width is the card
+    // interior so longer prices wrap cleanly inside the frame.
+    Node {
+        position_type: PositionType::Absolute,
+        left: Val::Px(spacing::SPACING_LG),
+        right: Val::Px(spacing::SPACING_LG),
+        top: Val::Px(spacing::SPACING_SM),
+        height: Val::Px(typography::H2 * typography::LINE_HEIGHT_DEFAULT_RATIO),
+        ..default()
+    }
+}
+
+fn auction_featured_card_timer_label_node() -> Node {
+    // PROMPT 1085 — numeric time-left readout anchored just under the
+    // price line. Caption-height row keeps the typography subordinate to
+    // the price line above so the read order is `name → price → timer →
+    // stats → keyword` per `docs/ux/global-ui-design-spec.md` §8.
+    Node {
+        position_type: PositionType::Absolute,
+        left: Val::Px(spacing::SPACING_LG),
+        right: Val::Px(spacing::SPACING_LG),
+        top: Val::Px(spacing::SPACING_SM + typography::H2 * typography::LINE_HEIGHT_DEFAULT_RATIO),
+        height: Val::Px(typography::CAPTION * typography::LINE_HEIGHT_DEFAULT_RATIO),
         ..default()
     }
 }
@@ -5434,6 +5673,63 @@ fn visibility_for(visible: bool) -> Visibility {
         Visibility::Visible
     } else {
         Visibility::Hidden
+    }
+}
+
+/// PROMPT 1085 — format the numeric time-left readout displayed on the
+/// child [`AuctionFeaturedCardTimerLabel`]. The label mirrors the timer
+/// bar's runtime state in copy: live countdown shows `{N}s left`, the
+/// preparing window shows `Auction starting...`, settling shows
+/// `Auction ending`, and the connection-error fallback surfaces a single
+/// reassuring line so the player is not left without context.
+pub fn auction_featured_timer_label(state: &ShopAuctionAuctionState) -> String {
+    match state.panel_state {
+        ShopAuctionAuctionPanelState::Hidden => String::new(),
+        ShopAuctionAuctionPanelState::Preparing => "Auction starting...".to_string(),
+        ShopAuctionAuctionPanelState::Settling => "Auction ending".to_string(),
+        ShopAuctionAuctionPanelState::ConnectionError => "Awaiting server...".to_string(),
+        ShopAuctionAuctionPanelState::Active => {
+            if state.timer_remaining_ms == 0 {
+                return "Auction ending".to_string();
+            }
+            let seconds = state.timer_remaining_ms.div_ceil(1_000);
+            format!("{seconds}s left")
+        }
+    }
+}
+
+/// PROMPT 1085 — compute the human-readable affordance copy displayed on
+/// the child [`ShopSlotAffordanceLabel`] beneath a shop tile. Empty string
+/// means the parent slot is in a state that should not advertise a buy
+/// affordance (`Empty` wells in particular). Audit AUDIT-1076-13 noted that
+/// the player saw no disabled-reason feedback when clicking unaffordable
+/// slots; this helper is the single source of that copy so every state
+/// renders a deterministic, non-empty string for the visible cases.
+pub fn shop_slot_affordance_copy(
+    state: ShopSlotState,
+    card_id: Option<CardId>,
+    cost: Option<u32>,
+    hand_size: usize,
+    economy: &PlayerEconomyView,
+) -> String {
+    match state {
+        ShopSlotState::Empty => String::new(),
+        ShopSlotState::PendingPurchase => "PENDING...".to_string(),
+        ShopSlotState::Refreshing => "REFRESHING...".to_string(),
+        ShopSlotState::HandFullLocked => "LOCKED · Hand full".to_string(),
+        ShopSlotState::Available => {
+            if card_id.is_none() {
+                return String::new();
+            }
+            if hand_size >= 10 {
+                return "LOCKED · Hand full".to_string();
+            }
+            let cost = cost.unwrap_or(0);
+            if !economy.initialized || economy.gold < cost {
+                return format!("LOCKED · Need {cost}g");
+            }
+            format!("BUY · {cost}g")
+        }
     }
 }
 
