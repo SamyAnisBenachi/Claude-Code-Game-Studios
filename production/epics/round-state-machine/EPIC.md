@@ -127,8 +127,9 @@ Three post-cutoff APIs converge in this epic:
 | 005 | [Disconnect Handling](story-005-disconnect-handling.md) | Logic | Ready | ADR-009 |
 | 006 | [Network Dispatch Wiring](story-006-network-dispatch-wiring.md) | Integration | Ready | ADR-009, ADR-010, ADR-008 |
 | 007 | [S18-RSM-SUBMISSIONS-RECEIVED-CLEAR-001 — Clear `submissions_received` on Placement→Resolution Exit](story-007-s18-rsm-submissions-received-clear.md) | Logic (one-line transition fix + regression test) | Draft — future Sprint 18 candidate (per PROMPT 1295 from PROMPT 1287 §3.10 Lane W9 / §5 row SA-4; PROMPT 1202 F-07), NOT activated | ADR-009, ADR-010 |
+| 008 | [Auction Safety Timer Remove](story-008-auction-safety-timer-remove.md) | Config/Data | Draft — Sprint 18 candidate (S18-RSM-AUCTION-SAFETY-TIMER-REMOVE-001 per PROMPT 1298 / authored by PROMPT 1305, integrated by PROMPT 1313 renumbered 007 → 008 to follow the 1306 wave-b 007 slot), NOT activated | ADR-009 |
 
-Work through stories in order — each story's `Depends on:` field tells you what must be Done before you can start it. Story 007 is a future Sprint 18 candidate hardening row sourced from `reports/PROMPT-1202-multiplayer-protocol-state-consistency-bug-audit.md` §2 row F-07; it is authored as a Sprint 18 candidate by PROMPT 1295 and is NOT activated. Activation flips to Ready via the Sprint 18 plan + `/sprint-plan sprint-18` workflow.
+Work through stories in order — each story's `Depends on:` field tells you what must be Done before you can start it. Story 007 is a future Sprint 18 candidate hardening row sourced from `reports/PROMPT-1202-multiplayer-protocol-state-consistency-bug-audit.md` §2 row F-07; it is authored as a Sprint 18 candidate by PROMPT 1295 and is NOT activated. Story 008 is a Sprint 18 candidate dead-state hygiene row sourced from `reports/PROMPT-1298-server-dead-state-hygiene-audit.md` §3 F-09; it is authored as a Sprint 18 candidate by PROMPT 1305, integrated by PROMPT 1313 with a 007 → 008 renumber to follow the 1306 wave-b 007 slot, and is NOT activated. Activation flips to Ready via the Sprint 18 plan + `/sprint-plan sprint-18` workflow.
 
 ---
 
