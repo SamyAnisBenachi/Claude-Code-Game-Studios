@@ -665,6 +665,14 @@ path = "../tests/integration/shop_auction_ui/shop_auction_surface_paint_test.rs"
 name = "shop_auction_ui_interaction_emits_click_test"
 path = "../tests/integration/shop_auction_ui/interaction_emits_click_test.rs"
 
+# PROMPT 1182 (SHOP-AUCTION-RESPONSIVE-LAYOUT-REPAIR) — locks in three
+# layout-robustness repairs so future UI additions cannot hide a primary
+# action, hide the timer, or re-introduce the featured-card text overlap
+# AUDIT-1129 UI-1129-02 surfaced.
+[[test]]
+name = "shop_auction_ui_responsive_layout_repair_test"
+path = "../tests/integration/shop_auction_ui/responsive_layout_repair_test.rs"
+
 [[test]]
 name = "board_rendering_grid_camera_test"
 path = "../tests/unit/board_rendering/board_grid_camera_test.rs"
