@@ -1061,16 +1061,18 @@ fn snapshot_request_serialises_extras_block_into_json() {
     app.insert_resource(ClientSessionIdentity::default());
     // Seed a couple of resources that the extras path consumes so the
     // output is more than just nulls.
-    app.insert_resource(client::presentation::shared::economy_view::PlayerEconomyView {
-        gold: 7,
-        current_mana: 3,
-        reserve_mana: 2,
-        mana_cap: 5,
-        initialized: true,
-        last_update_source: Some(
-            client::presentation::shared::economy_view::PlayerEconomyViewUpdateSource::Snapshot,
-        ),
-    });
+    app.insert_resource(
+        client::presentation::shared::economy_view::PlayerEconomyView {
+            gold: 7,
+            current_mana: 3,
+            reserve_mana: 2,
+            mana_cap: 5,
+            initialized: true,
+            last_update_source: Some(
+                client::presentation::shared::economy_view::PlayerEconomyViewUpdateSource::Snapshot,
+            ),
+        },
+    );
     app.add_plugins(QASnapshotPlugin);
     app.update();
 
@@ -1123,10 +1125,7 @@ fn snapshot_request_serialises_extras_block_into_json() {
     assert!(extras["board_render_state"].is_null());
     assert!(extras["session_settings"].is_null());
     assert!(extras["objective_identities"].is_array());
-    assert_eq!(
-        extras["objective_identities"].as_array().unwrap().len(),
-        0
-    );
+    assert_eq!(extras["objective_identities"].as_array().unwrap().len(), 0);
     // Drag block always present, with both drag tracks reading inactive.
     assert_eq!(extras["drag"]["placement_drag_active"], false);
     assert_eq!(extras["drag"]["ghost_unstage_active"], false);
@@ -1228,9 +1227,15 @@ fn build_snapshot_with_extras_embeds_extras_field() {
     let json = serde_json::to_string(&snapshot).expect("snapshot must serialise");
     let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
     assert_eq!(parsed["extras"]["frame_count"], 42);
-    assert_eq!(parsed["extras"]["timers"]["phase_timer"]["remaining_ms"], 25_000);
+    assert_eq!(
+        parsed["extras"]["timers"]["phase_timer"]["remaining_ms"],
+        25_000
+    );
     assert_eq!(parsed["extras"]["resources"]["gold"], 12);
-    assert_eq!(parsed["extras"]["outbound_intents"]["hand_submit_placements"], 3);
+    assert_eq!(
+        parsed["extras"]["outbound_intents"]["hand_submit_placements"],
+        3
+    );
 }
 
 #[test]
@@ -1250,13 +1255,11 @@ fn extras_inputs_snapshot_with_warnings_records_missing_economy() {
 
     let (extras, warnings): (ExtrasSnapshot, Vec<String>) = app
         .world_mut()
-        .run_system_once(
-            |inputs: ExtrasInputs| -> (ExtrasSnapshot, Vec<String>) {
-                let mut warnings = Vec::new();
-                let extras = inputs.snapshot_with_warnings(&mut warnings);
-                (extras, warnings)
-            },
-        )
+        .run_system_once(|inputs: ExtrasInputs| -> (ExtrasSnapshot, Vec<String>) {
+            let mut warnings = Vec::new();
+            let extras = inputs.snapshot_with_warnings(&mut warnings);
+            (extras, warnings)
+        })
         .expect("run_system_once must succeed");
 
     // Players / drag / outbound never short-circuit so they must produce a
@@ -1269,7 +1272,9 @@ fn extras_inputs_snapshot_with_warnings_records_missing_economy() {
     // disambiguate "economy seeded but reads zero" from "economy resource
     // never registered".
     assert!(
-        warnings.iter().any(|w| w.contains("PlayerEconomyView resource missing")),
+        warnings
+            .iter()
+            .any(|w| w.contains("PlayerEconomyView resource missing")),
         "expected PlayerEconomyView missing warning, got {:?}",
         warnings
     );

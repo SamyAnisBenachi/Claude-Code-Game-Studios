@@ -1269,7 +1269,9 @@ fn build_player_ids_snapshot(
     placement_board_view: Option<&PlacementBoardView>,
     hud_player_ids: Option<&HudPlayerIds>,
 ) -> PlayerIdsSnapshot {
-    let local_player_id = identity.and_then(|i| i.player_id).map(|p| format!("{:?}", p));
+    let local_player_id = identity
+        .and_then(|i| i.player_id)
+        .map(|p| format!("{:?}", p));
     // Opponent is not directly stored on `ClientSessionIdentity`; pull from
     // `PlacementBoardView` (placement-phase) or fall back to `HudPlayerIds`.
     let (opponent_player_id, opponent_source) = if let Some(view) = placement_board_view {
@@ -1303,20 +1305,26 @@ fn build_timers_snapshot(inputs: &ExtrasTimerInputs<'_>) -> TimersSnapshot {
             active: t.active,
         }
     });
-    let placement_timer = inputs.placement_timer.as_deref().map(|t| PlacementTimerSnapshot {
-        remaining_ms: t.remaining_ms,
-        urgency_fired: t.urgency_fired,
-        in_grace_window: t.in_grace_window,
-        grace_remaining_ms: t.grace_remaining_ms,
-        submitted: t.submitted,
-    });
-    let auction_timer = inputs.auction_state.as_deref().map(|s| AuctionTimerSnapshot {
-        panel_state: format!("{:?}", s.panel_state),
-        duration_ms: s.timer_duration_ms,
-        remaining_ms: s.timer_remaining_ms,
-        preparing_elapsed_ms: s.preparing_elapsed_ms,
-        locally_expired_elapsed_ms: s.locally_expired_elapsed_ms,
-    });
+    let placement_timer = inputs
+        .placement_timer
+        .as_deref()
+        .map(|t| PlacementTimerSnapshot {
+            remaining_ms: t.remaining_ms,
+            urgency_fired: t.urgency_fired,
+            in_grace_window: t.in_grace_window,
+            grace_remaining_ms: t.grace_remaining_ms,
+            submitted: t.submitted,
+        });
+    let auction_timer = inputs
+        .auction_state
+        .as_deref()
+        .map(|s| AuctionTimerSnapshot {
+            panel_state: format!("{:?}", s.panel_state),
+            duration_ms: s.timer_duration_ms,
+            remaining_ms: s.timer_remaining_ms,
+            preparing_elapsed_ms: s.preparing_elapsed_ms,
+            locally_expired_elapsed_ms: s.locally_expired_elapsed_ms,
+        });
     let shop_timer = inputs.shop_timer.as_deref().map(|s| ShopTimerSnapshot {
         duration_ms: s.duration_ms,
         remaining_ms: s.remaining_ms,
@@ -1428,7 +1436,11 @@ fn target_kind_name(kind: PlacementTargetKind) -> &'static str {
 }
 
 fn build_drag_snapshot(inputs: &ExtrasHandInputs<'_>) -> DragSnapshot {
-    let placement_drag = inputs.placement_drag.as_deref().copied().unwrap_or_default();
+    let placement_drag = inputs
+        .placement_drag
+        .as_deref()
+        .copied()
+        .unwrap_or_default();
     let ghost = inputs
         .ghost_unstage_drag
         .as_deref()
@@ -1436,16 +1448,15 @@ fn build_drag_snapshot(inputs: &ExtrasHandInputs<'_>) -> DragSnapshot {
         .unwrap_or_default();
 
     DragSnapshot {
-        placement_drag_active: placement_drag.card.is_some() && placement_drag.target_kind.is_some(),
+        placement_drag_active: placement_drag.card.is_some()
+            && placement_drag.target_kind.is_some(),
         placement_drag_card_id: placement_drag.card_id.map(|c| c.0),
         placement_drag_card_entity: placement_drag.card.map(|e| format!("{:?}", e)),
         placement_drag_owner_id: placement_drag.owner_id.map(|p| format!("{:?}", p)),
         placement_drag_target_kind: placement_drag
             .target_kind
             .map(|k| target_kind_name(k).to_string()),
-        placement_drag_cursor_world: placement_drag
-            .cursor_world_position
-            .map(|v| [v.x, v.y]),
+        placement_drag_cursor_world: placement_drag.cursor_world_position.map(|v| [v.x, v.y]),
         ghost_unstage_active: ghost.card_id.is_some(),
         ghost_unstage_card_id: ghost.card_id.map(|c| c.0),
         ghost_unstage_cursor_screen: ghost.cursor_screen_position.map(|v| [v.x, v.y]),
@@ -1525,8 +1536,7 @@ fn build_shop_auction_snapshot(
         pending_bid_accepted: a.pending_bid_accepted,
         pending_gold_broadcast_seen: a.pending_gold_broadcast_seen,
         opponent_bid_gate_satisfied: a.opponent_bid_gate_satisfied,
-        waiting_for_local_gold_after_opponent_bid: a
-            .waiting_for_local_gold_after_opponent_bid(),
+        waiting_for_local_gold_after_opponent_bid: a.waiting_for_local_gold_after_opponent_bid(),
     });
 
     let settlement = settlement_res.map(|s| SettlementPanelSnapshot {
