@@ -1,5 +1,5 @@
 [workspace]
-members = ["shared", "server", "client", "tools/two-client-runtime"]
+members = ["shared", "server", "client", "tools/two-client-runtime", "tools/dev-launcher-app"]
 resolver = "2"
 
 # Shared dependency versions — update here, not per-crate
