@@ -1,3 +1,219 @@
+# PROMPT 1124 State Banner -- Sprint 17 S17-UI-QA-SNAPSHOT-MARKER-SPLIT-001 Story-Done
+
+Updated 2026-05-18 by PROMPT 1124. Source-of-truth at closure:
+`origin/main@74c25b65fbb08da966c2a4e9607812ec34ae610e` (PROMPT 1123
+integration tip `integrate(s17): merge PROMPT 1122 qa-snapshot
+marker-split into main (PROMPT 1123)`), the integration tip for the
+row this prompt closes. `origin/main` HEAD at the start of this
+PROMPT 1124 closure window is also `74c25b6`. PROMPT 1123 merged
+PROMPT 1122 worker
+`f4d0fda49e303c3c0b3d3cef57a37ff6de350ea8`
+`dev-story(s17-qa-snapshot-marker-split): per-sub-surface markers +
+visibility-aware counts + session-id snapshot prefix (PROMPT 1122)`
+onto `origin/main` via `--no-ff` merge, rebased mid-run onto
+`origin/main@0cab942` (PROMPT 1109 Vulkan validation gating
+integration tip) before push so PROMPT 1109's `wgpu-validation`
+feature + S17-OPS comment block at `client/Cargo.toml:34-40` are
+preserved verbatim alongside the marker-split work. Strict
+fast-forward descendant of `origin/main@d35d24d` (PROMPT 1119
+bid-button phase-race integration tip), of `origin/main@5345164`
+(PROMPT 1121 bid-button story-done tip), of `origin/main@89ce149`
+(PROMPT 1120 hand-fan-root B0004 story-done tip), of
+`origin/main@29ad4c6` (PROMPT 1118 hand-fan-root B0004 integration
+tip), of `origin/main@2250add` (PROMPT 1117 card-display
+art-helper story-done tip), of `origin/main@30c9e0f` (PROMPT 1114
+card-display art-helper integration tip), of `origin/main@f2ba917`
+(PROMPT 1112 paperwork-only PARTIAL DISPOSITION tip), of
+`origin/main@4bd4f56` (PROMPT 1111 PARTIAL integration tip), of
+`origin/main@9a9b1dc` (PROMPT 1110 card-slot inset wiring
+story-done tip), of `origin/main@30f166f` (PROMPT 1106 card-slot
+inset wiring integration tip), of `origin/main@72d56bc` (PROMPT
+1108 server start-of-turn-debug story-done tip), and of
+`origin/main@dc8adb6` (PROMPT 1107 server warn->debug integration
+tip). Branch:
+`story-done/s17-qa-snapshot-marker-split-1124` (fresh worktree from
+`origin/main@74c25b6`, NOT in-place on the root checkout's local
+main due to the PROMPT 1123-reported branch-state anomaly where
+local-only commits `893d16b` + parent landed on the root checkout's
+local main without push).
+
+PROMPT 1124 is a paperwork-only Sprint 17 `/story-done` closure for
+`S17-UI-QA-SNAPSHOT-MARKER-SPLIT-001` (Should Have; story 019 in
+`production/epics/ui-clean-pass/`; SOURCE-1077-08 P2 + SOURCE-1077-09
+P2 + SOURCE-1077-16 P3 bundle). Closure paperwork records the
+PROMPT 1122 worker + PROMPT 1123 integration result on the story
+file, in `production/sprint-status.yaml`, in
+`production/session-state/*`, and authors the mandatory final
+report under `reports/` (gitignored).
+
+**Result delivered on origin/main@74c25b6 by PROMPT 1123:**
+
+- **Source-side remediation for SOURCE-1077-08 + SOURCE-1077-09 +
+  SOURCE-1077-16 applied** across 5 client paths:
+  1. `client/src/presentation/qa_snapshot.rs`: `UiCountQueries`
+     extended with per-sub-surface visibility queries via
+     `HandVisibilityQueries` + `ShopAuctionVisibilityQueries`
+     sub-`SystemParam`s (under the 16-field ceiling); `UiCounts`
+     gains 17 new `*_visible` fields filtered by
+     `is_visibility_visible` (true when `Visibility != Hidden`);
+     `format_snapshot_id(counter, unix_millis, session_id:
+     Option<u64>)` emits `{session_id}-{counter:06}-{unix_millis}`
+     post-handshake and
+     `pre-session-{counter:06}-{unix_millis}` before handshake;
+     new `QA_SNAPSHOT_PRE_SESSION_PREFIX = "pre-session"` constant;
+     `short_id` updated to surface the counter token under the
+     new format; `QA_SNAPSHOT_ENV_VAR` constant + `from_env_values`
+     behaviour unchanged so the `CCGS_QA_SNAPSHOT=1` env-var
+     contract is preserved verbatim.
+  2. `client/src/ui/hud/mod.rs`: new markers `HudTopStripRoot`,
+     `HudBottomStripRoot`, `HudScoreboardDotRoot`,
+     `HudDimOverlayRoot` applied at existing spawn sites
+     alongside the now-`#[deprecated]` `HudEntity`.
+  3. `client/src/ui/hand/mod.rs`: new markers `HandBarRoot`,
+     `HandDraftGridSlotRoot`, `PlacementActionPanelRoot` applied
+     at `hand_bar`, every `grid_slot`, and
+     `placement_action_panel`; pre-existing `HandFanRoot`
+     preserved verbatim; `HandUiEntity` `#[deprecated]`.
+  4. `client/src/ui/shop_auction/mod.rs`: pre-existing
+     `ShopAuctionPanelRoot` enum declared canonical
+     per-sub-surface marker; no new entities, no spawn-site
+     relocation; `ShopAuctionUiEntity` `#[deprecated]`.
+  5. `client/Cargo.toml`: single additive `[[test]]` block
+     registering the new
+     `ui_clean_pass_qa_snapshot_marker_split_test` bin; PROMPT
+     1109 `wgpu-validation` feature + S17-OPS comment block at
+     lines 34-40 preserved verbatim.
+- **AC8 strategy chosen by worker**: option (a) — preserve legacy
+  universal counts as `#[deprecated]` legacy fields alongside the
+  new `*_visible` fields, so PROMPT 1022 / 1034 / 1036 historical
+  snapshot comparisons still resolve.
+- **AC7 fallback**: worker satisfied AC7 via the worker-allowable
+  fallback (fixture-injected `ClientSessionIdentity` with two
+  distinct `session_id` values in a single-client test bin per
+  story AC7 phrasing) since running two clients during
+  `/dev-story` is not feasible.
+- **PAW-TD-*-a preserved verbatim**: no `.png` files touched.
+- **PROMPT 1109 Vulkan validation gating preserved verbatim**
+  by PROMPT 1123 mid-run rebase onto `origin/main@0cab942`;
+  `client/Cargo.toml` auto-merged cleanly (no conflict markers)
+  with PROMPT 1109 feature definition intact alongside PROMPT
+  1122's new `[[test]]` registrations.
+
+**Test evidence at origin/main@74c25b6:**
+
+- `tests/integration/ui_clean_pass/qa_snapshot_marker_split_test.rs`
+  (NEW; AC9) — **11/11 PASS** at integration tip:
+  `each_per_sub_surface_marker_with_visible_visibility_contributes_to_count`,
+  `hidden_visibility_excludes_marker_from_per_sub_surface_counts`,
+  `inherited_visibility_counts_as_visible`,
+  `repeated_marker_spawns_accumulate_into_visible_count`,
+  `connection_lost_overlay_visible_honours_own_visibility`,
+  `result_screen_visible_honours_own_visibility`,
+  `legacy_universal_counts_remain_populated_alongside_new_fields`,
+  `pre_session_prefix_used_when_session_id_is_none`,
+  `session_id_prefix_used_when_session_id_is_some`,
+  `two_clients_with_distinct_session_ids_do_not_alias`,
+  `ccgs_qa_snapshot_env_contract_preserved`.
+- `tests/integration/qa_snapshot/qa_snapshot_overlay_test.rs`
+  (existing bin, extended with `..UiCounts::default()` +
+  worker-side `#[allow(deprecated)]`) — **20/20 PASS** at
+  integration tip.
+- 8 adjacent surface focused bins at integration tip PASS:
+  `hud_plugin_scaffold_test 4/4`,
+  `hand_ui_plugin_scaffold_test 3/3`,
+  `hud_top_strip_layout_test 8/8`,
+  `hud_bottom_strip_layout_test 8/8`,
+  `shop_auction_ui_shop_panel_test 10/10`,
+  `shop_auction_ui_auction_activation_test 8/8`,
+  `shop_auction_ui_draft_initial_grid_test 10/10`,
+  `hand_fan_root_b0004_hierarchy_test 1/1`.
+- `cargo check -p client` — PASS at integration tip with 82
+  intentional deprecation warnings (AC1 + AC8 surface), zero
+  errors, zero new non-deprecation warnings.
+- `git diff --check origin/main...HEAD` at integration tip —
+  clean.
+- Evidence file:
+  `production/qa/evidence/sprint-17-qa-snapshot-marker-split/evidence.md`.
+
+**External / baseline drift (advisory; out of scope):**
+
+`shop_auction_ui_plugin_scaffold_formulas_test::shop_auction_ui_prepooled_panel_roots_are_bevy_ui_nodes`
+fails with `left: 87, right: 82` on the unmodified
+`origin/main@5345164` baseline before any PROMPT 1122 edit.
+The hand-tuned arithmetic in
+`tests/unit/shop_auction_ui/plugin_scaffold_formulas_test.rs:50`
+drifted from the actual `ShopAuctionUiEntity`-tagged spawn count
+introduced by an upstream landing. PROMPT 1122 makes no edit to
+that formula; PROMPT 1123 integration preserved the drift
+verbatim; PROMPT 1124 paperwork does NOT silently fix the counts
+and does NOT advance closure on the drift.
+
+**Cargo resource policy (AC16):** PROMPT 1122 worker applied all
+5 env vars before every cargo invocation. PROMPT 1123 integration
+encountered a one-call env-var propagation gap on the very first
+`cargo check -p client` (cargo built to worktree-local `target/`
+once at `[optimized + debuginfo]`); all subsequent invocations
+applied policy correctly via bash inline syntax. D: free remained
+> 718 GB throughout; build correctness gate unaffected (87/87
+targeted sub-tests + 2 cargo check PASS). Advisory recorded
+explicitly per `cargo_resource_policy_advisory` in
+`production/sprint-status.yaml`; not hidden. PROMPT 1124 itself
+did NOT invoke Cargo (paperwork-only closure).
+
+**Conditions carried forward unchanged:** Sprint 17 active
+(UNCHANGED; Sprint 17 NOT closed-out); stage Polish (UNCHANGED;
+`production/stage.txt` NOT touched); PROMPT 761 Polish->Release
+FAIL preserved; `S8-QA-001-W1` OPEN; `QA-COND-0005` +
+`QA-COND-0006` accept-risk; `PAW-TD-*-a` accept-risk; `TQ-S12-C1
+..C7` preserved (TQ-S12-C7 explicitly NOT closed); Sprint 16 / 15
+/ 14 / 13 / 12 / 11 / 10 dispositions preserved; PROMPT 1108 +
+PROMPT 1110 + PROMPT 1117 + PROMPT 1120 + PROMPT 1121
+`sprint_17_story_done` entries preserved verbatim; PROMPT 1112
+`sprint_17_partial_disposition` entry (S17-UI-HUD-OPP-MANA-CLEANUP-001
+PARTIAL with AC3 carried) preserved verbatim; PROMPT 1109 Vulkan
+validation gating preserved verbatim by PROMPT 1123 mid-run
+rebase; `S11-HUD-TIMER-EYEBALL-VISUAL-001` human-operator-blocked
+carry preserved; 24 PROMPT 1022 audit findings preserved as
+report-only (this row improves the tool that captured them; it
+does NOT retest or close them); SOURCE-1077-08 + SOURCE-1077-09
++ SOURCE-1077-16 discharged on origin/main by PROMPT 1123
+integration; other SOURCE-1077-* findings outside the bundled
+three preserved as deferred to Sprint 18+ (07/11/12/13/14/15) or
+already-discharged (01/02/03/04 by PROMPT 1114/1117; 06 by PROMPT
+1106/1110; 10 by PROMPT 1119/1121); PROMPT 1112 AC3 hand
+reserve-strip carry preserved OPEN; AUDIT-1076-* findings
+preserved outside the already-discharged subset
+(14 PROMPT 1118/1120; 15 PROMPT 1107/1108; 18 PROMPT 1103/1109;
+10 + 16 PROMPT 1111); AUDIT-1076-17 OPEN carried with AC3 of
+S17-UI-HUD-OPP-MANA-CLEANUP-001; external
+`shop_auction_ui_plugin_scaffold_formulas_test` baseline drift
+preserved verbatim and NOT silently fixed.
+
+**Files changed by PROMPT 1124 (paperwork only):**
+
+- `production/epics/ui-clean-pass/story-019-qa-snapshot-marker-split.md`
+  (AC1..AC16 -> `[x]`; Completion Notes section inserted before
+  Closure Trail; Closure Trail extended with commit-numbered
+  closure trail PROMPT 1095 / 1097 / 1099 / 1100 / 1122 / 1123 /
+  1124 + extended Conditions carried forward unchanged section;
+  final status line DRAFT -> DONE).
+- `production/sprint-status.yaml` (S17-UI-QA-SNAPSHOT-MARKER-SPLIT-001
+  row flipped `status: ready -> done` with closure metadata; new
+  `sprint_17_story_done` entry for PROMPT 1124 appended after the
+  PROMPT 1121 entry and before `sprint_17_partial_disposition:`).
+- `production/session-state/active.md` (this PROMPT 1124 banner
+  prepended above the prior PROMPT 1121 banner).
+- `production/session-state/codex-orchestrator-state.md` (PROMPT
+  1124 paragraph prepended above the prior PROMPT 1121
+  paragraph).
+- `reports/PROMPT-1124-s17-qa-snapshot-marker-split-story-done.md`
+  (mandatory final report; `reports/` is gitignored).
+
+**Final status line:** `1124:
+S17-QA-SNAPSHOT-MARKER-SPLIT-STORY-DONE: DONE`
+
+---
+
 # PROMPT 1121 State Banner -- Sprint 17 S17-UI-BID-BUTTON-PHASE-RACE-001 Story-Done
 
 Updated 2026-05-18 by PROMPT 1121. Source-of-truth at closure:
