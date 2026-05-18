@@ -31,6 +31,13 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "time"] }
 [features]
 default = []
 ui_picking = ["bevy/ui_picking", "bevy/bevy_picking"]
+# S17-OPS-VULKAN-VALIDATION-GATING-001 (AUDIT-1076-18): opt-in WGPU validation
+# layer flags. OFF by default so a stock `cargo build -p client` / `trunk build`
+# does not request `VK_LAYER_KHRONOS_validation` (the layer is not installed on
+# the test / dev / end-user Windows machine, producing three warning lines on
+# every launch). Build with `cargo build -p client --features wgpu-validation`
+# when debugging GPU issues to restore wgpu's `from_build_config()` defaults.
+wgpu-validation = []
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 js-sys = "0.3"
