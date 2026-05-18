@@ -323,26 +323,11 @@ const ALLOWLIST: &[AllowlistEntry] = &[
                     drain-vs-delete based on a workspace audit of lobby \
                     C2SSelectClass + C2SConfirmClass coverage).",
     },
-    AllowlistEntry {
-        type_name: "S2COpponentDisconnected",
-        missing: MissingSide::Send,
-        rationale: "Story 008 Per-Orphan Decisions § S2COpponentDisconnected \
-                    (Path A drain): the GDD-mandated server-side broadcast \
-                    sender is currently absent from the workspace (verified by \
-                    grep at PROMPT 821: no `MessageSender<S2COpponentDisconnected>` \
-                    call site in `server/src/`); landing the server sender is \
-                    out-of-scope for this story (separate follow-on row). The \
-                    client-side drain landed at \
-                    `client/src/presentation/mod.rs::drain_opponent_connection_messages` \
-                    is read-only and ADR-002 / ADR-008 compliant. GDD \
-                    `network-protocol.md` Rule 8 still mandates the broadcast \
-                    on `OnDisconnected`; the missing send-site remains a \
-                    known follow-on.",
-        follow_on: "Sprint 13 or 14 candidate S13/S14-PROTO-OPPONENT-DC-BROADCAST-001 \
-                    (story file authoring pending; producer to schedule the \
-                    server broadcast against the `tick_disconnect_timers` \
-                    path + GDD Rule 8).",
-    },
+    // S2COpponentDisconnected: previously allow-listed pending the server-side
+    // broadcast. The send-site landed in PROMPT 1211 (S18 Opponent Disconnect
+    // Broadcast Repair) at `server/src/network/rsm_dispatch.rs::
+    // dispatch_opponent_disconnected`, fed by the rsm-internal
+    // `OpponentDisconnectNotice` queue emitted from `tick_disconnect_timers`.
 ];
 
 fn allowlist_allows(type_name: &str, missing: MissingSide) -> bool {
