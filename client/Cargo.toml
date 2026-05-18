@@ -243,6 +243,15 @@ path = "../tests/integration/hud/hud_phase_timer_bar_test.rs"
 name = "hud_opp_figurine_test"
 path = "../tests/integration/hud/hud_opp_figurine_test.rs"
 
+# S17-UI-HUD-OPP-MANA-CLEANUP-001 (Sprint 17 story 018): opponent figurine
+# `ImageNode` + OPP value `Text` re-skin on `S2CClassesRevealed` / snapshot
+# rebuild, with FROZEN-on-GAME_OVER + ADR-001 + ADR-002 invariants guarded.
+# AUDIT-1076-17 (floating mana microbadge) is escalated — its spawn site is
+# in `client/src/ui/hand/mod.rs` which the PROMPT 1105 worker may not edit.
+[[test]]
+name = "hud_opp_figurine_label_mana_repaint_test"
+path = "../tests/integration/hud/opp_figurine_label_mana_repaint_test.rs"
+
 [[test]]
 name = "snapshot_phase_bridge_test"
 path = "../tests/integration/hud/snapshot_phase_bridge_test.rs"

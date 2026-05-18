@@ -19,8 +19,9 @@ use crate::asset_wiring::{
 };
 use crate::card_animations::cancel_tween_anim_in_place;
 use crate::presentation::{PlayerEconomyView, PresentationGameSnapshotMessage};
-use crate::state::{ClientPhaseView, ClientState, CurrentClientPhase};
+use crate::state::{ClientPhaseView, ClientSessionIdentity, ClientState, CurrentClientPhase};
 use crate::ui::design_tokens::{overlays, spacing, strips, typography, z_layers};
+use crate::ui::lobby::LobbyViewState;
 use crate::ui::shared::{BoardLayout, HudObjectiveUpdate};
 
 pub const HUD_DOT_ROWS: usize = 2;
@@ -350,6 +351,24 @@ pub struct HudFigurine;
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct OpponentFigurineMarker;
 
+/// S17-UI-HUD-OPP-MANA-CLEANUP — HUD-local mirror of the revealed class
+/// identity for each player. Populated by
+/// [`sync_class_reveal_from_lobby_view_system`] (reads
+/// `LobbyViewState.revealed_classes`) and by
+/// [`sync_class_reveal_from_snapshot_system`] (reads
+/// `PresentationGameSnapshotMessage`); consumed by
+/// [`sync_class_reveal_hud_system`] in `HudSystemSet::StateSync` to re-skin
+/// the opponent figurine `ImageNode` and the OPP value text after the server
+/// broadcasts `S2CClassesRevealed` (AUDIT-1076-10 + AUDIT-1076-16). Honours
+/// the FROZEN-on-GAME_OVER contract: while `HudMode::Frozen`, only the
+/// snapshot path is allowed to overwrite this resource (matches Sprint 14
+/// story 017 AC6 + TR-HUD-009 binding).
+#[derive(Resource, Default, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct HudClassReveal {
+    pub local: Option<ClassId>,
+    pub opponent: Option<ClassId>,
+}
+
 /// Marker for the HUD phase timer bar fill entity.
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct HudTimerBar;
@@ -410,6 +429,7 @@ impl Plugin for HudPlugin {
             .init_resource::<HudConfig>()
             .init_resource::<HudMode>()
             .init_resource::<PhaseTimerState>()
+            .init_resource::<HudClassReveal>()
             .add_message::<HudObjectiveUpdate>()
             .add_message::<HudGoldBroadcastMessage>()
             .add_message::<PresentationGameSnapshotMessage>()
@@ -462,6 +482,15 @@ impl Plugin for HudPlugin {
                     sync_figurine_image_system.in_set(HudSystemSet::StateSync),
                     sync_dot_image_on_objective_destroyed_system.in_set(HudSystemSet::StateSync),
                     sync_dim_overlay_for_resolution_system.in_set(HudSystemSet::StateSync),
+                    sync_class_reveal_from_lobby_view_system
+                        .in_set(HudSystemSet::MessageDrain),
+                    sync_class_reveal_from_snapshot_system
+                        .in_set(HudSystemSet::MessageDrain)
+                        .after(handle_game_snapshot_system),
+                    sync_class_reveal_hud_system
+                        .in_set(HudSystemSet::StateSync)
+                        .after(sync_gold_text_system)
+                        .after(sync_figurine_image_system),
                 ),
             );
     }
@@ -1393,6 +1422,154 @@ fn sync_one_figurine_image(
         img.image = server.load(hud_figurine_asset(class_id));
         *last_class = Some(class_id);
     }
+}
+
+/// S17-UI-HUD-OPP-MANA-CLEANUP — MessageDrain: project the canonical
+/// lobby `revealed_classes` mirror into the HUD-local [`HudClassReveal`]
+/// resource so the opponent figurine + OPP value text can re-skin without
+/// the lobby reducer needing to gain a HUD-side dependency. Skips the
+/// projection while `HudMode::Frozen` so the FROZEN-on-GAME_OVER contract
+/// (Sprint 14 story 017 AC6 / TR-HUD-009) holds for incremental reveals;
+/// snapshot rebuilds remain free to overwrite via
+/// [`sync_class_reveal_from_snapshot_system`] (AC6 binding).
+pub fn sync_class_reveal_from_lobby_view_system(
+    lobby: Option<Res<LobbyViewState>>,
+    identity: Option<Res<ClientSessionIdentity>>,
+    mode: Res<HudMode>,
+    mut reveal: ResMut<HudClassReveal>,
+) {
+    if *mode == HudMode::Frozen {
+        return;
+    }
+    let Some(lobby) = lobby else {
+        return;
+    };
+    if lobby.revealed_classes.is_empty() {
+        return;
+    }
+    let local_id = identity
+        .as_deref()
+        .and_then(|i| i.player_id)
+        .or(lobby.local_player_id);
+    let Some(local_id) = local_id else {
+        return;
+    };
+
+    let mut local_class: Option<ClassId> = None;
+    let mut opponent_class: Option<ClassId> = None;
+    for (pid, class_id) in &lobby.revealed_classes {
+        if *pid == local_id {
+            local_class = Some(*class_id);
+        } else {
+            opponent_class = Some(*class_id);
+        }
+    }
+
+    if let Some(c) = local_class {
+        if reveal.local != Some(c) {
+            reveal.local = Some(c);
+        }
+    }
+    if let Some(c) = opponent_class {
+        if reveal.opponent != Some(c) {
+            reveal.opponent = Some(c);
+        }
+    }
+}
+
+/// S17-UI-HUD-OPP-MANA-CLEANUP — MessageDrain: project the snapshot
+/// rebuild (ADR-011) class identity into [`HudClassReveal`]. Runs every
+/// frame so reconnect rebuilds re-skin the opponent figurine and OPP
+/// value text. Intentionally NOT gated by `HudMode::Frozen` — per AC6
+/// only the snapshot path is allowed to overwrite class identity once
+/// `GAME_OVER` freezes the HUD.
+pub fn sync_class_reveal_from_snapshot_system(
+    mut messages: MessageReader<PresentationGameSnapshotMessage>,
+    mut reveal: ResMut<HudClassReveal>,
+) {
+    for msg in messages.read() {
+        if let Some((own, opponent)) = snapshot_hud_players(&msg.0) {
+            if reveal.local != Some(own.class_id) {
+                reveal.local = Some(own.class_id);
+            }
+            if reveal.opponent != Some(opponent.class_id) {
+                reveal.opponent = Some(opponent.class_id);
+            }
+        }
+    }
+}
+
+/// S17-UI-HUD-OPP-MANA-CLEANUP — StateSync: apply the resolved class
+/// identity from [`HudClassReveal`] to the HUD's two visible class
+/// carriers: the opponent figurine `ImageNode` (AUDIT-1076-10) and the
+/// opponent OPP **prefix** `Text` of the OPP pill, which previously
+/// survived class reveal as the bare literal `"OPP"` alongside the
+/// gold-placeholder `"?"` value (AUDIT-1076-16). The prefix is the
+/// canonical place to surface class identity: the OPP pill's *value*
+/// text remains the authoritative opponent-gold readout (the existing
+/// `sync_gold_text_system` writes `"{gold}g"` or `"?"` there per
+/// reconnect-snapshot contract `tests/integration/hud/
+/// reconnect_snapshot_rebuild_test.rs`). Runs after
+/// [`sync_gold_text_system`] and [`sync_figurine_image_system`] so the
+/// final visible text/image reflects the revealed class. The own
+/// figurine is also covered so direct-tests of the resource path do not
+/// drift from the snapshot path.
+///
+/// FROZEN binding (AC6): this system runs every frame, but
+/// [`HudClassReveal`] only changes from the lobby path when not Frozen.
+/// Snapshot rebuilds still overwrite. The `Local<Option<ClassId>>`
+/// caches short-circuit redundant writes.
+pub fn sync_class_reveal_hud_system(
+    asset_server: Option<Res<AssetServer>>,
+    reveal: Res<HudClassReveal>,
+    entities: Option<Res<HudEntities>>,
+    mut figurines: Query<&mut ImageNode, With<HudFigurine>>,
+    mut texts: Query<&mut Text>,
+    mut last_local: Local<Option<ClassId>>,
+    mut last_opponent: Local<Option<ClassId>>,
+) {
+    let Some(entities) = entities else {
+        return;
+    };
+
+    if let Some(opp_class) = reveal.opponent {
+        if let Some(server) = asset_server.as_deref() {
+            if *last_opponent != Some(opp_class) {
+                if let Ok(mut img) = figurines.get_mut(entities.opponent_figurine) {
+                    img.image = server.load(hud_figurine_asset(opp_class));
+                }
+            }
+        }
+        if let Ok(mut text) = texts.get_mut(entities.opponent_gold_prefix) {
+            let display = format_opp_class_display(opp_class);
+            if text.0 != display {
+                text.0 = display;
+            }
+        }
+        *last_opponent = Some(opp_class);
+    }
+
+    if let Some(own_class) = reveal.local {
+        if let Some(server) = asset_server.as_deref() {
+            if *last_local != Some(own_class) {
+                if let Ok(mut img) = figurines.get_mut(entities.figurine) {
+                    img.image = server.load(hud_figurine_asset(own_class));
+                }
+            }
+        }
+        *last_local = Some(own_class);
+    }
+}
+
+/// S17-UI-HUD-OPP-MANA-CLEANUP — combined OPP-pill prefix string used by
+/// [`sync_class_reveal_hud_system`] once `S2CClassesRevealed` lands. The
+/// format mirrors the Sprint 14 lobby class-picker display strings
+/// (`{:?}` over `ClassId`) and embeds the static `OPP` lead so the
+/// previous `OPP ?` shorthand (the prefix text alone before reveal)
+/// remains scannable as e.g. `OPP Iop` after reveal even though the
+/// gold value entity may still be unpopulated.
+pub fn format_opp_class_display(class_id: ClassId) -> String {
+    format!("OPP {:?}", class_id)
 }
 
 /// PAW-004: StateSync — when a `HudObjectiveUpdate` message marks a dot as
