@@ -19,7 +19,7 @@ use crate::presentation::{PlayerEconomyView, PresentationGameSnapshotMessage};
 use crate::state::{ClientPhaseView, ClientState, CurrentClientPhase};
 use crate::ui::design_tokens::card_slot::{card_slot_node, CardSlotKind};
 use crate::ui::design_tokens::{overlays, spacing, typography, z_layers};
-use crate::ui::hud::{HudGoldBroadcastMessage, HudPlayerIds};
+use crate::ui::hud::{HudGoldBroadcastMessage, HudPlayerIds, PhaseTimerState};
 use crate::ui::settings::AccessibilityPreferences;
 
 pub const SHOP_AUCTION_UI_PANEL_ROOT_COUNT: usize = 6;
@@ -653,6 +653,7 @@ pub struct ShopAuctionUiEntities {
     pub draft_initial_objective_copy: Entity,
     pub draft_initial_objective_dismiss_button: Entity,
     pub draft_initial_objective_retrieval_button: Entity,
+    pub draft_initial_countdown_label: Entity,
     pub shop_panel: Entity,
     pub shop_phase_title: Entity,
     pub shop_empty_state: Entity,
@@ -1049,6 +1050,24 @@ pub struct DraftInitialObjectiveDismissButton;
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct DraftInitialObjectiveRetrievalButton;
 
+/// PROMPT 1230 — live numeric countdown rendered inside the keep-9 modal
+/// panel for the DraftInitial phase only.
+///
+/// The HUD top-strip already paints a remaining-seconds readout for every
+/// phase that publishes a non-zero `S2CPhaseChanged.timer_duration_ms`
+/// (see [`crate::ui::hud::HudTimerCountdown`] /
+/// `sync_hud_timer_countdown_text_system`), but the keep-9 modal covers most
+/// of the viewport during DraftInitial and the player reading the modal
+/// cannot easily glance at the HUD strip. This modal-local label sits on the
+/// modal itself so the budget is visible without leaving the modal mentally.
+///
+/// Reflected onto by [`sync_draft_initial_countdown_label_system`] off the
+/// canonical [`PhaseTimerState`] resource. Visibility is gated by
+/// [`draft_initial_active`] so the label cannot leak into the shop / auction
+/// / placement / resolution UIs that share the same `ShopAuctionUiPlugin`.
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct DraftInitialCountdownLabel;
+
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub enum DraftInitialObjectiveFocusTarget {
     #[default]
@@ -1345,6 +1364,12 @@ impl Plugin for ShopAuctionUiPlugin {
             .init_resource::<ButtonInput<KeyCode>>()
             .init_resource::<PlayerEconomyView>()
             .init_resource::<ClientPhaseView>()
+            // PROMPT 1230 — DraftInitial modal-local countdown label reflects
+            // the canonical phase timer owned by HudPlugin. Init here too so
+            // the keep-9 countdown system works in shop-auction-only tests
+            // that don't register HudPlugin; the production app loads both
+            // plugins and `init_resource` is idempotent.
+            .init_resource::<PhaseTimerState>()
             .add_message::<PresentationGameSnapshotMessage>()
             .add_message::<HudGoldBroadcastMessage>()
             .add_message::<ShopAuctionDraftOfferingReceived>()
@@ -1430,6 +1455,7 @@ impl Plugin for ShopAuctionUiPlugin {
                         tick_auction_settlement_transition_system,
                         tick_auction_toast_system,
                         sync_draft_initial_panel_system,
+                        sync_draft_initial_countdown_label_system,
                         sync_shop_panel_system,
                         sync_auction_panel_system,
                         sync_settlement_overlay_system,
@@ -3162,6 +3188,54 @@ pub fn sync_draft_initial_panel_system(
     }
 }
 
+/// PROMPT 1230 — reflect [`PhaseTimerState`] onto the
+/// [`DraftInitialCountdownLabel`] text and visibility while the keep-9 modal
+/// is active.
+///
+/// Mirrors the rounding convention of
+/// [`crate::ui::hud::sync_hud_timer_countdown_text_system`]: remaining
+/// milliseconds are rounded *up* to the next whole second so the player
+/// never sees `0s` while time still remains. The label is hidden whenever
+/// DraftInitial is not active so it cannot leak into the shop / auction /
+/// placement / resolution UIs that share this plugin, and the text is
+/// cleared on hide so a stale "1s" cannot reappear if the modal is shown
+/// again later in the same session.
+///
+/// Reads the canonical timer; never writes to it. The HUD top-strip
+/// countdown stays untouched — this label is additive modal-local clarity,
+/// not a replacement.
+pub fn sync_draft_initial_countdown_label_system(
+    mode: Res<ShopAuctionUiMode>,
+    draft_state: Res<ShopAuctionDraftInitialState>,
+    timer: Res<PhaseTimerState>,
+    entities: Option<Res<ShopAuctionUiEntities>>,
+    mut query: Query<(&mut Text, &mut Visibility), With<DraftInitialCountdownLabel>>,
+) {
+    let Some(entities) = entities else {
+        return;
+    };
+    let Ok((mut text, mut visibility)) = query.get_mut(entities.draft_initial_countdown_label)
+    else {
+        return;
+    };
+
+    let active = draft_initial_active(&mode, &draft_state);
+    let (target_text, target_visibility) = if active && timer.active && timer.duration_ms > 0 {
+        let remaining_ms = timer.duration_ms.saturating_sub(timer.elapsed_ms);
+        let remaining_s = remaining_ms.div_ceil(1_000);
+        (format!("{remaining_s}s"), Visibility::Visible)
+    } else {
+        (String::new(), Visibility::Hidden)
+    };
+
+    if text.0 != target_text {
+        text.0 = target_text;
+    }
+    if *visibility != target_visibility {
+        *visibility = target_visibility;
+    }
+}
+
 pub fn sync_shop_panel_system(
     mode: Res<ShopAuctionUiMode>,
     economy: Res<PlayerEconomyView>,
@@ -4104,6 +4178,8 @@ pub fn spawn_shop_auction_ui(
     ) = spawn_draft_initial_objective_overlay(&mut commands, draft_initial_modal_panel);
     let draft_initial_objective_retrieval_button =
         spawn_draft_initial_objective_retrieval_button(&mut commands, draft_initial_modal_panel);
+    let draft_initial_countdown_label =
+        spawn_draft_initial_countdown_label(&mut commands, draft_initial_modal_panel);
     let shop_panel = spawn_panel_root(
         &mut commands,
         root,
@@ -4209,6 +4285,7 @@ pub fn spawn_shop_auction_ui(
         draft_initial_objective_copy,
         draft_initial_objective_dismiss_button,
         draft_initial_objective_retrieval_button,
+        draft_initial_countdown_label,
         shop_panel,
         shop_phase_title,
         shop_empty_state,
@@ -4506,6 +4583,26 @@ fn spawn_draft_initial_hand_full_banner(commands: &mut Commands, parent: Entity)
             shop_auction_text_font(typography::CAPTION),
             TextColor(Color::srgb(1.0, 0.78, 0.55)),
             draft_initial_hand_full_banner_node(),
+            Visibility::Hidden,
+            ChildOf(parent),
+        ))
+        .id()
+}
+
+fn spawn_draft_initial_countdown_label(commands: &mut Commands, parent: Entity) -> Entity {
+    // PROMPT 1230 — modal-local countdown anchored to the top-right of the
+    // keep-9 modal panel. Spawned `Visibility::Hidden`; the sync system
+    // promotes it to `Visible` only when DraftInitial is active *and* the
+    // canonical `PhaseTimerState` is actively counting down.
+    commands
+        .spawn((
+            Name::new("Shop Auction Draft Initial Countdown"),
+            ShopAuctionUiEntity,
+            DraftInitialCountdownLabel,
+            Text::new(""),
+            shop_auction_text_font(typography::H2),
+            TextColor(Color::srgb(0.98, 0.93, 0.72)),
+            draft_initial_countdown_node(),
             Visibility::Hidden,
             ChildOf(parent),
         ))
@@ -5264,6 +5361,25 @@ fn draft_initial_hand_full_banner_node() -> Node {
         top: Val::Px(150.0),
         width: Val::Px(260.0),
         height: Val::Px(30.0),
+        ..default()
+    }
+}
+
+fn draft_initial_countdown_node() -> Node {
+    // PROMPT 1230 — top-right corner of the modal panel, sized so a
+    // canonical "45s" / "9s" readout reads clearly without overlapping the
+    // objective overlay (left=DRAFT_INITIAL_GRID_LEFT_PX, width=640 →
+    // right edge at 704px; modal max-width=860px). The label is right-
+    // aligned inside its box so the seconds value visually anchors to the
+    // modal corner regardless of digit count.
+    Node {
+        position_type: PositionType::Absolute,
+        right: Val::Px(DRAFT_INITIAL_MODAL_PADDING_PX),
+        top: Val::Px(spacing::SPACING_MD),
+        width: Val::Px(88.0),
+        height: Val::Px(32.0),
+        align_items: AlignItems::Center,
+        justify_content: JustifyContent::FlexEnd,
         ..default()
     }
 }
