@@ -323,6 +323,14 @@ path = "../tests/integration/hud/hud_opp_class_recipient_mismatch_test.rs"
 name = "hud_scoreboard_dot_image_refresh_test"
 path = "../tests/integration/hud/hud_scoreboard_dot_image_refresh_test.rs"
 
+# PROMPT 1228 / HUNT-1201-12: HUD mana label paints a projected
+# `current_mana - card.cost` / `reserve_mana - card.cost` readout while an
+# affordable placement drag is in flight, and reverts on drag clear. Display
+# only; never mutates `PlayerEconomyView` (ADR-002 preserved).
+[[test]]
+name = "hud_mana_preview_during_drag_test"
+path = "../tests/integration/hud/hud_mana_preview_during_drag_test.rs"
+
 [[test]]
 name = "card_animations_tween_lifecycle_test"
 path = "../tests/unit/card-animations/tween_lifecycle_test.rs"
