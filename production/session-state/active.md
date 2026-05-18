@@ -1,3 +1,124 @@
+# PROMPT 1082 State Banner -- Sprint 16 Closed With Conditions
+
+Updated 2026-05-18 by PROMPT 1082. Source-of-truth at close-out:
+`origin/main@dd7f5d32c420ab92bd42f61d95d4db4470d07d28` (PROMPT 1084
+server placement buffer + spawn integration tip; strict fast-forward
+descendant of `origin/main@f8eac30` which is the Sprint 16
+source-of-truth at PROMPT 1078 Team-QA review-of-record).
+
+Sprint 16 disposition flipped `active -> closed-with-conditions` by
+PROMPT 1082 paperwork-only close-out. Basis: 3 of 4 Sprint 16 active
+rows closed (Must 0/1 + Should 1/1 + Nice 2/2). Sole open row
+`S11-HUD-TIMER-EYEBALL-VISUAL-001` (Must Have, story 014; Sprint 13
+-> 14 -> 15 -> 16 carry; promoted Should -> Must in Sprint 15 by
+PROMPT 988) remains `status: ready` / `human_operator_blocked: true`
+and is carried forward unchanged as human-later. The orchestrator
+explicitly decided on 2026-05-17 to continue without human input and
+defer human visual testing later; allowed to carry to Sprint 17 if
+no human-operator slot opens. **No LLM `/story-done` authorised** on
+this row by PROMPT 1082.
+
+Preserved verbatim by PROMPT 1082:
+
+- PROMPT 1075 Sprint 16 smoke `PASS-WITH-WARNINGS` at commit
+  `56655fc` on `origin/qa/sprint-16-smoke-check-1075` (evidence
+  file `production/qa/smoke-sprint-16-2026-05-18.md` lives on smoke
+  branch; NOT integrated under `production/qa/` on `origin/main` by
+  PROMPT 1082; environment-only Windows `CARGO_TARGET_DIR`
+  contention workaround documented; no code regression).
+- PROMPT 1078 Sprint 16 Team-QA `APPROVED-WITH-CONDITIONS` at
+  commit `70f6b23` on `origin/qa/sprint-16-team-qa-1078`
+  (evidence file `production/qa/team-qa-sprint-16-2026-05-18.md`
+  lives on team-qa branch; NOT integrated under `production/qa/`
+  on `origin/main` by PROMPT 1082; strict fast-forward descendant
+  of `origin/main@f8eac30`; merge-base == HEAD).
+- Stage UNCHANGED `Polish`. `production/stage.txt` NOT modified.
+- PROMPT 761 Polish->Release `FAIL` preserved; NO retry.
+- Sprint 17 NOT activated by PROMPT 1082; no
+  `next_sprint_17_draft:` pointer created.
+- All 3 closed Sprint 16 /story-done closures preserved unchanged
+  on `origin/main` (PROMPT 1072 AppCompat + dead-code two-row
+  batch + PROMPT 1074 card-slot primitive single-row closure).
+- All carry conditions preserved verbatim:
+  `S11-HUD-TIMER-EYEBALL-VISUAL-001` human-operator-blocked carry,
+  PROMPT 1054 P1 UI snapshot visual retest `BLOCKED-HUMAN-OPERATOR`
+  deferred, `S8-QA-001-W1` OPEN, `QA-COND-0005` accepted-risk,
+  `QA-COND-0006` accepted-risk, `PAW-TD-*-a` accepted-risk, PROMPT
+  683-era runtime divergence preserved (no third same-scope retest
+  per `TQ-S12-C2`), Sprint 12 story 019 cannot-reproduce preserved
+  (no underlying drag-runtime bug fix claim), `TQ-S12-C1..C7`
+  preserved verbatim (`TQ-S12-C7` NOT closed by AppCompat row
+  closure), Sprint 15 closed-with-conditions per PROMPT 1056
+  preserved, Sprint 14 closed-with-conditions per PROMPT 987
+  preserved, Sprint 13 / 12 / 11 / 10 dispositions preserved
+  unchanged.
+- PROMPT 1076 (latest user-test log/snapshot deep audit) + PROMPT
+  1077 (UI state source consistency deep audit) findings are
+  post-Sprint inputs; NOT claimed as repairs by PROMPT 1082.
+- PROMPT 1079 / 1080 / 1083 / 1084 server-placement + UI modal
+  repair commits on `origin/main` are file-disjoint from the
+  Sprint 16 4-row active set + the Sprint 16 QA evidence files;
+  NOT pulled into Sprint 16 close-out scope by PROMPT 1082.
+
+Files changed by PROMPT 1082:
+
+- `production/sprint-status.yaml` (top-level `status:` flipped
+  `active -> closed-with-conditions` on line 24; `# Last close-out:`
+  comment on line 9 refreshed with PROMPT 1082 narrative + demoted
+  PROMPT 1056 narrative to `# Previous:` line 10; `updated:`
+  comment on line 12 refreshed with PROMPT 1082 narrative +
+  demoted PROMPT 1064 narrative to `# Previous:` continuation;
+  `sprint_16_closeout:` block appended at EOF following
+  `sprint_15_closeout` / `sprint_14_closeout` / `sprint_13_closeout`
+  / `sprint_12_closeout` / `sprint_11_closeout` / `sprint_10_closeout`
+  pattern, positioned after `sprint_16_story_done:` PROMPT 1072 +
+  PROMPT 1074 entries; no `next_sprint_17_draft:` block created).
+- `production/sprints/sprint-16.md` (CLOSED-WITH-CONDITIONS banner
+  prepended above prior PROMPT 1064 ACTIVATED banner + PROMPT 1024
+  DRAFT banner; plan body NOT rewritten).
+- `production/session-state/active.md` (this PROMPT 1082 close-out
+  banner prepended above PROMPT 1074 banner).
+- `production/session-state/codex-orchestrator-state.md` (PROMPT
+  1082 section prepended above PROMPT 1074 section).
+- `reports/PROMPT-1082-Sprint-16-Close-Out-Disposition.md`
+  (mandatory final report; `reports/` is gitignored).
+
+Files explicitly NOT touched by PROMPT 1082: `client/`, `server/`,
+`shared/`, `tests/`, `Cargo.toml`, `Cargo.lock`, `.cargo/`,
+`.github/`, `Trunk.toml`, `production/stage.txt`,
+`production/qa/qa-plan-sprint-16.md`, `production/qa/smoke-*.md`,
+`production/qa/team-qa-*.md`, `production/qa/evidence/*`,
+`production/gate-checks/*`, any Sprint 16/15/14/13/12/11/10 story
+file under `production/epics/`, any prior `sprint_N_closeout:` /
+`sprint_N_activation:` / `sprint_N_story_done:` block, `sprint_16_activation:`,
+`sprint_16_story_done:` PROMPT 1072 + PROMPT 1074 entries, stories
+block, `.octogent/`, `.claude/settings.json`. No cargo / trunk / CI
+command invoked. **Cargo policy: N/A** for this paperwork-only
+close-out.
+
+Explicit non-claims: NO public release readiness, NO RC readiness,
+NO full game completion, NO broad / Standard-tier accessibility
+completion, NO playtest validation, NO full playable-client manual
+QA, NO two-client GAME_OVER closure, NO final-art completion, NO
+Polish->Release gate-check retry, NO stage advance, NO underlying
+drag-runtime bug fix, NO closure of `S11-HUD-TIMER-EYEBALL-VISUAL-001`,
+NO pixel-level closure of PROMPT 1054 retest, NO pixel-level QA
+snapshot capture for the Sprint 16 card-slot primitive shop-panel
+bundles, NO closure of `S8-QA-001-W1` / `TQ-S12-C7`, NO closure of
+the three per-surface card-slot migration siblings, NO closure of
+any of the 24 PROMPT 1022 QA snapshot audit findings, NO PROMPT
+1076 / 1077 audit repairs, NO Sprint 17 activation, NO Sprint
+16/15/14/13/12/11/10 row reopen.
+
+Branch / push: PROMPT 1082 commits the close-out on branch
+`closeout/sprint-16-1082` (base
+`origin/main@dd7f5d32c420ab92bd42f61d95d4db4470d07d28`). Push target:
+worker branch only; never `main`. If main push is needed by local
+convention, stop and report that orchestrator/human approval is
+required.
+
+---
+
 # PROMPT 1074 State Banner -- Sprint 16 Card-Slot Primitive Story-Done
 
 Updated 2026-05-17 by PROMPT 1074. Source-of-truth at closure:
