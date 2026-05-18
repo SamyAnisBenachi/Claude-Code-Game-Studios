@@ -3,8 +3,8 @@
 > **Layer**: Presentation
 > **GDD**: design/gdd/shop-auction-ui.md
 > **Architecture Module**: `client/src/ui/shop_auction/` - `ShopAuctionUiPlugin` (sub-plugin #5 inside `PresentationPlugin`)
-> **Status**: Ready - core story set drafted for S5-21; Sprint 6 accessibility remediation stories added for A11Y-ST-12, A11Y-ST-18, and A11Y-ST-02; Sprint 14+ UI Clean-Pass layout candidates 015 / 016 / 017 / 018 authored as Draft (NOT activated)
-> **Stories**: 16 story docs listed in this index - 8 Complete, 3 Ready, 1 Blocked by UX evidence/layout gate, 4 Draft (Sprint 14+ UI Clean-Pass layout candidates 015 / 016 / 017 / 018; NOT activated by their authoring; depend on the UI Clean-Pass Roadmap Tier 0 foundational stories landing first)
+> **Status**: Ready - core story set drafted for S5-21; Sprint 6 accessibility remediation stories added for A11Y-ST-12, A11Y-ST-18, and A11Y-ST-02; Sprint 14+ UI Clean-Pass layout candidates 015 / 016 / 017 / 018 authored as Draft (NOT activated); Sprint 17 candidate 019 closed (Done); Sprint 18 candidate 020 (auction-won card disposition contract) authored as Draft (NOT activated)
+> **Stories**: 18 story docs listed in this index - 8 Complete (001-006, 011, 012), 3 Ready (007, 008, 013), 1 Blocked by UX evidence/layout gate (009), 1 Done (019 -- Sprint 17 closed by PROMPT 1121), 5 Draft (Sprint 14+ UI Clean-Pass layout candidates 015 / 016 / 017 / 018 + Sprint 18 candidate 020 auction-won card disposition; NOT activated by their authoring)
 
 ## Overview
 
@@ -108,9 +108,10 @@ This epic is complete when:
 | 016 | [Auction Featured Card Visual Hierarchy](story-016-auction-featured-card.md) | UI | Draft | TR-SAU-002, TR-SAU-006 | ADR-013, ADR-021 |
 | 017 | [Auction Free-Gold Counters Layout and Readability](story-017-auction-free-gold-counters.md) | UI | Draft | TR-SAU-001, TR-SAU-006 | ADR-013, ADR-019, ADR-021 |
 | 018 | [Auction Featured Card Leading / Losing State Visual](story-018-auction-lead-loss-state.md) | UI | Draft | TR-SAU-005, TR-SAU-006 | ADR-013, ADR-021 |
-| 019 | [Bid-Button Phase-Entry Race / Empty + Baked-`?` Cleanup](story-019-bid-button-phase-race.md) | UI / Integration | Draft -- Sprint 17 candidate (Should Have, `S17-UI-BID-BUTTON-PHASE-RACE-001`; PROMPT 1077 SOURCE-1077-10), NOT activated | TR-SAU-002, TR-SAU-005 | ADR-013, ADR-021 |
+| 019 | [Bid-Button Phase-Entry Race / Empty + Baked-`?` Cleanup](story-019-bid-button-phase-race.md) | UI / Integration | Done -- Sprint 17 candidate (Should Have, `S17-UI-BID-BUTTON-PHASE-RACE-001`; PROMPT 1077 SOURCE-1077-10), closed by PROMPT 1121 /story-done | TR-SAU-002, TR-SAU-005 | ADR-013, ADR-021 |
+| 020 | [Auction-Won Card Disposition Contract + Winner Discoverability](story-020-auction-won-card-disposition.md) | Integration | Draft -- Sprint 18 candidate (Must Have, `S18-AUCTION-WON-CARD-DISPOSITION-001`; PROMPT 1131 AUDIT-1131-02), NOT activated | TR-SAU-003, TR-SAU-006 | ADR-002, ADR-013, ADR-021 |
 
-**Story counts**: 1 Logic, 3 Integration, 11 UI, 1 Visual/Feel.
+**Story counts**: 1 Logic, 4 Integration, 11 UI, 1 Visual/Feel.
 
 ## Sprint 14+ UI Clean-Pass Layout Candidates (NOT activated)
 
@@ -146,6 +147,33 @@ Story 016 `AuctionFeaturedCardFrame` (`SEMANTIC_SUCCESS` leading,
 `SEMANTIC_ERROR` losing, existing `ACCENT` neutral / pre-bid). No
 new art, pulse, chevron, or badge is selected; `/story-readiness`
 must re-run before `/dev-story`.
+
+## Sprint 18 Candidate -- Auction-Won Card Disposition (NOT activated)
+
+Story 020 is a Sprint 18 Must Have candidate authored from
+PROMPT 1131 AUDIT-1131-02 (P0): in the 2026-05-18 user-test, 2 of
+3 auction wins did not produce a board unit because the winner-side
+discoverability of the won-card disposition was missing. Story 020
+defines the disposition contract (chosen Option A: card -> hand,
+manual placement during 12s auction-followup PLACEMENT window,
+persists across rounds if not placed -- already implemented
+server-side and already specified in `design/gdd/auction-system.md`
+§"Case A" rule 2), adds the winner-side UI affordance + the hand-
+fan newly-acquired marker, and adds the AUDIT-1131-02 observability
+hooks (server tracing-only log line + client QA-snapshot
+`auction_won_pending` block). **No protocol shape change. No new
+authoritative server state. No GDD or ADR edit.** Sprint 18 plan
+does not yet exist; story 020 is authoring-only and **NOT
+activated**. Activation is a separate explicit prompt that creates
+the Sprint 18 plan and flips `production/sprint-status.yaml`.
+
+Story 020 explicitly does NOT close: AUDIT-1131-01 (placement
+cell-index translation -- distinct Lane A row), any AUDIT-1076-*
+or SOURCE-1077-* finding, any of the 24 PROMPT 1022 findings,
+`PAW-TD-*-a`, `QA-COND-0005`, `QA-COND-0006`, `S8-QA-001-W1`,
+`S11-HUD-TIMER-EYEBALL-VISUAL-001`, the PROMPT 761
+`Polish->Release` `FAIL`, `TQ-S12-C2` drag-runtime retest binding,
+or any other accept-risk disposition outside AUDIT-1131-02.
 
 ## Sprint 6 Candidate Order
 
