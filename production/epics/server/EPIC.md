@@ -93,6 +93,7 @@ remains preserved.
 |---|-------|------|--------|----------------|
 | 001 | [Server `init_pool` Log Emit Before Guard](story-001-init-pool-log-guard.md) | Logic | Draft -- Sprint 13 candidate (Should Have), NOT activated | S11-SERVER-POOL-INIT-LOG-GUARD-001 |
 | 002 | [R2 Placement Intermittent Runtime Crash Audit](story-002-r2-placement-crash-audit.md) | Audit / Diagnostic | Draft -- Sprint 13 candidate (Nice to Have), NOT activated | S11-SERVER-R2-PLACEMENT-CRASH-AUDIT-001 |
+| 003 | [`start_of_turn_dispatch_system` `warn!` -> `debug!` Downgrade](story-003-start-of-turn-debug-downgrade.md) | Config/Data -- log level | Draft -- Sprint 17 candidate (Nice to Have), NOT activated | S17-SERVER-START-OF-TURN-DEBUG-001 |
 
 ## Definition of Done
 

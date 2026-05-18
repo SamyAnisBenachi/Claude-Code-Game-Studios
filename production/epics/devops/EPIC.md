@@ -124,6 +124,7 @@ gate-check `FAIL` evidence is preserved. None of these stories closes
 | 004 | [`gh` CLI Installation Note](story-004-gh-cli-setup.md) | Documentation only | Draft -- Sprint 13 candidate (Nice to Have), NOT activated | S11-OPS-GH-CLI-001 |
 | 005 | [Windows AppCompat Heuristic + Workaround Note](story-005-win-appcompat-note.md) | Documentation only | Draft -- Sprint 13 candidate (Nice to Have), NOT activated | S13-OPS-WIN-APPCOMPAT-NOTE-001 |
 | 006 | [Windows AppCompat Manifest for `spawn_range_live_update_contract` Test Binary](story-006-appcompat-manifest.md) | Implementation / ops hygiene -- bounded Cargo test-target configuration change | Done -- Sprint 16 Nice to Have (closed PROMPT 1072 on `origin/main@bd374dd`; PROMPT 1068 worker `ed58e3d` + PROMPT 1071 integration `488a9cd`) | S15-OPS-APPCOMPAT-MANIFEST-001 |
+| 007 | [Vulkan Validation-Layer Warning Gating](story-007-vulkan-validation-gating.md) | Config/Data -- WGPU plugin gate | Draft -- Sprint 17 candidate (Nice to Have), NOT activated | S17-OPS-VULKAN-VALIDATION-GATING-001 |
 
 ## Definition of Done
 
