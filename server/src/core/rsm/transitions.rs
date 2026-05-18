@@ -1,9 +1,10 @@
 use super::events::RsmNetworkOutbox;
 use super::events::{
     AbortAuction, AuctionPhaseEntered, AuctionSettled, BeginResolution, BroadcastPhaseChanged,
-    DraftReadySignal, DraftStarted, GameOverEmitted, LobbyComplete, PlacementPhaseEntered,
-    PlacementSubmitted, PlayerDisconnected, PlayerHeartbeat, PlayerReconnected, ResolutionComplete,
-    ResolutionPhaseEntered, ShopRefreshTrigger, ShopRefreshTriggered,
+    DraftReadySignal, DraftStarted, GameOverEmitted, LobbyComplete, OpponentDisconnectNotice,
+    PlacementPhaseEntered, PlacementSubmitted, PlayerDisconnected, PlayerHeartbeat,
+    PlayerReconnected, ResolutionComplete, ResolutionPhaseEntered, ShopRefreshTrigger,
+    ShopRefreshTriggered,
 };
 use super::state::{
     GameOverRequest, PendingPhaseAdvance, PhaseAdvanceRequest, RoundPhase, RoundState,
@@ -27,6 +28,13 @@ pub fn is_auction_round(round_number: u32) -> bool {
     );
     round_number % 3 == 0
 }
+
+/// Cadence (in milliseconds) at which `OpponentDisconnectNotice` is re-emitted
+/// while a player remains in disconnect grace. Each tick that causes the
+/// player's grace_remaining_ms to fall at least this far below the last sent
+/// value triggers a fresh notice so the surviving player's UI can render a
+/// countdown without per-frame spam. PROMPT 1211.
+pub const DISCONNECT_NOTICE_CADENCE_MS: u32 = 1000;
 
 pub fn rsm_input_reader(
     mut rsm: ResMut<RoundState>,
@@ -133,27 +141,53 @@ pub fn tick_disconnect_timers(
     mut reconnected: MessageReader<PlayerReconnected>,
     mut heartbeats: MessageReader<PlayerHeartbeat>,
     mut abort_auction: MessageWriter<AbortAuction>,
+    mut disconnect_notices: MessageWriter<OpponentDisconnectNotice>,
 ) {
     let session = session.as_deref();
     let grace_ms = disconnect_grace_ms(&config);
 
     for event in disconnected.read() {
-        if player_is_in_session(event.player, session) {
-            rsm.disconnect_trackers
-                .entry(event.player)
-                .or_insert(grace_ms);
+        if !player_is_in_session(event.player, session) {
+            continue;
+        }
+        rsm.disconnect_trackers
+            .entry(event.player)
+            .or_insert(grace_ms);
+        // PROMPT 1211: first-notice broadcast. Only emit when the player was
+        // not already known to be disconnected; otherwise rely on the
+        // cadence-based update in the decrement loop below.
+        if !rsm.disconnect_notice_state.contains_key(&event.player) {
+            let remaining_ms = rsm
+                .disconnect_trackers
+                .get(&event.player)
+                .copied()
+                .unwrap_or(grace_ms);
+            rsm.disconnect_notice_state
+                .insert(event.player, remaining_ms);
+            tracing::info!(
+                target: "server::network::disconnect_notice",
+                player_id = ?event.player,
+                grace_remaining_ms = remaining_ms,
+                "RSM OpponentDisconnectNotice: first notice"
+            );
+            disconnect_notices.write(OpponentDisconnectNotice {
+                player_id: event.player,
+                grace_remaining_ms: remaining_ms,
+            });
         }
     }
 
     for event in reconnected.read() {
         if player_is_in_session(event.player, session) {
             rsm.disconnect_trackers.insert(event.player, grace_ms);
+            rsm.disconnect_notice_state.remove(&event.player);
         }
     }
 
     for event in heartbeats.read() {
         if player_is_in_session(event.player, session) {
             rsm.disconnect_trackers.insert(event.player, grace_ms);
+            rsm.disconnect_notice_state.remove(&event.player);
         }
     }
 
@@ -164,7 +198,14 @@ pub fn tick_disconnect_timers(
     let delta_ms = elapsed_millis(time.delta());
     let phase = rsm.phase;
     let mut breaching_players = Vec::new();
-    for (player, remaining_ms) in rsm.disconnect_trackers.iter_mut() {
+    let mut periodic_notices: Vec<OpponentDisconnectNotice> = Vec::new();
+    let rsm_inner = rsm.as_mut();
+    let RoundState {
+        disconnect_trackers,
+        disconnect_notice_state,
+        ..
+    } = rsm_inner;
+    for (player, remaining_ms) in disconnect_trackers.iter_mut() {
         if !player_is_in_session(*player, session) {
             continue;
         }
@@ -180,7 +221,32 @@ pub fn tick_disconnect_timers(
                 "RSM disconnect timer breach: grace window exceeded"
             );
             breaching_players.push(*player);
+            // Player has breached grace; surviving-player UI will be
+            // superseded by the game-over broadcast. No periodic notice.
+            continue;
         }
+
+        // PROMPT 1211: cadence-based periodic notice. Only emit while we still
+        // believe the player is disconnected (presence in `disconnect_notice_state`).
+        if let Some(last_sent) = disconnect_notice_state.get(player).copied() {
+            if last_sent.saturating_sub(*remaining_ms) >= DISCONNECT_NOTICE_CADENCE_MS {
+                disconnect_notice_state.insert(*player, *remaining_ms);
+                periodic_notices.push(OpponentDisconnectNotice {
+                    player_id: *player,
+                    grace_remaining_ms: *remaining_ms,
+                });
+            }
+        }
+    }
+
+    for notice in periodic_notices {
+        tracing::debug!(
+            target: "server::network::disconnect_notice",
+            player_id = ?notice.player_id,
+            grace_remaining_ms = notice.grace_remaining_ms,
+            "RSM OpponentDisconnectNotice: periodic"
+        );
+        disconnect_notices.write(notice);
     }
 
     if rsm.pending_disconnect_outcome.is_some() {
@@ -860,6 +926,7 @@ fn reset_disconnect_trackers_for_session(
 
     let grace_ms = disconnect_grace_ms(config);
     rsm.disconnect_trackers.clear();
+    rsm.disconnect_notice_state.clear();
     for player in session.players() {
         rsm.disconnect_trackers.insert(player, grace_ms);
     }

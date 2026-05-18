@@ -38,6 +38,7 @@ impl Plugin for ServerNetworkPlugin {
                     drain_submit_placement_messages.before(BoardSystemSet::PlacementSubmission),
                     handle_class_choice,
                     rsm_dispatch::dispatch_phase_changed.after(advance_phase),
+                    rsm_dispatch::dispatch_opponent_disconnected.after(tick_disconnect_timers),
                 ),
             )
             .add_observer(insert_replication_sender_on_link)

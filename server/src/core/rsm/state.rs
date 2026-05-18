@@ -44,6 +44,12 @@ pub struct RoundState {
     pub draft_ready_players: HashSet<PlayerId>,
     pub submissions_received: HashSet<PlayerId>,
     pub disconnect_trackers: HashMap<PlayerId, u32>,
+    /// Tracks last sent `grace_remaining_ms` for players actively in disconnect
+    /// grace state. Presence in this map means we believe the player is
+    /// currently disconnected and we should keep emitting periodic
+    /// `OpponentDisconnectNotice` updates at the configured cadence.
+    /// Cleared on reconnect/heartbeat or session reset.
+    pub disconnect_notice_state: HashMap<PlayerId, u32>,
     pub pending_disconnect_outcome: Option<GameOverRequest>,
 }
 
@@ -61,6 +67,7 @@ impl RoundState {
             draft_ready_players: HashSet::new(),
             submissions_received: HashSet::new(),
             disconnect_trackers: HashMap::new(),
+            disconnect_notice_state: HashMap::new(),
             pending_disconnect_outcome: None,
         }
     }

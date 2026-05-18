@@ -111,6 +111,15 @@ pub struct PlayerHeartbeat {
     pub player: PlayerId,
 }
 
+/// Internal RSM-emitted signal that an opponent has entered or is still in
+/// disconnect grace. The network dispatch layer consumes this to unicast
+/// `S2COpponentDisconnected` to surviving session players (PROMPT 1211).
+#[derive(Message, Clone, Copy, Debug, PartialEq, Eq)]
+pub struct OpponentDisconnectNotice {
+    pub player_id: PlayerId,
+    pub grace_remaining_ms: u32,
+}
+
 /// Internal server signal emitted after the network layer resolves the sender
 /// to a stable session player. The shared C2S payload stays Bevy-free.
 #[derive(Message, Clone, Copy, Debug)]

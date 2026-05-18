@@ -103,6 +103,10 @@ name = "shop_dispatch_test"
 path = "../tests/unit/network/shop_dispatch_test.rs"
 
 [[test]]
+name = "opponent_disconnect_dispatch_test"
+path = "../tests/unit/network/opponent_disconnect_dispatch_test.rs"
+
+[[test]]
 name = "card_acquisition_state_scaffold_test"
 path = "../tests/unit/card_acquisition/state_scaffold_test.rs"
 
