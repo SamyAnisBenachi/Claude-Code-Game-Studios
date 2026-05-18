@@ -24,11 +24,12 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use bevy::prelude::Color;
-use bevy::ui::{UiRect, Val};
+use bevy::ui::{PositionType, UiRect, Val};
 
 use client::ui::design_tokens::card_slot::{
-    card_slot_geometry, card_slot_hit_target, card_slot_image_inset, card_slot_node,
-    card_slot_text_inset, CardSlotGeometry, CardSlotKind, ALL_CARD_SLOT_KINDS,
+    card_slot_geometry, card_slot_hit_target, card_slot_image_inset, card_slot_image_inset_node,
+    card_slot_node, card_slot_text_inset, card_slot_text_inset_node, CardSlotGeometry,
+    CardSlotKind, ALL_CARD_SLOT_KINDS,
 };
 use client::ui::design_tokens::interaction_states::{
     DISABLED_BG_TINT_ALPHA, DISABLED_BORDER_ALPHA, DISABLED_TEXT_ALPHA, FOCUS_RING_COLOR,
@@ -589,6 +590,242 @@ fn ac8_card_slot_module_does_not_advance_friend_game_scope_guards() {
         assert!(
             source.contains(guard),
             "AC8 card_slot.rs must preserve `{guard}` scope guard in doc comments",
+        );
+    }
+}
+
+// =====================================================================
+// Sprint 17 / S17-UI-CARD-SLOT-INSET-WIRING-001 — sibling inset
+// builders + GlobalZIndex wiring (SOURCE-1077-06).
+// =====================================================================
+//
+// AC6 reach-through: for every CardSlotKind variant, the new
+// card_slot_image_inset_node / card_slot_text_inset_node builders emit
+// a Node whose per-side absolute-position fields match the geometry
+// catalog's image_inset_px / text_inset_px and a GlobalZIndex equal
+// to the catalog's z_layer. The variant set covered by the per-test
+// loop is ALL_CARD_SLOT_KINDS, which is the authoritative iteration
+// source; adding a variant without updating the array would break the
+// `ac1_all_five_card_slot_kinds_are_importable_from_public_path` test
+// above. The Sprint 17 row is purely additive at the primitive level
+// (AC5 / AC7); the existing AC1..AC8 assertions remain unchanged.
+
+#[test]
+fn s17_inset_image_node_position_type_absolute_per_kind() {
+    // S17 AC1 / AC6(a) reach-through: the image-inset builder returns
+    // a Node with PositionType::Absolute for every kind. The Sprint 17+
+    // Backlog `S17-UI-CARD-SLOT-MIGRATION-*` family relies on the
+    // returned Node being absolutely-positioned so children stack onto
+    // the parent card slot's outer rectangle without flexbox arithmetic.
+    for kind in ALL_CARD_SLOT_KINDS {
+        let (node, _z) = card_slot_image_inset_node(kind);
+        assert_eq!(
+            node.position_type,
+            PositionType::Absolute,
+            "S17 AC1 image inset node must be PositionType::Absolute for {kind:?}; got {:?}",
+            node.position_type,
+        );
+    }
+}
+
+#[test]
+fn s17_inset_text_node_position_type_absolute_per_kind() {
+    // S17 AC2 / AC6(b) reach-through: the text-inset builder returns
+    // a Node with PositionType::Absolute for every kind.
+    for kind in ALL_CARD_SLOT_KINDS {
+        let (node, _z) = card_slot_text_inset_node(kind);
+        assert_eq!(
+            node.position_type,
+            PositionType::Absolute,
+            "S17 AC2 text inset node must be PositionType::Absolute for {kind:?}; got {:?}",
+            node.position_type,
+        );
+    }
+}
+
+#[test]
+fn s17_inset_image_node_edges_match_geometry_per_kind() {
+    // S17 AC6(a): the image-inset builder's Node has its left / right
+    // / top / bottom fields equal to card_slot_geometry(kind).image_
+    // inset_px (precise pixel match, per AC6 wording). This is the
+    // canonical assertion that the primitive HONOURS the geometry
+    // catalog's image_inset_px field — SOURCE-1077-06's user-visible
+    // symptom (title clipping, BOUGHT-band paint, "3g" overlap) was
+    // downstream of card_slot_node not wiring per-kind text / image
+    // insets.
+    for kind in ALL_CARD_SLOT_KINDS {
+        let geometry = card_slot_geometry(kind);
+        let (node, _z) = card_slot_image_inset_node(kind);
+        assert_eq!(
+            node.left, geometry.image_inset_px.left,
+            "S17 AC6(a) image inset left drift for {kind:?}: {:?} vs {:?}",
+            node.left, geometry.image_inset_px.left,
+        );
+        assert_eq!(
+            node.right, geometry.image_inset_px.right,
+            "S17 AC6(a) image inset right drift for {kind:?}: {:?} vs {:?}",
+            node.right, geometry.image_inset_px.right,
+        );
+        assert_eq!(
+            node.top, geometry.image_inset_px.top,
+            "S17 AC6(a) image inset top drift for {kind:?}: {:?} vs {:?}",
+            node.top, geometry.image_inset_px.top,
+        );
+        assert_eq!(
+            node.bottom, geometry.image_inset_px.bottom,
+            "S17 AC6(a) image inset bottom drift for {kind:?}: {:?} vs {:?}",
+            node.bottom, geometry.image_inset_px.bottom,
+        );
+    }
+}
+
+#[test]
+fn s17_inset_text_node_edges_match_geometry_per_kind() {
+    // S17 AC6(b): the text-inset builder's Node has its left / right /
+    // top / bottom fields equal to card_slot_geometry(kind).text_
+    // inset_px (precise pixel match).
+    for kind in ALL_CARD_SLOT_KINDS {
+        let geometry = card_slot_geometry(kind);
+        let (node, _z) = card_slot_text_inset_node(kind);
+        assert_eq!(
+            node.left, geometry.text_inset_px.left,
+            "S17 AC6(b) text inset left drift for {kind:?}: {:?} vs {:?}",
+            node.left, geometry.text_inset_px.left,
+        );
+        assert_eq!(
+            node.right, geometry.text_inset_px.right,
+            "S17 AC6(b) text inset right drift for {kind:?}: {:?} vs {:?}",
+            node.right, geometry.text_inset_px.right,
+        );
+        assert_eq!(
+            node.top, geometry.text_inset_px.top,
+            "S17 AC6(b) text inset top drift for {kind:?}: {:?} vs {:?}",
+            node.top, geometry.text_inset_px.top,
+        );
+        assert_eq!(
+            node.bottom, geometry.text_inset_px.bottom,
+            "S17 AC6(b) text inset bottom drift for {kind:?}: {:?} vs {:?}",
+            node.bottom, geometry.text_inset_px.bottom,
+        );
+    }
+}
+
+#[test]
+fn s17_inset_image_and_text_builders_thread_global_z_index_per_kind() {
+    // S17 AC3 / AC6(c): both inset builders emit a GlobalZIndex equal
+    // to card_slot_geometry(kind).z_layer. The image child and text
+    // child therefore composite into the same layer as their parent
+    // card slot (UI_BASE for the four bevy_ui kinds, UI_OVERLAY for
+    // the world-space BoardStagedGhost).
+    for kind in ALL_CARD_SLOT_KINDS {
+        let geometry = card_slot_geometry(kind);
+        let (_image_node, image_z) = card_slot_image_inset_node(kind);
+        let (_text_node, text_z) = card_slot_text_inset_node(kind);
+        assert_eq!(
+            image_z.0, geometry.z_layer.0,
+            "S17 AC3 image inset GlobalZIndex drift for {kind:?}: {} vs {}",
+            image_z.0, geometry.z_layer.0,
+        );
+        assert_eq!(
+            text_z.0, geometry.z_layer.0,
+            "S17 AC3 text inset GlobalZIndex drift for {kind:?}: {} vs {}",
+            text_z.0, geometry.z_layer.0,
+        );
+    }
+}
+
+#[test]
+fn s17_inset_builders_cover_every_card_slot_kind_variant() {
+    // S17 AC6(d): the variant set covered by the inset-wiring tests is
+    // ALL_CARD_SLOT_KINDS. ALL_CARD_SLOT_KINDS is the canonical
+    // iteration source — adding a variant without updating the array
+    // would break the AC1 import test above. This assertion is the
+    // explicit guard that no variant is uncovered by the new tests.
+    assert_eq!(
+        ALL_CARD_SLOT_KINDS.len(),
+        5,
+        "S17 AC6(d) ALL_CARD_SLOT_KINDS must enumerate every CardSlotKind variant; \
+         a new variant requires adding it to the array AND to the inset-wiring tests above",
+    );
+    // Compile-time evidence: every variant resolves to a non-panicking
+    // builder pair. This loop covers exactly the same variant set that
+    // the per-edge / per-z-index assertions iterate above.
+    for kind in ALL_CARD_SLOT_KINDS {
+        let _ = card_slot_image_inset_node(kind);
+        let _ = card_slot_text_inset_node(kind);
+    }
+}
+
+#[test]
+fn s17_inset_image_node_carries_no_inline_size_overrides_per_kind() {
+    // S17 reach-through: the image-inset Node delegates width and
+    // height to the four absolute-position edges (left / right / top /
+    // bottom). Asserting node.width == Val::Auto and node.height ==
+    // Val::Auto catches a future revision that re-introduces inline
+    // Val::Px(N) width / height literals into the inset builder body
+    // — which would re-create the SOURCE-1077-06 defect class on a
+    // sibling primitive.
+    for kind in ALL_CARD_SLOT_KINDS {
+        let (node, _z) = card_slot_image_inset_node(kind);
+        assert_eq!(
+            node.width,
+            Val::Auto,
+            "S17 image inset node must derive width from absolute edges for {kind:?}; \
+             explicit width Val::Px(...) re-creates SOURCE-1077-06 child-arithmetic drift",
+        );
+        assert_eq!(
+            node.height,
+            Val::Auto,
+            "S17 image inset node must derive height from absolute edges for {kind:?}",
+        );
+    }
+}
+
+#[test]
+fn s17_inset_text_node_carries_no_inline_size_overrides_per_kind() {
+    // S17 reach-through (text counterpart of the image guard above).
+    for kind in ALL_CARD_SLOT_KINDS {
+        let (node, _z) = card_slot_text_inset_node(kind);
+        assert_eq!(
+            node.width,
+            Val::Auto,
+            "S17 text inset node must derive width from absolute edges for {kind:?}",
+        );
+        assert_eq!(
+            node.height,
+            Val::Auto,
+            "S17 text inset node must derive height from absolute edges for {kind:?}",
+        );
+    }
+}
+
+#[test]
+fn s17_inset_builders_dimensions_resolve_to_positive_interior_per_kind() {
+    // S17 reach-through: for every kind, the inset rectangle is
+    // strictly inside the outer rectangle (already asserted by
+    // ac4_image_and_text_insets_fit_inside_outer_rectangle_per_kind).
+    // The new Node-shape assertion converts that geometric invariant
+    // into a layout precondition: the absolute-positioned inset child
+    // resolves to a positive (width, height) when laid out under the
+    // outer rectangle. The interior width is
+    // outer_width_px - (inset.left + inset.right); the interior
+    // height is outer_height_px - (inset.top + inset.bottom). Both
+    // MUST be > 0 for every kind / every inset.
+    for kind in ALL_CARD_SLOT_KINDS {
+        let geometry = card_slot_geometry(kind);
+        let (image_l, image_r, image_t, image_b) = inset_pixels(&geometry.image_inset_px);
+        let (text_l, text_r, text_t, text_b) = inset_pixels(&geometry.text_inset_px);
+        let image_w = geometry.outer_width_px - (image_l + image_r);
+        let image_h = geometry.outer_height_px - (image_t + image_b);
+        let text_w = geometry.outer_width_px - (text_l + text_r);
+        let text_h = geometry.outer_height_px - (text_t + text_b);
+        assert!(
+            image_w > 0.0 && image_h > 0.0,
+            "S17 image interior non-positive for {kind:?}: ({image_w}, {image_h})",
+        );
+        assert!(
+            text_w > 0.0 && text_h > 0.0,
+            "S17 text interior non-positive for {kind:?}: ({text_w}, {text_h})",
         );
     }
 }
