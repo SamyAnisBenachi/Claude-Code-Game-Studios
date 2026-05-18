@@ -170,6 +170,10 @@ name = "hand_ui_placement_auto_submit_phase_transition_test"
 path = "../tests/integration/hand-ui/hand_ui_placement_auto_submit_phase_transition_test.rs"
 
 [[test]]
+name = "hand_ui_placement_rejection_test"
+path = "../tests/integration/hand-ui/hand_ui_placement_rejection_test.rs"
+
+[[test]]
 name = "hand_ui_placement_staged_disclosure_accessibility_test"
 path = "../tests/integration/hand-ui/placement_staged_disclosure_accessibility_test.rs"
 

@@ -311,6 +311,7 @@ fn r2_handle_placement_submission_system_drops_invalid_and_writes_no_submitted_e
         &mut app,
         PlacementSubmissionReceived {
             player: player(2),
+            peer_id: None,
             placements: vec![submitted(
                 card_id(103),
                 PlayTarget::BoardCell { lane: 1, cell: 1 },
@@ -349,6 +350,7 @@ fn r2_handle_placement_submission_system_accepts_valid_and_writes_submitted_even
         &mut app,
         PlacementSubmissionReceived {
             player: player(2),
+            peer_id: None,
             placements: vec![submitted(
                 card_id(103),
                 PlayTarget::BoardCell { lane: 1, cell: 8 },

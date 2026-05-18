@@ -183,6 +183,10 @@ name = "placement_submission_repair_test"
 path = "../tests/integration/board-lane-system/placement_submission_repair_test.rs"
 
 [[test]]
+name = "placement_rejection_feedback_test"
+path = "../tests/integration/board-lane-system/placement_rejection_feedback_test.rs"
+
+[[test]]
 name = "trap_trigger_test"
 path = "../tests/integration/board-lane-system/trap_trigger_test.rs"
 

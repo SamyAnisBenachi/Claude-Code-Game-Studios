@@ -87,6 +87,7 @@ pub fn register_protocol(registry: &mut impl ProtocolRegistry) {
     // producer and no client consumer ever existed; private pool state lives on
     // the server only and reaches the client through `S2CGameSnapshot.PlayerSnapshot.pool_snapshot`.
     register_s2c::<S2CPlacementReveal>(registry, ProtocolChannel::Reliable);
+    register_s2c::<S2CPlacementRejected>(registry, ProtocolChannel::Reliable);
     register_s2c::<S2CResolutionEvent>(registry, ProtocolChannel::Reliable);
     register_s2c::<S2CAuctionCard>(registry, ProtocolChannel::Reliable);
     register_s2c::<S2CAuctionBidAccepted>(registry, ProtocolChannel::Reliable);
@@ -257,6 +258,27 @@ pub enum BidRejectedReason {
     AuctionExpired,
     AlreadyLeader,
     HandFull,
+}
+
+/// Why the server rejected a `C2SSubmitPlacement` batch. Mirrors the rejection
+/// variants of the server's internal `PlacementSubmissionResult` so the
+/// originating client can surface a corrective UI state instead of remaining
+/// stuck on the optimistic Submitted view.
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum PlacementRejectedReason {
+    WrongPhase,
+    UnknownPlayer,
+    DuplicateFinalSubmission,
+    MissingCatalog,
+    MissingEconomy,
+    CardMissingFromCatalog,
+    CardNotInHand,
+    DuplicateCardId,
+    InvalidTarget,
+    SpawnRangeRejected,
+    OccupancyRejected,
+    InsufficientMana,
+    OwnerMismatch,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -592,6 +614,16 @@ pub struct S2CAuctionSettled {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct S2CAuctionBidRejected {
     pub reason: BidRejectedReason,
+}
+
+/// Server-authoritative rejection feedback for a `C2SSubmitPlacement` batch.
+///
+/// Sent unicast to the originating client whenever the server's
+/// `handle_placement_submission` logs a `submission rejected` decision so the
+/// client can revert stale Submitted state and surface a corrective UI step.
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct S2CPlacementRejected {
+    pub reason: PlacementRejectedReason,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

@@ -7,11 +7,11 @@ use bevy::math::curve::EaseFunction;
 use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
 use bevy_tweening::{lens::TransformPositionLens, Tween, TweenAnim};
-use lightyear::prelude::MessageSender;
+use lightyear::prelude::{MessageReceiver, MessageSender};
 use shared::card::{CardCatalog, CardId, CardType, ClassId, Rarity};
 use shared::protocol::{
-    C2SActivateCard, C2SPurchaseCard, C2SSubmitPlacement, EntityId, PlacedCardSubmit, PlayTarget,
-    ReliableChannel, RoundPhase,
+    C2SActivateCard, C2SPurchaseCard, C2SSubmitPlacement, EntityId, PlacedCardSubmit,
+    PlacementRejectedReason, PlayTarget, ReliableChannel, RoundPhase, S2CPlacementRejected,
 };
 use shared::session::PlayerId;
 
@@ -552,6 +552,23 @@ pub struct HandUiCardAcquiredReceived {
     pub card_id: CardId,
 }
 
+/// PROMPT 1244 — internal hand-UI message produced by
+/// [`drain_placement_rejected_receiver_system`] from each wire
+/// `S2CPlacementRejected` so the rejection handler can run on a Bevy
+/// `Messages` queue that tests can drive directly.
+#[derive(Message, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct HandUiPlacementRejectedReceived {
+    pub reason: PlacementRejectedReason,
+}
+
+impl From<S2CPlacementRejected> for HandUiPlacementRejectedReceived {
+    fn from(message: S2CPlacementRejected) -> Self {
+        Self {
+            reason: message.reason,
+        }
+    }
+}
+
 #[derive(Message, Debug, Clone, PartialEq, Eq)]
 pub struct HandUiPlacementDropResolved {
     pub card: Entity,
@@ -659,6 +676,11 @@ pub struct HandSubmitButton;
 pub enum SubmitValidationError {
     ReserveOverdrawn,
     ManaOverdrawn,
+    /// PROMPT 1244 — the server rejected the most recent
+    /// `C2SSubmitPlacement` batch via `S2CPlacementRejected`. The submit
+    /// affordance is re-enabled and the disclosure step surfaces the
+    /// rejection reason via the existing `Correction { error }` variant.
+    ServerRejected { reason: PlacementRejectedReason },
 }
 
 #[derive(Resource, Debug, Clone, Copy, PartialEq, Eq)]
@@ -690,6 +712,11 @@ pub enum PlacementDisclosureStep {
     CardSelection,
     TargetSelection { target_kind: PlacementTargetKind },
     StagedCard,
+    /// Surfaces a corrective hint: client-side mana misallocation
+    /// ([`SubmitValidationError::ReserveOverdrawn`] /
+    /// [`SubmitValidationError::ManaOverdrawn`]) OR a server-authoritative
+    /// rejection of the last submitted batch
+    /// ([`SubmitValidationError::ServerRejected`] — PROMPT 1244).
     Correction { error: SubmitValidationError },
     Submitted,
 }
@@ -1038,6 +1065,11 @@ impl Plugin for HandUiPlugin {
             .add_message::<HandGridCardClicked>()
             .add_message::<HandUiDraftOfferingReceived>()
             .add_message::<HandUiCardAcquiredReceived>()
+            // PROMPT 1244 — surface S2CPlacementRejected feedback to the
+            // submit affordance + disclosure step. Registered idempotently so
+            // HandUiPlugin tests on `MinimalPlugins` can drive the handler
+            // without a live Lightyear server.
+            .add_message::<HandUiPlacementRejectedReceived>()
             .add_message::<PresentationGameSnapshotMessage>()
             // PROMPT 1149: PlayerTeamMapUpdated is registered by LobbyUiPlugin
             // and by BoardRenderingPlugin already, but `add_message` is
@@ -1097,6 +1129,13 @@ impl Plugin for HandUiPlugin {
                         apply_placement_board_view_spawn_range_system,
                         handle_draft_offering_system,
                         handle_card_acquired_system,
+                        // PROMPT 1244 — drain wire S2CPlacementRejected into
+                        // the internal HandUiPlacementRejectedReceived queue,
+                        // then revert stale Submitted state in the same set
+                        // so the affordance is actionable again on the same
+                        // tick the rejection arrives.
+                        drain_placement_rejected_receiver_system,
+                        handle_placement_rejected_system,
                         handle_ghost_clicked_unstage_system,
                         handle_ghost_drag_started_system,
                     )
@@ -2362,6 +2401,102 @@ pub fn handle_card_acquired_system(
                 timing.hand_full_notification_duration_ms,
             );
         }
+    }
+}
+
+/// PROMPT 1244 — drains wire `S2CPlacementRejected` messages into the
+/// internal [`HandUiPlacementRejectedReceived`] queue so the handler system
+/// can run on a Bevy `Messages` resource that tests on `MinimalPlugins +
+/// HandUiPlugin` can drive directly without a live Lightyear server.
+///
+/// Mirrors the auction pattern in
+/// `client::ui::shop_auction::drain_auction_bid_rejected_receiver_system`.
+pub fn drain_placement_rejected_receiver_system(
+    mut receivers: Query<&mut MessageReceiver<S2CPlacementRejected>>,
+    mut writer: MessageWriter<HandUiPlacementRejectedReceived>,
+) {
+    for mut receiver in &mut receivers {
+        for message in receiver.receive() {
+            tracing::info!(
+                target: "client::ui::hand",
+                reason = ?message.reason,
+                msg_type = "S2CPlacementRejected",
+                "drain_placement_rejected: recv"
+            );
+            writer.write(message.into());
+        }
+    }
+}
+
+/// PROMPT 1244 — turns each [`HandUiPlacementRejectedReceived`] into a
+/// visible correction state.
+///
+/// Reverts the optimistic Submitted view the click handler installed (per
+/// `submit_pending_placements`):
+/// - `placement_timer.submitted` -> `false`
+/// - submit button text -> `Submit (N cards)` reflecting `staged_count()`
+/// - submit button interaction -> `Active`
+/// - submitted checkmark -> `Hidden`
+/// - disclosure step -> [`PlacementDisclosureStep::RejectedByServer`]
+///
+/// Authority remains server-side: this system never accepts placements or
+/// mutates `PendingPlacements` — the rejection only re-enables the local
+/// submit affordance so the player can adjust their batch and retry.
+#[allow(clippy::too_many_arguments)]
+pub fn handle_placement_rejected_system(
+    mut rejections: MessageReader<HandUiPlacementRejectedReceived>,
+    entities: Option<Res<HandUiEntities>>,
+    pending_placements: Res<PendingPlacements>,
+    mut placement_timer: ResMut<PlacementTimer>,
+    mut disclosure_state: ResMut<PlacementDisclosureState>,
+    mut commands: Commands,
+    mut submit_buttons: Query<
+        (&mut Text, &mut HandSubmitInteractionState),
+        With<HandSubmitButton>,
+    >,
+    mut visibility_query: Query<&mut Visibility>,
+) {
+    let Some(entities) = entities else {
+        for _ in rejections.read() {}
+        return;
+    };
+
+    for rejection in rejections.read() {
+        let staged_count = pending_placements.staged_count();
+        tracing::warn!(
+            target: "client::ui::hand",
+            reason = ?rejection.reason,
+            staged_count,
+            placement_timer_submitted_before = placement_timer.submitted,
+            "hand_ui_placement_rejection_received"
+        );
+
+        placement_timer.submitted = false;
+
+        if let Ok((mut text, mut interaction_state)) =
+            submit_buttons.get_mut(entities.submit_button)
+        {
+            text.0.clear();
+            text.0
+                .push_str(&format!("Submit ({staged_count} cards)"));
+            *interaction_state = HandSubmitInteractionState::Active;
+        }
+
+        commands
+            .entity(entities.submit_button)
+            .remove::<SubmitValidationError>();
+
+        set_visibility(
+            entities.submitted_checkmark,
+            Visibility::Hidden,
+            &mut visibility_query,
+        );
+
+        disclosure_state.step = PlacementDisclosureStep::Correction {
+            error: SubmitValidationError::ServerRejected {
+                reason: rejection.reason,
+            },
+        };
     }
 }
 
@@ -4652,7 +4787,41 @@ fn placement_disclosure_label(step: PlacementDisclosureStep) -> &'static str {
             target_kind: PlacementTargetKind::Instant,
         } => "Drop on fan plate",
         PlacementDisclosureStep::StagedCard => "Review staged card and mana split",
-        PlacementDisclosureStep::Correction { .. } => "Adjust reserve/current mana",
+        PlacementDisclosureStep::Correction { error } => match error {
+            SubmitValidationError::ReserveOverdrawn | SubmitValidationError::ManaOverdrawn => {
+                "Adjust reserve/current mana"
+            }
+            // PROMPT 1244 — single corrective hint per server rejection reason.
+            SubmitValidationError::ServerRejected { reason } => match reason {
+                PlacementRejectedReason::SpawnRangeRejected => {
+                    "Server rejected placement: pick a cell inside your spawn range"
+                }
+                PlacementRejectedReason::OccupancyRejected => {
+                    "Server rejected placement: that slot is already taken"
+                }
+                PlacementRejectedReason::InsufficientMana => {
+                    "Server rejected placement: not enough mana for this batch"
+                }
+                PlacementRejectedReason::InvalidTarget => {
+                    "Server rejected placement: pick a valid target"
+                }
+                PlacementRejectedReason::CardNotInHand
+                | PlacementRejectedReason::DuplicateCardId
+                | PlacementRejectedReason::CardMissingFromCatalog => {
+                    "Server rejected placement: card no longer playable, retry"
+                }
+                PlacementRejectedReason::WrongPhase
+                | PlacementRejectedReason::DuplicateFinalSubmission => {
+                    "Server rejected placement: try again next round"
+                }
+                PlacementRejectedReason::UnknownPlayer
+                | PlacementRejectedReason::OwnerMismatch
+                | PlacementRejectedReason::MissingCatalog
+                | PlacementRejectedReason::MissingEconomy => {
+                    "Server rejected placement: contact support"
+                }
+            },
+        },
         PlacementDisclosureStep::Submitted => "Placement submitted",
     }
 }

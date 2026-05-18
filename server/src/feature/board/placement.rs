@@ -1,10 +1,11 @@
 use std::collections::{HashMap, HashSet};
 
 use bevy::prelude::*;
-use lightyear::prelude::{NetworkTarget, Replicate, Server, ServerMultiMessageSender};
+use lightyear::prelude::{NetworkTarget, PeerId, Replicate, Server, ServerMultiMessageSender};
 use shared::card::{CardData, CardId, CardType};
 use shared::protocol::{
-    PlacedCardReveal, PlacedCardSubmit, PlayTarget, ReliableChannel, S2CPlacementReveal,
+    PlacedCardReveal, PlacedCardSubmit, PlacementRejectedReason, PlayTarget, ReliableChannel,
+    S2CPlacementRejected, S2CPlacementReveal,
 };
 use shared::session::PlayerId;
 
@@ -49,11 +50,29 @@ pub struct PlayerSubmission {
 ///
 /// The shared `C2SSubmitPlacement` payload does not carry trusted sender
 /// identity. Network code should resolve the sender to `player` before writing
-/// this message.
+/// this message. `peer_id` caches the originating Lightyear `PeerId` so the
+/// rejection dispatcher can unicast `S2CPlacementRejected` back to the
+/// submitter without a reverse lookup against `PlayerConnectionMap` (mirrors
+/// the `AuctionBid { peer_id, .. }` pattern in `server::feature::auction`).
 #[derive(Message, Clone, Debug, PartialEq, Eq)]
 pub struct PlacementSubmissionReceived {
     pub player: PlayerId,
+    pub peer_id: Option<PeerId>,
     pub placements: Vec<PlacedCardSubmit>,
+}
+
+/// Server-internal queue entry for one rejected placement submission.
+///
+/// `handle_placement_submission` writes one of these for each rejection so the
+/// downstream `send_placement_rejection_dispatches` system can unicast a
+/// `S2CPlacementRejected` to the originating client. Mirrors the
+/// `AuctionRejectionDispatch` pattern (peer_id captured at receipt time, never
+/// reverse-looked-up at send time).
+#[derive(Message, Clone, Debug, PartialEq, Eq)]
+pub struct PlacementRejectionDispatch {
+    pub player: PlayerId,
+    pub peer_id: Option<PeerId>,
+    pub reason: PlacementRejectedReason,
 }
 
 /// Internal signal emitted when a player destroys an opposing fake objective.
@@ -403,6 +422,7 @@ pub fn handle_placement_submission(
     hands: Option<Res<PlayerHands>>,
     mut pending: ResMut<PendingPlacements>,
     mut submitted: MessageWriter<PlacementSubmitted>,
+    mut rejections: MessageWriter<PlacementRejectionDispatch>,
 ) {
     let phase = round_state.as_deref().map(|state| state.phase);
     let session = session.as_deref();
@@ -456,7 +476,113 @@ pub fn handle_placement_submission(
                     reason = ?rejected,
                     "handle_placement_submission: submission rejected (audit: R2 placement transition audit)"
                 );
+                // PROMPT 1244 (S18-PLACEMENT-SUBMISSION-REJECTION-FEEDBACK-001):
+                // every rejection logged above must also produce a unicast S2C
+                // back to the submitter so the client can revert stale
+                // Submitted state. The downstream `send_placement_rejection_dispatches`
+                // system reads these queue entries and unicasts via Lightyear.
+                let reason = placement_rejection_reason(rejected);
+                rejections.write(PlacementRejectionDispatch {
+                    player: submission.player,
+                    peer_id: submission.peer_id,
+                    reason,
+                });
             }
+        }
+    }
+}
+
+/// Maps the server's internal `PlacementSubmissionResult` rejection variants to
+/// the protocol-facing `PlacementRejectedReason`. Panics on `Accepted` because
+/// `handle_placement_submission` only calls this from the rejection arm.
+pub fn placement_rejection_reason(result: PlacementSubmissionResult) -> PlacementRejectedReason {
+    match result {
+        PlacementSubmissionResult::Accepted => {
+            // Defensive — handle_placement_submission's accept arm never calls this.
+            // Picking InvalidTarget here only matters if a future caller misuses the
+            // helper; we still log a warn so the misuse is observable.
+            tracing::warn!(
+                target: "server::game::placement",
+                "placement_rejection_reason called with Accepted; defaulting to InvalidTarget"
+            );
+            PlacementRejectedReason::InvalidTarget
+        }
+        PlacementSubmissionResult::DiscardedWrongPhase => PlacementRejectedReason::WrongPhase,
+        PlacementSubmissionResult::DuplicateFinalSubmission => {
+            PlacementRejectedReason::DuplicateFinalSubmission
+        }
+        PlacementSubmissionResult::UnknownPlayer => PlacementRejectedReason::UnknownPlayer,
+        PlacementSubmissionResult::MissingCatalog => PlacementRejectedReason::MissingCatalog,
+        PlacementSubmissionResult::MissingEconomy => PlacementRejectedReason::MissingEconomy,
+        PlacementSubmissionResult::CardMissingFromCatalog => {
+            PlacementRejectedReason::CardMissingFromCatalog
+        }
+        PlacementSubmissionResult::CardNotInHand => PlacementRejectedReason::CardNotInHand,
+        PlacementSubmissionResult::DuplicateCardId => PlacementRejectedReason::DuplicateCardId,
+        PlacementSubmissionResult::InvalidTarget => PlacementRejectedReason::InvalidTarget,
+        PlacementSubmissionResult::SpawnRangeRejected => {
+            PlacementRejectedReason::SpawnRangeRejected
+        }
+        PlacementSubmissionResult::OccupancyRejected => PlacementRejectedReason::OccupancyRejected,
+        PlacementSubmissionResult::InsufficientMana => PlacementRejectedReason::InsufficientMana,
+        PlacementSubmissionResult::OwnerMismatch => PlacementRejectedReason::OwnerMismatch,
+    }
+}
+
+/// Drains `PlacementRejectionDispatch` queue entries and unicasts a
+/// `S2CPlacementRejected` to each rejected submitter's Lightyear peer.
+///
+/// Runs after `handle_placement_submission` (`BoardSystemSet::PlacementSubmission`)
+/// so every rejection logged in the same tick is sent without batching past the
+/// originating frame. Drops dispatches with no resolved `peer_id` after a warn
+/// so the contract gap is observable — production traffic always carries one
+/// (set by `drain_submit_placement_messages`); only synthetic tests can omit it.
+pub fn send_placement_rejection_dispatches(
+    mut rejections: MessageReader<PlacementRejectionDispatch>,
+    server: Query<&Server>,
+    sender: Option<ServerMultiMessageSender>,
+) {
+    let Ok(server) = server.single() else {
+        for _ in rejections.read() {}
+        return;
+    };
+    let Some(mut sender) = sender else {
+        for _ in rejections.read() {}
+        return;
+    };
+    for dispatch in rejections.read() {
+        tracing::info!(
+            target: "server::game",
+            player_id = dispatch.player.0,
+            peer_id = ?dispatch.peer_id,
+            reason = ?dispatch.reason,
+            "send_placement_rejection_dispatches: dispatching S2CPlacementRejected enter"
+        );
+        let Some(peer_id) = dispatch.peer_id else {
+            tracing::warn!(
+                target: "server::game",
+                player_id = dispatch.player.0,
+                reason = ?dispatch.reason,
+                "send_placement_rejection_dispatches: S2CPlacementRejected DROPPED — peer_id unresolved; player not in PlayerConnectionMap or stale entry"
+            );
+            continue;
+        };
+        let message = S2CPlacementRejected {
+            reason: dispatch.reason,
+        };
+        if let Err(e) = sender.send::<S2CPlacementRejected, ReliableChannel>(
+            &message,
+            server,
+            &NetworkTarget::Single(peer_id),
+        ) {
+            tracing::error!(
+                target: "server::game",
+                player_id = dispatch.player.0,
+                peer_id = ?peer_id,
+                reason = ?dispatch.reason,
+                err = ?e,
+                "S2C send failed: type=S2CPlacementRejected, handler=send_placement_rejection_dispatches"
+            );
         }
     }
 }

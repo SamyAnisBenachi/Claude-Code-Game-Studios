@@ -23,12 +23,14 @@ pub use placement::{
     close_placement_phase, deduct_committed_mana, expand_spawn_range,
     expand_spawn_range_from_objective_fact, get_units_at_cell, handle_placement_submission,
     is_field_slot_available, is_minion_slot_available, is_structure_slot_available,
-    is_trap_slot_available, placement_buffer_open, process_placement_submission,
-    requires_spawn_range_validation, spawn_range_cells_for_player, update_spawn_range,
+    is_trap_slot_available, placement_buffer_open, placement_rejection_reason,
+    process_placement_submission, requires_spawn_range_validation,
+    send_placement_rejection_dispatches, spawn_range_cells_for_player, update_spawn_range,
     validate_spawn_range, AcceptedPlacement, CommittedPlacementUnit, FakeObjectiveDestroyed,
     PendingPlacements, PlacementCommitTrace, PlacementCommitTraceEntry, PlacementCommitted,
-    PlacementSubmissionReceived, PlacementSubmissionResult, PlayerSubmission,
-    SpawnRangeProjectionChange, LANE_WIDE_CELL_SENTINEL, MAX_FAKE_OBJECTIVES_DESTROYED,
+    PlacementRejectionDispatch, PlacementSubmissionReceived, PlacementSubmissionResult,
+    PlayerSubmission, SpawnRangeProjectionChange, LANE_WIDE_CELL_SENTINEL,
+    MAX_FAKE_OBJECTIVES_DESTROYED,
 };
 pub use plugin::{BoardPlugin, BoardSystemSet};
 pub use state::{
