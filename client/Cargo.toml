@@ -219,6 +219,15 @@ path = "../tests/integration/hand-ui/hand_ui_drag_cursor_world_projection_test.r
 name = "hand_ui_drag_state_visuals_test"
 path = "../tests/integration/hand-ui/hand_ui_drag_state_visuals_test.rs"
 
+# PROMPT 1239 — S18-UI-HAND-IDLE-PLAYABLE-AFFORDANCE-001. Drives the idle
+# playable / unaffordable affordance sync system through Placement-idle,
+# unaffordable economy crash, drag-active suppression, staged-card
+# suppression, mode/phase gating, empty-slot suppression, and read-only
+# resource invariants. Sibling pathway to Story 020's drag-state visuals.
+[[test]]
+name = "hand_ui_idle_playable_affordance_test"
+path = "../tests/integration/hand-ui/hand_ui_idle_playable_affordance_test.rs"
+
 [[test]]
 name = "hand_card_stat_label_rendering_test"
 path = "../tests/integration/hand-ui/hand_card_stat_label_rendering_test.rs"
