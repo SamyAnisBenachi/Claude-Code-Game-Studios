@@ -2798,9 +2798,24 @@ fn hud_text_font(font_size: f32) -> TextFont {
 }
 
 fn hud_top_strip_node() -> Node {
+    // PROMPT 1183 (HUD-OVERLAY-RESPONSIVE-LAYOUT-REPAIR) — the previous
+    // `SPACING_XL + SPACING_MD` (48 px) inter-pill column gap deviated
+    // from the canonical "cluster-to-cluster" spacing in
+    // `docs/ux/global-ui-design-spec.md` §9 (which ratifies `SPACING_MD`
+    // / 16 px for HUD strip readouts) and pushed the seven-pill strip
+    // content past the 1280 px minimum-viewport budget. Reducing it to
+    // `SPACING_MD` keeps every readout legible while freeing ~192 px of
+    // horizontal slack so the strip fits at 1280×720 / 1366×768.
+    //
+    // `row_gap` stays at `SPACING_XL - SPACING_XS` (28 px) to honour the
+    // pre-existing Sprint 14 story 004 / AC3 source-grep contract
+    // (`tests/integration/ui_clean_pass/strips_test.rs::
+    // ac3_hud_secondary_row_offset_resolves_through_spacing_tokens`).
+    // It is a no-op on a single-row flex parent, so the recomposition
+    // trail is preserved without affecting layout.
     let mut node = strips::header_bar_node();
     node.padding = UiRect::horizontal(Val::Px(spacing::SPACING_LG));
-    node.column_gap = Val::Px(spacing::SPACING_XL + spacing::SPACING_MD);
+    node.column_gap = Val::Px(spacing::SPACING_MD);
     node.row_gap = Val::Px(spacing::SPACING_XL - spacing::SPACING_XS);
     node.min_height = Val::Px(strips::HEADER_BAR_HEIGHT_PX);
     node.overflow = Overflow::visible();
