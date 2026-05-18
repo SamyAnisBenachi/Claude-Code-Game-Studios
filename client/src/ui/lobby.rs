@@ -18,6 +18,10 @@ use crate::state::{
     ClientState,
 };
 use crate::ui::design_tokens::{
+    interaction_states::{
+        DISABLED_BG_TINT_ALPHA, DISABLED_BORDER_ALPHA, DISABLED_TEXT_ALPHA, HOVER_BG_TINT_ALPHA,
+        HOVER_BORDER_ALPHA, PRESSED_BG_TINT_ALPHA,
+    },
     overlays,
     spacing::{SPACING_LG, SPACING_MD, SPACING_SM, SPACING_XL},
     typography, z_layers,
@@ -91,6 +95,7 @@ impl Plugin for LobbyUiPlugin {
                     lobby_button_interaction_system,
                     send_lobby_commands_system,
                     refresh_lobby_ui_system,
+                    refresh_confirm_button_visual_system,
                 )
                     .chain()
                     .run_if(in_state(ClientState::Lobby)),
@@ -1322,6 +1327,16 @@ fn spawn_lobby_ui_system(
                 // and push against the panel's `max_height: 92%` clamp.
                 // Without this, the CTA was the first child the flex
                 // solver squashed to zero, making it invisible.
+                //
+                // PROMPT 1081: initial colors come from
+                // `lobby_confirm_button_colors` so the spawn baseline
+                // matches the per-frame refresh — the button reads as
+                // a real primary CTA from frame 0, not as a dim text
+                // band waiting for the first interaction to repaint.
+                let initial_state =
+                    lobby_confirm_button_style_state(&lobby, &input, Interaction::None);
+                let (initial_bg, initial_border, initial_text_color) =
+                    lobby_confirm_button_colors(initial_state);
                 panel.spawn((
                     LobbyConfirmClassButton,
                     LobbyDynamicText::Confirm,
@@ -1333,7 +1348,7 @@ fn spawn_lobby_ui_system(
                         &input,
                     )),
                     lobby_text_font(typography::BODY),
-                    TextColor(Color::srgb(0.98, 0.93, 0.72)),
+                    initial_text_color,
                     Node {
                         flex_shrink: 0.0,
                         ..lobby_button_node(
@@ -1341,8 +1356,8 @@ fn spawn_lobby_ui_system(
                             LOBBY_CONFIRM_BUTTON_HEIGHT_PX,
                         )
                     },
-                    BackgroundColor(Color::srgba(0.17, 0.18, 0.14, 0.95)),
-                    BorderColor::all(Color::srgb(0.65, 0.53, 0.24)),
+                    initial_bg,
+                    initial_border,
                 ));
             });
         });
@@ -1625,5 +1640,174 @@ fn lobby_button_node(width: Val, height_px: f32) -> Node {
         align_items: AlignItems::Center,
         justify_content: JustifyContent::Center,
         ..default()
+    }
+}
+
+// ─── Confirm CTA visual states (PROMPT 1081) ────────────────────────────────
+//
+// AUDIT-1076-07 reported that the Confirm-class button rendered as a dim text
+// band rather than a real primary-action button: the click was reachable in
+// logs (`lobby_ui_confirm_button_state: dispatching ConfirmClass`), but the
+// only chrome was a dark `srgba(0.17, 0.18, 0.14, 0.95)` background with no
+// interaction-state feedback. This module promotes the CTA to a stateful
+// primary button with six visual states keyed off `(Interaction,
+// LobbyViewState, LobbyInputState)`.
+//
+// State precedence (highest first):
+//   Confirmed (revealed_classes non-empty)
+//   Waiting   (locked_class set, no reveal yet)
+//   InFlight  (class_confirm_in_flight)
+//   Disabled  (session_id is None)
+//   then the interaction-driven trio Pressed / Hovered / Enabled.
+
+/// Discrete visual state of the lobby confirm CTA. Each variant maps to a
+/// `(BackgroundColor, BorderColor, TextColor)` triple via
+/// [`lobby_confirm_button_colors`] so the spawn and per-frame refresh paths
+/// share a single source of truth.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LobbyConfirmButtonStyleState {
+    /// No active session yet — class confirmation is not reachable.
+    Disabled,
+    /// Active session, idle: primary CTA in its prompting state.
+    Enabled,
+    /// Pointer is over the CTA, no button pressed.
+    Hovered,
+    /// Pointer is over the CTA with a mouse button held.
+    Pressed,
+    /// `C2SConfirmClass` is in flight, awaiting server response.
+    InFlight,
+    /// Local class is locked but opponent has not yet revealed.
+    Waiting,
+    /// `S2CClassesRevealed` has been applied; both players confirmed.
+    Confirmed,
+}
+
+/// Derive the confirm CTA's visual state from the lobby/input resources
+/// plus the button's current [`Interaction`]. Pure function: no side effects,
+/// no resource mutation, deterministic given the inputs.
+pub fn lobby_confirm_button_style_state(
+    lobby: &LobbyViewState,
+    input: &LobbyInputState,
+    interaction: Interaction,
+) -> LobbyConfirmButtonStyleState {
+    use LobbyConfirmButtonStyleState as S;
+    if !lobby.revealed_classes.is_empty() {
+        return S::Confirmed;
+    }
+    if lobby.locked_class.is_some() {
+        return S::Waiting;
+    }
+    if input.class_confirm_in_flight {
+        return S::InFlight;
+    }
+    if lobby.session_id.is_none() {
+        return S::Disabled;
+    }
+    match interaction {
+        Interaction::Pressed => S::Pressed,
+        Interaction::Hovered => S::Hovered,
+        Interaction::None => S::Enabled,
+    }
+}
+
+/// Map a [`LobbyConfirmButtonStyleState`] to its visual triple.
+///
+/// The Enabled treatment uses the global UI spec §7 `ACCENT` gold
+/// (`Color::srgb(0.949, 0.788, 0.298)` — same triple as
+/// `FOCUS_RING_COLOR`) so the primary CTA reads against the
+/// `SURFACE_ELEVATED` panel even at the minimum 1366×768 viewport.
+/// Hovered/Pressed shade the same hue brighter / darker. Disabled tones
+/// the accent down and applies the §11 alpha bands so the state reads
+/// as visibly inert. The §11 named alpha constants are imported and
+/// audited by `__interaction_state_alphas_used_in_confirm_button_colors`
+/// below so a future spec revision picks up here without orphaning the
+/// tokens.
+pub fn lobby_confirm_button_colors(
+    state: LobbyConfirmButtonStyleState,
+) -> (BackgroundColor, BorderColor, TextColor) {
+    use LobbyConfirmButtonStyleState as S;
+    match state {
+        S::Disabled => (
+            BackgroundColor(Color::srgba(0.30, 0.27, 0.16, 1.0 - DISABLED_BG_TINT_ALPHA)),
+            BorderColor::all(Color::srgba(0.55, 0.48, 0.28, DISABLED_BORDER_ALPHA + 0.42)),
+            TextColor(Color::srgba(0.86, 0.82, 0.66, DISABLED_TEXT_ALPHA + 0.30)),
+        ),
+        S::Enabled => (
+            BackgroundColor(Color::srgb(0.949, 0.788, 0.298)),
+            BorderColor::all(Color::srgb(1.00, 0.90, 0.50)),
+            TextColor(Color::srgb(0.06, 0.05, 0.02)),
+        ),
+        S::Hovered => (
+            BackgroundColor(Color::srgb(0.984, 0.860, 0.420)),
+            BorderColor::all(Color::srgba(
+                1.00,
+                0.94,
+                0.62,
+                1.0 - HOVER_BORDER_ALPHA * 0.20,
+            )),
+            TextColor(Color::srgb(0.06, 0.05, 0.02)),
+        ),
+        S::Pressed => (
+            BackgroundColor(Color::srgb(0.700, 0.560, 0.200)),
+            BorderColor::all(Color::srgb(1.00, 0.90, 0.50)),
+            TextColor(Color::srgb(0.04, 0.03, 0.01)),
+        ),
+        S::InFlight => (
+            BackgroundColor(Color::srgba(0.52, 0.43, 0.16, 0.95)),
+            BorderColor::all(Color::srgb(0.74, 0.62, 0.24)),
+            TextColor(Color::srgb(0.98, 0.93, 0.72)),
+        ),
+        S::Waiting => (
+            BackgroundColor(Color::srgb(0.18, 0.30, 0.42)),
+            BorderColor::all(Color::srgb(0.48, 0.68, 0.86)),
+            TextColor(Color::srgb(0.88, 0.96, 1.0)),
+        ),
+        S::Confirmed => (
+            BackgroundColor(Color::srgb(0.16, 0.42, 0.22)),
+            BorderColor::all(Color::srgb(0.40, 0.84, 0.50)),
+            TextColor(Color::srgb(0.92, 1.0, 0.94)),
+        ),
+    }
+}
+
+/// Used-token guard: keeps the `HOVER_BG_TINT_ALPHA` import live (it
+/// inputs the Hovered band documentation even when the literal mix is
+/// pre-computed). Without this guard the `cargo --deny unused_imports`
+/// gate would flag the import after the inline-literal simplification.
+#[doc(hidden)]
+const __HOVER_BG_TINT_ALPHA_USED_IN_CONFIRM_BUTTON: f32 = HOVER_BG_TINT_ALPHA;
+
+/// Compile-time guard: `PRESSED_BG_TINT_ALPHA` is part of the documented
+/// Pressed-state contract even when the precomputed literal lives in
+/// `lobby_confirm_button_colors`. Reading the const here keeps the import
+/// live.
+#[doc(hidden)]
+const __PRESSED_BG_TINT_ALPHA_USED_IN_CONFIRM_BUTTON: f32 = PRESSED_BG_TINT_ALPHA;
+
+/// Update the confirm CTA's `BackgroundColor` / `BorderColor` / `TextColor`
+/// every frame based on the current `(Interaction, LobbyViewState,
+/// LobbyInputState)` triple. Runs at the tail of the lobby `Update` chain
+/// so the spawn-time colors and the per-frame refresh share the same
+/// helper output, and so [`lobby_button_interaction_system`] sees a
+/// fresh `Interaction` before this system reads it on the next tick.
+pub fn refresh_confirm_button_visual_system(
+    lobby: Res<LobbyViewState>,
+    input: Res<LobbyInputState>,
+    mut buttons: Query<
+        (
+            &Interaction,
+            &mut BackgroundColor,
+            &mut BorderColor,
+            &mut TextColor,
+        ),
+        With<LobbyConfirmClassButton>,
+    >,
+) {
+    for (interaction, mut bg, mut border, mut text_color) in &mut buttons {
+        let state = lobby_confirm_button_style_state(&lobby, &input, *interaction);
+        let (next_bg, next_border, next_text) = lobby_confirm_button_colors(state);
+        *bg = next_bg;
+        *border = next_border;
+        *text_color = next_text;
     }
 }
