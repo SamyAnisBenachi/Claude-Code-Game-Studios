@@ -45,6 +45,12 @@ const LAUNCH_SCRIPT: &str = "tools\\dev-launcher\\Start-TwoClients.ps1";
 // Sidecar written next to the EXE by `tools/dev-launcher/build-launcher-exe.ps1`.
 // Contains the absolute repo root path on the first non-blank line.
 const SIDECAR_FILENAME: &str = "ccgs-dev-launcher.repo-root.txt";
+// Canonical-checkout candidates used as a fallback when the sidecar is pinned
+// to a non-main worker worktree (PROMPT 1290). The launcher walks this list in
+// order and accepts the first entry that validates as a real repo. Override
+// via the `CCGS_CANONICAL_REPO_ROOT` env var.
+const CANONICAL_REPO_CANDIDATES: &[&str] = &["D:\\_DEV\\Work\\Claude-Code-Game-Studios"];
+const MAIN_BRANCH: &str = "main";
 // Start-TwoClients.ps1 writes per-run logs under this path; the launcher
 // surfaces the exact directory parsed from script stdout.
 #[cfg(test)]
@@ -103,6 +109,7 @@ enum WorkerMessage {
 enum ResolutionSource {
     Env,
     Sidecar,
+    CanonicalFallback,
     ExeWalkUp,
     CwdWalkUp,
 }
@@ -112,6 +119,7 @@ impl ResolutionSource {
         match self {
             ResolutionSource::Env => "CCGS_REPO_ROOT env var",
             ResolutionSource::Sidecar => "sidecar file beside EXE",
+            ResolutionSource::CanonicalFallback => "canonical-checkout fallback",
             ResolutionSource::ExeWalkUp => "walk-up from EXE directory",
             ResolutionSource::CwdWalkUp => "walk-up from current working directory",
         }
@@ -384,6 +392,9 @@ impl LauncherUi {
                     root.display(),
                     source.human()
                 ));
+                let branch_label =
+                    read_head_branch(&root).unwrap_or_else(|| "<detached or unknown>".to_string());
+                lines.push(format!("Current branch: {}", branch_label));
                 lines.push(format!("Scripts: {} | {}", REBUILD_SCRIPT, LAUNCH_SCRIPT));
                 (
                     Some(root),
@@ -397,11 +408,13 @@ impl LauncherUi {
             }
             RepoRootResolution::Failed { attempts } => {
                 let err = format!(
-                        "ERROR: could not locate CCGS repo root. \
-                         Set CCGS_REPO_ROOT or rebuild via tools\\dev-launcher\\build-launcher-exe.ps1 \
-                         (writes the {} sidecar beside the EXE).",
-                        SIDECAR_FILENAME
-                    );
+                    "ERROR: could not locate a canonical CCGS repo root. \
+                         Set CCGS_REPO_ROOT to your canonical checkout, set \
+                         CCGS_CANONICAL_REPO_ROOT to override the fallback, \
+                         or rebuild the EXE via tools\\dev-launcher\\build-launcher-exe.ps1 \
+                         from the canonical repo (writes the {} sidecar beside the EXE).",
+                    SIDECAR_FILENAME
+                );
                 let mut lines = vec![err.clone(), "Attempts:".to_string()];
                 for a in &attempts {
                     lines.push(format!("  - {}", a));
@@ -739,28 +752,53 @@ fn locate_repo_root() -> RepoRootResolution {
         .and_then(|p| p.parent().map(|p| p.to_path_buf()));
     let cwd = env::current_dir().ok();
 
+    let canonical_override = env::var("CCGS_CANONICAL_REPO_ROOT").ok();
+    let canonical_candidates: Vec<PathBuf> = canonical_override
+        .as_deref()
+        .map(|s| s.trim())
+        .filter(|s| !s.is_empty())
+        .map(|s| vec![PathBuf::from(s)])
+        .unwrap_or_else(|| {
+            CANONICAL_REPO_CANDIDATES
+                .iter()
+                .copied()
+                .map(PathBuf::from)
+                .collect()
+        });
+
     resolve_repo_root_pure(
         env_value.as_deref(),
         exe_dir.as_deref(),
         cwd.as_deref(),
+        &canonical_candidates,
         is_repo_root,
+        read_head_branch,
         read_sidecar_root,
     )
 }
 
 // Pure resolution function used both by `locate_repo_root` and unit tests.
-// Validators (`validate`, `read_sidecar`) are injected so tests can supply
-// in-memory fakes without touching the real filesystem.
-fn resolve_repo_root_pure<F, G>(
+// Validators (`validate`, `read_branch`, `read_sidecar`) are injected so tests
+// can supply in-memory fakes without touching the real filesystem.
+//
+// PROMPT 1290: the sidecar is only accepted when its repo root is on branch
+// `main`. If the sidecar points at a valid repo on any other branch (typically
+// a worker worktree such as `work/...`), it is treated as unsuitable for the
+// `Rebuild Latest Main` flow and we fall through to the canonical-checkout
+// fallback list before giving up.
+fn resolve_repo_root_pure<F, G, H>(
     env_value: Option<&str>,
     exe_dir: Option<&Path>,
     cwd: Option<&Path>,
+    canonical_candidates: &[PathBuf],
     validate: F,
+    read_branch: H,
     read_sidecar: G,
 ) -> RepoRootResolution
 where
     F: Fn(&Path) -> bool,
     G: Fn(&Path) -> Option<PathBuf>,
+    H: Fn(&Path) -> Option<String>,
 {
     let mut attempts: Vec<String> = Vec::new();
 
@@ -793,17 +831,34 @@ where
             match read_sidecar(dir) {
                 Some(candidate) => {
                     if validate(&candidate) {
-                        return RepoRootResolution::Resolved {
-                            root: candidate,
-                            source: ResolutionSource::Sidecar,
-                        };
+                        let branch = read_branch(&candidate);
+                        if branch.as_deref() == Some(MAIN_BRANCH) {
+                            return RepoRootResolution::Resolved {
+                                root: candidate,
+                                source: ResolutionSource::Sidecar,
+                            };
+                        }
+                        let branch_label = branch
+                            .clone()
+                            .unwrap_or_else(|| "<detached or unknown>".to_string());
+                        attempts.push(format!(
+                            "sidecar {}\\{} pointed at {} (branch '{}') -- \
+                             not on '{}', unsuitable for Rebuild Latest Main; \
+                             falling back to canonical checkout",
+                            dir.display(),
+                            SIDECAR_FILENAME,
+                            candidate.display(),
+                            branch_label,
+                            MAIN_BRANCH,
+                        ));
+                    } else {
+                        attempts.push(format!(
+                            "sidecar {}\\{} pointed at {} -- not a valid repo root",
+                            dir.display(),
+                            SIDECAR_FILENAME,
+                            candidate.display()
+                        ));
                     }
-                    attempts.push(format!(
-                        "sidecar {}\\{} pointed at {} -- not a valid repo root",
-                        dir.display(),
-                        SIDECAR_FILENAME,
-                        candidate.display()
-                    ));
                 }
                 None => {
                     attempts.push(format!(
@@ -813,6 +868,14 @@ where
                     ));
                 }
             }
+
+            if let Some(root) = canonical_lookup(canonical_candidates, &validate, &mut attempts) {
+                return RepoRootResolution::Resolved {
+                    root,
+                    source: ResolutionSource::CanonicalFallback,
+                };
+            }
+
             if let Some(root) = walk_up_for_repo_root_with(dir, &validate) {
                 return RepoRootResolution::Resolved {
                     root,
@@ -826,6 +889,12 @@ where
         }
         None => {
             attempts.push("could not determine EXE directory".to_string());
+            if let Some(root) = canonical_lookup(canonical_candidates, &validate, &mut attempts) {
+                return RepoRootResolution::Resolved {
+                    root,
+                    source: ResolutionSource::CanonicalFallback,
+                };
+            }
         }
     }
 
@@ -848,6 +917,30 @@ where
     }
 
     RepoRootResolution::Failed { attempts }
+}
+
+// Iterates `CANONICAL_REPO_CANDIDATES` (or the `CCGS_CANONICAL_REPO_ROOT`
+// override). Returns the first candidate that validates; records every
+// rejection in `attempts` so the diagnostics panel can show what was tried.
+fn canonical_lookup<F: Fn(&Path) -> bool>(
+    candidates: &[PathBuf],
+    validate: F,
+    attempts: &mut Vec<String>,
+) -> Option<PathBuf> {
+    if candidates.is_empty() {
+        attempts.push("canonical-checkout fallback: no candidates configured".to_string());
+        return None;
+    }
+    for candidate in candidates {
+        if validate(candidate) {
+            return Some(candidate.clone());
+        }
+        attempts.push(format!(
+            "canonical-checkout fallback {} -- not a valid repo root",
+            candidate.display()
+        ));
+    }
+    None
 }
 
 fn walk_up_for_repo_root_with<F: Fn(&Path) -> bool>(start: &Path, validate: F) -> Option<PathBuf> {
@@ -892,12 +985,39 @@ fn is_repo_root(p: &Path) -> bool {
         && p.join(".git").exists()
 }
 
+// Reads the symbolic ref from `<repo>/.git/HEAD` and returns the short branch
+// name (e.g. "main" or "work/foo"). Returns None on detached HEAD, unreadable
+// HEAD file, or non-git path. Handles both regular checkouts (`.git/HEAD`) and
+// linked worktrees (`.git` is a file pointing at the per-worktree gitdir).
+fn read_head_branch(repo_root: &Path) -> Option<String> {
+    let dot_git = repo_root.join(".git");
+    let metadata = std::fs::metadata(&dot_git).ok()?;
+    let head_path = if metadata.is_dir() {
+        dot_git.join("HEAD")
+    } else if metadata.is_file() {
+        let pointer = std::fs::read_to_string(&dot_git).ok()?;
+        let line = pointer.lines().next()?.trim();
+        let gitdir = line.strip_prefix("gitdir:")?.trim();
+        PathBuf::from(gitdir).join("HEAD")
+    } else {
+        return None;
+    };
+    let head = std::fs::read_to_string(&head_path).ok()?;
+    let trimmed = head.trim();
+    trimmed
+        .strip_prefix("ref: refs/heads/")
+        .map(|s| s.to_string())
+}
+
 fn diagnostics_text(state: &LauncherState) -> String {
     let mut lines = Vec::new();
     match (&state.repo_root, state.repo_source) {
         (Some(root), Some(source)) => {
             lines.push(format!("Repo root: {}", root.display()));
             lines.push(format!("Resolved via: {}", source.human()));
+            let branch_label =
+                read_head_branch(root).unwrap_or_else(|| "<detached or unknown>".to_string());
+            lines.push(format!("Current branch: {}", branch_label));
             lines.push(format!(
                 "Rebuild script: {}",
                 root.join(Path::new(REBUILD_SCRIPT)).display()
@@ -1113,6 +1233,18 @@ mod tests {
     }
     fn no_sidecar(_: &Path) -> Option<PathBuf> {
         None
+    }
+    fn branch_main(_: &Path) -> Option<String> {
+        Some("main".to_string())
+    }
+    fn branch_worker(_: &Path) -> Option<String> {
+        Some("work/windows-dev-launcher-visual-polish-1255".to_string())
+    }
+    fn branch_unknown(_: &Path) -> Option<String> {
+        None
+    }
+    fn no_canonical() -> Vec<PathBuf> {
+        Vec::new()
     }
 
     #[test]
@@ -1336,14 +1468,41 @@ mod tests {
             Some("D:\\repo-from-env"),
             Some(&exe_dir),
             Some(&cwd),
+            &no_canonical(),
             |p: &Path| p == env_root.as_path(),
+            branch_main,
             |dir: &Path| Some(dir.join("sidecar-says-other")),
         );
         assert_resolved(res, &env_root, ResolutionSource::Env);
     }
 
     #[test]
-    fn resolve_repo_root_falls_through_invalid_env_to_sidecar() {
+    fn resolve_repo_root_env_overrides_valid_sidecar_pointing_elsewhere() {
+        // PROMPT 1290: even when the sidecar is valid AND on main, the env
+        // override must still win. This preserves the documented escape
+        // hatch for testers who relocate the EXE.
+        let env_root = PathBuf::from("D:\\env-checkout");
+        let sidecar_root = PathBuf::from("D:\\sidecar-checkout");
+        let env_root_for_closure = env_root.clone();
+        let sidecar_root_for_closure = sidecar_root.clone();
+
+        let res = resolve_repo_root_pure(
+            Some("D:\\env-checkout"),
+            Some(Path::new("D:\\exe")),
+            Some(Path::new("D:\\cwd")),
+            &no_canonical(),
+            move |p: &Path| {
+                p == env_root_for_closure.as_path() || p == sidecar_root_for_closure.as_path()
+            },
+            branch_main,
+            move |_dir: &Path| Some(PathBuf::from("D:\\sidecar-checkout")),
+        );
+        assert_resolved(res, &env_root, ResolutionSource::Env);
+    }
+
+    #[test]
+    fn resolve_repo_root_falls_through_invalid_env_to_sidecar_on_main() {
+        // PROMPT 1290: sidecar is only accepted when its repo is on `main`.
         let sidecar_root = PathBuf::from("D:\\repo-from-sidecar");
         let exe_dir = PathBuf::from("D:\\exe");
         let sidecar_root_for_closure = sidecar_root.clone();
@@ -1352,17 +1511,164 @@ mod tests {
             Some("D:\\not-a-repo"),
             Some(&exe_dir),
             Some(Path::new("D:\\cwd")),
+            &no_canonical(),
             move |p: &Path| p == sidecar_root_for_closure.as_path(),
+            branch_main,
             move |_dir: &Path| Some(PathBuf::from("D:\\repo-from-sidecar")),
         );
         assert_resolved(res, &sidecar_root, ResolutionSource::Sidecar);
     }
 
     #[test]
+    fn resolve_repo_root_sidecar_on_worker_branch_falls_to_canonical() {
+        // PROMPT 1290 root cause regression: the sidecar pins the EXE to a
+        // worker worktree on branch `work/...`. The launcher must reject the
+        // sidecar (unsuitable for Rebuild Latest Main) and use the canonical
+        // fallback checkout instead.
+        let sidecar_root = PathBuf::from(
+            "D:\\_DEV\\claude-code-game-studios-worktrees\\windows-dev-launcher-visual-polish-1255",
+        );
+        let canonical = PathBuf::from("D:\\_DEV\\Work\\Claude-Code-Game-Studios");
+        let canonical_for_closure = canonical.clone();
+        let sidecar_for_closure = sidecar_root.clone();
+        let canonicals = vec![canonical.clone()];
+
+        let res = resolve_repo_root_pure(
+            None,
+            Some(Path::new("D:\\_DEV\\cargo-target\\ccgs-msvc\\debug")),
+            Some(Path::new("D:\\_DEV\\cargo-target\\ccgs-msvc\\debug")),
+            &canonicals,
+            move |p: &Path| {
+                p == sidecar_for_closure.as_path() || p == canonical_for_closure.as_path()
+            },
+            // Sidecar repo is on worker branch; canonical is on main. The
+            // branch reader is keyed by path so both repos are distinguishable.
+            |p: &Path| {
+                if p.as_os_str().to_string_lossy().contains("worktrees") {
+                    Some("work/windows-dev-launcher-visual-polish-1255".to_string())
+                } else {
+                    Some("main".to_string())
+                }
+            },
+            move |_dir: &Path| {
+                Some(PathBuf::from(
+                    "D:\\_DEV\\claude-code-game-studios-worktrees\\windows-dev-launcher-visual-polish-1255",
+                ))
+            },
+        );
+        assert_resolved(res, &canonical, ResolutionSource::CanonicalFallback);
+        // Also surface the "unsuitable" note in the attempts list when we
+        // fall back, so the diagnostics panel can explain why.
+        // (Verified through the Failed branch in the next test.)
+    }
+
+    #[test]
+    fn resolve_repo_root_sidecar_on_main_is_accepted_without_canonical_fallback() {
+        // Positive case: sidecar valid + on main. Should be accepted even
+        // when a canonical fallback exists.
+        let sidecar_root = PathBuf::from("D:\\sidecar-on-main");
+        let canonical = PathBuf::from("D:\\other-canonical");
+        let sidecar_for_closure = sidecar_root.clone();
+        let canonicals = vec![canonical];
+
+        let res = resolve_repo_root_pure(
+            None,
+            Some(Path::new("D:\\exe")),
+            Some(Path::new("D:\\cwd")),
+            &canonicals,
+            move |p: &Path| p == sidecar_for_closure.as_path(),
+            branch_main,
+            move |_dir: &Path| Some(PathBuf::from("D:\\sidecar-on-main")),
+        );
+        assert_resolved(res, &sidecar_root, ResolutionSource::Sidecar);
+    }
+
+    #[test]
+    fn resolve_repo_root_invalid_canonical_yields_actionable_error() {
+        // PROMPT 1290: sidecar is worker-branched (unsuitable) AND the
+        // canonical fallback path does not validate. The launcher must
+        // surface a Failed resolution with attempts that mention the
+        // canonical fallback was tried; the on-init wiring then renders the
+        // actionable CCGS_REPO_ROOT / CCGS_CANONICAL_REPO_ROOT error.
+        let sidecar_root =
+            PathBuf::from("D:\\_DEV\\claude-code-game-studios-worktrees\\worker-1234");
+        let bad_canonical = PathBuf::from("D:\\_DEV\\Work\\Claude-Code-Game-Studios");
+        let sidecar_for_closure = sidecar_root.clone();
+        let canonicals = vec![bad_canonical.clone()];
+
+        let res = resolve_repo_root_pure(
+            None,
+            Some(Path::new("D:\\_DEV\\cargo-target\\ccgs-msvc\\debug")),
+            Some(Path::new("D:\\_DEV\\cargo-target\\ccgs-msvc\\debug")),
+            &canonicals,
+            // Only the sidecar path validates as a repo. Canonical does not.
+            move |p: &Path| p == sidecar_for_closure.as_path(),
+            branch_worker,
+            move |_dir: &Path| {
+                Some(PathBuf::from(
+                    "D:\\_DEV\\claude-code-game-studios-worktrees\\worker-1234",
+                ))
+            },
+        );
+        match res {
+            RepoRootResolution::Failed { attempts } => {
+                let joined = attempts.join("\n");
+                assert!(
+                    joined.contains("not on 'main'"),
+                    "missing sidecar branch reject note: {}",
+                    joined
+                );
+                assert!(
+                    joined.contains("canonical-checkout fallback"),
+                    "missing canonical fallback note: {}",
+                    joined
+                );
+                assert!(
+                    joined.contains("Claude-Code-Game-Studios"),
+                    "missing tried canonical path in attempts: {}",
+                    joined
+                );
+            }
+            RepoRootResolution::Resolved { root, source } => panic!(
+                "PROMPT 1290 invariant violated: returned Resolved({}, {:?}) \
+                 instead of Failed when sidecar is worker-branched and canonical \
+                 is invalid",
+                root.display(),
+                source
+            ),
+        }
+    }
+
+    #[test]
+    fn resolve_repo_root_canonical_fallback_records_branch_label_for_unknown_head() {
+        // Detached HEAD or missing HEAD file -> branch reader returns None.
+        // Treat as not-on-main and fall back to canonical.
+        let sidecar_root = PathBuf::from("D:\\detached-sidecar");
+        let canonical = PathBuf::from("D:\\canonical-main");
+        let sidecar_for_closure = sidecar_root.clone();
+        let canonical_for_closure = canonical.clone();
+        let canonicals = vec![canonical.clone()];
+
+        let res = resolve_repo_root_pure(
+            None,
+            Some(Path::new("D:\\_DEV\\cargo-target\\ccgs-msvc\\debug")),
+            Some(Path::new("D:\\_DEV\\cargo-target\\ccgs-msvc\\debug")),
+            &canonicals,
+            move |p: &Path| {
+                p == sidecar_for_closure.as_path() || p == canonical_for_closure.as_path()
+            },
+            branch_unknown,
+            move |_dir: &Path| Some(PathBuf::from("D:\\detached-sidecar")),
+        );
+        assert_resolved(res, &canonical, ResolutionSource::CanonicalFallback);
+    }
+
+    #[test]
     fn resolve_repo_root_falls_through_invalid_sidecar_to_exe_walkup() {
         // EXE dir lives outside the repo (mirrors the user's bug: under
         // D:\_DEV\cargo-target\ccgs-msvc\debug). With a malformed sidecar and
-        // no valid walk-up from EXE, we should land on the cwd walk-up.
+        // no canonical match, no valid walk-up from EXE, we should land on
+        // the cwd walk-up.
         let exe_dir = PathBuf::from("D:\\cargo-target\\ccgs-msvc\\debug");
         let cwd = PathBuf::from("D:\\some\\subdir\\of\\repo");
         let repo_via_cwd = PathBuf::from("D:\\some\\subdir\\of\\repo");
@@ -1372,7 +1678,9 @@ mod tests {
             None,
             Some(&exe_dir),
             Some(&cwd),
+            &no_canonical(),
             move |p: &Path| p == repo_for_closure.as_path(),
+            branch_main,
             |_dir: &Path| Some(PathBuf::from("D:\\bogus-sidecar-target")),
         );
         assert_resolved(res, &repo_via_cwd, ResolutionSource::CwdWalkUp);
@@ -1388,7 +1696,9 @@ mod tests {
             None,
             Some(&exe_dir),
             Some(Path::new("D:\\cwd")),
+            &no_canonical(),
             move |p: &Path| p == repo_for_closure.as_path(),
+            branch_main,
             no_sidecar,
         );
         assert_resolved(res, &repo, ResolutionSource::ExeWalkUp);
@@ -1398,12 +1708,19 @@ mod tests {
     fn resolve_repo_root_fails_when_nothing_works() {
         // This is exactly the user-reported scenario: EXE lives in
         // D:\_DEV\cargo-target\ccgs-msvc\debug (outside the repo), no env
-        // override, no sidecar, no walk-up match from EXE or cwd.
+        // override, no sidecar, no canonical, no walk-up match.
         let exe_dir = PathBuf::from("D:\\_DEV\\cargo-target\\ccgs-msvc\\debug");
         let cwd = PathBuf::from("D:\\_DEV\\cargo-target\\ccgs-msvc\\debug");
 
-        let res =
-            resolve_repo_root_pure(None, Some(&exe_dir), Some(&cwd), always_false, no_sidecar);
+        let res = resolve_repo_root_pure(
+            None,
+            Some(&exe_dir),
+            Some(&cwd),
+            &no_canonical(),
+            always_false,
+            branch_main,
+            no_sidecar,
+        );
 
         match res {
             RepoRootResolution::Failed { attempts } => {
@@ -1436,9 +1753,11 @@ mod tests {
             None,
             Some(&target_debug),
             Some(&target_debug),
+            &no_canonical(),
             // Only the actual repo path (which is NOT on either walk-up
             // chain) is a valid repo root.
             |p: &Path| p == Path::new("D:\\some-other-real-repo"),
+            branch_main,
             no_sidecar,
         );
         match res {
@@ -1465,7 +1784,9 @@ mod tests {
             Some("   "),
             Some(&exe_dir),
             Some(Path::new("D:\\cwd")),
+            &no_canonical(),
             move |p: &Path| p == repo_for_closure.as_path(),
+            branch_main,
             no_sidecar,
         );
         // Empty/whitespace env should not crash and should fall through to
@@ -1478,6 +1799,7 @@ mod tests {
         let all = [
             ResolutionSource::Env.human(),
             ResolutionSource::Sidecar.human(),
+            ResolutionSource::CanonicalFallback.human(),
             ResolutionSource::ExeWalkUp.human(),
             ResolutionSource::CwdWalkUp.human(),
         ];
@@ -1496,10 +1818,92 @@ mod tests {
             Some("D:\\anything"),
             Some(Path::new("D:\\exe")),
             Some(Path::new("D:\\cwd")),
+            &no_canonical(),
             always_true,
+            branch_main,
             no_sidecar,
         );
         assert_resolved(res, &PathBuf::from("D:\\anything"), ResolutionSource::Env);
+    }
+
+    #[test]
+    fn canonical_repo_candidates_has_at_least_one_entry() {
+        // Defensive: the documented default canonical path must be present.
+        // If we ever change the constant, the docs (dev-two-button-launcher.md)
+        // and build script (build-launcher-exe.ps1) must move in lockstep.
+        assert!(
+            !CANONICAL_REPO_CANDIDATES.is_empty(),
+            "CANONICAL_REPO_CANDIDATES must include at least the documented \
+             default (D:\\_DEV\\Work\\Claude-Code-Game-Studios)"
+        );
+        assert!(CANONICAL_REPO_CANDIDATES
+            .iter()
+            .any(|p| p.contains("Claude-Code-Game-Studios")));
+    }
+
+    #[test]
+    fn read_head_branch_returns_main_for_regular_checkout() {
+        let dir = unique_temp_dir("head-main");
+        let dot_git = dir.join(".git");
+        fs::create_dir_all(&dot_git).expect("create .git dir");
+        fs::write(dot_git.join("HEAD"), "ref: refs/heads/main\n").expect("write HEAD");
+        assert_eq!(read_head_branch(&dir), Some("main".to_string()));
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn read_head_branch_returns_worker_branch_name() {
+        let dir = unique_temp_dir("head-worker");
+        let dot_git = dir.join(".git");
+        fs::create_dir_all(&dot_git).expect("create .git dir");
+        fs::write(
+            dot_git.join("HEAD"),
+            "ref: refs/heads/work/windows-dev-launcher-visual-polish-1255\n",
+        )
+        .expect("write HEAD");
+        assert_eq!(
+            read_head_branch(&dir),
+            Some("work/windows-dev-launcher-visual-polish-1255".to_string())
+        );
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn read_head_branch_returns_none_for_detached_head() {
+        let dir = unique_temp_dir("head-detached");
+        let dot_git = dir.join(".git");
+        fs::create_dir_all(&dot_git).expect("create .git dir");
+        // Detached HEAD: file holds a raw 40-char SHA, not a `ref:` line.
+        fs::write(
+            dot_git.join("HEAD"),
+            "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef\n",
+        )
+        .expect("write HEAD");
+        assert_eq!(read_head_branch(&dir), None);
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn read_head_branch_follows_worktree_gitdir_pointer() {
+        // Linked worktrees write `.git` as a FILE whose content is
+        // `gitdir: <path>`. We must follow the pointer to read HEAD.
+        let outer = unique_temp_dir("head-worktree-outer");
+        let worktree = unique_temp_dir("head-worktree-linked");
+        let gitdir = outer.join(".git/worktrees/linked");
+        fs::create_dir_all(&gitdir).expect("create linked gitdir");
+        fs::write(gitdir.join("HEAD"), "ref: refs/heads/work/example\n")
+            .expect("write linked HEAD");
+        fs::write(
+            worktree.join(".git"),
+            format!("gitdir: {}\n", gitdir.display()),
+        )
+        .expect("write .git pointer file");
+        assert_eq!(
+            read_head_branch(&worktree),
+            Some("work/example".to_string())
+        );
+        let _ = fs::remove_dir_all(&outer);
+        let _ = fs::remove_dir_all(&worktree);
     }
 
     #[test]
