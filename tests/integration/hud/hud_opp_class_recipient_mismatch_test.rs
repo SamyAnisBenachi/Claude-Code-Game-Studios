@@ -265,6 +265,7 @@ fn lobby_view_local_id_drives_projection_when_identity_unset() {
         locked_class: Some(ClassId::Sacrier),
         revealed_classes: vec![(player(1), ClassId::Sacrier), (player(2), ClassId::Iop)],
         status: String::new(),
+        room_list: Vec::new(),
     });
 
     app.update();
