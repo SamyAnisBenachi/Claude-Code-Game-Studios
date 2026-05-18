@@ -104,6 +104,7 @@ fn insert_lobby_reveal(app: &mut App, local: ClassId, opponent: ClassId) {
         locked_class: Some(local),
         revealed_classes: vec![(player(1), local), (player(2), opponent)],
         status: String::new(),
+        room_list: Vec::new(),
     });
     app.world_mut().insert_resource(ClientSessionIdentity {
         player_id: Some(player(1)),
