@@ -1,3 +1,159 @@
+# PROMPT 1110 State Banner -- Sprint 17 S17-UI-CARD-SLOT-INSET-WIRING-001 Story-Done
+
+Updated 2026-05-18 by PROMPT 1110. Source-of-truth at closure:
+`origin/main@30f166fb9b718bdb5a6a904da0d66cdcc9685f15` (PROMPT 1106
+integration tip `integrate(s17): merge PROMPT 1102 card-slot inset
+wiring into main (PROMPT 1106)` merging PROMPT 1102 worker
+`55c0dab11ab7572e0cb88827c3ed5f3b241c0fe8` `dev-story(s17): wire
+card-slot image/text inset + GlobalZIndex (PROMPT 1102
+S17-UI-CARD-SLOT-INSET-WIRING-001)` onto `origin/main` via no-ff
+merge; strict fast-forward descendant of `origin/main@dc8adb6`
+PROMPT 1107 server warn->debug integration tip and of
+`origin/main@72d56bc` PROMPT 1108 S17-SERVER-START-OF-TURN-DEBUG-001
+story-done closure tip). Worktree: in-place edits on the primary
+checkout. Branch: `story-done/s17-card-slot-inset-wiring-1110` from
+base `origin/main@72d56bc`.
+
+PROMPT 1110 is a paperwork-only Sprint 17 `/story-done` closure for
+`S17-UI-CARD-SLOT-INSET-WIRING-001` (Should Have, story 018 in
+`production/epics/ui-clean-pass/`). Single-row closure on the basis
+of: PROMPT 1102 worker (two net-additive sibling builders extending
+the Sprint 16 PROMPT 1074 card-slot primitive --
+`card_slot_image_inset_node(kind) -> (Node, GlobalZIndex)` at
+`client/src/ui/design_tokens/card_slot.rs:687` +
+`card_slot_text_inset_node(kind) -> (Node, GlobalZIndex)` at line
+728; both emit `PositionType::Absolute` `Node`s whose
+`left/right/top/bottom` read verbatim from
+`card_slot_geometry(kind).{image_inset_px,text_inset_px}` and a
+`GlobalZIndex` from `card_slot_geometry(kind).z_layer` --
+`UI_BASE (300)` for `HandFan`/`DraftGrid`/`ShopSlot`/`AuctionFeatured`
+and `UI_OVERLAY (400)` for `BoardStagedGhost`; `card_slot_node` body
+and `card_slot_geometry` constants UNCHANGED; no consumer-surface
+migration; 8 new `s17_*` integration tests +  3 new `s17_*` inline
+tests; cargo gate pass under Sprint 15+ Cargo resource policy);
+PROMPT 1106 integration (no-ff merge onto `origin/main`;
+`git diff --name-only origin/main..HEAD` returns exactly 3 paths
+-- the new builders + tests + new evidence.md; cargo check + cargo
+test 27/27 + cargo test 9/9 PASS at integration tip). AC1..AC13
+PASS; AC14 PASS-WORKER + ADVISORY-INTEGRATION.
+
+**Cargo resource policy advisory at PROMPT 1106 first cargo
+invocation** preserved explicitly: PROMPT 1106 integration's first
+`cargo test` invocation built into the integration worktree-local
+`target/` because the bash-tool-issued `$env:CARGO_TARGET_DIR=...`
+PowerShell-syntax env-var block was not interpreted on the first
+call; subsequent calls correctly routed to
+`D:\_DEV\cargo-target\ccgs-msvc`. The build correctness gate this
+integration row required is **unaffected** -- all 27/27 integration
+tests + 9/9 inline tests PASS against the merged tree. Recorded
+explicitly as a process / policy advisory note, NOT a product
+failure. PROMPT 1102 worker applied the policy correctly. PROMPT
+1110 itself does NOT invoke Cargo.
+
+**PROMPT 1106 evidence-file trailing-whitespace advisory** preserved
+explicitly: `production/qa/evidence/sprint-17-card-slot-inset-wiring/
+evidence.md` inherits two pre-existing trailing-whitespace lines
+(lines 92 and 107, both inside a Markdown bullet list). PROMPT 1106
+integration `git diff --check origin/main...HEAD` flagged both lines.
+The condition is inside a documentation artifact, not code; PROMPT
+1106 did not rewrite the evidence file to preserve worker-authored
+provenance. PROMPT 1110 preserves this verbatim and does NOT rewrite
+or strip the trailing whitespace (evidence.md is already on
+`origin/main` via PROMPT 1106 integration; PROMPT 1110 does not
+modify files already on origin/main via integration). Surfaced
+explicitly in this banner, in the story-018 Completion Notes section
+sub-heading 'PROMPT 1106 evidence-file trailing-whitespace advisory',
+in the `production/sprint-status.yaml` `sprint_17_story_done:`
+PROMPT 1110 `documentation_artifact_advisory:` block + row notes,
+in the `production/session-state/codex-orchestrator-state.md` PROMPT
+1110 paragraph, and in the PROMPT 1110 final report -- NOT hidden.
+
+Sprint 17 progress after PROMPT 1110: 2 of 9 active rows done (Must
+Have 0/2 + Should Have 1/4 + Nice to Have 1/3). Rows preserved as
+ready and **NOT** closed by PROMPT 1110: `S11-HUD-TIMER-EYEBALL-
+VISUAL-001` (Must Have human-operator-blocked Sprint 13 -> 14 -> 15
+-> 16 -> 17 carry; no LLM `/story-done` authorised);
+`S17-UI-CARD-DISPLAY-ART-HELPER-001` (Must Have);
+`S17-UI-HUD-OPP-MANA-CLEANUP-001`,
+`S17-UI-QA-SNAPSHOT-MARKER-SPLIT-001`,
+`S17-UI-BID-BUTTON-PHASE-RACE-001` (3 of 4 Should Have);
+`S17-OPS-VULKAN-VALIDATION-GATING-001`,
+`S17-UI-HAND-B0004-CLEANUP-001` (2 of 3 Nice to Have). All non-claims
+preserved verbatim: `S8-QA-001-W1` OPEN, `QA-COND-0005` /
+`QA-COND-0006` accepted-risk, `PAW-TD-*-a` preserved, `TQ-S12-C1..C7`
+preserved (`TQ-S12-C7` explicitly NOT closed), PROMPT 683-era
+runtime divergence preserved, PROMPT 761 `Polish->Release` FAIL
+preserved with NO retry, PROMPT 1054 P1 UI snapshot retest
+BLOCKED-HUMAN preserved, 24 PROMPT 1022 QA snapshot audit findings
+preserved, long-tail AUDIT-1076-05 / 08 / 11 + SOURCE-1077-05 / 07
+/ 11 / 12 / 13 / 14 / 15 deferred to Sprint 18+, all five dropped
+conditional Must Have rows preserved on `origin/main`, no LLM
+closure of `S11-HUD-TIMER-EYEBALL-VISUAL-001`. Per-surface migration
+of HAND / DRAFT-GRID / AUCTION-FEATURED / BOARD-GHOST remains Sprint
+17+ Backlog under the `S17-UI-CARD-SLOT-MIGRATION-*` family;
+PROMPT 1110 ratifies the primitive only and does NOT migrate any
+consumer surface. Stage `Polish` UNCHANGED; `production/stage.txt`
+NOT modified.
+
+Files changed by PROMPT 1110:
+
+- `production/epics/ui-clean-pass/story-018-card-slot-inset-wiring.md`
+  (Status banner Draft -> Done; AC1..AC13 [x]; AC14 [x] PASS-WORKER +
+  ADVISORY-INTEGRATION; Completion Notes section added with PROMPT
+  1102 worker + PROMPT 1106 integration + PROMPT 1106 evidence-file
+  trailing-whitespace advisory sub-section + Test Evidence section;
+  Closure Trail table populated with PROMPT 1095 / 1097 / 1099 /
+  1100 / 1102 / 1106 / 1110 entries; final status line flipped
+  DRAFT -> DONE).
+- `production/sprint-status.yaml` (S17-UI-CARD-SLOT-INSET-WIRING-001
+  row in `stories:` block flipped `status: ready -> done` with
+  `completed: 2026-05-18` + worker / integration / evidence metadata
+  + closure note + PROMPT 1106 trailing-whitespace advisory note;
+  `sprint_17_story_done:` block appended after PROMPT 1108 entry
+  with full PROMPT 1110 disposition block including AC1..AC14
+  outcomes, `rows_not_closed_by_prompt_1110` enumerating 7 remaining
+  Sprint 17 active rows, `documentation_artifact_advisory` block,
+  conditions_carried_forward_unchanged + explicitly_not_claimed +
+  files_changed_by_prompt_1110 + forbidden_changes_observed
+  sections).
+- `production/session-state/active.md` (this PROMPT 1110 banner
+  prepended above PROMPT 1108 banner).
+- `production/session-state/codex-orchestrator-state.md` (PROMPT
+  1110 paragraph prepended above PROMPT 1108 paragraph).
+- `reports/PROMPT-1110-s17-card-slot-inset-wiring-story-done.md`
+  (mandatory final report file; `reports/` is gitignored; not staged
+  or committed).
+
+Files explicitly NOT touched by PROMPT 1110: `client/`, `server/`,
+`shared/`, `tests/`, `Cargo.toml`, `Cargo.lock`, `.cargo/`,
+`.github/`, `Trunk.toml`, `production/stage.txt`,
+`production/sprints/**` (sprint-17 plan body NOT rewritten),
+`production/qa/qa-plan-sprint-17.md`, `production/qa/smoke-*.md`,
+`production/qa/team-qa-*.md`, `production/qa/evidence/*`
+(sprint-17-card-slot-inset-wiring/ preserved verbatim on `origin/main`
+via PROMPT 1106 integration including the two pre-existing
+trailing-whitespace lines), `production/gate-checks/**`,
+`docs/architecture/adr-*.md`, any Sprint 17 story file under
+`production/epics/` other than `story-018-card-slot-inset-wiring.md`
+(the 8 other Sprint 17 active row story files preserved verbatim;
+`S11-HUD-TIMER-EYEBALL-VISUAL-001` story 014 untouched), all prior
+`sprint_N_*` blocks in `production/sprint-status.yaml` (including
+PROMPT 1108 sprint_17_story_done entry which is preserved verbatim
+above the new PROMPT 1110 entry), `.octogent/`,
+`.claude/settings.json`, `.claude/scheduled_tasks.lock`. No cargo /
+trunk / CI command invoked. **Cargo policy: N/A** for this
+paperwork-only closure.
+
+Branch / push: PROMPT 1110 commits the story-done paperwork on
+branch `story-done/s17-card-slot-inset-wiring-1110` from base
+`origin/main@72d56bc`. Push target per prompt policy: push to `main`
+if allowed; if `main` push is blocked, push the worker branch and
+report exact commit/branch. No `/dev-story`, `/smoke-check`,
+`/team-qa`, `/gate-check`, `/release-check`, `/qa-plan`, or
+`/story-readiness` invoked by PROMPT 1110.
+
+---
+
 # PROMPT 1108 State Banner -- Sprint 17 S17-SERVER-START-OF-TURN-DEBUG-001 Story-Done
 
 Updated 2026-05-18 by PROMPT 1108. Source-of-truth at closure:

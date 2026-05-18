@@ -2,13 +2,14 @@
 
 > **Epic**: UI Clean-Pass
 > **Story ID**: S17-UI-CARD-SLOT-INSET-WIRING-001
-> **Status**: Draft -- Sprint 17 Should Have candidate (SOURCE-1077-06); NOT activated by this authoring run
+> **Status**: Done -- closed by PROMPT 1110 on `origin/main@30f166f` (Sprint 17 Should Have). Worker PROMPT 1102 (`55c0dab`), integration PROMPT 1106 (`30f166f`).
 > **Layer**: Presentation -- card-slot primitive (`client/src/ui/design_tokens/card_slot.rs`)
 > **Type**: Tech Debt -- primitive ratification (no consumer-surface migration in this row)
-> **Sprint**: Sprint 17 Should Have row per `production/sprints/sprint-17.md` §"Should Have". Activation is a separate explicit prompt (PROMPT 1093 pattern).
+> **Sprint**: Sprint 17 Should Have row per `production/sprints/sprint-17.md` §"Should Have". Activated by PROMPT 1099; closed by PROMPT 1110.
 > **Authored**: 2026-05-18 by PROMPT 1095
 > **Authoring source-of-truth**: `origin/main@7d36191fe94adf99d3448a58185d8079d828c29e`
 > (`integrate(s17): merge Sprint 17 plan draft into main (PROMPT 1093 paperwork-only)`)
+> **Closure source-of-truth**: `origin/main@30f166fb9b718bdb5a6a904da0d66cdcc9685f15` (PROMPT 1106 integration tip)
 > **Estimated effort**: ~0.25d (single primitive extension; no consumer-surface migration)
 > **Source audit**: PROMPT 1077 `reports/PROMPT-1077-ui-state-source-consistency-deep-audit.md` §"Per-finding evidence" SOURCE-1077-06 (P1)
 
@@ -287,7 +288,7 @@ are authored by PROMPT 1095.**
 
 All criteria are independently checkable.
 
-- [ ] **AC1 -- Primitive exposes per-kind image inset**: GIVEN the
+- [x] **AC1 -- Primitive exposes per-kind image inset**: GIVEN the
   post-implementation `client/src/ui/design_tokens/card_slot.rs`,
   WHEN inspected, THEN there is a public builder (either
   `card_slot_image_inset_node(kind)` returning a `Node` configured
@@ -295,24 +296,48 @@ All criteria are independently checkable.
   `card_slot_geometry(kind).image_inset_px`, OR `card_slot_node`
   itself returns a structure including the image inset). The
   builder threads the `z_layer` via `GlobalZIndex`.
+  **VERDICT: PASS** — verified on `origin/main@30f166f` at
+  `client/src/ui/design_tokens/card_slot.rs:687`:
+  `pub fn card_slot_image_inset_node(kind: CardSlotKind) -> (Node,
+  GlobalZIndex)` emits `PositionType::Absolute` and the four
+  `left/right/top/bottom` edges read verbatim from
+  `card_slot_geometry(kind).image_inset_px`; the returned
+  `GlobalZIndex` reads from `card_slot_geometry(kind).z_layer`. No
+  numeric literal authored in the builder body.
 
-- [ ] **AC2 -- Primitive exposes per-kind text inset**: GIVEN the
+- [x] **AC2 -- Primitive exposes per-kind text inset**: GIVEN the
   same module, WHEN inspected, THEN there is a public builder
   (either `card_slot_text_inset_node(kind)` returning a `Node`
   configured with `position_type: Absolute` + the rectangle defined
   by `card_slot_geometry(kind).text_inset_px`, OR `card_slot_node`
   itself returns a structure including the text inset). The
   builder threads the `z_layer` via `GlobalZIndex`.
+  **VERDICT: PASS** — verified on `origin/main@30f166f` at
+  `client/src/ui/design_tokens/card_slot.rs:728`:
+  `pub fn card_slot_text_inset_node(kind: CardSlotKind) -> (Node,
+  GlobalZIndex)` emits `PositionType::Absolute` and the four
+  edges read verbatim from `card_slot_geometry(kind).text_inset_px`;
+  `GlobalZIndex` mirrors the image-inset builder so the image and
+  text children share the same `z_layer` for a given kind.
 
-- [ ] **AC3 -- `GlobalZIndex` wired from geometry**: GIVEN both
+- [x] **AC3 -- `GlobalZIndex` wired from geometry**: GIVEN both
   inset builders (or the extended outer builder), WHEN inspected,
   THEN they emit a `GlobalZIndex(z_layer)` component where `z_layer`
   comes from `card_slot_geometry(kind).z_layer`. The implementing
   worker confirms the variant-by-variant z_layer constants match
   the existing geometry catalog by reading them from the same
   source.
+  **VERDICT: PASS** — per PROMPT 1102 evidence
+  `production/qa/evidence/sprint-17-card-slot-inset-wiring/evidence.md`
+  §AC3 + integration test
+  `s17_inset_image_and_text_builders_thread_global_z_index_per_kind`
+  at `tests/integration/ui_clean_pass/card_slot_primitive_test.rs:714`:
+  `UI_BASE (300)` for `HandFan` / `DraftGrid` / `ShopSlot` /
+  `AuctionFeatured`; `UI_OVERLAY (400)` for `BoardStagedGhost`.
+  Values flow through the existing `card_slot_geometry` catalog
+  (no inline constant authored in the builder).
 
-- [ ] **AC4 -- Padding wired from geometry (if exposed by the
+- [x] **AC4 -- Padding wired from geometry (if exposed by the
   catalog)**: IF `card_slot_geometry(kind)` exposes a padding
   rectangle (re-verify at activation HEAD; not strictly required
   by SOURCE-1077-06 but called out in the audit minimal-repair
@@ -321,16 +346,31 @@ All criteria are independently checkable.
   expose padding, this AC is satisfied trivially by a doc-comment
   noting the catalog does not expose padding and the new builder
   emits no `padding` field.
+  **VERDICT: PASS (fallback clause)** — `card_slot_geometry(kind)`
+  does NOT currently expose a padding rectangle (only
+  `image_inset_px` / `text_inset_px` / `hit_target_inset_px` /
+  `z_layer`). Per the AC4 fallback wording, PROMPT 1102 added a
+  doc-comment on `card_slot_node` noting the catalog does not
+  expose padding; the new builders emit no `Node.padding` field.
+  Future revision that promotes padding into `CardSlotGeometry` is
+  out of scope (AC8 forbids retuning the geometry catalog).
 
-- [ ] **AC5 -- Existing PROMPT 1067 shop-slot Phase 1 migration
+- [x] **AC5 -- Existing PROMPT 1067 shop-slot Phase 1 migration
   remains green**: GIVEN the existing
   `tests/integration/ui_clean_pass/card_slot_primitive_test.rs`
   (or the post-PROMPT 1074 equivalent), WHEN run, THEN every test
   previously PASS at `origin/main@c9b5716` remains PASS. This row
   is purely additive at the primitive level; it does NOT regress
   any Sprint 16 story 009 closed assertion.
+  **VERDICT: PASS** — per PROMPT 1106 integration report:
+  `cargo test -p client --test ui_clean_pass_card_slot_primitive_test`
+  Finished `27 passed; 0 failed; 0 ignored` on the integration tip
+  (19 pre-existing AC1..AC8 assertions PASS + 8 new `s17_*` tests
+  PASS). Every Sprint 16 story 009 closed assertion remains green.
+  `cargo test -p client --lib card_slot` Finished `9 passed; 0
+  failed; 0 ignored` (6 pre-existing + 3 new `s17_*` inline tests).
 
-- [ ] **AC6 -- New tests assert inset / z-index wiring**: GIVEN
+- [x] **AC6 -- New tests assert inset / z-index wiring**: GIVEN
   `tests/integration/ui_clean_pass/card_slot_inset_wiring_test.rs`
   (NEW; or new assertions in the existing primitive test bin —
   worker's choice, justified in the commit message), WHEN run,
@@ -345,8 +385,25 @@ All criteria are independently checkable.
   `card_slot_geometry(kind).z_layer`.
   (d) The variant set covered by the tests matches the variant set
   defined by `CardSlotKind` (no variant uncovered).
+  **VERDICT: PASS** — PROMPT 1102 added new assertions in the
+  existing `tests/integration/ui_clean_pass/card_slot_primitive_test.rs`
+  bin (justified in PROMPT 1102 commit message: avoids duplicating
+  test fixture setup; sibling bin would have required re-deriving
+  the variant-iteration helper). 8 new `s17_*` integration tests
+  cover (a) `s17_inset_image_node_edges_match_geometry_per_kind`,
+  (b) `s17_inset_text_node_edges_match_geometry_per_kind`,
+  (c) `s17_inset_image_and_text_builders_thread_global_z_index_per_kind`,
+  (d) `s17_inset_builders_cover_every_card_slot_kind_variant`
+  asserting `ALL_CARD_SLOT_KINDS.len() == 5`. Plus three defensive
+  guards against SOURCE-1077-06 regression:
+  `s17_inset_image_node_carries_no_inline_size_overrides_per_kind`
+  + the text counterpart +
+  `s17_inset_builders_dimensions_resolve_to_positive_interior_per_kind`.
+  Three additional inline `s17_*` tests in the
+  `#[cfg(test)] mod tests` block of `card_slot.rs`. All assertions
+  PASS on `origin/main@30f166f` per PROMPT 1106 cargo test re-run.
 
-- [ ] **AC7 -- No consumer surface migrated**: GIVEN
+- [x] **AC7 -- No consumer surface migrated**: GIVEN
   `git diff <activation HEAD>..HEAD` for the worker's commit, WHEN
   inspected, THEN there are ZERO changes under
   `client/src/ui/hand/`, `client/src/ui/shop_auction/auction_*`,
@@ -355,32 +412,65 @@ All criteria are independently checkable.
   are in `client/src/ui/design_tokens/card_slot.rs` (and optional
   doc updates in `docs/ux/global-ui-design-spec.md` §12) plus new
   test assertions in `tests/integration/ui_clean_pass/`.
+  **VERDICT: PASS** — per PROMPT 1106 integration report,
+  `git diff --name-only origin/main..HEAD` returns exactly three
+  paths and ZERO of them lie under any consumer-surface directory:
+  `client/src/ui/design_tokens/card_slot.rs`,
+  `tests/integration/ui_clean_pass/card_slot_primitive_test.rs`,
+  `production/qa/evidence/sprint-17-card-slot-inset-wiring/evidence.md`.
+  The four per-surface migration siblings remain Sprint 17+
+  Backlog under the `S17-UI-CARD-SLOT-MIGRATION-*` family.
 
-- [ ] **AC8 -- No `card_slot_geometry` constant change**: GIVEN
+- [x] **AC8 -- No `card_slot_geometry` constant change**: GIVEN
   the same diff, WHEN inspected, THEN the body of
   `card_slot_geometry(kind)` (the geometry catalog) is UNCHANGED.
   This row consumes the existing constants; it does NOT retune.
+  **VERDICT: PASS** — per PROMPT 1102 evidence §AC8: the diff adds
+  new builder functions AFTER the existing `card_slot_node`
+  builder; the 14 named per-kind constants (`CARD_SLOT_HAND_FAN_*`,
+  `CARD_SLOT_DRAFT_GRID_*`, `CARD_SLOT_SHOP_SLOT_*`,
+  `CARD_SLOT_AUCTION_FEATURED_*`, `CARD_SLOT_BOARD_GHOST_*`) and
+  the body of `card_slot_geometry(kind)` are UNCHANGED.
 
-- [ ] **AC9 -- ADR-021 schedule preserved**: GIVEN `cargo build -p
+- [x] **AC9 -- ADR-021 schedule preserved**: GIVEN `cargo build -p
   client` under the Cargo resource policy, WHEN run, THEN no new
   system-set or schedule wiring is introduced. The primitive is a
   pure builder function; it adds no `App::add_systems`.
+  **VERDICT: PASS** — PROMPT 1102 + PROMPT 1106 both ran
+  `cargo check -p client` under the Cargo resource policy with
+  zero substantive diff-line warnings; no `App::add_systems`
+  introduced (only pure builder functions added). ADR-021's
+  presentation-layer schedule is preserved.
 
-- [ ] **AC10 -- No protocol or server change**: GIVEN
+- [x] **AC10 -- No protocol or server change**: GIVEN
   `git diff <activation HEAD>..HEAD`, WHEN inspected, THEN there
   are zero changes under `server/`, `shared/`, or
   `tests/integration/server/`. The implementation is client-side
   only.
+  **VERDICT: PASS** — PROMPT 1106 integration diff confirms zero
+  changes under `server/`, `shared/`, or `tests/integration/server/`.
+  No protocol-shape change; no new server-authoritative state; no
+  new C2S / S2C message.
 
-- [ ] **AC11 -- No accept-risk closure claimed**: GIVEN the commit
+- [x] **AC11 -- No accept-risk closure claimed**: GIVEN the commit
   message and any evidence document, WHEN inspected, THEN they
   explicitly do NOT claim closure of `S8-QA-001-W1`, `QA-COND-0005`,
   `QA-COND-0006`, `PAW-TD-*-a`, or any other accept-risk
   disposition. Standard-tier hit-target conformance (>=44 px) is
   NOT claimed; per-surface migration is NOT claimed; playtest
   validation is NOT claimed; final-art replacement is NOT claimed.
+  **VERDICT: PASS** — PROMPT 1102 worker commit message
+  `dev-story(s17): wire card-slot image/text inset + GlobalZIndex
+  (PROMPT 1102 S17-UI-CARD-SLOT-INSET-WIRING-001)` carries no
+  accept-risk closure language; `evidence.md` §"AC11" + §"Conditions
+  carried forward (UNCHANGED)" preserves `S8-QA-001-W1`,
+  `QA-COND-0005`, `QA-COND-0006`, `PAW-TD-*-a`, `TQ-S12-C1..C7`,
+  PROMPT 761 Polish→Release FAIL, `S11-HUD-TIMER-EYEBALL-VISUAL-001`
+  carry, all AUDIT-1076-* findings, all SOURCE-1077-* findings
+  outside SOURCE-1077-06, and the 24 PROMPT 1022 audit findings.
+  PROMPT 1106 integration report §"Non-claims" preserves the same.
 
-- [ ] **AC12 -- Sprint 17 disposition preserved**: GIVEN the
+- [x] **AC12 -- Sprint 17 disposition preserved**: GIVEN the
   implementation commit(s), WHEN
   `production/sprint-status.yaml`, `production/sprints/sprint-17.md`
   (and earlier sprint plans), `production/stage.txt`,
@@ -388,16 +478,38 @@ All criteria are independently checkable.
   `production/gate-checks/*`, and `docs/architecture/adr-*.md` are
   diffed, THEN none are modified by this story's `/dev-story`
   worker.
+  **VERDICT: PASS** — PROMPT 1102 worker + PROMPT 1106 integration
+  diffs touch only `client/src/ui/design_tokens/card_slot.rs`,
+  `tests/integration/ui_clean_pass/card_slot_primitive_test.rs`,
+  and the new
+  `production/qa/evidence/sprint-17-card-slot-inset-wiring/evidence.md`.
+  `production/sprint-status.yaml`, `production/sprints/sprint-17.md`,
+  `production/stage.txt`, `production/session-state/*`, the Sprint 17
+  QA plan, `production/qa/smoke-*.md`, `production/qa/team-qa-*.md`,
+  `production/gate-checks/*`, and `docs/architecture/adr-*.md` were
+  all preserved unchanged across worker + integration. PROMPT 1110
+  story-done paperwork is the first authorised modifier of
+  `production/sprint-status.yaml` + `production/session-state/*` for
+  this row.
 
-- [ ] **AC13 -- Worker branch scope contained**: GIVEN the worker
+- [x] **AC13 -- Worker branch scope contained**: GIVEN the worker
   branch (slug recommendation: `work/s17-card-slot-inset-wiring`),
   WHEN inspected, THEN it pushes only the worker branch — never
   `main`. Files changed at worker time are scoped to
   `client/src/ui/design_tokens/card_slot.rs`, optionally
   `docs/ux/global-ui-design-spec.md` (one-line addendum), and the
   new test assertions / bin under `tests/integration/ui_clean_pass/`.
+  **VERDICT: PASS** — PROMPT 1102 pushed branch
+  `work/s17-card-slot-inset-wiring` with worker commit
+  `55c0dab11ab7572e0cb88827c3ed5f3b241c0fe8`; the worker did NOT
+  push `main`. PROMPT 1106 integration was performed separately via
+  integration branch `integrate/s17-card-slot-inset-wiring-1106` ->
+  `30f166fb9b718bdb5a6a904da0d66cdcc9685f15`. The optional
+  `docs/ux/global-ui-design-spec.md` amendment was not authored
+  (scope kept tight; §12 reference already clear about the
+  primitive's child-positioning contract).
 
-- [ ] **AC14 -- Cargo resource policy applied for every Cargo
+- [x] **AC14 -- Cargo resource policy applied for every Cargo
   command**: future implementation MUST set the binding Cargo
   resource policy env vars (`CARGO_TARGET_DIR=
   D:\_DEV\cargo-target\ccgs-msvc`, `CARGO_PROFILE_DEV_DEBUG=0`,
@@ -407,6 +519,18 @@ All criteria are independently checkable.
   Disk preflight (~>= 50 GB free on D:) recorded in the worker's
   evidence file. Story authoring (PROMPT 1095) does NOT invoke
   Cargo.
+  **VERDICT: PASS-WORKER + ADVISORY-INTEGRATION** — PROMPT 1102
+  worker applied all 5 env vars before every Cargo invocation;
+  `cargo check -p client` Finished `dev` profile in 6.41s with
+  zero warnings; D: free space ~761.8 GB recorded in evidence.
+  PROMPT 1106 integration applied the same env-var block but the
+  first `cargo test` invocation built into the worktree-local
+  `target/` (env vars not applied on the first call due to
+  bash-shell `$env:` mangling); subsequent calls correctly routed
+  to `D:\_DEV\cargo-target\ccgs-msvc`. The build correctness gate
+  is unaffected (all 27/27 + 9/9 tests PASS). Recorded explicitly
+  here, not hidden as a product failure. PROMPT 1110 story-done
+  paperwork does NOT invoke Cargo.
 
 ---
 
@@ -535,13 +659,110 @@ where `N` is the prompt number that ran `/dev-story`.
 
 ---
 
+## Completion Notes (PROMPT 1110)
+
+PROMPT 1110 is the paperwork-only `/story-done` closure for
+`S17-UI-CARD-SLOT-INSET-WIRING-001` on the strength of:
+
+- **PROMPT 1102 worker** (`55c0dab11ab7572e0cb88827c3ed5f3b241c0fe8`):
+  two net-additive sibling builders extending the Sprint 16 PROMPT
+  1074 card-slot primitive to honour the geometry catalog's per-kind
+  image inset, text inset, and `z_layer`:
+  `card_slot_image_inset_node(kind) -> (Node, GlobalZIndex)` and
+  `card_slot_text_inset_node(kind) -> (Node, GlobalZIndex)`. Both
+  emit `PositionType::Absolute` `Node`s whose `left/right/top/bottom`
+  read verbatim from `card_slot_geometry(kind).{image_inset_px,
+  text_inset_px}` and a `GlobalZIndex` from
+  `card_slot_geometry(kind).z_layer`. `card_slot_node` body and
+  `card_slot_geometry` constants UNCHANGED; no consumer-surface
+  migration. Worker branch pushed
+  `origin/work/s17-card-slot-inset-wiring`. `cargo check -p client`
+  passed under Sprint 15+ Cargo resource policy (6.41s; zero
+  warnings); `cargo test -p client --test
+  ui_clean_pass_card_slot_primitive_test` Finished `27 passed; 0
+  failed`; `cargo test -p client --lib card_slot` Finished `9
+  passed; 0 failed`. Worker report:
+  `reports/PROMPT-1102-s17-card-slot-inset-wiring.md`.
+- **PROMPT 1106 integration** (`30f166fb9b718bdb5a6a904da0d66cdcc9685f15`):
+  no-ff merge onto `origin/main` via integration branch
+  `integrate/s17-card-slot-inset-wiring-1106`. `origin/main`
+  advanced from `ff47075` -> `dc8adb6` mid-integration (PROMPT 1107
+  server warn->debug landed in parallel; disjoint with this row's
+  client/test/qa-evidence diff); integration branch was reset to the
+  new `origin/main` and re-merged with no conflict. `git diff
+  --name-only origin/main..HEAD` returns exactly three paths
+  (`client/src/ui/design_tokens/card_slot.rs`,
+  `tests/integration/ui_clean_pass/card_slot_primitive_test.rs`,
+  and the new
+  `production/qa/evidence/sprint-17-card-slot-inset-wiring/evidence.md`).
+  `cargo check -p client` PASS; `cargo test -p client --test
+  ui_clean_pass_card_slot_primitive_test` PASS `27 passed; 0 failed`;
+  `cargo test -p client --lib card_slot` PASS `9 passed; 0 failed`.
+  `liv-bevy-018` review notes confirmed Bevy 0.18 idioms (Required
+  Components API; no deprecated `*Bundle`; no `unwrap()`; no
+  client-side RNG). Integration tip fast-forward pushed to `main`
+  (`dc8adb6..30f166f`). Integration report:
+  `reports/PROMPT-1106-s17-card-slot-inset-wiring-integration.md`.
+
+### PROMPT 1106 evidence-file trailing-whitespace advisory
+
+`production/qa/evidence/sprint-17-card-slot-inset-wiring/evidence.md`
+inherits two pre-existing trailing-whitespace lines from the PROMPT
+1102 source branch (lines 92 and 107, both inside a Markdown bullet:
+`...edges_match_geometry_per_kind` + trailing space). `git diff
+--check origin/main...HEAD` at integration flagged both. The
+condition is **inside a documentation artifact, not code**;
+integration did not introduce the whitespace; the source was already
+reviewed at PROMPT 1102. PROMPT 1106 explicitly recorded the
+condition as a non-blocking documentation artifact in the
+integration report §"Step 7" and did not rewrite the evidence file
+to preserve worker-authored provenance. PROMPT 1110 preserves this
+record verbatim and does NOT rewrite or strip the trailing
+whitespace from `evidence.md` (which is already on `origin/main` via
+PROMPT 1106 integration). The condition is surfaced explicitly here,
+in the `production/sprint-status.yaml` `sprint_17_story_done:`
+PROMPT 1110 entry, in the `production/session-state/active.md`
+PROMPT 1110 banner, and in the
+`production/session-state/codex-orchestrator-state.md` PROMPT 1110
+paragraph; it is not hidden.
+
+### Test Evidence
+
+- **Story type**: Logic (per `.claude/docs/coding-standards.md` "Test
+  Evidence by Story Type" matrix — BLOCKING gate satisfied by
+  automated unit + integration tests).
+- **Required evidence per matrix**: automated unit test (BLOCKING).
+- **Worker / integration evidence on `origin/main@30f166f`**:
+  - `client/src/ui/design_tokens/card_slot.rs` adds 3 new inline
+    `s17_*` tests in the `#[cfg(test)] mod tests` block (alongside
+    6 pre-existing inline tests; 9 total, all PASS).
+  - `tests/integration/ui_clean_pass/card_slot_primitive_test.rs`
+    adds 8 new `s17_*` integration tests (alongside 19 pre-existing
+    AC1..AC8 assertions; 27 total, all PASS).
+  - `production/qa/evidence/sprint-17-card-slot-inset-wiring/evidence.md`
+    documents shape extension strategy, files changed, AC1..AC14
+    verdicts with command output, Cargo resource policy applied
+    record, and conditions carried forward UNCHANGED.
+- **Worker + integration cargo gate**: both passed
+  (worker `cargo check -p client` 6.41s under policy; integration
+  `cargo check -p client` PASS with first-call Cargo resource policy
+  advisory noted in AC14 verdict).
+
+---
+
 ## Closure Trail
 
-Closure trail is appended to this story by the future
-`/story-readiness`, `/dev-story`, and `/story-done` prompts. No
-closure trail is authored by PROMPT 1095.
+| Prompt | Date | Source-of-truth | Commit | Disposition |
+|---|---|---|---|---|
+| PROMPT 1095 | 2026-05-18 | `origin/main@7d36191` | (authoring batch tip) | Story authored as Sprint 17 Should Have candidate |
+| PROMPT 1097 | 2026-05-18 | `origin/main@bc3db29` | (paperwork-only main integration tip) | Story file integrated to `origin/main` |
+| PROMPT 1099 | 2026-05-18 | `origin/main@cb62a9e` | (Sprint 17 activation tip) | Sprint 17 activated; this row included in 9-row active set as Should Have |
+| PROMPT 1100 | 2026-05-18 | `origin/main@ff47075` | (Sprint 17 QA plan tip) | Sprint 17 QA plan authored; this row classified as Logic (BLOCKING automated unit test gate) |
+| PROMPT 1102 | 2026-05-18 | `origin/main@ff47075` | `55c0dab` | `/dev-story` worker: two new sibling builders + 8 integration tests + 3 inline tests + evidence.md; cargo gate pass under policy |
+| PROMPT 1106 | 2026-05-18 | `origin/main@ff47075` → `30f166f` | `30f166f` | Integration: no-ff merge onto `origin/main`; cargo gate pass; trailing-whitespace advisory in evidence.md preserved as documentation artifact; fast-forward push |
+| PROMPT 1110 | 2026-05-18 | `origin/main@30f166f` | (this story-done paperwork commit) | `/story-done` paperwork closure: status Draft → Done; AC1..AC13 PASS; AC14 PASS-WORKER + ADVISORY-INTEGRATION |
 
-### Conditions carried forward unchanged (preserved by every prompt above)
+### Conditions carried forward unchanged
 
 - Sprint 16 disposition `closed-with-conditions` (UNCHANGED).
 - Sprint 17 stage `Polish` (UNCHANGED).
@@ -556,6 +777,9 @@ closure trail is authored by PROMPT 1095.
   blocked carry preserved; NOT closed by this row.
 - 24 PROMPT 1022 audit findings preserved as report-only; NOT
   closed by this row.
+- Per-surface migration of HAND / DRAFT-GRID / AUCTION-FEATURED /
+  BOARD-GHOST remains Sprint 17+ Backlog under the family
+  `S17-UI-CARD-SLOT-MIGRATION-*` (NOT migrated by this row).
 
 ### Explicitly NOT claimed by this story or its `/dev-story` worker
 
@@ -573,4 +797,4 @@ closure trail is authored by PROMPT 1095.
   two-client GAME_OVER closure; final-art completion;
   Polish->Release gate-check retry; stage advance.
 
-`018: S17-UI-CARD-SLOT-INSET-WIRING-001: DRAFT`
+`1110: S17-UI-CARD-SLOT-INSET-WIRING-001: DONE`
