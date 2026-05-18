@@ -186,6 +186,15 @@ path = "../tests/integration/hand-ui/hand_ui_drag_state_visuals_test.rs"
 name = "hand_card_stat_label_rendering_test"
 path = "../tests/integration/hand-ui/hand_card_stat_label_rendering_test.rs"
 
+# PROMPT 1086 — Client placement perspective + submit feedback repair.
+# Pins `apply_placement_board_view_from_snapshot_system` so the
+# click-to-stage default target follows the local player's perspective:
+# Player B (team 1) lands on cell 8, Player A (team 0) lands on cell 1,
+# matching the server's per-player spawn-cell rules.
+[[test]]
+name = "hand_ui_placement_perspective_snapshot_test"
+path = "../tests/integration/hand-ui/placement_perspective_snapshot_test.rs"
+
 [[test]]
 name = "hud_phase_label_round_counter_test"
 path = "../tests/unit/hud/phase_label_round_counter_test.rs"

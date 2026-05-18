@@ -22,6 +22,7 @@ use crate::asset_wiring::{
 use crate::card_animations::{
     cancel_tween_anim_in_place, make_tween_anim, replace_tweenable, HandCard, HandDragSprite,
 };
+use crate::presentation::board_rendering::PlayerTeamMap;
 use crate::presentation::{PlayerEconomyView, PresentationGameSnapshotMessage};
 use crate::state::{ClientPhaseView, ClientState, CurrentClientPhase};
 use crate::ui::design_tokens::{spacing, strips, typography, z_layers};
@@ -897,6 +898,15 @@ impl Plugin for HandUiPlugin {
             .init_resource::<PendingPlacements>()
             .init_resource::<PlacementTimer>()
             .init_resource::<PlacementBoardView>()
+            // PROMPT 1086: PlacementBoardView is now driven from
+            // PresentationGameSnapshotMessage + PlayerTeamMap inside
+            // `apply_placement_board_view_from_snapshot_system`. The team
+            // map is owned by BoardRenderingPlugin, but Bevy resource
+            // init is idempotent so we mirror the registration here to
+            // keep test apps built on `MinimalPlugins + HandUiPlugin`
+            // self-contained (see PROMPT 735 pattern for the cross-plugin
+            // message-registration analogue).
+            .init_resource::<PlayerTeamMap>()
             .init_resource::<ActivePlacementDrag>()
             .init_resource::<ActiveGhostUnstageDrag>()
             .init_resource::<PlacementDisclosureState>()
@@ -945,6 +955,7 @@ impl Plugin for HandUiPlugin {
                     hand_ui_phase_transition_system.in_set(HandUiSystemSet::PhaseTransition),
                     (
                         handle_game_snapshot_system,
+                        apply_placement_board_view_from_snapshot_system,
                         handle_draft_offering_system,
                         handle_card_acquired_system,
                         handle_ghost_clicked_unstage_system,
@@ -1753,6 +1764,90 @@ pub fn handle_game_snapshot_system(
             source = "game_snapshot",
             "hand_ui_hand_contents_set",
         );
+    }
+}
+
+// PROMPT 1086 — Update PlacementBoardView from each snapshot so the
+// click-to-stage default target (and any other consumer of
+// PlacementBoardView) reflects the local player's actual perspective.
+//
+// Before this system existed, PlacementBoardView stayed pinned to its
+// Default value (local_player_id=1, spawn_edge=LowCells, range=1), which
+// caused `default_click_stage_target` to always emit
+// `BoardCell { lane: 1, cell: 1 }` — even for Player B, whose server-side
+// spawn cell is 8. The server correctly rejects those placements
+// (PROMPT 1079 / 1084), but the user sees a card stage at the wrong
+// cell and no actionable feedback. See AUDIT-1076-09 and PROMPT 1079
+// residual risk #2.
+pub fn apply_placement_board_view_from_snapshot_system(
+    mut snapshots: MessageReader<PresentationGameSnapshotMessage>,
+    player_team_map: Res<PlayerTeamMap>,
+    mut board_view: ResMut<PlacementBoardView>,
+) {
+    for snapshot in snapshots.read().map(|message| &message.0) {
+        let local_player_id = snapshot.recipient_player_id;
+        let Some(local_snapshot) = snapshot
+            .players
+            .iter()
+            .find(|player| player.player_id == local_player_id)
+        else {
+            continue;
+        };
+
+        let opponent_player_id = snapshot
+            .players
+            .iter()
+            .map(|player| player.player_id)
+            .find(|player_id| *player_id != local_player_id)
+            .unwrap_or(board_view.opponent_player_id);
+
+        let spawn_edge = spawn_edge_for_local_player(local_player_id, &player_team_map);
+        let spawn_range_cells = local_snapshot.spawn_range_cells;
+
+        let next = PlacementBoardView {
+            local_player_id,
+            opponent_player_id,
+            spawn_edge,
+            spawn_range_cells,
+        };
+
+        if *board_view != next {
+            tracing::info!(
+                target: "client::ui::hand::placement_board_view",
+                local_player_id = ?next.local_player_id,
+                opponent_player_id = ?next.opponent_player_id,
+                spawn_edge = ?next.spawn_edge,
+                spawn_range_cells = next.spawn_range_cells,
+                source = "game_snapshot",
+                "placement_board_view_updated"
+            );
+            *board_view = next;
+        }
+    }
+}
+
+fn spawn_edge_for_local_player(
+    local_player_id: PlayerId,
+    player_team_map: &PlayerTeamMap,
+) -> BoardSpawnEdge {
+    // Mirrors `presentation::board_rendering::spawn_range_edge_for_player`
+    // for the local player: team 0 spawns from the low-cell edge, every
+    // other team spawns from the high-cell edge. When the team map is not
+    // yet populated, fall back to the historical Player A convention
+    // (PlayerId(1) == LowCells) so behaviour matches the existing
+    // assumption rather than silently flipping.
+    if let Some(team) = player_team_map.team_for(local_player_id) {
+        return if team == 0 {
+            BoardSpawnEdge::LowCells
+        } else {
+            BoardSpawnEdge::HighCells
+        };
+    }
+
+    if local_player_id == PlayerId(1) {
+        BoardSpawnEdge::LowCells
+    } else {
+        BoardSpawnEdge::HighCells
     }
 }
 
