@@ -35,11 +35,54 @@ fn hu_25_plus_increments_to_ceiling_then_disabled_clicks_do_nothing() {
     click_reserve_button(&mut app, 0, ReserveStripAction::Increment);
     assert_eq!(reserve_amount(&app, CardId(10)), 3);
     assert!(button_disabled(&mut app, 0, ReserveStripAction::Increment));
-    assert_eq!(reserve_text(&mut app, 0), "Reserve 3 Current 2");
+    // PROMPT 1175: bare reserve allocation only — no "Reserve" / "Current"
+    // wording. AUDIT-1076-17 regression: the verbose microbadge duplicated
+    // the canonical HUD `MANA n / N` strip and is now removed.
+    assert_eq!(reserve_text(&mut app, 0), "3");
+    assert_no_reserve_strip_microbadge_wording(&mut app);
 
     click_reserve_button(&mut app, 0, ReserveStripAction::Increment);
     assert_eq!(reserve_amount(&app, CardId(10)), 3);
     assert!(button_disabled(&mut app, 0, ReserveStripAction::Increment));
+}
+
+#[test]
+fn audit_1076_17_reserve_strip_text_has_no_reserve_or_current_wording_when_staged() {
+    // PROMPT 1175 / AUDIT-1076-17 regression: the per-staged-card reserve
+    // strip value text must never contain the words "Reserve" or "Current"
+    // (the old verbose form duplicated the canonical HUD `MANA n / N`
+    // strip). This regression covers both the no-card path (cost = 0) and
+    // the staged-card path (cost > 0, several increment clicks).
+    let mut app = app_with_hand_ui_in_placement(test_catalog([(CardId(70), 4)]), 3);
+    set_hand(&mut app, [CardId(70)]);
+
+    // No card staged yet — value text is empty (no microbadge wording).
+    assert_no_reserve_strip_microbadge_wording(&mut app);
+
+    stage_card(
+        &mut app,
+        0,
+        PlayerId(7),
+        PlayTarget::BoardCell { lane: 1, cell: 1 },
+    );
+    assert_no_reserve_strip_microbadge_wording(&mut app);
+
+    click_reserve_button(&mut app, 0, ReserveStripAction::Increment);
+    click_reserve_button(&mut app, 0, ReserveStripAction::Increment);
+    assert_no_reserve_strip_microbadge_wording(&mut app);
+    assert_eq!(reserve_text(&mut app, 0), "2");
+}
+
+fn assert_no_reserve_strip_microbadge_wording(app: &mut App) {
+    let mut query = app.world_mut().query::<(&ReserveStripValueText, &Text)>();
+    for (value_slot, text) in query.iter(app.world()) {
+        assert!(
+            !text.0.contains("Reserve") && !text.0.contains("Current"),
+            "reserve strip value text for slot {} must not contain \"Reserve\" or \"Current\" (got {:?}); duplicates HUD MANA strip (AUDIT-1076-17)",
+            value_slot.0,
+            text.0,
+        );
+    }
 }
 
 #[test]

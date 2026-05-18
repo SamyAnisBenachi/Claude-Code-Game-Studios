@@ -3735,11 +3735,20 @@ fn spawn_reserve_strip(commands: &mut Commands, fan_root: Entity, slot_index: u8
         0.0,
     );
 
+    // PROMPT 1175 (S17-HAND-RESERVE-STRIP-MICROBADGE-CLEANUP / AUDIT-1076-17
+    // AC3 carry-forward): the per-staged-card reserve allocation text used to
+    // read "Reserve N Current N", which duplicated the canonical HUD
+    // `MANA n / N` strip. It now spawns empty and is populated by
+    // `set_reserve_value_text` with a bare reserve-mana-spend integer
+    // (e.g. `"2"`) when a card is staged. The bare integer is not a
+    // duplicate of the HUD mana strip — that strip shows the player's
+    // current/cap mana pool; this number is the editable per-card reserve
+    // allocation driven by the adjacent `-` / `+` buttons.
     commands.spawn((
         Name::new(format!("Hand UI Reserve Strip Value {slot_index}")),
         HandUiEntity,
         ReserveStripValueText(slot_index),
-        Text::new("Reserve 0 Current 0"),
+        Text::new(""),
         reserve_strip_child_node(28.0, 124.0),
         Visibility::Inherited,
         ChildOf(strip),
@@ -4311,15 +4320,18 @@ fn set_reserve_value_text(
     value_texts: &mut Query<(&ReserveStripValueText, &mut Text)>,
     slot_index: u8,
     reserve_amount: u32,
-    current_amount: u32,
+    _current_amount: u32,
     cost: u32,
 ) {
+    // PROMPT 1175: bare reserve allocation only. No "Reserve" / "Current"
+    // wording — that read as a second mana display and duplicated the HUD
+    // `MANA n / N` strip (AUDIT-1076-17). Empty when no card is staged.
     for (value_slot, mut text) in value_texts.iter_mut() {
         if value_slot.0 == slot_index {
             if cost == 0 {
-                text.0 = "Reserve 0 Current 0".to_string();
+                text.0.clear();
             } else {
-                text.0 = format!("Reserve {reserve_amount} Current {current_amount}");
+                text.0 = reserve_amount.to_string();
             }
         }
     }

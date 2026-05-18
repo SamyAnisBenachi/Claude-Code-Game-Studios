@@ -161,7 +161,11 @@ fn a11y_st_14_valid_stage_reveals_staged_guidance_and_split_text() {
         app.world().get::<Visibility>(strip),
         Some(&Visibility::Visible)
     );
-    assert_eq!(reserve_text(&mut app, 0), "Reserve 0 Current 3");
+    // PROMPT 1175 / AUDIT-1076-17: the per-staged-card reserve strip text is
+    // now the bare reserve allocation integer (no "Reserve" / "Current"
+    // wording); after staging with no increments the allocation is 0.
+    assert_eq!(reserve_text(&mut app, 0), "0");
+    assert_no_reserve_strip_microbadge_wording(&mut app);
 }
 
 #[test]
@@ -223,7 +227,11 @@ fn a11y_st_14_submit_correction_keeps_player_in_disclosure_flow() {
 
     click_reserve_button(&mut app, 0, ReserveStripAction::Increment);
     click_reserve_button(&mut app, 0, ReserveStripAction::Increment);
-    assert_eq!(reserve_text(&mut app, 0), "Reserve 2 Current 0");
+    // PROMPT 1175 / AUDIT-1076-17: reserve strip text is the bare reserve
+    // allocation integer; the verbose "Reserve N Current N" microbadge that
+    // duplicated the HUD `MANA n / N` strip is gone.
+    assert_eq!(reserve_text(&mut app, 0), "2");
+    assert_no_reserve_strip_microbadge_wording(&mut app);
     assert_eq!(submit_error(&mut app), None);
 
     click_submit(&mut app);
@@ -409,6 +417,21 @@ fn reserve_text(app: &mut App, slot_index: u8) -> String {
         .iter(app.world())
         .find_map(|(value_slot, text)| (value_slot.0 == slot_index).then_some(text.0.clone()))
         .expect("reserve strip value text should exist")
+}
+
+// PROMPT 1175 / AUDIT-1076-17 regression helper: the per-staged-card reserve
+// strip text must never contain "Reserve" or "Current" wording — those
+// duplicated the canonical HUD `MANA n / N` strip.
+fn assert_no_reserve_strip_microbadge_wording(app: &mut App) {
+    let mut query = app.world_mut().query::<(&ReserveStripValueText, &Text)>();
+    for (value_slot, text) in query.iter(app.world()) {
+        assert!(
+            !text.0.contains("Reserve") && !text.0.contains("Current"),
+            "reserve strip value text for slot {} must not contain \"Reserve\" or \"Current\" (got {:?}); duplicates HUD MANA strip (AUDIT-1076-17)",
+            value_slot.0,
+            text.0,
+        );
+    }
 }
 
 fn highlighted_lane_cells(app: &mut App) -> BTreeSet<(u8, u8)> {
