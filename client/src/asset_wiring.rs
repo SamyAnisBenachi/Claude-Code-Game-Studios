@@ -77,13 +77,22 @@ pub const BOARD_UNIT_NEUTRAL_ASSET: &str = "art/characters/ui_class_neutral_unit
 pub const BOARD_CHROME_ASSET: &str = "art/board/env_board_chrome_default.png";
 
 // ── Lobby ─────────────────────────────────────────────────────────────────────
-pub const LOBBY_PORTRAIT_IOP_ASSET: &str = "art/ui/lobby/ui_class_portrait_iop.png";
-pub const LOBBY_PORTRAIT_CRA_ASSET: &str = "art/ui/lobby/ui_class_portrait_cra.png";
-pub const LOBBY_PORTRAIT_SACRIER_ASSET: &str = "art/ui/lobby/ui_class_portrait_sacrier.png";
-pub const LOBBY_PORTRAIT_XELOR_ASSET: &str = "art/ui/lobby/ui_class_portrait_xelor.png";
-pub const LOBBY_PORTRAIT_ECAFLIP_ASSET: &str = "art/ui/lobby/ui_class_portrait_ecaflip.png";
-pub const LOBBY_PORTRAIT_SADIDA_ASSET: &str = "art/ui/lobby/ui_class_portrait_sadida.png";
-pub const LOBBY_PORTRAIT_NEUTRAL_ASSET: &str = "art/ui/lobby/ui_class_portrait_neutral.png";
+// PROMPT 1081 — Class-specific stand-in.
+// The canonical `art/ui/lobby/ui_class_portrait_{class}.png` files on disk are
+// all byte-identical placeholders (one shared MD5 across all 7 classes),
+// rendering as a generic `?` glyph in every lobby tile (AUDIT-1076-06).
+// Repoint each portrait to the class-specific frame in `art/ui/hand/` —
+// verified all-different MD5s — so the picker shows class-distinct art until
+// real per-class portraits are authored.
+// **Asset gap**: real per-class portraits at `art/ui/lobby/ui_class_portrait_*.png`
+// are still placeholders; reported in PROMPT 1081 final report.
+pub const LOBBY_PORTRAIT_IOP_ASSET: &str = "art/ui/hand/card_frame_iop_default_display.png";
+pub const LOBBY_PORTRAIT_CRA_ASSET: &str = "art/ui/hand/card_frame_cra_default_display.png";
+pub const LOBBY_PORTRAIT_SACRIER_ASSET: &str = "art/ui/hand/card_frame_sacrier_default_display.png";
+pub const LOBBY_PORTRAIT_XELOR_ASSET: &str = "art/ui/hand/card_frame_xelor_default_display.png";
+pub const LOBBY_PORTRAIT_ECAFLIP_ASSET: &str = "art/ui/hand/card_frame_ecaflip_default_display.png";
+pub const LOBBY_PORTRAIT_SADIDA_ASSET: &str = "art/ui/hand/card_frame_sadida_default_display.png";
+pub const LOBBY_PORTRAIT_NEUTRAL_ASSET: &str = "art/ui/hand/card_frame_neutral_default_display.png";
 
 pub const LOBBY_PLAYER_SLOT_PANEL_ASSET: &str = "art/ui/lobby/ui_player_slot_panel.png";
 pub const LOBBY_ROOM_CODE_CHIP_ASSET: &str = "art/ui/lobby/ui_room_code_chip.png";

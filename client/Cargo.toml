@@ -442,6 +442,15 @@ path = "../tests/integration/playable_client/lobby_button_dimensions_test.rs"
 name = "playable_client_lobby_confirm_button_reachable_test"
 path = "../tests/integration/playable_client/lobby_confirm_button_reachable_test.rs"
 
+# PROMPT 1081 — guards the lobby Confirm CTA against the AUDIT-1076-07
+# regression where the button rendered as a dim text band rather than a
+# real primary-action button. The test asserts seven distinct visual
+# states, the state-precedence ordering, and that the per-frame refresh
+# repaints the CTA when a session arrives.
+[[test]]
+name = "playable_client_lobby_confirm_button_stateful_style_test"
+path = "../tests/integration/playable_client/lobby_confirm_button_stateful_style_test.rs"
+
 [[test]]
 name = "playable_client_phase_changed_idempotency_test"
 path = "../tests/integration/playable_client/phase_changed_idempotency_test.rs"
@@ -581,6 +590,15 @@ path = "../tests/integration/presentation/hud_asset_wiring_test.rs"
 [[test]]
 name = "lobby_asset_wiring_test"
 path = "../tests/integration/presentation/lobby_asset_wiring_test.rs"
+
+# PROMPT 1081 — guards the lobby class picker against the AUDIT-1076-06
+# regression where every class tile rendered the same `?` placeholder
+# because all 7 `art/ui/lobby/ui_class_portrait_*.png` files were
+# byte-identical. The test asserts unique paths, on-disk existence, and
+# SHA-256-distinct content across all 7 class portraits.
+[[test]]
+name = "lobby_portrait_distinct_classes_test"
+path = "../tests/integration/presentation/lobby_portrait_distinct_classes_test.rs"
 
 [[test]]
 name = "lobby_chrome_wiring_test"
