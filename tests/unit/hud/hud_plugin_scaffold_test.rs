@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use bevy::state::app::StatesPlugin;
 use client::state::ClientState;
 use client::ui::hud::{
-    GoldDisplayState, HudConfig, HudEntities, HudEntity, HudPlugin, HudRoot, HudTimerBar,
+    GoldDisplayState, HudConfig, HudEntities, HudEntity, HudPlugin, HudRoot, HudTimerCountdown,
     ScoreboardDot, HUD_ENTITY_COUNT,
 };
 
@@ -56,11 +56,30 @@ fn hud_root_starts_hidden_before_any_phase_message() {
 }
 
 #[test]
-fn hud_entities_never_contain_timer_components_or_timer_text() {
+fn hud_pre_pools_a_phase_timer_countdown_entity_hidden_until_active() {
+    // S18-UI-HUD-OPP-CLASS-TIMER-SCOREBOARD-REPAIR (PROMPT 1139,
+    // UI-1129-06) — successor to the deleted
+    // `hud_entities_never_contain_timer_components_or_timer_text`
+    // assertion (which forbade a numeric timer text on the HUD). The
+    // new contract requires exactly one `HudTimerCountdown` entity
+    // pre-pooled at session entry, spawned hidden because no
+    // `S2CPhaseChanged` has fired yet.
     let mut app = app_with_hud_in_session();
 
-    assert_eq!(count_hud_timer_named_entities(&mut app), 0);
-    assert!(!hud_text_contains_timer_value(&mut app));
+    let entities = *app.world().resource::<HudEntities>();
+    assert_eq!(count_with::<HudTimerCountdown>(&mut app), 1);
+    assert_eq!(
+        app.world().get::<Visibility>(entities.timer_countdown),
+        Some(&Visibility::Hidden),
+        "pre-pooled countdown must start hidden — visibility is gated by PhaseTimerState",
+    );
+    assert_eq!(
+        app.world()
+            .get::<Text>(entities.timer_countdown)
+            .map(|t| t.0.as_str()),
+        Some(""),
+        "pre-pooled countdown must start with empty text",
+    );
 }
 
 fn app_with_hud_in_session() -> App {
@@ -81,54 +100,4 @@ fn app_with_hud_in_session() -> App {
 fn count_with<T: Component>(app: &mut App) -> usize {
     let mut query = app.world_mut().query_filtered::<Entity, With<T>>();
     query.iter(app.world()).count()
-}
-
-fn count_hud_timer_named_entities(app: &mut App) -> usize {
-    let mut query = app
-        .world_mut()
-        .query_filtered::<&Name, (With<HudEntity>, With<Name>, Without<HudTimerBar>)>();
-    query
-        .iter(app.world())
-        .filter(|name| name.to_string().to_ascii_lowercase().contains("timer"))
-        .count()
-}
-
-fn hud_text_contains_timer_value(app: &mut App) -> bool {
-    let mut text_query = app
-        .world_mut()
-        .query_filtered::<&Text, (With<HudEntity>, With<Text>)>();
-    if text_query
-        .iter(app.world())
-        .any(|text| contains_timer_value(&text.0))
-    {
-        return true;
-    }
-
-    let mut span_query = app
-        .world_mut()
-        .query_filtered::<&TextSpan, (With<HudEntity>, With<TextSpan>)>();
-    span_query
-        .iter(app.world())
-        .any(|span| contains_timer_value(&span.0))
-}
-
-fn contains_timer_value(value: &str) -> bool {
-    for (index, character) in value.char_indices() {
-        if !character.is_ascii_digit() {
-            continue;
-        }
-
-        let suffix_start = index
-            + value[index..]
-                .chars()
-                .take_while(char::is_ascii_digit)
-                .map(char::len_utf8)
-                .sum::<usize>();
-        let suffix = &value[suffix_start..];
-        if suffix.starts_with("ms") || suffix.starts_with("sec") || suffix.starts_with('s') {
-            return true;
-        }
-    }
-
-    false
 }

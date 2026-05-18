@@ -45,8 +45,8 @@ use bevy::prelude::*;
 
 use client::presentation::qa_snapshot::{
     build_snapshot, QASnapshotConfig, ScreenshotInfo, UiCountQueries, UiCounts,
-    QA_SCREENSHOT_FILENAME, QA_SCREENSHOT_FORMAT, QA_SNAPSHOT_ENV_VAR, QA_SNAPSHOT_PRE_SESSION_PREFIX,
-    SCREENSHOT_STATUS_PENDING,
+    QA_SCREENSHOT_FILENAME, QA_SCREENSHOT_FORMAT, QA_SNAPSHOT_ENV_VAR,
+    QA_SNAPSHOT_PRE_SESSION_PREFIX, SCREENSHOT_STATUS_PENDING,
 };
 use client::state::ClientSessionIdentity;
 use client::ui::hand::{HandBarRoot, HandDraftGridSlotRoot, HandFanRoot, PlacementActionPanelRoot};
@@ -91,18 +91,12 @@ fn each_per_sub_surface_marker_with_visible_visibility_contributes_to_count() {
     world.spawn((HandFanRoot, Visibility::Visible));
     world.spawn((HandDraftGridSlotRoot, Visibility::Visible));
     world.spawn((PlacementActionPanelRoot, Visibility::Visible));
-    world.spawn((
-        ShopAuctionPanelRoot::DraftOffering,
-        Visibility::Visible,
-    ));
+    world.spawn((ShopAuctionPanelRoot::DraftOffering, Visibility::Visible));
     world.spawn((ShopAuctionPanelRoot::Shop, Visibility::Visible));
     world.spawn((ShopAuctionPanelRoot::Auction, Visibility::Visible));
     world.spawn((ShopAuctionPanelRoot::ShopFooter, Visibility::Visible));
     world.spawn((ShopAuctionPanelRoot::Toast, Visibility::Visible));
-    world.spawn((
-        ShopAuctionPanelRoot::SettlementOverlay,
-        Visibility::Visible,
-    ));
+    world.spawn((ShopAuctionPanelRoot::SettlementOverlay, Visibility::Visible));
 
     let counts = run_ui_count_snapshot(world);
 
@@ -166,10 +160,7 @@ fn hidden_visibility_excludes_marker_from_per_sub_surface_counts() {
     world.spawn((ShopAuctionPanelRoot::Auction, Visibility::Hidden));
     world.spawn((ShopAuctionPanelRoot::ShopFooter, Visibility::Hidden));
     world.spawn((ShopAuctionPanelRoot::Toast, Visibility::Hidden));
-    world.spawn((
-        ShopAuctionPanelRoot::SettlementOverlay,
-        Visibility::Hidden,
-    ));
+    world.spawn((ShopAuctionPanelRoot::SettlementOverlay, Visibility::Hidden));
 
     let counts = run_ui_count_snapshot(world);
 
@@ -223,7 +214,9 @@ fn connection_lost_overlay_visible_honours_own_visibility() {
     app.add_plugins(MinimalPlugins);
     let world = app.world_mut();
 
-    let root = world.spawn((ConnectionLostOverlayRoot, Visibility::Hidden)).id();
+    let root = world
+        .spawn((ConnectionLostOverlayRoot, Visibility::Hidden))
+        .id();
 
     let counts_hidden = run_ui_count_snapshot(world);
     assert_eq!(
@@ -405,7 +398,10 @@ fn legacy_universal_counts_remain_populated_alongside_new_fields() {
 
     let counts = run_ui_count_snapshot(world);
 
-    assert_eq!(counts.hud_entities, 2, "legacy hud_entities must reflect spawned-tree size");
+    assert_eq!(
+        counts.hud_entities, 2,
+        "legacy hud_entities must reflect spawned-tree size"
+    );
     assert_eq!(counts.hand_ui_entities, 3);
     assert_eq!(counts.shop_auction_entities, 1);
     assert_eq!(counts.hud_top_strip_visible, 1);

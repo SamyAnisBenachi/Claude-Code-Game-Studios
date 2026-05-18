@@ -2,7 +2,10 @@ use bevy::prelude::*;
 use bevy::state::app::StatesPlugin;
 use bevy_tweening::TweenAnim;
 use client::{
-    state::{apply_phase_changed_message, ClientState, CurrentClientPhase},
+    state::{
+        apply_phase_changed_message, apply_phase_view_message, ClientPhaseView, ClientState,
+        CurrentClientPhase,
+    },
     ui::hud::{HudEntities, HudEntity, HudPlugin},
 };
 use shared::protocol::{RoundPhase, S2CPhaseChanged};
@@ -10,9 +13,13 @@ use shared::protocol::{RoundPhase, S2CPhaseChanged};
 #[test]
 fn phase_label_strings_match_all_visible_round_phases() {
     let mut app = app_with_hud_in_session();
+    // S18-UI-HUD-OPP-CLASS-TIMER-SCOREBOARD-REPAIR (PROMPT 1139,
+    // UI-1129-18 / AUDIT-1131-12) — `DraftShop` now reads as
+    // `DRAFT SHOP` (was the ambiguous `DRAFT`), disambiguating it from
+    // `DRAFT INITIAL` in the top strip.
     let cases = [
         (RoundPhase::DraftInitial, "DRAFT INITIAL"),
-        (RoundPhase::DraftShop, "DRAFT"),
+        (RoundPhase::DraftShop, "DRAFT SHOP"),
         (RoundPhase::DraftAuction, "AUCTION"),
         (RoundPhase::Placement, "PLACEMENT"),
         (RoundPhase::Resolution, "RESOLUTION"),
@@ -90,18 +97,37 @@ fn lobby_phase_does_not_overwrite_last_visible_label() {
 }
 
 #[test]
-fn phase_change_timer_duration_is_discarded_from_hud_text() {
+fn phase_change_timer_duration_appears_as_countdown_seconds() {
+    // S18-UI-HUD-OPP-CLASS-TIMER-SCOREBOARD-REPAIR (PROMPT 1139,
+    // UI-1129-06) — successor to the deleted
+    // `phase_change_timer_duration_is_discarded_from_hud_text`. The
+    // numeric remaining-seconds readout is now a first-class HUD
+    // surface; raw millisecond literals must NOT leak, but the
+    // seconds-rounded readout (`"60s"`) MUST be present on the
+    // pre-pooled `HudTimerCountdown` entity once a phase change
+    // publishes a non-zero `timer_duration_ms`.
     let mut app = app_with_hud_in_session();
 
     set_phase(&mut app, RoundPhase::Placement, 3, 60_000);
     app.update();
 
-    assert!(!hud_text_contains(&mut app, "60000"));
-    assert!(!hud_text_contains(&mut app, "60s"));
-    assert!(!hud_text_contains(&mut app, "60 sec"));
+    assert!(
+        !hud_text_contains(&mut app, "60000"),
+        "raw millisecond literal must NOT leak into HUD text"
+    );
     let entities = hud_entities(&app);
     assert_eq!(text(&app, entities.phase_label), "PLACEMENT");
     assert_eq!(text(&app, entities.round_counter), "R3");
+    assert_eq!(
+        text(&app, entities.timer_countdown),
+        "60s",
+        "countdown text must reflect the rounded remaining seconds for the phase",
+    );
+    assert_eq!(
+        app.world().get::<Visibility>(entities.timer_countdown),
+        Some(&Visibility::Visible),
+        "countdown must be visible once the phase publishes a non-zero duration",
+    );
 }
 
 fn app_with_hud_in_session() -> App {
@@ -119,15 +145,32 @@ fn app_with_hud_in_session() -> App {
 }
 
 fn set_phase(app: &mut App, phase: RoundPhase, round_number: u32, timer_duration_ms: u32) {
-    let mut current = app.world_mut().resource_mut::<CurrentClientPhase>();
-    apply_phase_changed_message(
-        S2CPhaseChanged {
-            phase,
-            round_number,
-            timer_duration_ms,
-        },
-        &mut current,
-    );
+    let msg = S2CPhaseChanged {
+        phase,
+        round_number,
+        timer_duration_ms,
+    };
+    {
+        let mut current = app.world_mut().resource_mut::<CurrentClientPhase>();
+        // `apply_phase_changed_message` takes the message by value; clone
+        // here so the view-side reducer (which borrows) can still see
+        // the same payload.
+        apply_phase_changed_message(
+            S2CPhaseChanged {
+                phase: msg.phase,
+                round_number: msg.round_number,
+                timer_duration_ms: msg.timer_duration_ms,
+            },
+            &mut current,
+        );
+    }
+    // PROMPT 1139 (UI-1129-06): the numeric countdown reads from
+    // `ClientPhaseView.timer_duration_ms`, so the fixture must update
+    // both phase resources to keep the countdown coverage realistic.
+    {
+        let mut phase_view = app.world_mut().resource_mut::<ClientPhaseView>();
+        apply_phase_view_message(&msg, &mut phase_view);
+    }
 }
 
 fn hud_entities(app: &App) -> HudEntities {

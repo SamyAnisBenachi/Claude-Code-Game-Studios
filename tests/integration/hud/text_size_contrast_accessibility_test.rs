@@ -35,9 +35,11 @@ fn test_hud_accessibility_fixture_meets_text_size_floors_and_contrast() {
     assert_eq!(text(&app, entities.phase_label), "AUCTION");
     assert_eq!(text(&app, entities.round_counter), "R9");
     assert_eq!(text(&app, entities.own_gold_parent), "11g");
-    assert_eq!(text(&app, entities.own_gold_span), " (4r)");
+    // PROMPT 1139 (UI-1129-15): the reserve-gold span now reads
+    // `(+N reserve)` instead of the bare `(Nr)` short-hand.
+    assert_eq!(text(&app, entities.own_gold_span), " (+4 reserve)");
     assert_eq!(text(&app, entities.opponent_gold_parent), "8g");
-    assert_eq!(text(&app, entities.opponent_gold_span), " (3r)");
+    assert_eq!(text(&app, entities.opponent_gold_span), " (+3 reserve)");
     assert_eq!(text(&app, entities.mana_label), "6 / 10");
     assert_eq!(text(&app, entities.reserve_label), "+2 reserve");
 

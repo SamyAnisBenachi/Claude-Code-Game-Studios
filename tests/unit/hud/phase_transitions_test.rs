@@ -52,7 +52,9 @@ fn resolution_to_draft_shop_uses_basic_gold_format() {
 
     let entities = hud_entities(&app);
     assert_eq!(app.world().resource::<HudMode>(), &HudMode::EconomyBasic);
-    assert_eq!(text(&app, entities.phase_label), "DRAFT");
+    // PROMPT 1139 (UI-1129-18): DraftShop now reads `DRAFT SHOP` to
+    // disambiguate from `DRAFT INITIAL`.
+    assert_eq!(text(&app, entities.phase_label), "DRAFT SHOP");
     assert_eq!(text(&app, entities.own_gold_parent), "11g");
     assert_eq!(text(&app, entities.own_gold_span), "");
     assert_eq!(text(&app, entities.opponent_gold_parent), "8g");

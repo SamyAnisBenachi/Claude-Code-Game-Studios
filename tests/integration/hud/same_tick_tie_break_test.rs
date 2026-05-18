@@ -55,7 +55,7 @@ fn same_tick_own_broadcast_gold_is_ignored_while_reserved_gold_updates() {
     assert_eq!(own_gold.gold, 15.0);
     assert_eq!(own_gold.reserved_gold, 5.0);
     assert_eq!(text(&app, entities.own_gold_parent), "15g");
-    assert_eq!(text(&app, entities.own_gold_span), " (5r)");
+    assert_eq!(text(&app, entities.own_gold_span), " (+5 reserve)");
 }
 
 #[test]

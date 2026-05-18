@@ -103,9 +103,15 @@ fn ac1_ac3_opponent_figurine_is_prepooled_and_exposed() {
     let entities = hud_entities(&app);
 
     assert_eq!(count_with::<HudEntity>(&mut app), HUD_ENTITY_COUNT);
+    // S18-UI-HUD-OPP-CLASS-TIMER-SCOREBOARD-REPAIR (PROMPT 1139,
+    // UI-1129-06): the entity count bumped from 23 → 24 with the
+    // addition of the `HudTimerCountdown` numeric readout. The Sprint
+    // 14 opponent-figurine row still owns the +1 entry that drove the
+    // 22 → 23 step; this assertion is updated to track the new 24
+    // ceiling so the figurine and countdown invariants compose.
     assert_eq!(
-        HUD_ENTITY_COUNT, 23,
-        "opponent figurine story must bump the pre-pooled HUD entity count to 23"
+        HUD_ENTITY_COUNT, 24,
+        "post-S18-HUD-OPP-CLASS-TIMER-SCOREBOARD-REPAIR invariant: HUD_ENTITY_COUNT must be 24 (S14 opponent figurine 23 + PROMPT 1139 numeric countdown 1)"
     );
     assert_eq!(
         count_with::<HudFigurine>(&mut app),

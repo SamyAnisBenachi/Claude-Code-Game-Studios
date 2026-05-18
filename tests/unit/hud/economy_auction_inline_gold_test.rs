@@ -33,10 +33,11 @@ fn draft_auction_entry_formats_both_gold_labels_inline_reserved_zero() {
     assert_eq!(app.world().resource::<HudMode>(), &HudMode::EconomyAuction);
     assert_eq!(text(&app, entities.phase_label), "AUCTION");
     assert_eq!(text(&app, entities.round_counter), "R3");
+    // PROMPT 1139 (UI-1129-15): reserve-gold span reads `(+N reserve)`.
     assert_eq!(text(&app, entities.own_gold_parent), "11g");
-    assert_eq!(text(&app, entities.own_gold_span), " (0r)");
+    assert_eq!(text(&app, entities.own_gold_span), " (+0 reserve)");
     assert_eq!(text(&app, entities.opponent_gold_parent), "8g");
-    assert_eq!(text(&app, entities.opponent_gold_span), " (0r)");
+    assert_eq!(text(&app, entities.opponent_gold_span), " (+0 reserve)");
 }
 
 #[test]
@@ -60,7 +61,7 @@ fn opponent_gold_broadcast_rendering_adapts_to_hud_mode() {
 
     assert_eq!(app.world().resource::<HudMode>(), &HudMode::EconomyAuction);
     assert_eq!(text(&app, entities.opponent_gold_parent), "7g");
-    assert_eq!(text(&app, entities.opponent_gold_span), " (3r)");
+    assert_eq!(text(&app, entities.opponent_gold_span), " (+3 reserve)");
     assert_eq!(text_span_children(&app, entities.opponent_gold_parent), 1);
     assert_eq!(top_level_text_spans(&app, entities.root), 0);
     assert_eq!(count_with::<HudEntity>(&mut app), HUD_ENTITY_COUNT);
@@ -79,9 +80,9 @@ fn auction_exit_clears_reserved_spans_without_despawning_them() {
     app.update();
 
     assert_eq!(text(&app, entities.own_gold_parent), "11g");
-    assert_eq!(text(&app, own_span), " (4r)");
+    assert_eq!(text(&app, own_span), " (+4 reserve)");
     assert_eq!(text(&app, entities.opponent_gold_parent), "8g");
-    assert_eq!(text(&app, opponent_span), " (2r)");
+    assert_eq!(text(&app, opponent_span), " (+2 reserve)");
     assert_eq!(count_with::<HudEntity>(&mut app), HUD_ENTITY_COUNT);
 
     set_phase(&mut app, RoundPhase::DraftShop, 3);
@@ -108,7 +109,7 @@ fn reserved_gold_display_clamps_to_total_gold() {
     app.update();
 
     assert_eq!(text(&app, entities.opponent_gold_parent), "7g");
-    assert_eq!(text(&app, entities.opponent_gold_span), " (7r)");
+    assert_eq!(text(&app, entities.opponent_gold_span), " (+7 reserve)");
 }
 
 fn app_with_hud_in_session() -> App {

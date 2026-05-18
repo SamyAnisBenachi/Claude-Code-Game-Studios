@@ -273,6 +273,24 @@ path = "../tests/integration/hud/opp_figurine_label_mana_repaint_test.rs"
 name = "snapshot_phase_bridge_test"
 path = "../tests/integration/hud/snapshot_phase_bridge_test.rs"
 
+# S18-UI-HUD-OPP-CLASS-TIMER-SCOREBOARD-REPAIR (PROMPT 1139):
+# - phase-timer numeric countdown text (UI-1129-06)
+# - OPP class projection defensive against snapshot recipient mismatch
+#   (UI-1129-03)
+# - scoreboard dot ImageNode refresh on state change (UI-1129-11 /
+#   AUDIT-1131-03)
+[[test]]
+name = "hud_phase_timer_countdown_test"
+path = "../tests/integration/hud/hud_phase_timer_countdown_test.rs"
+
+[[test]]
+name = "hud_opp_class_recipient_mismatch_test"
+path = "../tests/integration/hud/hud_opp_class_recipient_mismatch_test.rs"
+
+[[test]]
+name = "hud_scoreboard_dot_image_refresh_test"
+path = "../tests/integration/hud/hud_scoreboard_dot_image_refresh_test.rs"
+
 [[test]]
 name = "card_animations_tween_lifecycle_test"
 path = "../tests/unit/card-animations/tween_lifecycle_test.rs"

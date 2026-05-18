@@ -127,9 +127,10 @@ fn draft_auction_snapshot_rebuild_uses_reserved_gold_format() {
     assert_eq!(app.world().resource::<HudMode>(), &HudMode::EconomyAuction);
     assert_eq!(text(&app, entities.phase_label), "AUCTION");
     assert_eq!(text(&app, entities.own_gold_parent), "11g");
-    assert_eq!(text(&app, entities.own_gold_span), " (4r)");
+    // PROMPT 1139 (UI-1129-15): reserve-gold span reads `(+N reserve)`.
+    assert_eq!(text(&app, entities.own_gold_span), " (+4 reserve)");
     assert_eq!(text(&app, entities.opponent_gold_parent), "8g");
-    assert_eq!(text(&app, entities.opponent_gold_span), " (2r)");
+    assert_eq!(text(&app, entities.opponent_gold_span), " (+2 reserve)");
     assert_eq!(text(&app, entities.mana_label), "3 / 10");
     assert_eq!(text(&app, entities.reserve_label), "+1 reserve");
 }
