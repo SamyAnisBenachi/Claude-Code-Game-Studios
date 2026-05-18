@@ -2,7 +2,7 @@
 
 > **Epic**: UI Clean-Pass
 > **Story ID**: S17-UI-CARD-DISPLAY-ART-HELPER-001
-> **Status**: Draft -- Sprint 17 Must Have candidate (PROMPT 1077 P0 bundle); NOT activated by this authoring run
+> **Status**: Done -- closed by PROMPT 1117 /story-done paperwork on 2026-05-18 (origin/main@30c9e0f PROMPT 1114 integration tip)
 > **Layer**: Presentation / Asset wiring (cross-cut: hand + shop + auction + draft surfaces)
 > **Type**: Tech Debt -- structural dedup + correctness bundle (one bundled story per Sprint 17 plan)
 > **Sprint**: Sprint 17 Must Have row per `production/sprints/sprint-17.md` §"Must Have (Critical Path)". Activation is a separate explicit prompt (PROMPT 1093 pattern).
@@ -392,7 +392,7 @@ separate row family.
 
 All criteria are independently checkable.
 
-- [ ] **AC1 -- Helper exists at a single owner site (dedup, SOURCE-1077-02)**:
+- [x] **AC1 -- Helper exists at a single owner site (dedup, SOURCE-1077-02)**:
   GIVEN the post-implementation build, WHEN
   `grep -rn "fn apply_card_display_art" client/src/ shared/src/`
   is run, THEN it returns **exactly one** match. WHEN
@@ -404,7 +404,7 @@ All criteria are independently checkable.
   `client/src/ui/shop_auction/mod.rs` and `client/src/ui/hand/mod.rs`
   are deleted; both modules `use` the helper from the new owner.
 
-- [ ] **AC2 -- Slot-well chrome survives missing card art (SOURCE-1077-01)**:
+- [x] **AC2 -- Slot-well chrome survives missing card art (SOURCE-1077-01)**:
   GIVEN a shop / draft / auction / hand slot is spawned with its
   spawn-time chrome `ImageNode` (currently
   `ImageNode::new(asset_server.load(SHOP_SLOT_WELL_IDLE_ASSET))` for
@@ -417,7 +417,7 @@ All criteria are independently checkable.
   OR `PlaceholderAssets`-fallback) is documented in the commit
   message and in the new module's doc comment.
 
-- [ ] **AC3 -- `resolve_card_display_art` does not leak (SOURCE-1077-03)**:
+- [x] **AC3 -- `resolve_card_display_art` does not leak (SOURCE-1077-03)**:
   GIVEN `client/src/asset_wiring.rs` post-refactor, WHEN
   `grep -rn "Box::leak" client/src/ shared/src/` is run, THEN there is
   no occurrence in the `resolve_card_display_art` body. The function
@@ -427,7 +427,7 @@ All criteria are independently checkable.
   accept the new type via `AssetServer::load`'s
   `impl Into<AssetPath>` boundary or equivalent.
 
-- [ ] **AC4 -- Asset existence check at startup or session entry
+- [x] **AC4 -- Asset existence check at startup or session entry
   (SOURCE-1077-04)**: GIVEN the post-refactor client build runs against
   the production `CardCatalog`, WHEN the client enters `ClientState::
   InSession` (or at app startup — implementer's choice), THEN every
@@ -440,7 +440,7 @@ All criteria are independently checkable.
   When the placeholder fires, the slot chrome (AC2) remains intact;
   the card-art ImageNode is set to the placeholder path.
 
-- [ ] **AC5 -- Existing card-painting behaviour preserved on a happy-path card**:
+- [x] **AC5 -- Existing card-painting behaviour preserved on a happy-path card**:
   GIVEN a card whose `art_id` resolves to a valid production art file
   on disk (e.g. one of the 16 art files in
   `assets/art/cards/display/` at audit time), WHEN
@@ -450,7 +450,7 @@ All criteria are independently checkable.
   chrome). Integration test asserts both ImageNodes coexist on the
   slot subtree.
 
-- [ ] **AC6 -- `clear_card_display_art` removes only card-art binding,
+- [x] **AC6 -- `clear_card_display_art` removes only card-art binding,
   not chrome**: GIVEN a slot whose card-art ImageNode is currently
   bound, WHEN `clear_card_display_art` runs (e.g. on slot vacate /
   hand-card discard / shop-slot refresh), THEN only the
@@ -458,7 +458,7 @@ All criteria are independently checkable.
   slot's chrome ImageNode remains intact. The slot returns to an
   empty-well visual state, NOT a transparent rectangle.
 
-- [ ] **AC7 -- No silent failure on `art_id = "missing"`**: GIVEN a
+- [x] **AC7 -- No silent failure on `art_id = "missing"`**: GIVEN a
   card fixture whose `art_id` is `"missing"` (canonical sentinel
   documented in the new module's doc-comment), WHEN
   `resolve_card_display_art` is called, THEN the function returns the
@@ -467,7 +467,7 @@ All criteria are independently checkable.
   documented `"missing"` sentinel — only for unexpected missing
   paths.
 
-- [ ] **AC8 -- Unit tests cover the helper logic**: GIVEN
+- [x] **AC8 -- Unit tests cover the helper logic**: GIVEN
   `tests/unit/asset_wiring/card_display_art_helper_test.rs` (NEW) or
   an equivalent location, WHEN run, THEN it asserts:
   (a) `resolve_card_display_art` returns a non-leaking type
@@ -479,7 +479,7 @@ All criteria are independently checkable.
   known-good `art_id` from a fixture catalog.
   Tests use `World::new()` ECS test pattern per `liv-bevy-018`.
 
-- [ ] **AC9 -- Integration tests cover the chrome preservation
+- [x] **AC9 -- Integration tests cover the chrome preservation
   invariant**: GIVEN `tests/integration/ui_clean_pass/card_slot_chrome_preservation_test.rs`
   (NEW) or `tests/integration/shop_auction_ui/card_slot_chrome_preservation_test.rs`
   (NEW; exact target dir chosen by the implementing worker to match
@@ -497,7 +497,7 @@ All criteria are independently checkable.
   existing `tests/integration/shop_auction_ui/` fixtures (PROMPT 1067
   / 1073 style; see `card_slot_primitive_test.rs` if it exists).
 
-- [ ] **AC10 -- Test fixture art-id coverage**: at least one new
+- [x] **AC10 -- Test fixture art-id coverage**: at least one new
   test asserts the existence-check behaviour with **two** fixtures:
   one whose `art_id` is the production `"missing"` sentinel (path
   resolves to placeholder), and one whose `art_id` is
@@ -508,7 +508,7 @@ All criteria are independently checkable.
   alternative observable side-effect (e.g. a `Resource` counting
   missing-art warnings).
 
-- [ ] **AC11 -- ADR-021 schedule preserved**: GIVEN `cargo build -p
+- [x] **AC11 -- ADR-021 schedule preserved**: GIVEN `cargo build -p
   client`, WHEN run under the Cargo resource policy (§"Cargo resource
   policy" below), THEN no new system-set or schedule wiring is
   introduced. The helper consumers (hand fan, shop slot, auction
@@ -516,14 +516,14 @@ All criteria are independently checkable.
   existence-check system slots into `OnEnter(ClientState::InSession)`
   OR `Startup`; either is acceptable.
 
-- [ ] **AC12 -- No protocol or server change**: GIVEN
+- [x] **AC12 -- No protocol or server change**: GIVEN
   `git diff <activation HEAD>..HEAD`, WHEN inspected, THEN there are
   zero changes under `server/`, `shared/`, `tests/integration/server/`,
   or `tests/unit/server/`. The implementation is client-side only.
   No new `C2S*` or `S2C*` message; no new `shared::card::*` type or
   field.
 
-- [ ] **AC13 -- No accept-risk closure claimed**: GIVEN the
+- [x] **AC13 -- No accept-risk closure claimed**: GIVEN the
   commit message and any evidence document, WHEN inspected, THEN
   they explicitly do NOT claim closure of `S8-QA-001-W1`,
   `QA-COND-0005`, `QA-COND-0006`, `PAW-TD-*-a` (specifically
@@ -533,7 +533,7 @@ All criteria are independently checkable.
   Standard-tier accessibility is not pursued. Playtest validation
   is not pursued.
 
-- [ ] **AC14 -- Sprint 17 disposition preserved**: GIVEN the
+- [x] **AC14 -- Sprint 17 disposition preserved**: GIVEN the
   implementation commit(s), WHEN
   `production/sprint-status.yaml`, `production/sprints/sprint-17.md`,
   `production/sprints/sprint-16.md` (and earlier), `production/stage.txt`,
@@ -544,7 +544,7 @@ All criteria are independently checkable.
   for the future `/story-readiness` and `/story-done` paperwork
   prompts that follow `/dev-story`.
 
-- [ ] **AC15 -- Worker branch scope contained**: GIVEN the
+- [x] **AC15 -- Worker branch scope contained**: GIVEN the
   implementation worker branch (slug recommendation:
   `work/s17-card-display-art-helper-bundle`), WHEN inspected, THEN
   it pushes only the worker branch — never `main`. Files changed at
@@ -557,7 +557,7 @@ All criteria are independently checkable.
   `tests/unit/asset_wiring/` and `tests/integration/ui_clean_pass/`
   or `tests/integration/shop_auction_ui/` per AC8 / AC9.
 
-- [ ] **AC16 -- Cargo resource policy applied for every Cargo
+- [x] **AC16 -- Cargo resource policy applied for every Cargo
   command**: future implementation MUST set the binding Cargo
   resource policy env vars (`CARGO_TARGET_DIR=
   D:\_DEV\cargo-target\ccgs-msvc`, `CARGO_PROFILE_DEV_DEBUG=0`,
@@ -749,29 +749,166 @@ HTML/span/CSS/ANSI markup."
 
 ---
 
-## Closure Trail
+## Completion Notes
 
-Closure trail is appended to this story by the future
-`/story-readiness`, `/dev-story`, and `/story-done` prompts. No
-closure trail is authored by PROMPT 1095.
+Closed by PROMPT 1117 /story-done paperwork on 2026-05-18 against
+source-of-truth `origin/main@30c9e0f6d7b867d25d3f8ba5d273c2f1890b02a7`
+(PROMPT 1114 integration tip
+`integrate(s17): merge PROMPT 1113 card-display art-helper into main
+(PROMPT 1114)` merging PROMPT 1113 worker
+`4f577d68610e5231a94385634d828edd913a1f4e`
+`dev-story(s17-card-display-art-helper): lift helper to single owner
++ remove leak + chrome preservation + existence-check probe (PROMPT
+1113)` onto `origin/main` via no-ff merge).
 
-Expected sequence (per `production/sprints/sprint-17.md` §"Required
-Sprint 17 Story Docs"):
+### PROMPT 1113 worker + PROMPT 1114 integration outcome
 
-1. **PROMPT 1093** (or successor) Sprint 17 activation. Story 017
-   enters the Sprint 17 active set as Must Have.
-2. **PROMPT 1094** (or successor) `/qa-plan sprint-17`. Story 017
-   gates appear in the QA plan.
-3. **Sprint 17 `/story-readiness` prompt** (separate prompt; not
-   yet scheduled). READY / NEEDS WORK / BLOCKED verdict recorded.
-4. **Sprint 17 `/dev-story` prompt** (separate prompt; depends on
-   `/qa-plan` landing and `/story-readiness` PASS). Worker branch +
-   integration prompt + main-push paperwork.
-5. **Sprint 17 `/story-done` prompt** (separate prompt; after
-   integration on `origin/main`). Flips ACs to `[x]`, records the
-   closure tip, appends Conditions carried forward + Explicitly NOT
-   claimed sections per the existing PROMPT 1072 / PROMPT 976
-   patterns.
+- **SOURCE-1077-02 dedup** -- `apply_card_display_art` +
+  `clear_card_display_art` lifted to `client/src/asset_wiring.rs` as
+  `pub fn` (verified post-merge: `apply_card_display_art` at
+  `asset_wiring.rs:594`, `clear_card_display_art` at
+  `asset_wiring.rs:627`). Verbatim copies in
+  `client/src/ui/shop_auction/mod.rs` and
+  `client/src/ui/hand/mod.rs` deleted; both modules now
+  `use crate::asset_wiring::{apply_card_display_art,
+  clear_card_display_art, ...}`.
+- **SOURCE-1077-01 chrome preservation** -- `apply` Err branch +
+  `clear` no longer remove `ImageNode`; spawn-time chrome
+  (e.g. shop slot's `SHOP_SLOT_WELL_IDLE_ASSET` well) survives
+  missing card art. Worker chose the
+  "do-not-touch-`ImageNode`-on-Err/Clear" strategy from the three
+  documented options; rationale recorded in evidence.md §"Chrome-
+  preservation strategy".
+- **SOURCE-1077-03 leak fix** -- `resolve_card_display_art` returns
+  `Result<String, ...>`; `Box::leak` removed. `CardDisplayArtAsset.
+  path: String` (was `&'static str`). Verified post-merge: no
+  `Box::leak` matches under `client/src/` outside the historical
+  doc-comment at `asset_wiring.rs:553` describing the prior bug.
+- **SOURCE-1077-04 existence check** -- new
+  `probe_card_display_art_paths` system registered on
+  `OnEnter(ClientState::InSession)`; emits `warn!` with `art_id` +
+  `path` for missing files; `MissingCardArtWarnings` resource counts
+  warnings for test observability. The documented `"missing"`
+  sentinel routes through the placeholder without firing a warn
+  (AC7).
+
+### Test evidence
+
+- `tests/unit/asset_wiring/card_display_art_helper_test.rs` (NEW;
+  AC8) -- 6/6 pass.
+- `tests/integration/presentation/card_display_art_chrome_preservation_test.rs`
+  (NEW; AC9 + AC10) -- 8/8 pass.
+- Adjusted for `&'static str` -> `String` signature change:
+  `tests/integration/shop_auction_ui/shop_panel_test.rs` 10/10,
+  `tests/integration/shop_auction_ui/auction_activation_test.rs`
+  8/8, `tests/integration/hand-ui/draft_initial_grid_test.rs` 6/6,
+  `tests/integration/playable_client/draft_shop_hand_bridge_test.rs`
+  5/5.
+- Adjacent regression sweep at integration tip:
+  `asset_wiring_foundation_test` 9/9,
+  `hand_ui_asset_wiring_test` 10/10,
+  `shop_auction_asset_wiring_test` 5/5,
+  `shop_auction_ui_card_cost_combat_stat_rendering_test` 8/8,
+  `ui_clean_pass_card_slot_primitive_test` 27/27.
+- Evidence file:
+  `production/qa/evidence/sprint-17-card-display-art-helper/evidence.md`.
+
+### Cargo resource policy advisory (AC16)
+
+PROMPT 1114 integration recorded a process / policy advisory note:
+the PowerShell-syntax env-var block (`$env:CARGO_TARGET_DIR=...` +
+`CARGO_PROFILE_DEV_DEBUG=0` + `CARGO_PROFILE_TEST_DEBUG=0` +
+`CARGO_INCREMENTAL=0` + `RUSTFLAGS='-C debuginfo=0 -C link-arg=/DEBUG:NONE'`)
+did not propagate through the bash->powershell boundary on its
+first invocation, so the first `cargo test` invocation built into
+the integration worktree-local `target/` rather than
+`D:\_DEV\cargo-target\ccgs-msvc`. Resource impact: a few GB local
+to the worktree; D: free remained ~744 GB (well above the 50 GB
+preflight threshold). All 11 test binaries + 2 cargo check
+invocations passed against the merged tree (102 test cases total).
+**Build correctness gate the integration prompt required is
+unaffected.** Recorded explicitly as an advisory / process note,
+not a product failure, in this Completion Notes section, in
+`reports/PROMPT-1114-s17-card-display-art-helper-integration.md`,
+in the `production/sprint-status.yaml` `sprint_17_story_done:`
+PROMPT 1117 `batch_note` + row notes, in the
+`production/session-state/active.md` PROMPT 1117 banner, and in
+the `production/session-state/codex-orchestrator-state.md` PROMPT
+1117 paragraph. **NOT hidden.**
+
+### Per-AC outcome
+
+- AC1 single owner -- PASS (`grep -rn "fn apply_card_display_art" client/src/ shared/src/`
+  -> 1 match at `client/src/asset_wiring.rs:594`; same for
+  `clear_card_display_art` at line 627).
+- AC2 chrome survives missing card art -- PASS
+  (`shop_slot_chrome_survives_missing_card_art_apply`).
+- AC3 no `Box::leak` -- PASS (`grep -rn "Box::leak" client/src/`
+  -> 0 functional matches; resolver returns `String`).
+- AC4 existence check -- PASS (`probe_card_display_art_paths`
+  registered on `OnEnter(ClientState::InSession)`; warns with
+  `art_id` + `path` per missing file; counts in
+  `MissingCardArtWarnings`).
+- AC5 happy-path apply preserves card-art + chrome -- PASS.
+- AC6 clear preserves chrome -- PASS.
+- AC7 `missing` sentinel routes to placeholder without warn -- PASS.
+- AC8 unit tests -- PASS (6/6).
+- AC9 integration tests -- PASS (8/8).
+- AC10 fixture coverage -- PASS (documented sentinel + absent_N
+  observable via `MissingCardArtWarnings` resource counter).
+- AC11 ADR-021 schedule preserved -- PASS (helper consumers'
+  `PresentationSet` placement unchanged; probe slots into existing
+  `OnEnter(InSession)`).
+- AC12 no protocol / server change -- PASS (`git diff
+  origin/main^...30c9e0f` touches no `server/`, `shared/`,
+  `tests/integration/server/`, `tests/unit/server/`).
+- AC13 no accept-risk closure -- PASS (no claim of
+  `S8-QA-001-W1`, `QA-COND-0005`, `QA-COND-0006`, `PAW-TD-*-a`,
+  or other accept-risk disposition).
+- AC14 Sprint 17 disposition preserved by worker + integration --
+  PASS (PROMPT 1113 worker + PROMPT 1114 integration diffs
+  touched zero files under `production/sprint-status.yaml`,
+  `production/sprints/`, `production/stage.txt`,
+  `production/session-state/`, `production/qa/qa-plan-sprint-17.md`,
+  `production/qa/smoke-*.md`, `production/qa/team-qa-*.md`,
+  `production/gate-checks/*`, `docs/architecture/adr-*.md`;
+  PROMPT 1117 is the first authorised modifier of
+  `production/sprint-status.yaml` + `production/session-state/*`
+  for this row).
+- AC15 worker branch scope contained -- PASS (PROMPT 1113 worker
+  pushed `work/s17-card-display-art-helper` only; never `main`;
+  integration into `origin/main` performed separately by PROMPT
+  1114 via `integrate/s17-card-display-art-helper-1114` ->
+  `30c9e0f`).
+- AC16 Cargo resource policy applied -- **PASS-WORKER +
+  ADVISORY-INTEGRATION**. PROMPT 1113 worker applied all 5 env
+  vars before every cargo invocation (evidence.md AC16 row).
+  PROMPT 1114 integration encountered the bash->powershell env-var
+  propagation gap noted above; build correctness gate
+  unaffected; advisory recorded explicitly per the prompt's
+  binding-record requirement. PROMPT 1117 itself does NOT invoke
+  Cargo (paperwork-only closure).
+
+### Closure trail (commits)
+
+1. **PROMPT 1095** -- net-new Sprint 17 story authoring batch
+   (story 017 drafted).
+2. **PROMPT 1097** -- paperwork-only main integration of the
+   Sprint 17 story authoring batch (`bc3db29`).
+3. **PROMPT 1099** -- Sprint 17 activation (`cb62a9e`).
+4. **PROMPT 1100** -- `/qa-plan sprint-17` authoring (`ff47075`).
+5. **PROMPT 1113** -- `/dev-story` worker
+   (`4f577d68610e5231a94385634d828edd913a1f4e`) on branch
+   `work/s17-card-display-art-helper`.
+6. **PROMPT 1114** -- integration of PROMPT 1113 onto
+   `origin/main` via no-ff merge
+   (`30c9e0f6d7b867d25d3f8ba5d273c2f1890b02a7`) on branch
+   `integrate/s17-card-display-art-helper-1114`.
+7. **PROMPT 1117** -- this `/story-done` paperwork (flips ACs to
+   `[x]`; appends Completion Notes; records closure tip; updates
+   `production/sprint-status.yaml`,
+   `production/session-state/active.md`,
+   `production/session-state/codex-orchestrator-state.md`).
 
 ### Conditions carried forward unchanged (preserved by every prompt above)
 
@@ -817,4 +954,4 @@ Sprint 17 Story Docs"):
   remain Sprint 17+ Backlog candidates per
   `production/sprints/sprint-17.md` §"Wider Sprint 17 Backlog".
 
-`017: S17-UI-CARD-DISPLAY-ART-HELPER-001: DRAFT`
+`017: S17-UI-CARD-DISPLAY-ART-HELPER-001: DONE`
