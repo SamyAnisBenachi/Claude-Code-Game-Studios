@@ -4137,6 +4137,14 @@ fn spawn_draft_initial_modal_panel(commands: &mut Commands, parent: Entity) -> E
     // edges. The fully-opaque body combined with the centering-root scrim
     // gives the keep-9 modal a proper modal contract: nothing beneath it
     // is visible.
+    //
+    // PROMPT 1080 — `Visibility::Inherited` (not `Visible`). Bevy 0.18
+    // treats `Visibility::Visible` as unconditional, overriding any
+    // ancestor `Hidden`. With `Visible` here, the opaque modal body kept
+    // painting after DraftInitial closed (DraftShop/Placement/Auction/
+    // Resolution) even though the `draft_offering_panel` parent was
+    // correctly hidden — the user saw a black slab covering the board.
+    // `Inherited` lets the parent's per-phase visibility govern the modal.
     commands
         .spawn((
             Name::new("Shop Auction Draft Initial Modal Panel"),
@@ -4145,7 +4153,7 @@ fn spawn_draft_initial_modal_panel(commands: &mut Commands, parent: Entity) -> E
             draft_initial_modal_panel_node(),
             BackgroundColor(Color::srgb(0.055, 0.062, 0.078)),
             BorderColor::all(Color::srgba(0.82, 0.86, 0.90, 0.26)),
-            Visibility::Visible,
+            Visibility::Inherited,
             ChildOf(parent),
         ))
         .id()
@@ -4156,6 +4164,10 @@ fn spawn_draft_initial_modal_footer(commands: &mut Commands, parent: Entity) -> 
     // the Ready / Retract Ready button and the waiting-for-opponent status
     // text. The top border visually separates the footer from the grid
     // band above so the keep decision reads as a single grouped action.
+    //
+    // PROMPT 1080 — `Visibility::Inherited` so the footer follows the
+    // modal panel (and the `draft_offering_panel` scrim) when DraftInitial
+    // ends. See `spawn_draft_initial_modal_panel` for the full rationale.
     commands
         .spawn((
             Name::new("Shop Auction Draft Initial Modal Footer"),
@@ -4163,20 +4175,23 @@ fn spawn_draft_initial_modal_footer(commands: &mut Commands, parent: Entity) -> 
             DraftInitialModalFooter,
             draft_initial_modal_footer_node(),
             BorderColor::all(Color::srgba(0.82, 0.86, 0.90, 0.20)),
-            Visibility::Visible,
+            Visibility::Inherited,
             ChildOf(parent),
         ))
         .id()
 }
 
 fn spawn_draft_initial_grid_container(commands: &mut Commands, parent: Entity) -> Entity {
+    // PROMPT 1080 — `Visibility::Inherited` so the grid container hides
+    // with the modal panel when leaving DraftInitial. See
+    // `spawn_draft_initial_modal_panel` for the full rationale.
     commands
         .spawn((
             Name::new("Shop Auction Draft Initial Grid"),
             ShopAuctionUiEntity,
             DraftInitialGrid,
             draft_initial_grid_node(),
-            Visibility::Visible,
+            Visibility::Inherited,
             ChildOf(parent),
         ))
         .id()
