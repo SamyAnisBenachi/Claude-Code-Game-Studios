@@ -184,25 +184,60 @@ therefore resolves the repo root in the following order at startup, stopping at
 the first source whose path passes the validation check
 (`Cargo.toml`, `tools/dev-launcher/`, and `.git` all present):
 
-1. `CCGS_REPO_ROOT` environment variable.
-2. `ccgs-dev-launcher.repo-root.txt` sidecar file living **next to the EXE**.
-   `build-launcher-exe.ps1` writes this sidecar with the absolute repo root on
-   the first non-blank line; lines starting with `#` are comments. This is the
-   default working path when running the EXE from the external Cargo target
-   dir.
-3. The EXE's own directory, walked upward (useful when the EXE was copied
+1. `CCGS_REPO_ROOT` environment variable (any branch).
+2. `ccgs-dev-launcher.repo-root.txt` sidecar file living **next to the EXE** --
+   accepted **only when its repo is on branch `main`**. If the sidecar points
+   at a valid repo on any other branch (typically `work/...` from a worker
+   worktree where the build was run) it is treated as unsuitable for
+   `Rebuild Latest Main` and the launcher continues to step 3 instead.
+3. **Canonical-checkout fallback.** First entry in the canonical candidate
+   list that validates as a real CCGS workspace. The default list is
+   `[D:\_DEV\Work\Claude-Code-Game-Studios]`. Override by setting
+   `CCGS_CANONICAL_REPO_ROOT=<absolute-path>` before launching the EXE -- the
+   override replaces (not augments) the default list.
+4. The EXE's own directory, walked upward (useful when the EXE was copied
    inside the worktree).
-4. The current working directory, walked upward.
+5. The current working directory, walked upward.
 
 If none of these resolves to a valid repo root the EXE **does not** silently
 adopt the EXE directory as the repo root. Instead it opens with both buttons
-disabled, the status line shows `ERROR: could not locate CCGS repo root...`,
-and the log box lists every resolution attempt that was tried. To recover:
+disabled, the status line shows `ERROR: could not locate a canonical CCGS repo
+root...`, and the log box lists every resolution attempt that was tried,
+including which sidecar branch was rejected and which canonical candidate(s)
+were tried. To recover:
 
 - Rebuild via `powershell -ExecutionPolicy Bypass -File tools\dev-launcher\build-launcher-exe.ps1`
-  so the sidecar is regenerated next to the EXE, or
-- Set `CCGS_REPO_ROOT` to the repo path before launching the EXE, or
+  from your canonical checkout so the sidecar is regenerated next to the EXE
+  pointing at the canonical root, or
+- Set `CCGS_REPO_ROOT` to your canonical checkout before launching the EXE, or
+- Set `CCGS_CANONICAL_REPO_ROOT` if your canonical checkout lives outside the
+  documented default location, or
 - Copy the EXE inside the worktree so walk-up resolves.
+
+### Why the sidecar must point at a canonical (on-main) checkout
+
+`Rebuild Latest Main` (Button 1) calls `Update-LatestMain.ps1`, which refuses
+to fast-forward unless the current branch is `main`. If
+`build-launcher-exe.ps1` is run from a **worker worktree** on a `work/...`
+branch (e.g. `D:\_DEV\claude-code-game-studios-worktrees\windows-dev-launcher-visual-polish-1255`)
+and we blindly wrote that worktree path into the sidecar, the EXE would then
+launch the rebuild against the worker worktree and the rebuild script would
+refuse with:
+
+```text
+Refusing to fast-forward: current branch is 'work/<slug>', not 'main'.
+```
+
+PROMPT 1290 fixes this on both sides:
+
+- The build script (`build-launcher-exe.ps1`) resolves a **canonical root** at
+  write time (see "Build the EXE -- canonical-root resolution" below) and
+  refuses to silently write a worker-worktree path. The dev-only escape hatch
+  is `-AllowWorkerWorktreeSidecar`.
+- The launcher (`ccgs-dev-launcher.exe`) reads `.git/HEAD` on whatever path
+  the sidecar names. If the branch is not `main`, the sidecar is skipped and
+  the canonical fallback is tried instead. The diagnostics panel shows the
+  exact branch found so testers can see what happened.
 
 ### Sidecar file format
 
@@ -251,7 +286,30 @@ the filesystem.
 powershell -ExecutionPolicy Bypass -File tools\dev-launcher\build-launcher-exe.ps1
 # release-mode (smaller / faster, slower build):
 powershell -ExecutionPolicy Bypass -File tools\dev-launcher\build-launcher-exe.ps1 -Release
+# build from a worker worktree but pin the sidecar at an explicit canonical:
+powershell -ExecutionPolicy Bypass -File tools\dev-launcher\build-launcher-exe.ps1 `
+    -CanonicalRepoRoot D:\_DEV\Work\Claude-Code-Game-Studios
 ```
+
+#### Canonical-root resolution (sidecar contents)
+
+Independent of which worktree you compile from, the sidecar is written with
+the **canonical** repo root resolved in this order (first hit wins):
+
+1. `-CanonicalRepoRoot <path>` (explicit argument).
+2. `$env:CCGS_CANONICAL_REPO_ROOT` (environment override).
+3. The build checkout itself, **only if** its current branch is `main`.
+4. `D:\_DEV\Work\Claude-Code-Game-Studios` (the documented default), if it
+   exists and is a valid CCGS workspace.
+5. **Refuse** to write the sidecar (exit 2) unless `-AllowWorkerWorktreeSidecar`
+   is also passed -- in which case the worker-worktree path is written with
+   an inline warning that `Rebuild Latest Main` will not work against it.
+
+This is the PROMPT 1290 fix for "EXE built in worker worktree -> sidecar pins
+to `work/...` branch -> Rebuild Latest Main refuses". Day-to-day you do not
+need to think about it: building from a canonical checkout on `main` writes
+the canonical path automatically; building from anywhere else falls back to
+the documented default.
 
 The build script applies the documented Windows/MSVC Cargo resource policy
 (`CARGO_TARGET_DIR=D:\_DEV\cargo-target\ccgs-msvc`,
@@ -343,6 +401,41 @@ long as that sibling sidecar travels with it.
   invalid-env-falls-through-to-sidecar, sidecar-falls-through-to-walk-up,
   failed-resolution surfaces every attempt, and the explicit assertion
   that `target/debug` is never accepted as the repo root.
+
+### Validation (PROMPT 1290 -- canonical-main sidecar repair)
+
+- Root cause: `build-launcher-exe.ps1` previously wrote whatever
+  `Split-Path -Parent (Split-Path -Parent $ScriptDir)` returned -- i.e. the
+  build checkout. Building from a worker worktree (e.g.
+  `D:\_DEV\claude-code-game-studios-worktrees\windows-dev-launcher-visual-polish-1255`)
+  on a `work/...` branch pinned the EXE to that worktree. `Rebuild Latest
+  Main` then refused: `current branch is 'work/...', not 'main'`.
+- Launcher fix: `resolve_repo_root_pure` now (a) accepts the sidecar only
+  when its repo is on branch `main` (`.git/HEAD` is read; linked-worktree
+  `.git` file pointers are followed); (b) on a non-main sidecar, falls back
+  to a configurable canonical candidate list (`CANONICAL_REPO_CANDIDATES`
+  in `main.rs`, default `[D:\_DEV\Work\Claude-Code-Game-Studios]`, override
+  via `CCGS_CANONICAL_REPO_ROOT`); (c) surfaces the resolved branch in the
+  Diagnostics panel and the rejected branch in the attempts list.
+- Build-script fix: `build-launcher-exe.ps1` resolves a canonical root
+  (`-CanonicalRepoRoot` > `$env:CCGS_CANONICAL_REPO_ROOT` > build checkout
+  if on main > documented default), refuses to write the sidecar when no
+  canonical is discoverable unless `-AllowWorkerWorktreeSidecar` is passed,
+  and stamps the resolved canonical source into a sidecar comment.
+- Both buttons (`Rebuild Latest Main`, `Start Two-Client Play Session`) use
+  the same resolved repo root -- a worker-worktree sidecar can no longer
+  mislead either flow.
+- New unit tests in `tools/dev-launcher-app/src/main.rs`:
+  - `resolve_repo_root_sidecar_on_worker_branch_falls_to_canonical`
+  - `resolve_repo_root_sidecar_on_main_is_accepted_without_canonical_fallback`
+  - `resolve_repo_root_env_overrides_valid_sidecar_pointing_elsewhere`
+  - `resolve_repo_root_invalid_canonical_yields_actionable_error`
+  - `resolve_repo_root_canonical_fallback_records_branch_label_for_unknown_head`
+  - `canonical_repo_candidates_has_at_least_one_entry`
+  - `read_head_branch_returns_main_for_regular_checkout`
+  - `read_head_branch_returns_worker_branch_name`
+  - `read_head_branch_returns_none_for_detached_head`
+  - `read_head_branch_follows_worktree_gitdir_pointer`
 
 ### Validation (PROMPT 1173 -- BOM repair on integration refresh)
 
