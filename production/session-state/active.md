@@ -1,3 +1,155 @@
+# PROMPT 1078 State Banner -- Sprint 16 Team-QA
+
+Updated 2026-05-18 by PROMPT 1078. Source-of-truth at sign-off:
+`origin/main@f8eac30d98af1ad21ed3ca6dd06e219ce9f9df19` (PROMPT 1074
+final /story-done tip: `story-done(s16): close card-slot primitive
+row (PROMPT 1074)`). Smoke evidence tip:
+`origin/qa/sprint-16-smoke-check-1075@56655fc8c20c1aad8485f2de41c656cbb7c96900`
+(strict fast-forward descendant of origin/main; merge-base ==
+`f8eac30`; smoke evidence file
+`production/qa/smoke-sprint-16-2026-05-18.md` lives on the smoke
+branch, NOT yet integrated to origin/main). Branch:
+`qa/sprint-16-team-qa-1078` (NEW); worktree
+`D:/_DEV/claude-code-game-studios-worktrees/sprint-16-team-qa-1078`.
+
+PROMPT 1078 is a paperwork-only single-context Team-QA review-of-
+record that did NOT run cargo, did NOT run /story-done, did NOT
+run /story-readiness, did NOT run /smoke-check, did NOT run
+/gate-check, did NOT run /release-check, did NOT run /qa-plan,
+did NOT spawn subagents. Verdict: **APPROVED-WITH-CONDITIONS** at
+final-line `1078: SPRINT-16-TEAM-QA: APPROVED-WITH-CONDITIONS`.
+
+Sprint 16 stands at 3 of 4 active rows closed at sign-off:
+
+- Must Have 0/1: `S11-HUD-TIMER-EYEBALL-VISUAL-001` (Sprint
+  13->14->15->16 human-operator-blocked carry) remains `ready`;
+  closure remains gated on real human-operator screenshot capture
+  across DraftInitial 45s / DraftShop 30s / Placement 10-12s
+  phases. No LLM /story-done authorised; allowed to carry to
+  Sprint 17 if no human-operator slot opens in the Sprint 16
+  timebox.
+- Should Have 1/1: `S12-TD-UI-CARD-SLOT-PRIMITIVE-001` done
+  (PROMPT 1074 /story-done on origin/main@c9b5716 with closure
+  basis PROMPT 1067 worker `3bdf6ac` + PROMPT 1073 integration
+  `d12adc4` + evidence dir
+  `production/qa/evidence/sprint-16-ui-card-slot-primitive/`;
+  AC1..AC5 + AC7 + AC8 PASS, AC6 PARTIAL advisory-only).
+- Nice to Have 2/2: `S15-OPS-APPCOMPAT-MANIFEST-001` +
+  `S15-TD-WORKSPACE-DEAD-CODE-WARNING-001` both done (PROMPT
+  1072 /story-done batch on origin/main@bd374dd; closure bases
+  PROMPT 1068 worker `ed58e3d` + PROMPT 1071 integration
+  `488a9cd` for AppCompat row, PROMPT 1069 worker `2251a93` +
+  PROMPT 1070 integration `bd374dd` for dead-code warning row).
+
+PROMPT 1075 smoke verdict PASS-WITH-WARNINGS verified by PROMPT
+1078 on the source-of-truth HEAD: cargo fmt clean, cargo check
+PASS with zero warnings (pre-existing Sprint 14
+`count_with_image_node` dead-code warning resolved by PROMPT
+1069 / 1070 closure of S15-TD-WORKSPACE-DEAD-CODE-WARNING-001),
+cargo test --workspace --tests --no-fail-fast 1464 passed / 0
+failed / 0 ignored / 0 measured / 0 filtered across 223
+binaries, spawn_range_live_refresh_contract 5/5 PASS (PROMPT
+1072 Mechanism (d) Cargo [[test]] name rename eliminates the
+Windows AppCompat OS-740 substring heuristic; no UAC block on
+this Windows host). Single smoke warning classified as
+**environment / host-state-only**: live developer/orchestrator
+processes (server.exe PID 26084, client.exe PIDs 31420/32524)
+held debug/server.exe and debug/client.exe under the mandated
+`D:\_DEV\cargo-target\ccgs-msvc` tree at smoke entry, blocking
+cargo relink. PROMPT 1075 applied an analogous-to-PROMPT-983
+environmental workaround: sibling target dir
+`D:\_DEV\cargo-target\ccgs-msvc-smoke-1075` under the same
+parent, all other Cargo policy fields preserved verbatim
+(`CARGO_PROFILE_DEV_DEBUG=0`, `CARGO_PROFILE_TEST_DEBUG=0`,
+`CARGO_INCREMENTAL=0`, `RUSTFLAGS=-C debuginfo=0 -C
+link-arg=/DEBUG:NONE`). Not a code regression; not a Sprint 16
+deliverable defect; accepted by PROMPT 1078 without remediation.
+No NEEDS-REPAIR routing.
+
+Sprint 16 progress after PROMPT 1078: 3 of 4 active rows done
+(0/1 Must Have + 1/1 Should Have + 2/2 Nice to Have).
+Disposition: `active` (UNCHANGED; NOT closed-out by PROMPT
+1078). Stage `Polish` (UNCHANGED; `production/stage.txt` NOT
+touched).
+
+Files changed by PROMPT 1078:
+
+- `production/qa/team-qa-sprint-16-2026-05-18.md` (NEW; Sprint
+  16 Team-QA report matching team-qa-sprint-N-YYYY-MM-DD.md
+  naming convention).
+- `production/session-state/active.md` (this PROMPT 1078 banner
+  prepended above PROMPT 1074 banner).
+- `production/session-state/codex-orchestrator-state.md` (PROMPT
+  1078 paragraph prepended above PROMPT 1074 paragraph).
+- `reports/PROMPT-1078-Sprint-16-Team-QA.md` (mandatory final
+  report; reports/ gitignored).
+
+Files explicitly NOT touched by PROMPT 1078: `client/`,
+`server/`, `shared/`, `tests/`, `Cargo.toml`, `Cargo.lock`,
+`.cargo/`, `.github/`, `Trunk.toml`, `production/stage.txt`,
+`production/sprints/*` (including sprint-16.md),
+`production/sprint-status.yaml`, `production/qa/qa-plan-sprint-16.md`,
+`production/qa/smoke-sprint-16-2026-05-18.md` (lives on smoke
+branch; integration is a separate prompt),
+`production/qa/evidence/*`, `production/gate-checks/*` (PROMPT
+761 Polish->Release FAIL preserved), any Sprint 16 story file
+under `production/epics/`, `.octogent/`, `.claude/settings.json`,
+`.claude/scheduled_tasks.lock`. No cargo / trunk / CI command
+invoked. **Cargo policy: N/A** for PROMPT 1078 paperwork-only
+Team-QA.
+
+Non-claims preserved verbatim by PROMPT 1078: no Sprint 16
+close-out (Team-QA is a precondition to a separate close-out-
+with-conditions decision, not the close-out itself); no closure
+of `S11-HUD-TIMER-EYEBALL-VISUAL-001` (human-later carry; no
+LLM /story-done authorised); no pixel-level closure of story
+009 AC6 PARTIAL (QA snapshot bundles at 1366x768 / 1920x1080
+remain human-operator deferred via S15-QA-SNAPSHOT-DEFAULT-DEV
+flow); no public release readiness; no RC readiness; no full
+game completion; no broad / Standard-tier accessibility
+completion (`QA-COND-0005` preserved); no playtest validation
+(`QA-COND-0006` preserved); no full manual QA; no two-client
+`GAME_OVER` closure (`S8-QA-001-W1` OPEN); no final-art
+completion (`PAW-TD-*-a` preserved); no `Polish->Release` retry
+(PROMPT 761 FAIL preserved at
+`production/gate-checks/gate-polish-release-2026-05-12.md`); no
+stage advance; no `TQ-S12-C7` closure; no PROMPT 1054 P1 UI
+snapshot retest closure (`BLOCKED-HUMAN-OPERATOR` preserved);
+no Sprint 12 story 019 underlying drag-runtime bug fix claim
+(`cannot-reproduce` preserved); no third same-scope retest of
+Sprint 12 story 019 (`TQ-S12-C2` binding preserved); no Sprint
+15 / 14 / 13 / 12 / 11 / 10 row reopen; no closure of the
+three per-surface card-slot migration siblings (Sprint 16+
+`S16-UI-CARD-SLOT-MIGRATION-HAND-001` / `-AUCTION-001` /
+`-BOARD-GHOST-001`); no closure of any of the 24 PROMPT 1022
+QA snapshot audit findings; no /dev-story; no /smoke-check;
+no /gate-check; no /release-check; no /story-done; no
+/story-readiness; no /qa-plan run by PROMPT 1078.
+
+Next launchable prompts (post-Team-QA): (1) PROMPT 1075 smoke
+evidence integration paperwork (fast-forward
+`origin/qa/sprint-16-smoke-check-1075@56655fc` -> `origin/main`;
+analogous to PROMPT 982 / 986 Sprint 14 pattern; optional pre-
+close-out completeness step); (2) Sprint 16 close-out-with-
+conditions paperwork (mirrors PROMPT 763 / 792 / 817 / 894 /
+987 / 1056 close-out pattern; carries
+`S11-HUD-TIMER-EYEBALL-VISUAL-001` into Sprint 17 unless human-
+operator closes it first); (3) Sprint 17 plan draft + activation
+(after Sprint 16 close-out lands); (4) human-operator QA
+snapshot capture session for story 009 AC6 bundles (parallel-
+safe; producer-scheduled); (5) human-operator HUD timer
+screenshot capture session for `S11-HUD-TIMER-EYEBALL-VISUAL-001`
+(parallel-safe; producer-scheduled).
+
+Branch / push: PROMPT 1078 commits the paperwork on branch
+`qa/sprint-16-team-qa-1078` (base
+`origin/main@f8eac30d98af1ad21ed3ca6dd06e219ce9f9df19`). Push
+target: worker branch only; PROMPT 1078 never pushes `main`.
+
+Final line: `1078: SPRINT-16-TEAM-QA: APPROVED-WITH-CONDITIONS`.
+
+---
+
 # PROMPT 1074 State Banner -- Sprint 16 Card-Slot Primitive Story-Done
 
 Updated 2026-05-17 by PROMPT 1074. Source-of-truth at closure:
