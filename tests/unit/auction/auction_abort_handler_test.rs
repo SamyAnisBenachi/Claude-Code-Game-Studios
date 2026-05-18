@@ -74,6 +74,7 @@ fn abort_in_live_bidding_releases_reservation_and_returns_idle() {
             current_price: 6,
             current_leader: Some(leader),
             timer_remaining_ms: 5_000,
+            live_bidding_deadline_elapsed_ms: None,
         },
         economies,
     );
@@ -115,6 +116,7 @@ fn abort_in_live_bidding_without_leader_returns_idle_without_release() {
             current_price: 3,
             current_leader: None,
             timer_remaining_ms: 5_000,
+            live_bidding_deadline_elapsed_ms: None,
         },
         economies,
     );
@@ -151,6 +153,7 @@ fn abort_in_selecting_returns_idle_without_settlement() {
             current_price: 0,
             current_leader: None,
             timer_remaining_ms: 0,
+            live_bidding_deadline_elapsed_ms: None,
         },
         economies,
     );
@@ -185,6 +188,7 @@ fn abort_in_resolving_is_uninterruptible_and_settlement_completes() {
             current_price: 7,
             current_leader: Some(winner),
             timer_remaining_ms: 0,
+            live_bidding_deadline_elapsed_ms: None,
         },
         economies,
     );
