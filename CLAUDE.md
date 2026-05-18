@@ -48,51 +48,15 @@ boot procedure, troubleshooting, rollback, and verified Codex CLI version.
 
 ## Collaboration Protocol
 
-**Default-to-acting mode (2026-05-18 user-confirmed override).** The user
-runs many parallel sessions and has explicitly asked to remove
-end-of-turn permission friction. Apply these rules:
+**User-driven collaboration, not autonomous execution.**
+Every task follows: **Question -> Options -> Decision -> Draft -> Approval**
 
-- **Don't end turns with "should I commit?" / "want me to push?" / "OK?"**
-  If the next step is obvious from prior context, just do it and report
-  what you did. Surface alternatives in the turn output ("I went with
-  X; alternatives were Y, Z — say so if you want a different path")
-  rather than blocking on a choice.
-- **Don't call `AskUserQuestion` for low-stakes choices.** Pick the
-  most defensible option based on project rules + recent context and
-  continue. Reserve real `AskUserQuestion` calls (or a pause-and-ask
-  in turn output) for the destructive list below.
-- **`permissions.defaultMode = "bypassPermissions"`** is set in
-  `.claude/settings.json`. Tool-permission popups are silent — you
-  still respect the `deny` list, but allow/ask prompts skip the
-  human.
-- **Codex CLI** runs with `approval_policy = "on-failure"` and
-  `sandbox = "danger-full-access"` (in `~/.codex/config.toml`). Same
-  posture: no friction unless something actually breaks.
-
-**Still pause-and-ask before:**
-
-- `rm -rf` of anything non-trivial
-- `git push --force` (especially to `main` / integration branches)
-- `git reset --hard`, `git clean -f`
-- Dropping data, truncating tables, deleting prod assets
-- Branching off `main` without explicit intent
-- Mutating user-environment files outside the project
-  (e.g. `~/.codex/config.toml`, system-wide settings)
-
-These three guardrails compose: bypassPermissions removes Type-A
-runtime friction; the "don't ask" rule above removes Type-B
-conversational friction; the destructive list keeps the genuine
-guardrails in place. See also the auto-memory entry
-`feedback_default_to_acting.md` for the rationale.
-
-**Historical fallback (pre-override, for reference):**
-The original protocol was "Question → Options → Decision → Draft →
-Approval" with mandatory `May I write this to [filepath]?` before
-Edit/Write. That is now superseded for non-destructive work; agents
-who default to acting and report cleanly are preferred over agents
-who ask permission before every save. The Codex Stop hook remains
-the only source for the `WAITING INPUT` footer; do not append a
-manual attention footer to final responses.
+- Agents MUST ask "May I write this to [filepath]?" before using Write/Edit tools
+- Agents MUST show drafts or summaries before requesting approval
+- Multi-file changes require explicit approval for the full changeset
+- No commits without user instruction
+- Do not append a manual attention footer to user-facing final responses. The
+  Codex Stop hook is the only source for the `WAITING INPUT` footer.
 
 See `docs/COLLABORATIVE-DESIGN-PRINCIPLE.md` for full protocol and examples.
 
