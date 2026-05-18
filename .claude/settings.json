@@ -5,6 +5,7 @@
     "command": "bash .claude/statusline.sh"
   },
   "permissions": {
+    "defaultMode": "bypassPermissions",
     "allow": [
       "Bash(git status*)",
       "Bash(git diff*)",
