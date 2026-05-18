@@ -24,13 +24,16 @@
 
 ---
 
-> **BLOCKED: OQ8** — `S2CActivationRejected` is not registered in `design/gdd/network-protocol.md` as of 2026-04-30. HU-28 and HU-28b cannot be implemented until this message is defined in NP GDD and registered in the Lightyear protocol.
+> **BLOCKED (refreshed 2026-05-18 by PROMPT 1303 after the PROMPT 1297 `C2SActivateCard` disposition audit).** The legacy OQ8 wording — "`S2CActivationRejected` is not registered in `design/gdd/network-protocol.md` as of 2026-04-30" — is stale. As of `origin/main`, the GDD `design/gdd/network-protocol.md` DOES register `S2CActivationRejected` (S2C table row, `ActivationRejectedReason` enum, NP-50 wrong-phase AC, NP-55 dispatcher no-op AC, and `activate_timeout_ms` tuning knob — all present). The remaining blockers are now **Rust-side**, not GDD-side:
 >
-> **Action required before opening this story**: Add `S2CActivationRejected` to `design/gdd/network-protocol.md` (server → client, sent when `C2SActivateCard` is discarded due to wrong phase or invalid card state).
+> 1. **Shared protocol registration missing.** `S2CActivationRejected` and `ActivationRejectedReason` are still absent from `shared/src/protocol.rs`. Wire-up is tracked by `production/epics/lightyear-protocol-verification/story-010-s2c-activation-rejected-protocol-register.md` (Sprint 18 candidate `S18-PROTOCOL-S2CACTIVATIONREJECTED-REGISTER-001`, NOT activated; renumbered from story-009 to story-010 by PROMPT 1306 integration to resolve a numbering conflict with the PROMPT 1295 real-wire-tests story). Until that story lands, no client `MessageReceiver<S2CActivationRejected>` can be added and HU-28b cannot be wired.
+> 2. **Server card-activation dispatcher missing.** `server/src/network/mod.rs::receive_c2s_messages` currently drains `C2SActivateCard` with `tracing::info!` only — no `S2CGoldUpdate` (NP-55 no-op confirmation), no `S2CActivationRejected` (NP-50 wrong-phase or any other rejection variant), no game-state effect. A future `card-activation` epic dispatcher story (placeholder slug `S19-CARD-ACTIVATION-DISPATCHER-001`) must land before HU-28 / HU-28b are functionally observable — otherwise the activation lock would time out 100% of the time and HU-28a (the `S2CGoldUpdate` unlock path) would never fire either. See PROMPT-1297 audit report §3 and §5 for the full sequencing.
 >
-> **When OQ8 resolves**: Run `/story-readiness` on this story file and a re-review by QL-STORY-READY is required before the story enters the sprint.
+> **Action required before opening this story**: Land (1) the protocol registration story, then (2) the server card-activation dispatcher story. HU-29 (timeout path) is the only AC implementable independently of the dispatcher; if needed, HU-29 can be split into a separate story so the activation-lock timer behaviour ships ahead of HU-28 / HU-28b.
 >
-> **HU-29 (timeout path) is testable now** — it does not depend on `S2CActivationRejected`. If needed, HU-29 can be split into a separate story to unblock partial implementation.
+> **When the blockers above clear**: Run `/story-readiness` on this story file and a re-review by QL-STORY-READY is required before the story enters the sprint.
+>
+> **Note on the original OQ8 framing.** The hand-ui GDD (`design/gdd/hand-ui.md`) Open Questions table still references the old OQ8 wording ("`S2CActivationRejected` not in NP GDD"). The hand-ui GDD revision is owned by game-designer + network-programmer and was explicitly out of scope for PROMPT 1303. Treat the OQ8 wording in hand-ui.md as also stale; the network-protocol.md GDD is the current authoritative source.
 
 ---
 
