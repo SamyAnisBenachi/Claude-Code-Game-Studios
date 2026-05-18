@@ -509,6 +509,10 @@ name = "accessibility_settings_timer_selector_test"
 path = "../tests/integration/accessibility_settings/timer_selector_test.rs"
 
 [[test]]
+name = "accessibility_settings_ui_scale_invariant_test"
+path = "../tests/integration/accessibility_settings/ui_scale_invariant_test.rs"
+
+[[test]]
 name = "board_rendering_plugin_scaffold_test"
 path = "../tests/unit/board_rendering/plugin_scaffold_test.rs"
 
