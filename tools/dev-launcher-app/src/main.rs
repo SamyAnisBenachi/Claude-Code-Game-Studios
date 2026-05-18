@@ -13,11 +13,14 @@
 // policy, evidence dir naming, port selection, process spawning, and safety
 // guards.
 
-#![cfg_attr(all(target_os = "windows", not(debug_assertions)), windows_subsystem = "windows")]
+#![cfg_attr(
+    all(target_os = "windows", not(debug_assertions)),
+    windows_subsystem = "windows"
+)]
 #![cfg(windows)]
 
-extern crate native_windows_gui as nwg;
 extern crate native_windows_derive as nwd;
+extern crate native_windows_gui as nwg;
 
 use nwd::NwgUi;
 use nwg::NativeUi;
@@ -32,6 +35,9 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 
+const APP_TITLE: &str = "CCGS Dev Launcher";
+const APP_SUBTITLE: &str =
+    "Windows desktop utility for latest-main rebuilds and local two-client sessions.";
 const REBUILD_BUTTON_LABEL: &str = "Rebuild Latest Main";
 const LAUNCH_BUTTON_LABEL: &str = "Start Two-Client Play Session";
 const REBUILD_SCRIPT: &str = "tools\\dev-launcher\\Update-LatestMain.ps1";
@@ -45,6 +51,24 @@ const SIDECAR_FILENAME: &str = "ccgs-dev-launcher.repo-root.txt";
 const EVIDENCE_HINT: &str = "production/qa/evidence/dev-runs/";
 const MAX_LOG_LINES: usize = 2000;
 const TIMER_INTERVAL_MS: u64 = 150;
+
+const WINDOW_SIZE: (i32, i32) = (980, 720);
+const MIN_WINDOW_SIZE: (i32, i32) = (760, 560);
+const LAUNCHER_ICON_BYTES: &[u8] = include_bytes!("../assets/ccgs-dev-launcher.ico");
+
+const COLOR_HEADER_BG: [u8; 3] = [27, 43, 64];
+const COLOR_HEADER_TEXT: [u8; 3] = [245, 249, 255];
+const COLOR_HEADER_MUTED: [u8; 3] = [193, 210, 227];
+const COLOR_PANEL_BG: [u8; 3] = [246, 248, 251];
+const COLOR_PANEL_TEXT: [u8; 3] = [35, 45, 58];
+const COLOR_PANEL_HEADING: [u8; 3] = [18, 30, 46];
+const COLOR_STATUS_IDLE: [u8; 3] = [231, 238, 247];
+const COLOR_STATUS_RUNNING: [u8; 3] = [226, 238, 252];
+const COLOR_STATUS_SUCCESS: [u8; 3] = [223, 244, 232];
+const COLOR_STATUS_WARNING: [u8; 3] = [255, 242, 209];
+const COLOR_STATUS_ERROR: [u8; 3] = [255, 229, 229];
+const COLOR_LOG_BG: [u8; 3] = [18, 25, 34];
+const COLOR_LOG_TEXT: [u8; 3] = [224, 235, 244];
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum JobKind {
@@ -107,6 +131,7 @@ enum RepoRootResolution {
 
 struct LauncherState {
     repo_root: Option<PathBuf>,
+    repo_source: Option<ResolutionSource>,
     error_message: Option<String>,
     job: Option<JobKind>,
     rx: Option<Receiver<WorkerMessage>>,
@@ -117,9 +142,14 @@ struct LauncherState {
 }
 
 impl LauncherState {
-    fn new(repo_root: Option<PathBuf>, error_message: Option<String>) -> Self {
+    fn new(
+        repo_root: Option<PathBuf>,
+        repo_source: Option<ResolutionSource>,
+        error_message: Option<String>,
+    ) -> Self {
         Self {
             repo_root,
+            repo_source,
             error_message,
             job: None,
             rx: None,
@@ -150,36 +180,73 @@ impl LauncherState {
     }
 }
 
+#[derive(Clone, Copy)]
+enum StatusTone {
+    Idle,
+    Running,
+    Success,
+    Warning,
+    Error,
+}
+
+impl StatusTone {
+    fn colors(self) -> ([u8; 3], [u8; 3]) {
+        match self {
+            StatusTone::Idle => (COLOR_STATUS_IDLE, COLOR_PANEL_TEXT),
+            StatusTone::Running => (COLOR_STATUS_RUNNING, COLOR_PANEL_TEXT),
+            StatusTone::Success => (COLOR_STATUS_SUCCESS, COLOR_PANEL_TEXT),
+            StatusTone::Warning => (COLOR_STATUS_WARNING, COLOR_PANEL_TEXT),
+            StatusTone::Error => (COLOR_STATUS_ERROR, COLOR_PANEL_TEXT),
+        }
+    }
+}
+
 #[derive(Default, NwgUi)]
 pub struct LauncherUi {
-    #[nwg_control(size: (820, 560), position: (260, 180), title: "CCGS Dev Launcher", flags: "WINDOW|VISIBLE|MAIN_WINDOW")]
-    #[nwg_events(OnWindowClose: [LauncherUi::on_close], OnInit: [LauncherUi::on_init])]
+    #[nwg_control(size: WINDOW_SIZE, position: (220, 120), title: APP_TITLE, flags: "WINDOW|VISIBLE|MAIN_WINDOW|MINIMIZE_BOX")]
+    #[nwg_events(OnWindowClose: [LauncherUi::on_close], OnInit: [LauncherUi::on_init], OnMinMaxInfo: [LauncherUi::set_min_size(SELF, EVT_DATA)])]
     window: nwg::Window,
 
-    #[nwg_layout(parent: window, spacing: 6)]
+    #[nwg_layout(parent: window, spacing: 7, margin: [18, 18, 18, 18])]
     layout: nwg::GridLayout,
 
-    #[nwg_control(text: "Idle. Choose a button to begin.")]
-    #[nwg_layout_item(layout: layout, col: 0, row: 0, col_span: 6)]
-    state_label: nwg::Label,
+    #[nwg_control(background_color: Some(COLOR_HEADER_BG))]
+    #[nwg_layout_item(layout: layout, col: 0, row: 0, row_span: 2)]
+    icon_frame: nwg::ImageFrame,
+
+    #[nwg_control(text: APP_TITLE, flags: "VISIBLE|MULTI_LINE", background_color: Some(COLOR_HEADER_BG))]
+    #[nwg_layout_item(layout: layout, col: 1, row: 0, col_span: 7, row_span: 2)]
+    brand_label: nwg::RichLabel,
 
     #[nwg_control(text: REBUILD_BUTTON_LABEL)]
     #[nwg_events(OnButtonClick: [LauncherUi::on_rebuild])]
-    #[nwg_layout_item(layout: layout, col: 0, row: 1, col_span: 3)]
+    #[nwg_layout_item(layout: layout, col: 0, row: 2, col_span: 4, row_span: 2)]
     rebuild_btn: nwg::Button,
 
     #[nwg_control(text: LAUNCH_BUTTON_LABEL)]
     #[nwg_events(OnButtonClick: [LauncherUi::on_launch])]
-    #[nwg_layout_item(layout: layout, col: 3, row: 1, col_span: 3)]
+    #[nwg_layout_item(layout: layout, col: 4, row: 2, col_span: 4, row_span: 2)]
     launch_btn: nwg::Button,
 
-    #[nwg_control(text: "Logs / evidence: (not yet)")]
-    #[nwg_layout_item(layout: layout, col: 0, row: 2, col_span: 6)]
-    evidence_label: nwg::Label,
+    #[nwg_control(text: "Status: Idle - ready.", flags: "VISIBLE|MULTI_LINE", background_color: Some(COLOR_STATUS_IDLE))]
+    #[nwg_layout_item(layout: layout, col: 0, row: 4, col_span: 8)]
+    state_label: nwg::RichLabel,
 
-    #[nwg_control(text: "", flags: "VISIBLE|VSCROLL|AUTOVSCROLL")]
-    #[nwg_layout_item(layout: layout, col: 0, row: 3, col_span: 6, row_span: 9)]
-    log_box: nwg::TextBox,
+    #[nwg_control(text: "Diagnostics", flags: "VISIBLE|MULTI_LINE", background_color: Some(COLOR_PANEL_BG))]
+    #[nwg_layout_item(layout: layout, col: 0, row: 5, col_span: 8)]
+    diagnostics_heading_label: nwg::RichLabel,
+
+    #[nwg_control(text: "", readonly: true, flags: "VISIBLE|VSCROLL|HSCROLL|AUTOVSCROLL|AUTOHSCROLL|TAB_STOP|SAVE_SELECTION")]
+    #[nwg_layout_item(layout: layout, col: 0, row: 6, col_span: 8, row_span: 4)]
+    diagnostics_box: nwg::RichTextBox,
+
+    #[nwg_control(text: "Script Output", flags: "VISIBLE|MULTI_LINE", background_color: Some(COLOR_PANEL_BG))]
+    #[nwg_layout_item(layout: layout, col: 0, row: 10, col_span: 8)]
+    log_heading_label: nwg::RichLabel,
+
+    #[nwg_control(text: "", readonly: true, flags: "VISIBLE|VSCROLL|HSCROLL|AUTOVSCROLL|AUTOHSCROLL|TAB_STOP|SAVE_SELECTION")]
+    #[nwg_layout_item(layout: layout, col: 0, row: 11, col_span: 8, row_span: 7)]
+    log_box: nwg::RichTextBox,
 
     #[nwg_control(interval: Duration::from_millis(TIMER_INTERVAL_MS), active: true)]
     #[nwg_events(OnTimerTick: [LauncherUi::on_tick])]
@@ -188,6 +255,13 @@ pub struct LauncherUi {
     state: Arc<Mutex<Option<LauncherState>>>,
 
     resolution_init: RefCell<Option<RepoRootResolution>>,
+
+    launcher_icon: RefCell<Option<nwg::Icon>>,
+    brand_font: RefCell<Option<nwg::Font>>,
+    heading_font: RefCell<Option<nwg::Font>>,
+    button_font: RefCell<Option<nwg::Font>>,
+    body_font: RefCell<Option<nwg::Font>>,
+    mono_font: RefCell<Option<nwg::Font>>,
 }
 
 impl LauncherUi {
@@ -196,67 +270,157 @@ impl LauncherUi {
         self.launch_btn.set_enabled(enabled);
     }
 
-    fn on_init(&self) {
-        let resolution = self
-            .resolution_init
-            .borrow_mut()
-            .take()
-            .unwrap_or_else(|| RepoRootResolution::Failed {
-                attempts: vec!["resolution missing at UI init".to_string()],
-            });
+    fn set_status(&self, text: &str, tone: StatusTone) {
+        let (bg, fg) = tone.colors();
+        set_rich_label_text(
+            &self.state_label,
+            text,
+            fg,
+            bg,
+            Some(nwg::CharEffects::BOLD),
+        );
+    }
 
-        let (repo_root, error_message, init_lines, state_label_text, buttons_enabled) =
-            match resolution {
-                RepoRootResolution::Resolved { root, source } => {
-                    let mut lines = Vec::new();
-                    lines.push(format!(
-                        "Repo root: {} (via {})",
-                        root.display(),
-                        source.human()
-                    ));
-                    lines.push(format!(
-                        "Scripts: {} | {}",
-                        REBUILD_SCRIPT, LAUNCH_SCRIPT
-                    ));
-                    lines.push(
-                        "Click 'Rebuild Latest Main' first if you just pulled, then \
-                         'Start Two-Client Play Session' to launch one server + two clients."
-                            .to_string(),
-                    );
-                    (
-                        Some(root),
-                        None,
-                        lines,
-                        "Idle. Choose a button to begin.".to_string(),
-                        true,
-                    )
-                }
-                RepoRootResolution::Failed { attempts } => {
-                    let err = format!(
+    fn refresh_diagnostics(&self) {
+        let snapshot = {
+            let guard = match self.state.lock() {
+                Ok(g) => g,
+                Err(_) => return,
+            };
+            match guard.as_ref() {
+                Some(state) => diagnostics_text(state),
+                None => return,
+            }
+        };
+        set_rich_text_box(
+            &self.diagnostics_box,
+            &snapshot,
+            COLOR_PANEL_TEXT,
+            COLOR_PANEL_BG,
+            false,
+        );
+    }
+
+    fn on_init(&self) {
+        let mut icon = nwg::Icon::default();
+        match nwg::Icon::builder()
+            .source_bin(Some(LAUNCHER_ICON_BYTES))
+            .size(Some((48, 48)))
+            .strict(true)
+            .build(&mut icon)
+        {
+            Ok(()) => {
+                self.window.set_icon(Some(&icon));
+                self.icon_frame.set_icon(Some(&icon));
+                *self.launcher_icon.borrow_mut() = Some(icon);
+            }
+            Err(e) => {
+                eprintln!(
+                    "[ccgs-dev-launcher] icon build failed ({} bytes): {:?}",
+                    LAUNCHER_ICON_BYTES.len(),
+                    e
+                );
+            }
+        }
+
+        let brand_font = build_font("Segoe UI", 18, None);
+        let heading_font = build_font("Segoe UI Semibold", 15, Some(650));
+        let button_font = build_font("Segoe UI Semibold", 18, Some(650));
+        let body_font = build_font("Segoe UI", 14, None);
+        let mono_font = build_font("Consolas", 13, None);
+
+        apply_font(&self.brand_label, brand_font.as_ref());
+        apply_font(&self.diagnostics_heading_label, heading_font.as_ref());
+        apply_font(&self.log_heading_label, heading_font.as_ref());
+        apply_font(&self.rebuild_btn, button_font.as_ref());
+        apply_font(&self.launch_btn, button_font.as_ref());
+        apply_font(&self.state_label, body_font.as_ref());
+        apply_font(&self.diagnostics_box, mono_font.as_ref());
+        apply_font(&self.log_box, mono_font.as_ref());
+
+        *self.brand_font.borrow_mut() = brand_font;
+        *self.heading_font.borrow_mut() = heading_font;
+        *self.button_font.borrow_mut() = button_font;
+        *self.body_font.borrow_mut() = body_font;
+        *self.mono_font.borrow_mut() = mono_font;
+
+        set_brand_label(&self.brand_label);
+        set_rich_label_text(
+            &self.diagnostics_heading_label,
+            "Diagnostics",
+            COLOR_PANEL_HEADING,
+            COLOR_PANEL_BG,
+            Some(nwg::CharEffects::BOLD),
+        );
+        set_rich_label_text(
+            &self.log_heading_label,
+            "Script Output",
+            COLOR_PANEL_HEADING,
+            COLOR_PANEL_BG,
+            Some(nwg::CharEffects::BOLD),
+        );
+        self.log_box.set_background_color(COLOR_LOG_BG);
+        self.diagnostics_box.set_background_color(COLOR_PANEL_BG);
+
+        let resolution = self.resolution_init.borrow_mut().take().unwrap_or_else(|| {
+            RepoRootResolution::Failed {
+                attempts: vec!["resolution missing at UI init".to_string()],
+            }
+        });
+
+        let (
+            repo_root,
+            repo_source,
+            error_message,
+            init_lines,
+            state_label_text,
+            status_tone,
+            buttons_enabled,
+        ) = match resolution {
+            RepoRootResolution::Resolved { root, source } => {
+                let mut lines = Vec::new();
+                lines.push(format!(
+                    "Repo root: {} (via {})",
+                    root.display(),
+                    source.human()
+                ));
+                lines.push(format!("Scripts: {} | {}", REBUILD_SCRIPT, LAUNCH_SCRIPT));
+                (
+                    Some(root),
+                    Some(source),
+                    None,
+                    lines,
+                    "Status: Idle - ready.".to_string(),
+                    StatusTone::Idle,
+                    true,
+                )
+            }
+            RepoRootResolution::Failed { attempts } => {
+                let err = format!(
                         "ERROR: could not locate CCGS repo root. \
                          Set CCGS_REPO_ROOT or rebuild via tools\\dev-launcher\\build-launcher-exe.ps1 \
                          (writes the {} sidecar beside the EXE).",
                         SIDECAR_FILENAME
                     );
-                    let mut lines = vec![err.clone(), "Attempts:".to_string()];
-                    for a in &attempts {
-                        lines.push(format!("  - {}", a));
-                    }
-                    lines.push(
-                        "Buttons are disabled until a valid repo root is resolved.".to_string(),
-                    );
-                    (
-                        None,
-                        Some(err.clone()),
-                        lines,
-                        err,
-                        false,
-                    )
+                let mut lines = vec![err.clone(), "Attempts:".to_string()];
+                for a in &attempts {
+                    lines.push(format!("  - {}", a));
                 }
-            };
+                lines.push("Buttons are disabled until a valid repo root is resolved.".to_string());
+                (
+                    None,
+                    None,
+                    Some(err.clone()),
+                    lines,
+                    "Status: ERROR - repo root unresolved. Buttons disabled.".to_string(),
+                    StatusTone::Error,
+                    false,
+                )
+            }
+        };
 
         let mut guard = self.state.lock().expect("state poisoned at init");
-        let mut state = LauncherState::new(repo_root, error_message);
+        let mut state = LauncherState::new(repo_root, repo_source, error_message);
         for line in init_lines {
             state.append(line);
         }
@@ -264,10 +428,16 @@ impl LauncherUi {
         *guard = Some(state);
         drop(guard);
 
-        self.state_label.set_text(&state_label_text);
+        self.set_status(&state_label_text, status_tone);
         self.set_buttons_enabled(buttons_enabled);
+        self.refresh_diagnostics();
         // Flush initial log paint without waiting for the first timer tick.
         self.refresh_log();
+    }
+
+    fn set_min_size(&self, data: &nwg::EventData) {
+        let data = data.on_min_max();
+        data.set_min_size(MIN_WINDOW_SIZE.0, MIN_WINDOW_SIZE.1);
     }
 
     fn on_close(&self) {
@@ -302,6 +472,11 @@ impl LauncherUi {
                 state.append(format!("ERROR: {}", msg));
                 state.log_dirty = true;
                 drop(guard);
+                self.set_status(
+                    "Status: ERROR - repo root unresolved. Buttons disabled.",
+                    StatusTone::Error,
+                );
+                self.refresh_diagnostics();
                 self.refresh_log();
                 return;
             }
@@ -315,6 +490,11 @@ impl LauncherUi {
             ));
             state.log_dirty = true;
             drop(guard);
+            self.set_status(
+                "Status: ERROR - launcher script missing.",
+                StatusTone::Error,
+            );
+            self.refresh_diagnostics();
             self.refresh_log();
             return;
         }
@@ -335,15 +515,18 @@ impl LauncherUi {
         drop(guard);
 
         self.set_buttons_enabled(false);
-        self.state_label
-            .set_text(&format!("RUNNING: {}", job.human()));
+        self.set_status(
+            &format!("Status: RUNNING - {}", job.human()),
+            StatusTone::Running,
+        );
+        self.refresh_diagnostics();
         self.refresh_log();
     }
 
     fn on_tick(&self) {
         let mut finished: Option<(JobKind, i32)> = None;
         let mut errored: Option<(JobKind, String)> = None;
-        let mut new_evidence: Option<PathBuf> = None;
+        let mut diagnostics_dirty = false;
         {
             let mut guard = match self.state.lock() {
                 Ok(g) => g,
@@ -370,7 +553,7 @@ impl LauncherUi {
                         }
                         Ok(WorkerMessage::EvidenceDir(p)) => {
                             state.last_evidence_dir = Some(p.clone());
-                            new_evidence = Some(p);
+                            diagnostics_dirty = true;
                         }
                         Ok(WorkerMessage::Finished(code)) => {
                             if let Some(job) = state.job.take() {
@@ -381,6 +564,7 @@ impl LauncherUi {
                                     code
                                 ));
                                 finished = Some((job, code));
+                                diagnostics_dirty = true;
                             }
                             keep_rx = false;
                             break;
@@ -389,6 +573,7 @@ impl LauncherUi {
                             if let Some(job) = state.job.take() {
                                 state.add_banner(&format!("ERROR: {} -- {}", job.human(), msg));
                                 errored = Some((job, msg));
+                                diagnostics_dirty = true;
                             }
                             keep_rx = false;
                             break;
@@ -401,6 +586,7 @@ impl LauncherUi {
                                     job.human()
                                 ));
                                 errored = Some((job, "worker channel disconnected".into()));
+                                diagnostics_dirty = true;
                             }
                             keep_rx = false;
                             break;
@@ -413,25 +599,37 @@ impl LauncherUi {
             }
         }
 
-        if let Some(p) = new_evidence {
-            self.evidence_label
-                .set_text(&format!("Logs / evidence: {}", p.display()));
-        }
         if let Some((job, code)) = finished {
             self.set_buttons_enabled(true);
-            let msg = if code == 0 {
-                format!("DONE: {} (exit 0)", job.human())
+            let (msg, tone) = if code == 0 {
+                (
+                    format!("Status: DONE - {} exited 0.", job.human()),
+                    StatusTone::Success,
+                )
             } else {
-                format!("DONE WITH ERRORS: {} (exit {})", job.human(), code)
+                (
+                    format!(
+                        "Status: DONE WITH ERRORS - {} exited {}.",
+                        job.human(),
+                        code
+                    ),
+                    StatusTone::Warning,
+                )
             };
-            self.state_label.set_text(&msg);
+            self.set_status(&msg, tone);
         }
         if let Some((job, why)) = errored {
             self.set_buttons_enabled(true);
-            self.state_label
-                .set_text(&format!("ERROR: {} -- {}", job.human(), why));
+            self.set_status(
+                &format!("Status: ERROR - {} failed. See output.", job.human()),
+                StatusTone::Error,
+            );
+            let _ = why;
         }
 
+        if diagnostics_dirty {
+            self.refresh_diagnostics();
+        }
         self.refresh_log();
     }
 
@@ -449,9 +647,9 @@ impl LauncherUi {
                 return;
             }
             state.log_dirty = false;
-            state.log_lines.join("\r\n")
+            state.log_lines.join("\n")
         };
-        self.log_box.set_text(&snapshot);
+        set_rich_text_box(&self.log_box, &snapshot, COLOR_LOG_TEXT, COLOR_LOG_BG, true);
     }
 }
 
@@ -694,16 +892,184 @@ fn is_repo_root(p: &Path) -> bool {
         && p.join(".git").exists()
 }
 
+fn diagnostics_text(state: &LauncherState) -> String {
+    let mut lines = Vec::new();
+    match (&state.repo_root, state.repo_source) {
+        (Some(root), Some(source)) => {
+            lines.push(format!("Repo root: {}", root.display()));
+            lines.push(format!("Resolved via: {}", source.human()));
+            lines.push(format!(
+                "Rebuild script: {}",
+                root.join(Path::new(REBUILD_SCRIPT)).display()
+            ));
+            lines.push(format!(
+                "Two-client script: {}",
+                root.join(Path::new(LAUNCH_SCRIPT)).display()
+            ));
+        }
+        _ => {
+            lines.push("Repo root: UNRESOLVED".to_string());
+            lines.push(format!(
+                "Expected sidecar: {} beside ccgs-dev-launcher.exe",
+                SIDECAR_FILENAME
+            ));
+            lines.push(
+                "Set CCGS_REPO_ROOT to an absolute repo path if the EXE is outside the repo tree."
+                    .to_string(),
+            );
+        }
+    }
+
+    let job = state.job.map(|j| j.human()).unwrap_or("none");
+    lines.push(format!("Running job: {}", job));
+
+    match &state.last_evidence_dir {
+        Some(path) => lines.push(format!("Evidence: {}", path.display())),
+        None => lines.push("Evidence: not yet emitted by the launch script".to_string()),
+    }
+
+    match state.last_exit {
+        Some(code) => lines.push(format!("Last exit code: {}", code)),
+        None => lines.push("Last exit code: none".to_string()),
+    }
+
+    if let Some(err) = &state.error_message {
+        lines.push(format!("Error detail: {}", err));
+    }
+
+    lines.join("\n")
+}
+
+fn set_brand_label(label: &nwg::RichLabel) {
+    let text = format!("{}\r\n{}", APP_TITLE, APP_SUBTITLE);
+    label.set_background_color(COLOR_HEADER_BG);
+    label.set_text(&text);
+
+    let title_len = APP_TITLE.chars().count() as u32;
+    if title_len > 0 {
+        label.set_char_format(
+            0..title_len,
+            &nwg::CharFormat {
+                effects: Some(nwg::CharEffects::BOLD),
+                height: Some(420),
+                text_color: Some(COLOR_HEADER_TEXT),
+                ..Default::default()
+            },
+        );
+    }
+
+    let subtitle_start = title_len + 2;
+    let total_len = text.chars().count() as u32;
+    if total_len > subtitle_start {
+        label.set_char_format(
+            subtitle_start..total_len,
+            &nwg::CharFormat {
+                height: Some(230),
+                text_color: Some(COLOR_HEADER_MUTED),
+                ..Default::default()
+            },
+        );
+    }
+}
+
+fn set_rich_label_text(
+    label: &nwg::RichLabel,
+    text: &str,
+    fg: [u8; 3],
+    bg: [u8; 3],
+    effects: Option<nwg::CharEffects>,
+) {
+    label.set_background_color(bg);
+    label.set_text(text);
+    let len = text.chars().count() as u32;
+    if len > 0 {
+        label.set_char_format(
+            0..len,
+            &nwg::CharFormat {
+                effects,
+                text_color: Some(fg),
+                ..Default::default()
+            },
+        );
+    }
+}
+
+fn set_rich_text_box(
+    box_control: &nwg::RichTextBox,
+    text: &str,
+    fg: [u8; 3],
+    bg: [u8; 3],
+    scroll_last: bool,
+) {
+    box_control.set_background_color(bg);
+    box_control.set_text_unix2dos(text);
+    let len = box_control.len();
+    if len > 0 {
+        box_control.set_selection(0..len);
+        box_control.set_char_format(&nwg::CharFormat {
+            text_color: Some(fg),
+            ..Default::default()
+        });
+        box_control.set_selection(len..len);
+    }
+    if scroll_last {
+        box_control.scroll_lastline();
+    }
+}
+
+fn build_font(family: &str, size: u32, weight: Option<u32>) -> Option<nwg::Font> {
+    let mut font = nwg::Font::default();
+    let mut builder = nwg::Font::builder().family(family).size(size);
+    if let Some(w) = weight {
+        builder = builder.weight(w);
+    }
+    match builder.build(&mut font) {
+        Ok(()) => Some(font),
+        Err(e) => {
+            eprintln!(
+                "[ccgs-dev-launcher] font build failed (family={} size={} weight={:?}): {:?}",
+                family, size, weight, e
+            );
+            None
+        }
+    }
+}
+
+fn apply_font<C: HasFont>(control: &C, font: Option<&nwg::Font>) {
+    if let Some(f) = font {
+        control.apply_font(f);
+    }
+}
+
+trait HasFont {
+    fn apply_font(&self, font: &nwg::Font);
+}
+
+impl HasFont for nwg::RichLabel {
+    fn apply_font(&self, font: &nwg::Font) {
+        self.set_font(Some(font));
+    }
+}
+
+impl HasFont for nwg::RichTextBox {
+    fn apply_font(&self, font: &nwg::Font) {
+        self.set_font(Some(font));
+    }
+}
+
+impl HasFont for nwg::Button {
+    fn apply_font(&self, font: &nwg::Font) {
+        self.set_font(Some(font));
+    }
+}
+
 fn main() {
     let resolution = locate_repo_root();
 
     nwg::init().expect("Failed to init native-windows-gui");
-    let mut default_font = nwg::Font::default();
-    let _ = nwg::Font::builder()
-        .family("Segoe UI")
-        .size(16)
-        .build(&mut default_font);
-    nwg::Font::set_global_default(Some(default_font));
+    if let Some(default_font) = build_font("Segoe UI", 16, None) {
+        nwg::Font::set_global_default(Some(default_font));
+    }
 
     let app_template = LauncherUi {
         resolution_init: RefCell::new(Some(resolution)),
@@ -794,7 +1160,7 @@ mod tests {
 
     #[test]
     fn launcher_state_truncates_log_beyond_cap() {
-        let mut s = LauncherState::new(Some(PathBuf::from(".")), None);
+        let mut s = LauncherState::new(Some(PathBuf::from(".")), None, None);
         for i in 0..(MAX_LOG_LINES + 50) {
             s.append(format!("line {}", i));
         }
@@ -896,7 +1262,8 @@ mod tests {
         };
         let got = read_sidecar_root(&dir).expect("read_sidecar_root returned None");
         assert_eq!(
-            got, expected,
+            got,
+            expected,
             "real sidecar at {} resolved to {} but expected {}",
             dir.display(),
             got.display(),
@@ -936,8 +1303,7 @@ mod tests {
     fn read_sidecar_root_returns_path_when_present() {
         let dir = unique_temp_dir("with-sidecar");
         let sidecar = dir.join(SIDECAR_FILENAME);
-        fs::write(&sidecar, "D:\\_DEV\\Work\\Claude-Code-Game-Studios\r\n")
-            .expect("write sidecar");
+        fs::write(&sidecar, "D:\\_DEV\\Work\\Claude-Code-Game-Studios\r\n").expect("write sidecar");
         assert_eq!(
             read_sidecar_root(&dir),
             Some(PathBuf::from("D:\\_DEV\\Work\\Claude-Code-Game-Studios"))
@@ -1046,13 +1412,8 @@ mod tests {
         let exe_dir = PathBuf::from("D:\\_DEV\\cargo-target\\ccgs-msvc\\debug");
         let cwd = PathBuf::from("D:\\_DEV\\cargo-target\\ccgs-msvc\\debug");
 
-        let res = resolve_repo_root_pure(
-            None,
-            Some(&exe_dir),
-            Some(&cwd),
-            always_false,
-            no_sidecar,
-        );
+        let res =
+            resolve_repo_root_pure(None, Some(&exe_dir), Some(&cwd), always_false, no_sidecar);
 
         match res {
             RepoRootResolution::Failed { attempts } => {
@@ -1148,10 +1509,50 @@ mod tests {
             always_true,
             no_sidecar,
         );
-        assert_resolved(
-            res,
-            &PathBuf::from("D:\\anything"),
-            ResolutionSource::Env,
+        assert_resolved(res, &PathBuf::from("D:\\anything"), ResolutionSource::Env);
+    }
+
+    #[test]
+    fn launcher_icon_bytes_are_a_real_ico_header() {
+        assert!(
+            LAUNCHER_ICON_BYTES.len() > 6,
+            "icon bytes too short to be an ICO header ({} bytes)",
+            LAUNCHER_ICON_BYTES.len()
         );
+        assert_eq!(
+            &LAUNCHER_ICON_BYTES[0..4],
+            &[0x00, 0x00, 0x01, 0x00],
+            "first 4 bytes are not the ICONDIR magic"
+        );
+        let count = u16::from_le_bytes([LAUNCHER_ICON_BYTES[4], LAUNCHER_ICON_BYTES[5]]);
+        assert!(count >= 1, "ICO declares zero embedded images");
+    }
+
+    #[test]
+    fn app_identity_strings_are_distinct_nonempty() {
+        assert!(!APP_TITLE.trim().is_empty());
+        assert!(!APP_SUBTITLE.trim().is_empty());
+        assert_ne!(APP_TITLE, APP_SUBTITLE);
+        assert!(APP_SUBTITLE.contains("Windows desktop utility"));
+    }
+
+    #[test]
+    fn diagnostics_text_surfaces_scrollworthy_paths() {
+        let root = PathBuf::from("D:\\_DEV\\Work\\Claude-Code-Game-Studios");
+        let mut state = LauncherState::new(Some(root.clone()), Some(ResolutionSource::Env), None);
+        state.last_evidence_dir =
+            Some(root.join("production\\qa\\evidence\\dev-runs\\2026-05-18-120000"));
+        let text = diagnostics_text(&state);
+        assert!(text.contains("Repo root:"));
+        assert!(text.contains(REBUILD_SCRIPT));
+        assert!(text.contains(LAUNCH_SCRIPT));
+        assert!(text.contains("Evidence:"));
+    }
+
+    #[test]
+    fn status_tone_colors_are_not_flat_defaults() {
+        assert_ne!(StatusTone::Idle.colors().0, StatusTone::Running.colors().0);
+        assert_ne!(StatusTone::Success.colors().0, StatusTone::Error.colors().0);
+        assert_ne!(COLOR_LOG_BG, COLOR_PANEL_BG);
     }
 }
