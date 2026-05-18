@@ -3,10 +3,10 @@ use bevy::prelude::*;
 use lightyear::prelude::{MessageReceiver, MessageSender};
 use shared::card::ClassId;
 use shared::protocol::{
-    C2SConfirmClass, C2SCreateRoom, C2SJoinRoom, C2SSelectClass, GameMode, ReliableChannel,
-    S2CClassLocked, S2CClassesRevealed, S2CConfirmClassRejected, S2CCreateRoomRejected,
-    S2CHandshake, S2CHandshakeRejected, S2CJoinAck, S2CJoinRejected, S2CRoomCreated,
-    S2CSlotUpdated, SessionSlot,
+    C2SConfirmClass, C2SCreateRoom, C2SJoinRoom, C2SListRooms, C2SSelectClass, GameMode,
+    ReliableChannel, RoomListEntry, S2CClassLocked, S2CClassesRevealed, S2CConfirmClassRejected,
+    S2CCreateRoomRejected, S2CHandshake, S2CHandshakeRejected, S2CJoinAck, S2CJoinRejected,
+    S2CRoomCreated, S2CRoomList, S2CSlotUpdated, SessionSlot,
 };
 use shared::session::PlayerId;
 
@@ -99,6 +99,7 @@ impl Plugin for LobbyUiPlugin {
                 Update,
                 (
                     drain_lobby_s2c_system,
+                    lobby_initial_room_list_refresh_system,
                     lobby_keyboard_input_system,
                     lobby_button_interaction_system,
                     send_lobby_commands_system,
@@ -134,6 +135,12 @@ pub struct LobbyViewState {
     pub locked_class: Option<ClassId>,
     pub revealed_classes: Vec<(PlayerId, ClassId)>,
     pub status: String,
+    /// PROMPT 1160 — joinable-room list received from the server via
+    /// `S2CRoomList`. Empty by default; populated on handshake and on every
+    /// Refresh interaction. Server filters out the local player's own room and
+    /// any non-`LobbyWaiting`/fully-occupied rooms (see
+    /// `server::core::session::system::build_room_list`).
+    pub room_list: Vec<RoomListEntry>,
 }
 
 impl Default for LobbyViewState {
@@ -148,6 +155,7 @@ impl Default for LobbyViewState {
             locked_class: None,
             revealed_classes: Vec::new(),
             status: "Connecting".to_string(),
+            room_list: Vec::new(),
         }
     }
 }
@@ -197,6 +205,8 @@ pub enum LobbyCommand {
         room_code: String,
         requested_slot: u8,
     },
+    /// PROMPT 1160 — request the server's joinable-room list via `C2SListRooms`.
+    RefreshRooms,
     SelectClass {
         class_id: ClassId,
     },
@@ -265,6 +275,29 @@ pub struct LobbyClassButton {
 #[derive(Component)]
 pub struct LobbyConfirmClassButton;
 
+/// PROMPT 1160 — refresh button in the existing-room browser panel. Pressing it
+/// writes a `LobbyCommand::RefreshRooms` which sends `C2SListRooms` on the
+/// reliable channel.
+#[derive(Component)]
+pub struct LobbyRefreshRoomsButton;
+
+/// PROMPT 1160 — container for the joinable-room rows in the lobby. Rebuilt
+/// from `LobbyViewState.room_list` whenever it changes (see
+/// `refresh_lobby_ui_system`).
+#[derive(Component)]
+pub struct LobbyRoomListContainer;
+
+/// PROMPT 1160 — one row in the existing-room browser. Clicking the row writes
+/// `LobbyCommand::JoinRoom { room_code, requested_slot }` using the
+/// server-supplied `first_open_slot` so the click does not require the player
+/// to think about slot indices. Rows whose `first_open_slot` is `None` (full)
+/// are rendered as a non-interactive label rather than a button.
+#[derive(Component, Debug, Clone, PartialEq, Eq)]
+pub struct LobbyRoomListRow {
+    pub room_code: String,
+    pub requested_slot: u8,
+}
+
 /// Background portrait image for a class selection card in the lobby class picker.
 /// One entity per `ClassId` variant (7 total). The `ImageNode` is the portrait image;
 /// selection state is conveyed by a separate overlay, not by swapping this image.
@@ -317,6 +350,11 @@ enum LobbyDynamicText {
     OwnSlot,
     /// PROMPT 1138 — opponent-slot panel inline label.
     OpponentSlot,
+    /// PROMPT 1160 — Refresh button label in the existing-room browser.
+    Refresh,
+    /// PROMPT 1160 — empty-state label that renders when the room list is
+    /// empty, so the panel never appears as a blank slab.
+    RoomListEmpty,
 }
 
 pub fn drain_lobby_s2c_system(
@@ -335,6 +373,7 @@ pub fn drain_lobby_s2c_system(
     mut class_locked: Query<&mut MessageReceiver<S2CClassLocked>>,
     mut classes_revealed: Query<&mut MessageReceiver<S2CClassesRevealed>>,
     mut confirm_rejected: Query<&mut MessageReceiver<S2CConfirmClassRejected>>,
+    mut room_lists: Query<&mut MessageReceiver<S2CRoomList>>,
 ) {
     for mut receiver in &mut handshakes {
         for message in receiver.receive() {
@@ -465,6 +504,47 @@ pub fn drain_lobby_s2c_system(
             input.class_confirm_in_flight = false;
         }
     }
+
+    for mut receiver in &mut room_lists {
+        for message in receiver.receive() {
+            tracing::info!(
+                room_count = message.rooms.len(),
+                msg_type = "S2CRoomList",
+                "drain_lobby_s2c: recv"
+            );
+            apply_room_list(&mut lobby, &message);
+        }
+    }
+}
+
+/// PROMPT 1160 — apply `S2CRoomList` into `LobbyViewState.room_list`. Pure
+/// function: no I/O, no command writes; exposed for tests.
+pub fn apply_room_list(lobby: &mut LobbyViewState, message: &S2CRoomList) {
+    lobby.room_list = message.rooms.clone();
+}
+
+/// PROMPT 1160 — request the room list exactly once after the first handshake
+/// completes, so the browser panel is populated before the user thinks to
+/// interact. Split out from `drain_lobby_s2c_system` to keep that system's
+/// `SystemParam` tuple within the 16-element limit. Re-runs only if the
+/// player's identity drops to `None` and re-arrives (handshake reset path).
+pub fn lobby_initial_room_list_refresh_system(
+    lobby: Res<LobbyViewState>,
+    mut commands: MessageWriter<LobbyCommand>,
+    mut already_requested: Local<bool>,
+) {
+    if lobby.local_player_id.is_none() {
+        *already_requested = false;
+        return;
+    }
+
+    if *already_requested {
+        return;
+    }
+
+    *already_requested = true;
+    tracing::info!("lobby_initial_room_list_refresh: enqueuing RefreshRooms");
+    commands.write(LobbyCommand::RefreshRooms);
 }
 
 pub fn apply_lobby_handshake(
@@ -612,6 +692,8 @@ fn lobby_button_interaction_system(
             Option<&LobbyRequestedSlotButton>,
             Option<&LobbyClassButton>,
             Option<&LobbyConfirmClassButton>,
+            Option<&LobbyRefreshRoomsButton>,
+            Option<&LobbyRoomListRow>,
         ),
         Changed<Interaction>,
     >,
@@ -619,7 +701,9 @@ fn lobby_button_interaction_system(
     mut lobby: ResMut<LobbyViewState>,
     mut commands: MessageWriter<LobbyCommand>,
 ) {
-    for (interaction, room_code, create, join, slot, class, confirm) in &mut interactions {
+    for (interaction, room_code, create, join, slot, class, confirm, refresh, row) in
+        &mut interactions
+    {
         if *interaction != Interaction::Pressed {
             continue;
         }
@@ -643,6 +727,10 @@ fn lobby_button_interaction_system(
             request_select_class(class.class_id, &mut input, &mut lobby, &mut commands);
         } else if confirm.is_some() {
             request_confirm_class(&mut input, &mut lobby, &mut commands);
+        } else if refresh.is_some() {
+            request_refresh_rooms(&mut lobby, &mut commands);
+        } else if let Some(row) = row {
+            request_join_room_from_row(row, &mut input, &mut lobby, &mut commands);
         }
     }
 }
@@ -653,6 +741,7 @@ fn send_lobby_commands_system(
     mut join_room: Query<&mut MessageSender<C2SJoinRoom>>,
     mut select_class: Query<&mut MessageSender<C2SSelectClass>>,
     mut confirm_class: Query<&mut MessageSender<C2SConfirmClass>>,
+    mut list_rooms: Query<&mut MessageSender<C2SListRooms>>,
 ) {
     for command in commands.read() {
         match command {
@@ -693,6 +782,16 @@ fn send_lobby_commands_system(
                     room_code: room_code.clone(),
                     requested_slot: *requested_slot,
                 });
+            }
+            LobbyCommand::RefreshRooms => {
+                let Some(mut sender) = list_rooms.iter_mut().next() else {
+                    warn!(
+                        "C2S send DROPPED: type=C2SListRooms, handler=send_lobby_commands_system, reason=no_sender_entity"
+                    );
+                    continue;
+                };
+                tracing::info!(msg_type = "C2SListRooms", "c2s_send: enter");
+                sender.send::<ReliableChannel>(C2SListRooms::default());
             }
             LobbyCommand::SelectClass { class_id } => {
                 let Some(mut sender) = select_class.iter_mut().next() else {
@@ -909,6 +1008,42 @@ fn request_join_room(
     commands.write(LobbyCommand::JoinRoom {
         room_code,
         requested_slot: input.requested_slot,
+    });
+}
+
+/// PROMPT 1160 — write a `LobbyCommand::RefreshRooms` and surface a lightweight
+/// banner update. Always writes exactly one command per click; the
+/// `send_lobby_commands_system` reader collapses repeats into individual
+/// `C2SListRooms` sends with no need for a latch (the request is cheap and
+/// idempotent server-side).
+pub fn request_refresh_rooms(
+    lobby: &mut LobbyViewState,
+    commands: &mut MessageWriter<LobbyCommand>,
+) {
+    lobby.status = "Refreshing rooms".to_string();
+    commands.write(LobbyCommand::RefreshRooms);
+}
+
+/// PROMPT 1160 — turn a clicked room-list row into a `JoinRoom` command using
+/// the server-supplied `requested_slot`. Mirrors the `Join` button path so the
+/// existing `input.join_in_flight` latch and rejection surface (`apply_join_ack`
+/// / `S2CJoinRejected` drainer) continue to apply.
+pub fn request_join_room_from_row(
+    row: &LobbyRoomListRow,
+    input: &mut LobbyInputState,
+    lobby: &mut LobbyViewState,
+    commands: &mut MessageWriter<LobbyCommand>,
+) {
+    if input.join_in_flight {
+        lobby.status = "Join already pending".to_string();
+        return;
+    }
+
+    input.join_in_flight = true;
+    lobby.status = format!("Joining {}", row.room_code);
+    commands.write(LobbyCommand::JoinRoom {
+        room_code: row.room_code.clone(),
+        requested_slot: row.requested_slot,
     });
 }
 
@@ -1139,6 +1274,60 @@ fn spawn_lobby_ui_system(
                         BorderColor::all(Color::srgb(0.28, 0.56, 0.72)),
                     ));
                 });
+
+                // PROMPT 1160 — existing-room browser section. Sits between
+                // Section 2 (create / join row) and the Requested-slot row so
+                // the read order is "see who's playing here right now ->
+                // join one of those, or create your own, or type a private
+                // code -> pick a slot -> pick a class".
+                panel
+                    .spawn((
+                        Name::new("Lobby Existing Rooms Block"),
+                        Node {
+                            width: Val::Percent(100.0),
+                            flex_direction: FlexDirection::Column,
+                            row_gap: Val::Px(SPACING_SM),
+                            ..default()
+                        },
+                    ))
+                    .with_children(|block| {
+                        block.spawn((lobby_row_node(),)).with_children(|row| {
+                            row.spawn((
+                                Text::new("Existing rooms"),
+                                lobby_text_font(typography::H3),
+                                TextColor(Color::srgb(0.92, 0.95, 0.98)),
+                            ));
+                            row.spawn((
+                                LobbyRefreshRoomsButton,
+                                LobbyDynamicText::Refresh,
+                                Button,
+                                Interaction::None,
+                                Text::new(lobby_dynamic_copy(
+                                    LobbyDynamicText::Refresh,
+                                    &lobby,
+                                    &input,
+                                )),
+                                lobby_text_font(typography::BODY),
+                                TextColor(Color::srgb(0.82, 0.95, 1.0)),
+                                lobby_button_node(
+                                    Val::Px(LOBBY_JOIN_BUTTON_WIDTH_PX),
+                                    LOBBY_JOIN_BUTTON_HEIGHT_PX,
+                                ),
+                                BackgroundColor(Color::srgba(0.11, 0.15, 0.20, 0.95)),
+                                BorderColor::all(Color::srgb(0.28, 0.56, 0.72)),
+                            ));
+                        });
+                        block.spawn((
+                            LobbyRoomListContainer,
+                            Name::new("Lobby Room List Container"),
+                            Node {
+                                width: Val::Percent(100.0),
+                                flex_direction: FlexDirection::Column,
+                                row_gap: Val::Px(SPACING_SM),
+                                ..default()
+                            },
+                        ));
+                    });
 
                 // Sprint 14 story 003 AC6: lobby labels are at least as
                 // large as the data they describe.
@@ -1469,6 +1658,7 @@ fn spawn_lobby_ui_system(
 }
 
 fn refresh_lobby_ui_system(
+    mut commands: Commands,
     lobby: Res<LobbyViewState>,
     input: Res<LobbyInputState>,
     mut texts: Query<&mut Text, With<LobbyStatusText>>,
@@ -1478,6 +1668,7 @@ fn refresh_lobby_ui_system(
         &mut BackgroundColor,
         &mut BorderColor,
     )>,
+    room_list_container: Query<Entity, With<LobbyRoomListContainer>>,
 ) {
     if !lobby.is_changed() && !input.is_changed() {
         return;
@@ -1503,6 +1694,86 @@ fn refresh_lobby_ui_system(
         *background = next_background;
         *border = next_border;
     }
+
+    if lobby.is_changed() {
+        for container in &room_list_container {
+            rebuild_room_list_rows(&mut commands, container, &lobby);
+        }
+    }
+}
+
+/// PROMPT 1160 — re-populate the room-list container with one entity per row.
+/// Always despawns descendants first so successive `S2CRoomList` payloads do
+/// not accumulate stale rows. When the list is empty the helper renders a
+/// single `RoomListEmpty` label so the panel never appears as a blank slab.
+fn rebuild_room_list_rows(
+    commands: &mut Commands,
+    container_entity: Entity,
+    lobby: &LobbyViewState,
+) {
+    commands
+        .entity(container_entity)
+        .despawn_related::<Children>();
+
+    if lobby.room_list.is_empty() {
+        commands.entity(container_entity).with_children(|parent| {
+            parent.spawn((
+                LobbyDynamicText::RoomListEmpty,
+                Text::new("No joinable rooms — press Create to start one"),
+                lobby_text_font(typography::BODY),
+                TextColor(Color::srgba(0.78, 0.84, 0.92, 0.86)),
+            ));
+        });
+        return;
+    }
+
+    commands.entity(container_entity).with_children(|parent| {
+        for entry in &lobby.room_list {
+            let label = format_room_list_row_label(entry);
+            match entry.first_open_slot {
+                Some(slot) => {
+                    parent.spawn((
+                        LobbyRoomListRow {
+                            room_code: entry.room_code.clone(),
+                            requested_slot: slot,
+                        },
+                        Button,
+                        Interaction::None,
+                        Text::new(label),
+                        lobby_text_font(typography::BODY),
+                        TextColor(Color::srgb(0.92, 0.95, 0.98)),
+                        lobby_button_node(
+                            Val::Percent(100.0),
+                            LOBBY_BUTTON_HEIGHT_PX,
+                        ),
+                        BackgroundColor(Color::srgba(0.11, 0.15, 0.20, 0.95)),
+                        BorderColor::all(Color::srgb(0.28, 0.56, 0.72)),
+                    ));
+                }
+                None => {
+                    // Defensive: server filters out full rooms, but if one
+                    // slips through we render it as a non-interactive label
+                    // (contract addendum: never produce a JoinRoom with no
+                    // open slot).
+                    parent.spawn((
+                        Text::new(label),
+                        lobby_text_font(typography::BODY),
+                        TextColor(Color::srgba(0.74, 0.80, 0.86, 0.74)),
+                    ));
+                }
+            }
+        }
+    });
+}
+
+/// PROMPT 1160 — row text builder. Format chosen to read at a glance:
+/// "ABCDEF · OneVOne · 1/2". The leading code matches the typed-Join surface so
+/// the player can correlate browser rows with the room-code chip.
+pub fn format_room_list_row_label(entry: &RoomListEntry) -> String {
+    format!(
+        "{} · {:?} · {}/{}",
+        entry.room_code, entry.mode, entry.slots_filled, entry.slots_max
+    )
 }
 
 /// Status banner copy.
@@ -1604,6 +1875,14 @@ fn lobby_dynamic_copy(
         LobbyDynamicText::Confirm => lobby_confirm_button_text(lobby, input),
         LobbyDynamicText::OwnSlot => lobby_own_slot_label_text(lobby, input),
         LobbyDynamicText::OpponentSlot => lobby_opponent_slot_label_text(lobby),
+        LobbyDynamicText::Refresh => "Refresh".to_string(),
+        LobbyDynamicText::RoomListEmpty => {
+            if lobby.room_list.is_empty() {
+                "No joinable rooms — press Create to start one".to_string()
+            } else {
+                String::new()
+            }
+        }
     }
 }
 

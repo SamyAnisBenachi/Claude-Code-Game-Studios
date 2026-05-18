@@ -7,14 +7,14 @@ use crate::core::rsm::{advance_phase, on_session_ready};
 use crate::core::session::{
     evaluate_room_session_ready, evaluate_session_ready, flush_deferred_queue,
     handle_confirm_class, handle_create_room, handle_game_over_teardown, handle_join_room,
-    handle_lobby_disconnect, handle_lobby_heartbeat, handle_placement_timer_multiplier_requests,
-    handle_reconnect, handle_request_snapshot, handle_result_acknowledgements, handle_select_class,
-    hello_timeout_watchdog, lobby_timeout_check, on_reconnect_connected,
-    tick_ended_session_result_timeout, tick_lobby_heartbeats, ActiveSessions, ClassPreviews,
-    ClassSelections, NextFreshPlayerId, PlacementTimerMultiplierRequests, PlayerConnectionMap,
-    PlayerSessionData, PlayerSessions, ReconnectNetworkOutbox, ReconnectTracker, RoomSessions,
-    ServerRngFactory, SessionConfig, SessionNetworkOutbox, SessionSystemSet,
-    SnapshotRequestCooldowns,
+    handle_list_rooms, handle_lobby_disconnect, handle_lobby_heartbeat,
+    handle_placement_timer_multiplier_requests, handle_reconnect, handle_request_snapshot,
+    handle_result_acknowledgements, handle_select_class, hello_timeout_watchdog,
+    lobby_timeout_check, on_reconnect_connected, tick_ended_session_result_timeout,
+    tick_lobby_heartbeats, ActiveSessions, ClassPreviews, ClassSelections, NextFreshPlayerId,
+    PlacementTimerMultiplierRequests, PlayerConnectionMap, PlayerSessionData, PlayerSessions,
+    ReconnectNetworkOutbox, ReconnectTracker, RoomSessions, ServerRngFactory, SessionConfig,
+    SessionNetworkOutbox, SessionSystemSet, SnapshotRequestCooldowns,
 };
 
 pub struct GameSessionPlugin;
@@ -46,6 +46,7 @@ impl Plugin for GameSessionPlugin {
                 (
                     handle_create_room,
                     handle_join_room,
+                    handle_list_rooms,
                     handle_select_class,
                     handle_confirm_class,
                     handle_placement_timer_multiplier_requests,
