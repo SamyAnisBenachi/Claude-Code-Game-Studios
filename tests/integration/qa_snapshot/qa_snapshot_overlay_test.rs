@@ -983,3 +983,234 @@ fn counter_is_monotonic() {
         "counter must produce strictly increasing ids"
     );
 }
+
+// ─────────────────────────────────────────────────────────────────────────
+// S18-QA-SNAPSHOT-OVERLAY-EXCLUDE-ON-CAPTURE
+// ─────────────────────────────────────────────────────────────────────────
+
+/// Snapshot request must hide the overlay root before the screenshot is
+/// rendered, and the capture-completed handler must restore it. This is
+/// the visual-evidence fix for UI-1129-16 (the `Capturing…` chip was
+/// being captured *inside* every screenshot frame).
+#[test]
+fn test_qa_snapshot_request_hides_overlay_until_capture_completes() {
+    // Arrange — bring up a MinimalPlugins app with the QA snapshot plugin
+    // enabled so the overlay root is spawned and the request → write →
+    // capture-completed system chain runs through real Bevy scheduling.
+    test_helpers::init_test_tracing();
+    let tmp = unique_tmp_dir("overlay-hide");
+    let mut app = App::new();
+    app.insert_resource(QASnapshotConfig {
+        enabled: true,
+        output_dir: tmp.clone(),
+    });
+    app.add_plugins(MinimalPlugins);
+    app.add_plugins(bevy::state::app::StatesPlugin);
+    app.init_state::<ClientState>();
+    app.insert_resource(CurrentClientPhase {
+        phase: RoundPhase::Placement,
+        round: 1,
+    });
+    app.insert_resource(ClientPhaseView::default());
+    app.insert_resource(ClientSessionIdentity::default());
+    app.add_plugins(QASnapshotPlugin);
+    app.update();
+
+    let overlay_root = app
+        .world()
+        .get_resource::<QASnapshotOverlayEntities>()
+        .copied()
+        .expect("QASnapshotOverlayEntities must be present when enabled")
+        .root;
+
+    // Baseline — Visibility is the default `Inherited` (auto-inserted as a
+    // required component of `Node`) so the operator sees the Snapshot
+    // button on the first painted frame.
+    let baseline_visibility = *app
+        .world()
+        .entity(overlay_root)
+        .get::<Visibility>()
+        .expect("overlay root must carry a Visibility component (required by Node)");
+    assert_eq!(
+        baseline_visibility,
+        Visibility::Inherited,
+        "overlay root must default to Visibility::Inherited so the button is visible at rest"
+    );
+
+    // Act — drop a QASnapshotRequested message onto the same channel both
+    // the button click and F9 shortcut use, then tick the app once. The
+    // write_qa_snapshot_system must hide the overlay root so the next
+    // render frame paints the production UI without the QA chrome.
+    app.world_mut()
+        .resource_mut::<Messages<QASnapshotRequested>>()
+        .write(QASnapshotRequested);
+    app.update();
+
+    let visibility_during_capture = *app
+        .world()
+        .entity(overlay_root)
+        .get::<Visibility>()
+        .expect("overlay root Visibility must still exist mid-capture");
+    assert_eq!(
+        visibility_during_capture,
+        Visibility::Hidden,
+        "overlay root must be Visibility::Hidden once a snapshot is requested \
+         so the captured PNG omits the QA chrome \
+         (S18-QA-SNAPSHOT-OVERLAY-EXCLUDE-ON-CAPTURE)"
+    );
+
+    // The captured snapshot bundle must exist on disk and the feedback
+    // state must reflect the in-flight capture — i.e. the visibility flip
+    // is part of the same code path that produced the JSON, not a
+    // side-effect from somewhere else.
+    let entries: Vec<_> = fs::read_dir(&tmp)
+        .expect("output_dir must exist after the request landed")
+        .filter_map(|e| e.ok())
+        .collect();
+    assert_eq!(
+        entries.len(),
+        1,
+        "exactly one snapshot must have been written by write_qa_snapshot_system"
+    );
+    let snapshot_subdir = entries[0].path();
+    let json_path = snapshot_subdir.join("snapshot.json");
+    let png_path = snapshot_subdir.join(QA_SCREENSHOT_FILENAME);
+    assert!(json_path.is_file(), "snapshot.json must be written");
+
+    match app.world().resource::<QASnapshotFeedbackState>() {
+        QASnapshotFeedbackState::Capturing { .. } => {}
+        other => panic!("feedback state must be Capturing while overlay is hidden, got {other:?}"),
+    }
+
+    // Act 2 — fake the render world reporting a successful capture (the
+    // PNG file is staged on disk so the json status flip lands in the
+    // `captured` branch). The capture-completed system must restore the
+    // overlay so the human sees the `Saved <id>` feedback chip on the
+    // very next painted frame.
+    fs::write(&png_path, b"\x89PNG-fake").expect("fake PNG for completion path");
+    app.world_mut()
+        .resource_mut::<Messages<QASnapshotCaptureCompleted>>()
+        .write(QASnapshotCaptureCompleted {
+            snapshot_id: "overlay-hide-1".to_string(),
+            json_path: json_path.clone(),
+            png_path: png_path.clone(),
+            captured_at_ms: 1_700_000_002_000,
+        });
+    app.update();
+
+    let visibility_after_capture = *app
+        .world()
+        .entity(overlay_root)
+        .get::<Visibility>()
+        .expect("overlay root Visibility must still exist after capture");
+    assert_eq!(
+        visibility_after_capture,
+        Visibility::Inherited,
+        "overlay root must be restored to Visibility::Inherited after capture \
+         completes so the human sees post-capture feedback \
+         (S18-QA-SNAPSHOT-OVERLAY-EXCLUDE-ON-CAPTURE)"
+    );
+
+    // And the feedback state advances to `Saved` rather than getting
+    // stuck — i.e. the restoration sits on the same code path as the
+    // user-visible Saved chip, not on a separate branch that could
+    // diverge.
+    match app.world().resource::<QASnapshotFeedbackState>() {
+        QASnapshotFeedbackState::Saved { .. } => {}
+        other => panic!("feedback state must advance to Saved after capture, got {other:?}"),
+    }
+}
+
+/// When the render world never reports back (headless / WASM stutter), the
+/// capture state is demoted to `Failed("capture timeout")` by
+/// `revert_qa_snapshot_feedback_state_system`. The visibility mirror
+/// system must then restore the overlay root's visibility — otherwise a
+/// single missed frame would hide the Snapshot button permanently and the
+/// human would lose the trigger affordance until process restart.
+#[test]
+fn test_qa_snapshot_capture_timeout_restores_overlay_visibility() {
+    // Arrange — minimal app with QASnapshotPlugin enabled so the overlay
+    // root spawns and the full system chain (write → completed → revert
+    // → visibility mirror → visuals) is wired. `Time<Real>` is ticked by
+    // `MinimalPlugins`' time plugin on every `app.update()`, which is
+    // what makes the wall-clock timeout observable in tests.
+    test_helpers::init_test_tracing();
+    let tmp = unique_tmp_dir("overlay-timeout");
+    let mut app = App::new();
+    app.insert_resource(QASnapshotConfig {
+        enabled: true,
+        output_dir: tmp,
+    });
+    app.add_plugins(MinimalPlugins);
+    app.add_plugins(bevy::state::app::StatesPlugin);
+    app.init_state::<ClientState>();
+    app.insert_resource(CurrentClientPhase {
+        phase: RoundPhase::Placement,
+        round: 1,
+    });
+    app.insert_resource(ClientPhaseView::default());
+    app.insert_resource(ClientSessionIdentity::default());
+    app.add_plugins(QASnapshotPlugin);
+    app.update();
+
+    let overlay_root = app
+        .world()
+        .get_resource::<QASnapshotOverlayEntities>()
+        .copied()
+        .expect("QASnapshotOverlayEntities must exist when enabled")
+        .root;
+
+    // Act 1 — issue a request and tick the chain. write_qa_snapshot_system
+    // sets feedback to `Capturing`; the visibility mirror flips the root
+    // to `Hidden` on the same tick.
+    app.world_mut()
+        .resource_mut::<Messages<QASnapshotRequested>>()
+        .write(QASnapshotRequested);
+    app.update();
+
+    let visibility_during_capture = *app
+        .world()
+        .entity(overlay_root)
+        .get::<Visibility>()
+        .expect("overlay root must keep its Visibility component");
+    assert_eq!(
+        visibility_during_capture,
+        Visibility::Hidden,
+        "precondition: the visibility mirror must hide the overlay while feedback is Capturing"
+    );
+
+    // Act 2 — sleep past the wall-clock capture timeout, then tick again.
+    // revert_qa_snapshot_feedback_state_system demotes
+    // `Capturing → Failed("capture timeout")` and the visibility mirror
+    // (running later in the same tick) restores the overlay because
+    // feedback is no longer `Capturing`.
+    sleep(Duration::from_millis(
+        ((QA_CAPTURE_TIMEOUT_SECS + 0.1) * 1_000.0) as u64,
+    ));
+    app.update();
+
+    // Assert — overlay is restored and feedback reports the timeout so
+    // the human sees the `Failed: capture timeout` chip rather than a
+    // silently-invisible button.
+    let visibility_after_timeout = *app
+        .world()
+        .entity(overlay_root)
+        .get::<Visibility>()
+        .expect("overlay root must keep its Visibility component");
+    assert_eq!(
+        visibility_after_timeout,
+        Visibility::Inherited,
+        "overlay root must be restored to Visibility::Inherited after capture timeout \
+         so the operator does not lose the Snapshot button \
+         (S18-QA-SNAPSHOT-OVERLAY-EXCLUDE-ON-CAPTURE)"
+    );
+    match app.world().resource::<QASnapshotFeedbackState>() {
+        QASnapshotFeedbackState::Failed { reason, .. } => {
+            assert!(
+                reason.contains("timeout"),
+                "timeout reason must mention timeout, got {reason:?}"
+            );
+        }
+        other => panic!("feedback must be Failed after timeout, got {other:?}"),
+    }
+}
