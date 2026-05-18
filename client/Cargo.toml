@@ -449,6 +449,18 @@ path = "../tests/integration/ui_clean_pass/hud_top_strip_layout_test.rs"
 name = "hud_bottom_strip_layout_test"
 path = "../tests/integration/ui_clean_pass/hud_bottom_strip_layout_test.rs"
 
+# PROMPT 1183 — HUD-OVERLAY-RESPONSIVE-LAYOUT-REPAIR regression bin.
+# Guards: (1) HUD top strip column_gap stays at SPACING_MD so the
+# seven-pill strip fits within the 1280 px minimum viewport budget; (2)
+# the HUD timer bar + numeric countdown both start hidden and flip on
+# PhaseTimerState activation; (3) the RESOLUTION dim overlay flips
+# visible only during Resolution and back to hidden afterwards; (4) the
+# full-viewport HUD root and dim overlay anchor at (0,0) so they always
+# span the viewport.
+[[test]]
+name = "hud_overlay_responsive_layout_repair_test"
+path = "../tests/integration/hud/hud_overlay_responsive_layout_repair_test.rs"
+
 # S12-TD-UI-OVERLAY-ALPHA-TOKEN-001 (Sprint 14 story 006): overlay alpha
 # design-token module grep-guard, HUD dim / settlement scrim / result
 # backdrop migration spot-checks, and connection-lost overlay AC6
