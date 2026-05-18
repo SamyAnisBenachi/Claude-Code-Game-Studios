@@ -1,3 +1,50 @@
+# PROMPT 1172 State Banner -- Orchestrator Current-State Refresh
+
+Updated 2026-05-18 by PROMPT 1172. Source-of-truth at refresh:
+`origin/main@6e3a5bebb339767051e904a08fd6fdd8fb5415af` (PROMPT 1171
+`LOBBY-EXISTING-ROOM-BROWSER-MAIN-LAND`). Stage remains `Polish`; sprint
+17 remains `active`; no Sprint 17 close-out, Sprint 18 activation, gate-check,
+release claim, or stage advance is performed by this banner.
+
+Recent main lands now on `origin/main`:
+
+- PROMPT 1166 landed shop/auction click backend repair (`ui_picking` default
+  + Interaction::Pressed regression coverage). Timer visual cleanup remains a
+  separate outstanding surface.
+- PROMPT 1168 landed QA snapshot overlay-exclude so the snapshot overlay is
+  hidden during capture and restored after capture feedback.
+- PROMPT 1169 landed the native Windows two-button launcher EXE source under
+  `tools/dev-launcher-app/` plus `tools/dev-launcher/build-launcher-exe.ps1`.
+  The EXE binary itself remains an untracked Cargo build output under
+  `D:\_DEV\cargo-target\ccgs-msvc\debug` or `release`.
+- PROMPT 1171 landed the lobby existing-room browser: `C2SListRooms`,
+  `S2CRoomList`, `RoomListEntry`, server room-list filtering, and client
+  Existing rooms panel with Refresh + row-click join.
+
+Current active worker: PROMPT 1170
+`WINDOWS-LAUNCHER-REPO-ROOT-RESOLUTION-REPAIR`. The root checkout is currently
+on branch `work/windows-launcher-repo-root-sidecar-1170`, behind
+`origin/main` by one commit, with worker edits in:
+
+- `tools/dev-launcher-app/src/main.rs`
+- `tools/dev-launcher/build-launcher-exe.ps1`
+- `docs/setup/dev-two-button-launcher.md`
+
+Do not use the root checkout for unrelated integration or shared-status writes
+until 1170 is resolved. Use fresh worktrees. The 1170 bug is confirmed: running
+`D:\_DEV\cargo-target\ccgs-msvc\debug\ccgs-dev-launcher.exe` currently resolves
+repo root as the Cargo target directory and cannot find
+`tools\dev-launcher\Update-LatestMain.ps1`. Expected fix: `CCGS_REPO_ROOT`
+validation + sidecar repo-root file next to the EXE + no silent target/debug
+fallback.
+
+Operational reminders: only the orchestrator officially launches prompts via
+structured `gcs.dispatch`; workers cannot launch prompts. Ignore
+Octogent/Octoagent/.octogent as flow truth. REPONDRE / RELANCER payloads must
+be direct worker-facing relay text. Keep shared-status writers and main lands
+serialized. Every Cargo-capable prompt must include the Windows/MSVC Cargo
+resource policy and stale-target cleanup permission.
+
 # PROMPT 1125 State Banner -- Sprint 17 S17-OPS-VULKAN-VALIDATION-GATING-001 Story-Done
 
 Updated 2026-05-18 by PROMPT 1125. Source-of-truth at closure:
