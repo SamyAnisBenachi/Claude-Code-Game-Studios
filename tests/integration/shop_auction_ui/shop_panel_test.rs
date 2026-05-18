@@ -287,7 +287,7 @@ fn sau_003_refresh_disables_same_frame_and_counts_only_confirmed_slots() {
         app.world()
             .get::<Text>(refresh_button)
             .map(|text| text.0.as_str()),
-        Some("REFRESH · 2g")
+        Some("Refresh (2g)")
     );
 }
 

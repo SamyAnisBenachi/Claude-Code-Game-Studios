@@ -770,6 +770,17 @@ path = "../tests/integration/shop_auction_ui/responsive_layout_repair_test.rs"
 name = "shop_auction_ui_draft_initial_countdown_test"
 path = "../tests/integration/shop_auction_ui/draft_initial_countdown_test.rs"
 
+# PROMPT 1245 (S18-SHOP-AUCTION-TIMER-COST-CLARITY-001) — refresh-button
+# cost label format + server-anchored auction timer behavior. Pins:
+# (1) Refresh label reads `Refresh (Ng)` and caps at base + cap; (2)
+# `apply_bid_accepted` sets `timer_remaining_ms` to the server's exact
+# `new_timer_ms` and bumps `timer_duration_ms` if the extension exceeds
+# the prior duration, so the visible bar cannot drift into a
+# phantom-clickable window after the local countdown reaches zero.
+[[test]]
+name = "shop_auction_ui_refresh_label_and_timer_anchor_test"
+path = "../tests/integration/shop_auction_ui/refresh_label_and_timer_anchor_test.rs"
+
 [[test]]
 name = "board_rendering_grid_camera_test"
 path = "../tests/unit/board_rendering/board_grid_camera_test.rs"

@@ -440,11 +440,19 @@ impl ShopAuctionAuctionState {
     ) {
         self.current_price = message.amount;
         self.current_leader = Some(message.bidder);
-        self.timer_remaining_ms = if self.timer_duration_ms == 0 {
-            message.new_timer_ms
-        } else {
-            message.new_timer_ms.min(self.timer_duration_ms)
-        };
+        // PROMPT 1245 — server-anchor the visible remaining time. When the
+        // server's `new_timer_ms` exceeds the prior `timer_duration_ms`
+        // (e.g. an extension on a late bid), bump the duration so the
+        // visual bar can fit it; otherwise the client would clamp the
+        // remaining time down and either:
+        //   (a) understate remaining seconds, or
+        //   (b) leave bid buttons in a phantom-disabled state once the
+        //       clamped value ticks back to 0 even though the server
+        //       still considers the auction live.
+        if message.new_timer_ms > self.timer_duration_ms {
+            self.timer_duration_ms = message.new_timer_ms;
+        }
+        self.timer_remaining_ms = message.new_timer_ms;
         self.locally_expired_elapsed_ms = 0;
         self.in_flight_bid_amount = None;
         self.begin_bid_accepted_gate();
@@ -3400,7 +3408,11 @@ pub fn sync_shop_panel_system(
         if shop_state.refresh_in_flight {
             text.0.push_str("Refreshing...");
         } else {
-            text.0.push_str(&format!("REFRESH · {refresh_cost}g"));
+            // PROMPT 1245 — surface the next refresh cost in parens directly
+            // on the button label so the player sees the price before
+            // clicking. Cost is derived from `displayed_refresh_cost`, which
+            // mirrors the server-side formula via `ShopAuctionRefreshConfig`.
+            text.0.push_str(&format!("Refresh ({refresh_cost}g)"));
         }
     }
 
@@ -4761,7 +4773,7 @@ fn spawn_shop_refresh_button(commands: &mut Commands, parent: Entity) -> Entity 
             Button,
             Interaction::None,
             ShopRefreshButtonState { enabled: false },
-            Text::new("REFRESH · 1g"),
+            Text::new("Refresh (1g)"),
             shop_auction_text_font(typography::BODY),
             TextColor(Color::srgb(0.74, 0.92, 0.92)),
             BackgroundColor(primary_action_button_background_color()),
