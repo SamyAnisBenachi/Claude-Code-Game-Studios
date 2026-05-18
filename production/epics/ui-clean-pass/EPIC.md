@@ -135,6 +135,7 @@ accepted-risk and are **not** advanced by this roadmap-prep.
 | 025 | [Interaction-State Migration Wave 2 (Bind Tokens to P1 Surfaces)](story-025-ui-interaction-state-migration-wave-2.md) | Tech Debt -- per-surface token migration (Integration) | Draft -- future Sprint 18 candidate (`S18-UI-INTERACTION-STATE-MIGRATION-WAVE-2-001`; PROMPT 1180 Lane I / RC-4; PROMPT 1198 candidate), NOT activated | S18-UI-INTERACTION-STATE-MIGRATION-WAVE-2-001 |
 | 026 | [Overlay Panel Overflow Hardening (Photosensitivity + Connection-Lost + Draft-Initial)](story-026-ui-overlay-panel-overflow-hardening.md) | Tech Debt -- per-surface overflow hardening (Integration) | Draft -- future Sprint 18 candidate (`S18-UI-OVERLAY-PANEL-OVERFLOW-HARDENING-001`; PROMPT 1180 Lane J / RC-2 / O-02 / O-03 / S-08 / S-09; PROMPT 1199 candidate), NOT activated | S18-UI-OVERLAY-PANEL-OVERFLOW-HARDENING-001 |
 | 027 | [Global UI Layout Contract Doc + Button-vs-Chip Lint](story-027-ui-layout-contract-doc-and-lint.md) | UX -- contract authoring + lint enforcement (Documentation + Integration) | Draft -- future Sprint 18 candidate (`S18-UI-LAYOUT-CONTRACT-DOC-AND-LINT-001`; PROMPT 1180 Lane K / C-1..C-7; PROMPT 1200 candidate; active impl PROMPT 1188), NOT activated | S18-UI-LAYOUT-CONTRACT-DOC-AND-LINT-001 |
+| 028 | [Card Rendering Fidelity + Hover Inspect Glossary](story-028-krosmaga-card-rendering-fidelity-hover-glossary.md) | UI + Integration | Draft -- future Sprint 19 candidate (`S19-UI-CARD-RENDERING-FIDELITY-HOVER-GLOSSARY-001`; PROMPT 1280 Krosmaga-style implementation wave), NOT activated | S19-UI-CARD-RENDERING-FIDELITY-HOVER-GLOSSARY-001 |
 
 ### Sprint 18 Roadmap Candidate Sequencing Notes (PROMPT 1189)
 
@@ -167,6 +168,14 @@ PROMPT 1180 §6 launch order:
 - **Wave 3 (parallel after Wave 2)**: Lanes I and K.
 
 Per `production/sprints/sprint-17.md` lines 743-809, Sprint 17 deferred all PROMPT 1022 / 1077 remaining structural findings to Sprint 18+. Stories 020-027 honour that deferral. None claim release readiness, `QA-COND-0005`, `QA-COND-0006`, `PAW-TD-*-a`, or gate-check retry.
+
+### Sprint 19 Krosmaga-Style UI Implementation Wave Candidate (PROMPT 1280)
+
+Story 028 is the UI Clean-Pass slice of the PROMPT 1280 Krosmaga-style
+implementation wave. It translates PROMPT 1265 / 1266 / 1267 card readability
+findings into shared card-rendering fidelity and hover-inspect/glossary work.
+It is future Sprint 19 candidate paperwork only: no Sprint 19 activation, no
+release claim, no Krosmaga asset copy, and no final-art accept-risk closure.
 
 ### Sprint 16/17 Architecture-Split + Primitive Candidate Sequencing Notes (PROMPT 1044)
 

@@ -78,6 +78,7 @@ This epic is complete when:
 
 | # | Story | Type | Status | ADR |
 |---|-------|------|--------|-----|
+| 024 | [S19-UI-HAND-FAN-KROSMAGA-LAYOUT-001 -- Krosmaga-Style Hand Fan Layout](story-024-krosmaga-hand-fan-layout.md) | UI + Integration | Draft -- future Sprint 19 candidate (`S19-UI-HAND-FAN-KROSMAGA-LAYOUT-001`; PROMPT 1280 Krosmaga-style implementation wave), NOT activated | ADR-021, ADR-002, ADR-012, ADR-009 |
 | 001 | [Plugin Scaffold — Pre-Pooled Entity Spawning](story-001-plugin-scaffold.md) | Logic | Complete | ADR-021 |
 | 002 | [Fan Layout Formula — Card Position & Rotation](story-002-fan-layout-formula.md) | Logic | Complete | ADR-021 |
 | 003 | [Phase State Machine — Visibility & Input Gating](story-003-phase-state-machine.md) | Logic | Complete | ADR-021, ADR-009 |

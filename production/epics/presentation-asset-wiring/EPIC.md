@@ -4,7 +4,7 @@
 > **GDD**: Cross-surface — `hand-ui.md`, `shop-auction-ui.md`, `hud.md`, `board-rendering.md`, `game-session-system.md`
 > **Architecture Module**: `client/src/asset_wiring.rs` + per-surface UI modules
 > **Status**: Ready
-> **Stories**: 6 asset-wiring stories (Story 001 blocks all others)
+> **Stories**: 7 asset-wiring stories (Story 001 blocks stories 002-006; Story 007 gates any Krosmaga dev-proxy usage)
 
 ## Overview
 
@@ -41,6 +41,7 @@ The asset path convention is derived from the existing `asset_wiring.rs` pattern
 | TR-PAW-004 | HUD class figurines (7 variants), phase timer bar, and 4 objective dot states wired with `ImageNode::new()` | ADR-021 |
 | TR-PAW-005 | Board unit `Sprite.image` wired per `ClassId` as world-space sprite; fallback to `UNIT_PLACEHOLDER_ASSET`; board chrome path constants | ADR-021 |
 | TR-PAW-006 | Lobby class portraits (7 variants), player slot panel backgrounds, and room code chip wired with `ImageNode::new()` | ADR-021 |
+| TR-PAW-007 | Dev-only Krosmaga proxy pack/provenance boundary: logical asset IDs, three-axis provenance taxonomy, release scan failure on dev proxies, no Krosmaga files under `assets/**` | ADR-021 |
 
 ## Traceability Notes
 
@@ -56,6 +57,7 @@ Story 001 is cross-surface infrastructure; TR-PAW-001 covers the foundation reso
 | HUD (`client/src/ui/hud/`) | Story 004 |
 | Board Rendering (`client/src/presentation/board_rendering.rs`) | Story 005 |
 | Lobby (`client/src/ui/lobby.rs`) | Story 006 |
+| Krosmaga dev-proxy provenance boundary | Story 007 |
 
 Stories 002–006 are independent of each other once Story 001 is Done.
 
@@ -88,6 +90,7 @@ Stories 002–006 are independent of each other once Story 001 is Done.
 | 004 | [HUD Class Figurines, Phase Timer Bar, and Objective Dot States](story-004-hud-figurines-timer-dots.md) | UI | Ready | TR-PAW-004 | ADR-021 |
 | 005 | [Board Unit Sprites Per Class and Board Chrome](story-005-board-unit-sprites.md) | Integration | Ready | TR-PAW-005 | ADR-021 |
 | 006 | [Lobby Class Portraits, Player Slot Panels, and Room Code Chip](story-006-lobby-portraits.md) | UI | Ready | TR-PAW-006 | ADR-021 |
+| 007 | [Dev-Only Krosmaga Proxy Pack + Provenance Boundary](story-007-krosmaga-dev-proxy-pack-boundary.md) | Docs + Tooling | Draft -- future Sprint 18 candidate (`S18-PAW-KROSMAGA-DEV-PROXY-PACK-BOUNDARY-001`; PROMPT 1280), NOT activated | TR-PAW-007 | ADR-021 |
 
 ## Next Step
 

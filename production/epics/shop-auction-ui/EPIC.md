@@ -3,8 +3,8 @@
 > **Layer**: Presentation
 > **GDD**: design/gdd/shop-auction-ui.md
 > **Architecture Module**: `client/src/ui/shop_auction/` - `ShopAuctionUiPlugin` (sub-plugin #5 inside `PresentationPlugin`)
-> **Status**: Ready - core story set drafted for S5-21; Sprint 6 accessibility remediation stories added for A11Y-ST-12, A11Y-ST-18, and A11Y-ST-02; Sprint 14+ UI Clean-Pass layout candidates 015 / 016 / 017 / 018 authored as Draft (NOT activated); Sprint 17 candidate 019 closed (Done); Sprint 18 candidate 020 (auction-won card disposition contract) authored as Draft (NOT activated)
-> **Stories**: 18 story docs listed in this index - 8 Complete (001-006, 011, 012), 3 Ready (007, 008, 013), 1 Blocked by UX evidence/layout gate (009), 1 Done (019 -- Sprint 17 closed by PROMPT 1121), 5 Draft (Sprint 14+ UI Clean-Pass layout candidates 015 / 016 / 017 / 018 + Sprint 18 candidate 020 auction-won card disposition; NOT activated by their authoring)
+> **Status**: Ready - core story set drafted for S5-21; Sprint 6 accessibility remediation stories added for A11Y-ST-12, A11Y-ST-18, and A11Y-ST-02; Sprint 14+ UI Clean-Pass layout candidates 015 / 016 / 017 / 018 authored as Draft (NOT activated); Sprint 17 candidate 019 closed (Done); Sprint 18 candidate 020 (auction-won card disposition contract) authored as Draft (NOT activated); Sprint 19 candidate 021 (Krosmaga-style card-product layout) authored as Draft (NOT activated)
+> **Stories**: 19 story docs listed in this index - 8 Complete (001-006, 011, 012), 3 Ready (007, 008, 013), 1 Blocked by UX evidence/layout gate (009), 1 Done (019 -- Sprint 17 closed by PROMPT 1121), 6 Draft (Sprint 14+ UI Clean-Pass layout candidates 015 / 016 / 017 / 018 + Sprint 18 candidate 020 + Sprint 19 candidate 021; NOT activated by their authoring)
 
 ## Overview
 
@@ -110,8 +110,9 @@ This epic is complete when:
 | 018 | [Auction Featured Card Leading / Losing State Visual](story-018-auction-lead-loss-state.md) | UI | Draft | TR-SAU-005, TR-SAU-006 | ADR-013, ADR-021 |
 | 019 | [Bid-Button Phase-Entry Race / Empty + Baked-`?` Cleanup](story-019-bid-button-phase-race.md) | UI / Integration | Done -- Sprint 17 candidate (Should Have, `S17-UI-BID-BUTTON-PHASE-RACE-001`; PROMPT 1077 SOURCE-1077-10), closed by PROMPT 1121 /story-done | TR-SAU-002, TR-SAU-005 | ADR-013, ADR-021 |
 | 020 | [Auction-Won Card Disposition Contract + Winner Discoverability](story-020-auction-won-card-disposition.md) | Integration | Draft -- Sprint 18 candidate (Must Have, `S18-AUCTION-WON-CARD-DISPOSITION-001`; PROMPT 1131 AUDIT-1131-02), NOT activated | TR-SAU-003, TR-SAU-006 | ADR-002, ADR-013, ADR-021 |
+| 021 | [Shop/Auction Card-Product Layout](story-021-krosmaga-card-product-layout.md) | UI + Integration | Draft -- future Sprint 19 candidate (`S19-UI-SHOP-AUCTION-CARD-PRODUCT-LAYOUT-001`; PROMPT 1280 Krosmaga-style implementation wave), NOT activated | TR-SAU-001, TR-SAU-002, TR-SAU-003, TR-SAU-004, TR-SAU-005, TR-SAU-006 | ADR-002, ADR-013, ADR-015, ADR-019, ADR-021 |
 
-**Story counts**: 1 Logic, 4 Integration, 11 UI, 1 Visual/Feel.
+**Story counts**: 1 Logic, 4 Integration, 11 UI, 1 Visual/Feel, plus 1 Draft UI/Integration future Sprint 19 candidate.
 
 ## Sprint 14+ UI Clean-Pass Layout Candidates (NOT activated)
 
