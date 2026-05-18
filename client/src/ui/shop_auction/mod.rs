@@ -93,6 +93,31 @@ pub const AUCTION_FEATURED_CARD_HEIGHT_PX: f32 = 280.0;
 /// leading / losing state without re-authoring geometry.
 pub const AUCTION_FEATURED_CARD_FRAME_THICKNESS_PX: f32 = 3.0;
 
+/// PROMPT 1182 — visible button chrome for primary-action affordances.
+/// AUDIT-1129 UI-1129-08 (lobby) and the recurring shop/auction "looks
+/// like a label, not a button" reports observed that several primary
+/// actions (`DraftInitialReadyButton`, `ShopRefreshButton`,
+/// `ShopReadyButton`, `DraftInitialObjectiveDismissButton`,
+/// `DraftInitialObjectiveRetrievalButton`) spawned with only a 1px
+/// border and no fill — visually indistinguishable from inert status
+/// text under the auction / shop chrome's near-black panel background.
+/// These constants give every primary-action button a non-transparent
+/// `BackgroundColor` and a non-transparent `BorderColor` so it reads
+/// unambiguously as an interactive button at every canonical viewport.
+///
+/// `PRIMARY_ACTION_BG` paints a dark amber-tinted fill that matches the
+/// auction pass-button chrome (`auction_pass_button` already shipped
+/// with this exact pair). `PRIMARY_ACTION_BORDER` is the same warm
+/// off-white outline. Friend-game placeholder palette — final-art
+/// replacement remains a separate scope under `PAW-TD-*-a`.
+pub fn primary_action_button_background_color() -> Color {
+    Color::srgba(0.12, 0.14, 0.18, 0.75)
+}
+
+pub fn primary_action_button_border_color() -> Color {
+    Color::srgba(0.92, 0.94, 0.96, 0.55)
+}
+
 #[derive(SystemSet, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ShopAuctionUiSystemSet {
     PhaseTransition,
@@ -3599,14 +3624,21 @@ pub fn sync_auction_panel_system(
                     card,
                     asset_server.as_deref(),
                 );
+                // PROMPT 1182 — render only the card name on the parent
+                // featured-card entity. The prior `"{name}\n{rarity} - {N}g"`
+                // payload painted a second H1 line directly under the name
+                // that overlapped both the dedicated price label child
+                // (`AuctionFeaturedCardPriceLabel` carries "Bid: {N}g"
+                // at the top of the card) and the stats child (rarity
+                // surfaced via card_type / cost). AUDIT-1129 UI-1129-02
+                // observed the resulting two-line ghosting (`Vault·Sentry /
+                // Rare – 3g` overlapping the price band). The dedicated
+                // child labels are the single source of truth for price
+                // and rarity now; the parent contributes the name only.
                 let name = card
                     .map(|card| card.name_en.as_str())
                     .unwrap_or("Unknown card");
-                let rarity = card.map_or(Rarity::Common, |card| card.rarity);
-                text.0.push_str(&format!(
-                    "{name}\n{:?} - {}g",
-                    rarity, auction_state.current_price
-                ));
+                text.0.push_str(name);
             } else {
                 clear_card_display_art(&mut commands, entities.auction_featured_card);
             }
@@ -4426,6 +4458,9 @@ fn spawn_draft_initial_grid(
 }
 
 fn spawn_draft_initial_ready_button(commands: &mut Commands, parent: Entity) -> Entity {
+    // PROMPT 1182 — explicit fill + border so the Ready CTA reads
+    // unambiguously as an interactive button against the modal panel
+    // background, instead of as a bare label.
     commands
         .spawn((
             Name::new("Shop Auction Draft Ready Button"),
@@ -4436,6 +4471,8 @@ fn spawn_draft_initial_ready_button(commands: &mut Commands, parent: Entity) -> 
             Text::new("Ready"),
             shop_auction_text_font(typography::BODY),
             TextColor(Color::srgb(0.98, 0.93, 0.72)),
+            BackgroundColor(primary_action_button_background_color()),
+            BorderColor::all(primary_action_button_border_color()),
             draft_initial_ready_button_node(),
             Visibility::Hidden,
             ChildOf(parent),
@@ -4506,6 +4543,9 @@ fn spawn_draft_initial_objective_overlay(
         ))
         .id();
 
+    // PROMPT 1182 — Dismiss is a button; add the shared primary-action
+    // chrome so the affordance reads as a button against the dark
+    // objective-overlay scrim.
     let dismiss = commands
         .spawn((
             Name::new("Shop Auction Draft Objective Dismiss"),
@@ -4516,6 +4556,8 @@ fn spawn_draft_initial_objective_overlay(
             Text::new("Dismiss"),
             shop_auction_text_font(typography::CAPTION),
             TextColor(Color::srgb(0.98, 0.93, 0.72)),
+            BackgroundColor(primary_action_button_background_color()),
+            BorderColor::all(primary_action_button_border_color()),
             draft_initial_objective_dismiss_node(),
             Visibility::Hidden,
             ChildOf(overlay),
@@ -4529,6 +4571,8 @@ fn spawn_draft_initial_objective_retrieval_button(
     commands: &mut Commands,
     parent: Entity,
 ) -> Entity {
+    // PROMPT 1182 — visible button chrome so the Objective retrieval
+    // affordance reads as an interactive button instead of inert text.
     commands
         .spawn((
             Name::new("Shop Auction Draft Objective Retrieval"),
@@ -4539,6 +4583,8 @@ fn spawn_draft_initial_objective_retrieval_button(
             Text::new("Objective"),
             shop_auction_text_font(typography::CAPTION),
             TextColor(Color::srgb(0.74, 0.92, 0.92)),
+            BackgroundColor(primary_action_button_background_color()),
+            BorderColor::all(primary_action_button_border_color()),
             draft_initial_objective_retrieval_node(),
             Visibility::Hidden,
             ChildOf(parent),
@@ -4607,6 +4653,9 @@ fn spawn_shop_slots(
 }
 
 fn spawn_shop_refresh_button(commands: &mut Commands, parent: Entity) -> Entity {
+    // PROMPT 1182 — visible button chrome. The refresh affordance
+    // previously spawned with only a 1px border and no fill, which made
+    // it look like static text overlaid on the shop panel chrome.
     commands
         .spawn((
             Name::new("Shop Auction Refresh Button"),
@@ -4618,6 +4667,8 @@ fn spawn_shop_refresh_button(commands: &mut Commands, parent: Entity) -> Entity 
             Text::new("REFRESH · 1g"),
             shop_auction_text_font(typography::BODY),
             TextColor(Color::srgb(0.74, 0.92, 0.92)),
+            BackgroundColor(primary_action_button_background_color()),
+            BorderColor::all(primary_action_button_border_color()),
             shop_refresh_button_node(),
             Visibility::Hidden,
             ChildOf(parent),
@@ -4626,6 +4677,9 @@ fn spawn_shop_refresh_button(commands: &mut Commands, parent: Entity) -> Entity 
 }
 
 fn spawn_shop_ready_button(commands: &mut Commands, parent: Entity) -> Entity {
+    // PROMPT 1182 — visible button chrome. Same root cause as
+    // `spawn_shop_refresh_button` — the Ready CTA was an unstyled text
+    // affordance under the shop panel chrome.
     commands
         .spawn((
             Name::new("Shop Auction Shop Ready Button"),
@@ -4636,6 +4690,8 @@ fn spawn_shop_ready_button(commands: &mut Commands, parent: Entity) -> Entity {
             Text::new("Ready"),
             shop_auction_text_font(typography::BODY),
             TextColor(Color::srgb(0.98, 0.93, 0.72)),
+            BackgroundColor(primary_action_button_background_color()),
+            BorderColor::all(primary_action_button_border_color()),
             shop_ready_button_node(),
             Visibility::Hidden,
             ChildOf(parent),
