@@ -58,6 +58,31 @@
 //! falls back to `Failed("capture timeout")` after
 //! [`QA_CAPTURE_TIMEOUT_SECS`] real seconds. This keeps the tool inert under
 //! `MinimalPlugins` without any cfg juggling.
+//!
+//! ## Overlay-exclude-on-capture (S18-QA-SNAPSHOT-OVERLAY-EXCLUDE-ON-CAPTURE)
+//!
+//! The Snapshot button doubles as live click feedback (`Snapshot → Capturing…
+//! → Saved <id>`). Without intervention the in-flight `Capturing…` chip
+//! appears inside every captured PNG and pollutes the visual evidence (see
+//! reports/PROMPT-1129-current-ui-visual-quality-deep-audit.md, UI-1129-16).
+//!
+//! Resolution: the overlay root's [`Visibility`] is now a derived view of
+//! [`QASnapshotFeedbackState`] —
+//! [`apply_qa_snapshot_overlay_visibility_system`] flips the root to
+//! [`Visibility::Hidden`] for the duration of `Capturing` and back to
+//! [`Visibility::Inherited`] on every other state (`Idle` / `Saved` /
+//! `Failed`). The mirror system runs after every state-mutating system in
+//! the QA chain but still inside `Update`, so visibility propagation
+//! (`PostUpdate`) lands before the render schedule that consumes the
+//! `Screenshot` entity. The captured frame paints the game UI without the
+//! QA overlay; the operator still sees the post-capture `Saved <id>` /
+//! `Failed <reason>` chip in the very next painted frame.
+//!
+//! Splitting visibility into its own system (rather than mutating it
+//! inside `write_qa_snapshot_system` / the completion / revert systems)
+//! keeps those systems' queries disjoint from [`UiCountQueries`], whose
+//! per-sub-surface `&Visibility` reads would otherwise trigger a Bevy
+//! B0001 conflict against a co-resident `&mut Visibility` query.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -1716,6 +1741,12 @@ impl Plugin for QASnapshotPlugin {
                     write_qa_snapshot_system,
                     apply_qa_snapshot_capture_completed_system,
                     revert_qa_snapshot_feedback_state_system,
+                    // S18-QA-SNAPSHOT-OVERLAY-EXCLUDE-ON-CAPTURE: derives
+                    // overlay-root visibility from feedback state. Must
+                    // run after every system that mutates feedback so the
+                    // captured frame (later this tick, in render) sees
+                    // the correct visibility.
+                    apply_qa_snapshot_overlay_visibility_system,
                     update_qa_snapshot_button_visuals_system,
                 )
                     .chain(),
@@ -1838,7 +1869,13 @@ pub fn qa_snapshot_keyboard_shortcut_system(
 /// request: the snapshot JSON, the README, and a `Screenshot::primary_window`
 /// entity whose observers save the PNG and report completion. The system also
 /// flips [`QASnapshotFeedbackState`] to `Capturing` so the button reflects
-/// the trigger immediately.
+/// the trigger immediately. The actual overlay-root `Visibility` flip
+/// (`Inherited → Hidden`) is performed by
+/// [`apply_qa_snapshot_overlay_visibility_system`] later in the same chain
+/// — splitting it out keeps this system's queries disjoint from
+/// [`UiCountQueries`], which holds read-only `&Visibility` queries on the
+/// per-sub-surface root markers and would otherwise conflict with a
+/// `&mut Visibility` query here (Bevy B0001).
 #[allow(clippy::too_many_arguments)]
 pub fn write_qa_snapshot_system(
     mut commands: Commands,
@@ -1968,6 +2005,12 @@ pub fn write_qa_snapshot_system(
 ///   `pending` to either `captured` or `failed` (with the corresponding
 ///   `captured_at_ms` / `error` fields),
 /// - advances [`QASnapshotFeedbackState`] to `Saved` / `Failed`.
+///
+/// The overlay-root `Visibility` is restored by
+/// [`apply_qa_snapshot_overlay_visibility_system`] on the same chain tick
+/// — once feedback leaves `Capturing`, the visibility system flips the
+/// root back to `Inherited` so the post-capture chip is visible to the
+/// human operator.
 pub fn apply_qa_snapshot_capture_completed_system(
     mut reader: MessageReader<QASnapshotCaptureCompleted>,
     mut feedback: ResMut<QASnapshotFeedbackState>,
@@ -2056,6 +2099,43 @@ pub fn revert_qa_snapshot_feedback_state_system(
     };
     if let Some(next) = next {
         *feedback = next;
+    }
+}
+
+/// Mirrors [`QASnapshotFeedbackState`] onto the overlay root's
+/// [`Visibility`] so the captured render frame omits the QA chrome
+/// (S18-QA-SNAPSHOT-OVERLAY-EXCLUDE-ON-CAPTURE).
+///
+/// Single source of truth: while feedback is `Capturing` the root is
+/// [`Visibility::Hidden`]; on every other state (`Idle` / `Saved` /
+/// `Failed`) the root is restored to [`Visibility::Inherited`] (the
+/// default spawned in [`spawn_qa_snapshot_overlay_system`], which
+/// resolves to visible for a parentless UI root).
+///
+/// Splitting this out of [`write_qa_snapshot_system`] /
+/// [`apply_qa_snapshot_capture_completed_system`] /
+/// [`revert_qa_snapshot_feedback_state_system`] keeps those systems'
+/// queries disjoint from [`UiCountQueries`] (which holds read-only
+/// `&Visibility` queries on the per-sub-surface root markers and would
+/// otherwise trigger a Bevy B0001 conflict against a `&mut Visibility`
+/// query in the same system). The system runs in the same `Update` tick
+/// as the trigger, so visibility propagation (`PostUpdate`) lands before
+/// the render schedule that consumes the `Screenshot` entity — the
+/// captured PNG sees the overlay as `Hidden`.
+pub fn apply_qa_snapshot_overlay_visibility_system(
+    feedback: Res<QASnapshotFeedbackState>,
+    mut overlay_roots: Query<&mut Visibility, With<QASnapshotOverlayRoot>>,
+) {
+    let next = match *feedback {
+        QASnapshotFeedbackState::Capturing { .. } => Visibility::Hidden,
+        QASnapshotFeedbackState::Idle
+        | QASnapshotFeedbackState::Saved { .. }
+        | QASnapshotFeedbackState::Failed { .. } => Visibility::Inherited,
+    };
+    for mut vis in overlay_roots.iter_mut() {
+        if *vis != next {
+            *vis = next;
+        }
     }
 }
 
