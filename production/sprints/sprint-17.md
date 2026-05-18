@@ -1,3 +1,62 @@
+# Sprint 17 -- CLOSEOUT EVIDENCE RECONCILE (Polish stage; PROMPT 1289, 2026-05-18)
+
+> **PROMPT 1289 paperwork-only Sprint 17 closeout evidence reconcile (2026-05-18)**.
+> Reconcile basis: `origin/work/s17-post-fmt-team-qa-refresh-1288@ec6e5da4fd6a69ed2e99caa991b825e3ad02ac8c`
+> (strict descendant of `origin/main@d73e25e49519a214f8fb0fefa1e78351ccd74795`,
+> PROMPT-1281 cargo fmt repair). Reconcile artifact:
+> `production/qa/closeout-evidence-reconcile-sprint-17-2026-05-18-prompt-1289.md`.
+>
+> **What this reconcile changes**: discharges the single
+> documentation/evidence condition recorded by PROMPT 1279
+> (`sprint_17_closeout.smoke_evidence.missing_artifact_condition` — missing
+> durable PROMPT 1277 smoke artifact) by recognising
+> `reports/PROMPT-1284-sprint-17-post-fmt-smoke-rerun.md` as the durable
+> post-fmt smoke of record (PASS across `cargo fmt --check`, targeted client
+> + dev-launcher tests, `cargo check --workspace --all-targets`, and
+> `cargo test --workspace --tests --no-fail-fast` at 263 suites · 1861
+> tests · 0 failed · 0 ignored) and recognising
+> `production/qa/team-qa-sprint-17-2026-05-18-post-fmt-refresh.md` (PROMPT 1288
+> `APPROVED-WITH-CONDITIONS`) as the corresponding refreshed Team-QA of
+> record.
+>
+> **What this reconcile does NOT change**: Sprint 17 disposition remains
+> `closed-with-conditions`; top-level `production/sprint-status.yaml#status`
+> remains `closed-with-conditions`; the existing `sprint_17_closeout`
+> block is preserved verbatim; the PROMPT 1279 closeout banner below is
+> preserved verbatim; the PROMPT 1278 Team-QA review of record and the
+> PROMPT 1288 Team-QA refresh of record are unmodified;
+> `production/stage.txt` is not touched; `production/gate-checks/**` is not
+> touched; `production/session-state/**` is not touched; no source code,
+> tests, Cargo files, CI files, or assets are touched. Sprint 18 is **not**
+> activated.
+>
+> **Carried conditions preserved verbatim**: all other PROMPT 1278 /
+> PROMPT 1279 / PROMPT 1288 conditions remain open
+> (`S11-HUD-TIMER-EYEBALL-VISUAL-001` ready / human-operator-blocked;
+> `S17-UI-HUD-OPP-MANA-CLEANUP-001` `in_progress` parent-row paperwork gap;
+> `S8-QA-001-W1` OPEN; `QA-COND-0005` / `QA-COND-0006` accepted-risk /
+> deferred; `PAW-TD-*-a` placeholder-art accepted-risk; `TQ-S12-C1..C7`
+> preserved including `TQ-S12-C7`; PROMPT 683-era runtime divergence
+> preserved; PROMPT 1054 P1 UI snapshot visual retest
+> `BLOCKED-HUMAN-OPERATOR`; PROMPT 1278 / 1279 smoke warnings carried as
+> Sprint 18+ runtime-behaviour candidates; PROMPT 761 Polish → Release
+> gate-check FAIL preserved with no retry; stage `Polish` preserved; all
+> prior Sprint 10..16 `closed-with-conditions` dispositions preserved;
+> 24 PROMPT 1022 findings and long-tail PROMPT 1076 / 1077 findings carried
+> to Sprint 18+ unchanged).
+>
+> **Non-claims preserved**: no Sprint 17 reopening, no Sprint 17 row-status
+> flip, no Sprint 18 activation, no release readiness, no RC readiness, no
+> full game completion, no broad accessibility completion, no playtest
+> validation, no final-art completion, no full playable-client manual QA,
+> no two-client GAME_OVER closure, no Polish → Release retry, no stage
+> advance, no closure of `S11-HUD-TIMER-EYEBALL-VISUAL-001`, no silent
+> `done` closure of `S17-UI-HUD-OPP-MANA-CLEANUP-001`, and no closure of
+> any remaining PROMPT 1022 / 1076 / 1077 finding outside concrete repairs
+> already on `origin/main`.
+
+---
+
 # Sprint 17 -- CLOSED-WITH-CONDITIONS (Polish stage; PROMPT 1279, 2026-05-18)
 
 > **PROMPT 1279 paperwork-only Sprint 17 close-out disposition (2026-05-18)**.
