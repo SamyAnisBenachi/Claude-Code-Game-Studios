@@ -126,6 +126,7 @@ Three post-cutoff APIs converge in this epic:
 | 004 | [Win Condition and Game Over](story-004-win-condition-and-game-over.md) | Logic | Ready | ADR-009, ADR-010 |
 | 005 | [Disconnect Handling](story-005-disconnect-handling.md) | Logic | Ready | ADR-009 |
 | 006 | [Network Dispatch Wiring](story-006-network-dispatch-wiring.md) | Integration | Ready | ADR-009, ADR-010, ADR-008 |
+| 007 | [Auction Safety Timer Remove](story-007-auction-safety-timer-remove.md) | Config/Data | Draft — Sprint 18 candidate (S18-RSM-AUCTION-SAFETY-TIMER-REMOVE-001 per PROMPT 1298 / authored by PROMPT 1305), NOT activated | ADR-009 |
 
 Work through stories in order — each story's `Depends on:` field tells you what must be Done before you can start it.
 

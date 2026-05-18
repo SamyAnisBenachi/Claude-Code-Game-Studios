@@ -125,3 +125,4 @@ This epic is complete when:
 | 008 | [Ecaflip RNG Effects — Dé du Chateux and Coin Flip](story-008-ecaflip-rng.md) | Logic | Ready | ADR-014 |
 | 009 | [Class Card Shop Filtering](story-009-shop-filtering.md) | Logic | Ready | ADR-014 |
 | 010 | [Token Passive Behaviors — Sinistro, La Gonflable, La Sacrifiée](story-010-token-passives.md) | Integration | Ready | ADR-014 |
+| 011 | [C2SClassChoice Protocol Path Drop](story-011-classchoice-drop.md) | Decision-first + Config/Data + docs sync | Draft — Sprint 18 candidate (S18-PROTO-CLASSCHOICE-DROP-001 per PROMPT 1298 / authored by PROMPT 1305), NOT activated. Supersedes PROMPT 1202 placeholder `S14-PROTO-CLASSCHOICE-DISPOSITION-001` and closes the `lightyear-protocol-verification/story-008` allowlist row for `C2SClassChoice` | ADR-014 |
