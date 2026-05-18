@@ -908,6 +908,7 @@ impl Plugin for BoardRenderingPlugin {
             .add_message::<ClientGameSnapshotMessage>()
             .add_message::<BoardRebuildRequested>()
             .add_message::<PlacementRevealAnimReady>()
+            .add_message::<DamageNumberSpawnRequested>()
             .add_message::<SnapshotRecoveryRequested>()
             .add_message::<GhostPlacementChanged>()
             .add_message::<GhostClickedEvent>()
