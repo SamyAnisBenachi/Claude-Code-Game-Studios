@@ -108,8 +108,9 @@ This epic is complete when:
 | 011 | [Spawn Range Highlights](story-011-spawn-range-highlights.md) | Visual/Feel | Ready | TR-BR-008, TR-NP-014 | ADR-011, ADR-020, ADR-021, ADR-008 |
 | 012 | [Browser/WASM Board Performance Evidence](story-012-browser-wasm-board-performance-evidence.md) | Config/Data | Ready | TR-BR-003, TR-BR-005 | ADR-021 |
 | 013 | [Canonical Board Rendering Spec](story-013-board-rendering-spec.md) | UX -- design-spec authoring (doc-only) | Complete (Sprint 15 Should Have; closed PROMPT 1009 on `origin/main` after PROMPT 1004 dev-story + PROMPT 1006 integration `08f389b`) | TR-BR-002, TR-BR-006, TR-BR-007, TR-BR-008 | ADR-021, ADR-020, ADR-017, ADR-011, ADR-008, ADR-002 |
+| 015 | [S18-RESOLUTION-COMBAT-MINIMAL-OVERLAY-001 -- Emit Damage Numbers + Kill Markers from Resolution Script](story-015-resolution-combat-minimal-overlay.md) | Integration | Draft -- Sprint 18 candidate / retro paperwork (landed at commits `65307f2` + `92a1d46`, PROMPT 1231 + PROMPT 1234); NOT activated | TR-BR-001 | ADR-017, ADR-021, ADR-002 |
 
-**Story counts**: 2 Logic, 5 Integration, 3 Visual/Feel, 2 Config/Data, 1 UX design-spec authoring (Sprint 15 Should Have Done via PROMPT 1009), plus later final evidence split follow-up.
+**Story counts**: 2 Logic, 5 Integration, 3 Visual/Feel, 2 Config/Data, 1 UX design-spec authoring (Sprint 15 Should Have Done via PROMPT 1009), plus later final evidence split follow-up. Story 015 is a PROMPT 1296 retro paperwork stub for Sprint 18 candidate landed work; NOT folded into the counts above. `/story-done` paperwork after Sprint 18 activation will reconcile the table.
 
 ## Sprint 6 Candidate Order
 

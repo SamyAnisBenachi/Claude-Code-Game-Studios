@@ -128,8 +128,10 @@ This epic is complete when:
 | 016 | [HUD Bottom Strip Layout (Composition Only)](story-016-hud-bottom-strip-layout.md) | UI | Draft -- Sprint 14 candidate (Tier 1 Must per `docs/ux/ui-clean-pass-roadmap.md` rank 8, `S11-UX-HUD-BOTTOM-STRIP-LAYOUT`), NOT activated | ADR-021, ADR-002 |
 | 017 | [HUD Opponent Figurine Composition (Layout Only)](story-017-hud-opponent-figurine.md) | UI | Done via PROMPT 976 (Sprint 14 Nice to Have, `S11-UX-HUD-OPP-FIGURINE`) | ADR-021, ADR-002, ADR-012 |
 | 018 | [HUD Opponent Figurine + OPP Label + Mana Duplicate Cleanup](story-018-opp-figurine-mana-cleanup.md) | Integration | Draft -- Sprint 17 candidate (Should Have, `S17-UI-HUD-OPP-MANA-CLEANUP-001`; PROMPT 1076 AUDIT-1076-10 + -16 + -17 bundle), NOT activated | ADR-021, ADR-002, ADR-012 |
+| 019 | [S18-HUD-PHASE-CHIP-DISAMBIGUATION-001 -- Unique Phase-Chip Stem Per RoundPhase](story-019-hud-phase-chip-disambiguation.md) | Logic | Draft -- Sprint 18 candidate / retro paperwork (landed at commit `97d3d0b`, PROMPT 1250); NOT activated | ADR-021, ADR-009 |
 
 **15 stories total: 5 Logic · 6 UI · 3 Integration · 1 Visual/Feel**
+Story 019 is a PROMPT 1296 retro paperwork stub for Sprint 18 candidate landed work (`97d3d0b`); NOT folded into the counts above. `/story-done` paperwork after Sprint 18 activation will reconcile the table.
 Story 004 blocked on OQ-HUD-05 (HudObjectiveUpdate trigger type crate location).
 Story 014 is a Sprint 13 candidate (Sprint 12 close-out deferral; Sprint 10 smoke retry-7 W2 carry); NOT activated.
 Stories 015 / 016 / 017 began as Sprint 14 candidates from PROMPT 802 Expert UI

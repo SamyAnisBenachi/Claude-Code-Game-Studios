@@ -110,8 +110,10 @@ This epic is complete when:
 | 018 | [Auction Featured Card Leading / Losing State Visual](story-018-auction-lead-loss-state.md) | UI | Draft | TR-SAU-005, TR-SAU-006 | ADR-013, ADR-021 |
 | 019 | [Bid-Button Phase-Entry Race / Empty + Baked-`?` Cleanup](story-019-bid-button-phase-race.md) | UI / Integration | Done -- Sprint 17 candidate (Should Have, `S17-UI-BID-BUTTON-PHASE-RACE-001`; PROMPT 1077 SOURCE-1077-10), closed by PROMPT 1121 /story-done | TR-SAU-002, TR-SAU-005 | ADR-013, ADR-021 |
 | 020 | [Auction-Won Card Disposition Contract + Winner Discoverability](story-020-auction-won-card-disposition.md) | Integration | Draft -- Sprint 18 candidate (Must Have, `S18-AUCTION-WON-CARD-DISPOSITION-001`; PROMPT 1131 AUDIT-1131-02), NOT activated | TR-SAU-003, TR-SAU-006 | ADR-002, ADR-013, ADR-021 |
+| 022 | [S18-DRAFT-INITIAL-NUMERIC-COUNTDOWN-001 -- Add Modal-Local Live Seconds Readout](story-022-draft-initial-numeric-countdown.md) | Logic + Integration | Draft -- Sprint 18 candidate / retro paperwork (landed at commit `1eac32f`, PROMPT 1230); NOT activated | TR-SAU-006 | ADR-009, ADR-021 |
+| 023 | [S18-SHOP-AUCTION-TIMER-COST-CLARITY-001 -- Surface Refresh Cost + Server-Anchored Auction Timer](story-023-shop-auction-timer-cost-clarity.md) | Logic + Integration | Draft -- Sprint 18 candidate / retro paperwork (landed at commit `418fe92`, PROMPT 1245); NOT activated | TR-SAU-004, TR-SAU-005, TR-SAU-006 | ADR-002, ADR-009, ADR-021 |
 
-**Story counts**: 1 Logic, 4 Integration, 11 UI, 1 Visual/Feel.
+**Story counts**: 1 Logic, 4 Integration, 11 UI, 1 Visual/Feel. Stories 022 and 023 are PROMPT 1296 retro paperwork stubs for Sprint 18 candidate landed work; NOT folded into the counts above. `/story-done` paperwork after Sprint 18 activation will reconcile the table.
 
 ## Sprint 14+ UI Clean-Pass Layout Candidates (NOT activated)
 

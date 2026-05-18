@@ -172,6 +172,10 @@ If any check fails: implement `evaluate_session_ready` as `fn(world: &mut World)
 | 008 | PLACEMENT Timer Multiplier Authority | Integration | Ready | ADR-023, ADR-002, ADR-009, ADR-012, ADR-021 |
 | 009 | [Result Acknowledgement and Result Data Contract](story-009-result-acknowledgement-and-result-data-contract.md) | Integration | Ready | ADR-002, ADR-008, ADR-010, ADR-011 |
 | 010 | [Result Acknowledgement Cleanup Handshake](story-010-result-acknowledgement-cleanup-handshake.md) | Integration | Blocked - depends on S9-RS-001 and S9-RS-002 | ADR-002, ADR-008, ADR-011, ADR-021 |
+| 012 | [S18-OPPONENT-DISCONNECT-BROADCAST-001 -- Wire Server Send-Site for S2COpponentDisconnected (F-01 Close)](story-012-opponent-disconnect-broadcast.md) | Logic + Integration | Draft -- Sprint 18 candidate / retro paperwork (landed at commit `dbacb85`, PROMPT 1211); NOT activated | ADR-002, ADR-008 |
+| 013 | [S18-SESSION-SETTINGS-ON-JOIN-001 -- Unicast S2CSessionSettingsUpdated to Joiner (F-03 Close)](story-013-session-settings-on-join.md) | Logic + Integration | Draft -- Sprint 18 candidate / retro paperwork (landed at commit `6a18c78`, PROMPT 1212); NOT activated | ADR-002, ADR-008 |
+
+> Stories 012 and 013 are PROMPT 1296 retro paperwork stubs covering Sprint 18 candidate F-01 / F-03 protocol-orphan closures that already landed on `origin/main`. They are NOT folded into the active story counts above; `/story-done` paperwork after Sprint 18 activation will reconcile the table.
 
 > ⚠️ Story 004 is **Blocked** pending ADR-012 verification (Commands::trigger ordering invariant — 4 checklist items must be confirmed against Bevy 0.18). Run the verification spike before Story 004 can be marked Ready.
 
