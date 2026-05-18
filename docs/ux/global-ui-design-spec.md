@@ -701,6 +701,87 @@ declares the references only.
 
 ---
 
+## §13 Layout-Foundation Primitives (Viewport Safety Contract)
+
+Sprint 17 PROMPT 1181 (`S17-UI-LAYOUT-FOUNDATION-PRIMITIVES-REPAIR`)
+ships reusable layout primitives so that every later surface migration
+declares its viewport-safety budget instead of hand-authoring fragile
+fixed stacks. The primitive modules are:
+
+| Module | Symbol surface | Canonical use |
+|--------|----------------|----------------|
+| `client/src/ui/design_tokens/viewport_matrix.rs` | `SAFETY_VIEWPORT_MATRIX = [1280×720, 1366×768, 1920×1080]`, `SAFETY_VIEWPORT_SMALLEST` | Tight 3-row safety matrix that every primitive's viewport-fit test iterates. The broader §8 6-viewport matrix remains canonical for full-app integration suites; this 3-row subset is the inner loop. |
+| `client/src/ui/design_tokens/modal_panel.rs` | `ModalPanelKind::{Standard, Narrow}`, `modal_panel_node`, `ModalPanelBudget`, `modal_panel_content_budget`, `assert_fits_smallest_safety_viewport`, `ContentBudgetError` | Computes `outer_height – chrome → body` budget at the supplied safety viewport and fails closed when the title strip + section gaps + CTA row + min-body floor exceed the outer-height clamp. |
+| `client/src/ui/design_tokens/cta_row.rs` | `CtaRowKind::{Primary, Compact}`, `cta_row_node`, `cta_button_node`, `CTA_ROW_HEIGHT_PX = 44`, `CTA_ROW_FLEX_GROW/SHRINK = 0` | Stable CTA row that is pinned to a pixel-fixed height and refuses to be squashed by body-region flex pressure. |
+| `client/src/ui/design_tokens/scroll_region.rs` | `scroll_region_node`, `clipped_body_region_node`, `SCROLL_REGION_MIN_HEIGHT_PX = 0` | Body / scroll region that grows + shrinks under flex pressure and carries `min_height: 0` so it never pushes the CTA row off-screen. |
+| `client/src/ui/design_tokens/status_chip.rs` | `StatusChip` marker, `VisualRole::{StatusChip, CtaButton}`, `status_chip_node`, `STATUS_CHIP_HEIGHT_PX = 22`, `STATUS_CHIP_TEXT_SIZE_PX = CAPTION` | Read-only chip that visually reads as smaller than `CTA_ROW_HEIGHT_PX` and carries neither the `Button` nor `Interaction` components. |
+| `client/src/ui/design_tokens/text_fit.rs` | `TextFitPolicy::{SingleLineNoWrap, WrapWordBoundary, WrapWordOrCharacter}`, `text_layout`, `single_line_centered`, `wrap_body_left` | Names the three canonical `bevy::text::LineBreak` modes so spawn sites declare wrap-policy intent instead of re-deriving the bevy enum. |
+
+### Viewport-safety contract (normative)
+
+A surface MAY claim "fits the viewport" only if all of the following
+hold at every row of [`SAFETY_VIEWPORT_MATRIX`] — and in particular at
+[`SAFETY_VIEWPORT_SMALLEST`]:
+
+1. The outer-rectangle height clamp (default
+   `92% × viewport.height_px`) ≥ panel chrome height
+   (`2 × padding + 2 × border + title_strip + cta_row +
+   2 × section_gap`) + `MODAL_PANEL_MIN_BODY_HEIGHT_PX` (80 px).
+2. The CTA row's `flex_grow` and `flex_shrink` are both `0.0` and its
+   height is a `Val::Px(...)` value, not a `Val::Percent(...)` value.
+3. The scroll / body region's `min_height` is `Val::Px(0.0)` so flex
+   pressure absorbs into the body region before it propagates into the
+   CTA row.
+4. Single-line readouts (HUD readouts, status chips, button labels)
+   declare `TextFitPolicy::SingleLineNoWrap`; multi-line body copy
+   declares `TextFitPolicy::WrapWordBoundary` or
+   `TextFitPolicy::WrapWordOrCharacter`.
+
+The `modal_panel::assert_fits_smallest_safety_viewport(budget)`
+function is the canonical way to assert (1) — it returns `Err` if the
+chrome exceeds the outer clamp or the body falls below the min-body
+floor.
+
+### Status-chip vs CTA-button (mutually exclusive)
+
+Per `VisualRole::is_interactive` / `VisualRole::is_read_only`, a node
+is either a status chip OR a CTA button — never both. Surfaces MUST
+NOT spawn a `Button` marker on a node that carries the `StatusChip`
+marker, and MUST add the `CtaButton` marker to nodes spawned through
+`cta_button_node`.
+
+### Foundation lane scope (PROMPT 1181)
+
+PROMPT 1181 explicitly does NOT migrate any surface. The lane ships:
+
+- The six primitive modules listed above.
+- Inline `#[cfg(test)]` unit assertions in each module + the unit
+  shape guard at
+  `tests/unit/ui/design_tokens/layout_primitives_shape_test.rs`.
+- The integration viewport-safety invariant suite at
+  `tests/integration/ui_clean_pass/layout_primitives_test.rs`.
+- This normative §13 amendment.
+
+Per-surface migration (result screen → `Narrow`, lobby modal →
+`Standard`, draft-initial modal → `Standard`, photosensitivity warning
+→ `Narrow`, connection-lost overlay → `Narrow`, settings shell →
+`Narrow`; auction + shop CTA rows → `cta_row_node`; auction status
+text → `status_chip_node`) is owned by the Sprint 17+ follow-on
+family `S17-UI-MODAL-PANEL-CHROME-MIGRATION-*` and
+`S17-UI-CTA-ROW-MIGRATION-*`.
+
+### Friend-game scope guard (§2)
+
+- `QA-COND-0005` Standard-tier accessibility accept-risk preserved.
+  The primitive's `CTA_ROW_HEIGHT_PX = 44` is the friend-game
+  click-target floor; it does NOT advance the Standard-tier ≥ 44 px
+  hit-target enforcement claim (which requires a separate audit per
+  §2).
+- `QA-COND-0006` playtest validation accept-risk preserved.
+- `PAW-TD-*-a` placeholder-art accept-risk preserved.
+
+---
+
 ## Spec Adoption Matrix
 
 This matrix is the **canonical mapping** of spec sections to Sprint 14+
