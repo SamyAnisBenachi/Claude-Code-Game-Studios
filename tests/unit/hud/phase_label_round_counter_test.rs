@@ -13,16 +13,15 @@ use shared::protocol::{RoundPhase, S2CPhaseChanged};
 #[test]
 fn phase_label_strings_match_all_visible_round_phases() {
     let mut app = app_with_hud_in_session();
-    // S18-UI-HUD-OPP-CLASS-TIMER-SCOREBOARD-REPAIR (PROMPT 1139,
-    // UI-1129-18 / AUDIT-1131-12) — `DraftShop` now reads as
-    // `DRAFT SHOP` (was the ambiguous `DRAFT`), disambiguating it from
-    // `DRAFT INITIAL` in the top strip.
+    // PROMPT 1250 (S18-HUD-PHASE-CHIP-DISAMBIGUATION-001 / B-1203-DRI-02):
+    // every visible phase chip now carries a unique stem so the two
+    // draft sub-phases stop collapsing to a shared `DRAFT ` prefix.
     let cases = [
-        (RoundPhase::DraftInitial, "DRAFT INITIAL"),
-        (RoundPhase::DraftShop, "DRAFT SHOP"),
+        (RoundPhase::DraftInitial, "KEEP-9"),
+        (RoundPhase::DraftShop, "SHOP"),
         (RoundPhase::DraftAuction, "AUCTION"),
-        (RoundPhase::Placement, "PLACEMENT"),
-        (RoundPhase::Resolution, "RESOLUTION"),
+        (RoundPhase::Placement, "PLACE"),
+        (RoundPhase::Resolution, "RESOLVE"),
         (RoundPhase::GameOver, "GAME OVER"),
     ];
 
@@ -34,6 +33,62 @@ fn phase_label_strings_match_all_visible_round_phases() {
         assert_eq!(text(&app, entities.phase_label), expected_label);
         assert_eq!(text(&app, entities.round_counter), "R3");
     }
+}
+
+#[test]
+fn phase_labels_are_visually_distinct_at_a_glance() {
+    // PROMPT 1250 (S18-HUD-PHASE-CHIP-DISAMBIGUATION-001 / B-1203-DRI-02):
+    // regression guard for the original bug — two adjacent draft phases
+    // sharing a `DRAFT ` prefix made the chip read identically at a
+    // glance. Assert that no two visible phase chips share their first
+    // token (the stem before the first space or hyphen) and that no
+    // two labels are identical. If a future label change re-introduces
+    // a shared stem the test fails before the player ever sees it.
+    let visible_labels = [
+        client::ui::hud::phase_label_text(RoundPhase::DraftInitial)
+            .expect("DraftInitial has a visible chip"),
+        client::ui::hud::phase_label_text(RoundPhase::DraftShop)
+            .expect("DraftShop has a visible chip"),
+        client::ui::hud::phase_label_text(RoundPhase::DraftAuction)
+            .expect("DraftAuction has a visible chip"),
+        client::ui::hud::phase_label_text(RoundPhase::Placement)
+            .expect("Placement has a visible chip"),
+        client::ui::hud::phase_label_text(RoundPhase::Resolution)
+            .expect("Resolution has a visible chip"),
+        client::ui::hud::phase_label_text(RoundPhase::GameOver)
+            .expect("GameOver has a visible chip"),
+    ];
+
+    fn first_token(label: &str) -> &str {
+        label.split(|c: char| c == ' ' || c == '-').next().unwrap_or(label)
+    }
+
+    for i in 0..visible_labels.len() {
+        for j in (i + 1)..visible_labels.len() {
+            let (a, b) = (visible_labels[i], visible_labels[j]);
+            assert_ne!(
+                a, b,
+                "phase chips {a:?} and {b:?} are identical — chip cannot \
+                 distinguish their round phases"
+            );
+            assert_ne!(
+                first_token(a),
+                first_token(b),
+                "phase chips {a:?} and {b:?} share a first token \
+                 {first:?}; at-a-glance scan cannot tell them apart",
+                first = first_token(a),
+            );
+        }
+    }
+}
+
+#[test]
+fn lobby_and_handshaking_have_no_visible_chip() {
+    // PROMPT 1250: the lobby and handshaking phases must continue to
+    // suppress the chip so the disambiguation rewrite cannot leak a
+    // pre-session label into the top strip.
+    assert!(client::ui::hud::phase_label_text(RoundPhase::Lobby).is_none());
+    assert!(client::ui::hud::phase_label_text(RoundPhase::Handshaking).is_none());
 }
 
 #[test]
@@ -60,7 +115,7 @@ fn phase_and_round_replace_text_in_the_same_update_without_animators() {
     app.update();
 
     let entities = hud_entities(&app);
-    assert_eq!(text(&app, entities.phase_label), "PLACEMENT");
+    assert_eq!(text(&app, entities.phase_label), "PLACE");
     assert_eq!(text(&app, entities.round_counter), "R6");
     assert!(app.world().get::<TweenAnim>(entities.phase_label).is_none());
     assert!(app
@@ -78,7 +133,7 @@ fn multiple_phase_messages_before_update_are_last_write_wins() {
     app.update();
 
     let entities = hud_entities(&app);
-    assert_eq!(text(&app, entities.phase_label), "RESOLUTION");
+    assert_eq!(text(&app, entities.phase_label), "RESOLVE");
     assert_eq!(text(&app, entities.round_counter), "R6");
 }
 
@@ -116,7 +171,7 @@ fn phase_change_timer_duration_appears_as_countdown_seconds() {
         "raw millisecond literal must NOT leak into HUD text"
     );
     let entities = hud_entities(&app);
-    assert_eq!(text(&app, entities.phase_label), "PLACEMENT");
+    assert_eq!(text(&app, entities.phase_label), "PLACE");
     assert_eq!(text(&app, entities.round_counter), "R3");
     assert_eq!(
         text(&app, entities.timer_countdown),

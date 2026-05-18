@@ -1914,20 +1914,20 @@ pub fn update_phase_label_round_counter_system(
 }
 
 pub fn phase_label_text(phase: RoundPhase) -> Option<&'static str> {
+    // PROMPT 1250 (S18-HUD-PHASE-CHIP-DISAMBIGUATION-001 / B-1203-DRI-02):
+    // the two draft sub-phases previously both started with `DRAFT ` —
+    // `DRAFT INITIAL` and `DRAFT SHOP`. At a quick glance the shared
+    // `DRAFT` prefix collapsed visually, so players could not tell
+    // keep-9 from shop. Each visible phase now carries a unique stem
+    // so the chip is unambiguous in the top strip without reading past
+    // the first token.
     match phase {
         RoundPhase::Lobby => None,
-        RoundPhase::DraftInitial => Some("DRAFT INITIAL"),
-        // S18-UI-HUD-OPP-CLASS-TIMER-SCOREBOARD-REPAIR (PROMPT 1139,
-        // UI-1129-18 / AUDIT-1131-12): the shop sub-phase was collapsed
-        // to the bare `DRAFT` literal, which the user could not
-        // distinguish from `DRAFT INITIAL` in the top strip. Promote
-        // the shop label to the explicit `DRAFT SHOP` so the three
-        // draft sub-phases each carry a distinct chrome string
-        // (`DRAFT INITIAL` / `DRAFT SHOP` / `AUCTION`).
-        RoundPhase::DraftShop => Some("DRAFT SHOP"),
+        RoundPhase::DraftInitial => Some("KEEP-9"),
+        RoundPhase::DraftShop => Some("SHOP"),
         RoundPhase::DraftAuction => Some("AUCTION"),
-        RoundPhase::Placement => Some("PLACEMENT"),
-        RoundPhase::Resolution => Some("RESOLUTION"),
+        RoundPhase::Placement => Some("PLACE"),
+        RoundPhase::Resolution => Some("RESOLVE"),
         RoundPhase::GameOver => Some("GAME OVER"),
         RoundPhase::Handshaking => None,
     }
