@@ -51,7 +51,11 @@ fn sau_004_card_before_phase_enters_preparing_without_countdown() {
         })
     );
     assert!(auction_card_text(&app).contains("Card 1"));
-    assert!(auction_card_text(&app).contains("4g"));
+    // PROMPT 1182 — the price "{N}g" now lives on the dedicated
+    // `AuctionFeaturedCardPriceLabel` child entity (previously the
+    // parent's `Text` carried "name\nrarity - {N}g" which ghosted
+    // under the price / timer band children — AUDIT-1129 UI-1129-02).
+    assert!(auction_price_label_text(&app).contains("4g"));
 }
 
 #[test]
@@ -414,6 +418,20 @@ fn auction_card_text(app: &App) -> String {
             app.world()
                 .resource::<ShopAuctionUiEntities>()
                 .auction_featured_card,
+        )
+        .map(|text| text.0.clone())
+        .unwrap_or_default()
+}
+
+/// PROMPT 1182 — the auction price line lives on the dedicated
+/// `AuctionFeaturedCardPriceLabel` child entity (`"Bid: {N}g"`). The
+/// parent `auction_featured_card` only renders the card name now.
+fn auction_price_label_text(app: &App) -> String {
+    app.world()
+        .get::<Text>(
+            app.world()
+                .resource::<ShopAuctionUiEntities>()
+                .auction_featured_card_price_label,
         )
         .map(|text| text.0.clone())
         .unwrap_or_default()
