@@ -192,7 +192,43 @@ pub struct HudTopStrip;
 pub struct HudBottomStrip;
 
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+#[deprecated(
+    since = "S17-UI-QA-SNAPSHOT-MARKER-SPLIT-001",
+    note = "Universal HUD marker is too coarse for QA snapshot counts (SOURCE-1077-08). \
+            Use the per-sub-surface root markers — HudTopStripRoot, HudBottomStripRoot, \
+            HudScoreboardDotRoot, HudDimOverlayRoot — for visibility-aware counting. \
+            The deprecated marker remains on existing entities for one Sprint cycle so \
+            historical PROMPT 1022 / 1034 / 1036 snapshot comparisons still resolve."
+)]
 pub struct HudEntity;
+
+/// S17-UI-QA-SNAPSHOT-MARKER-SPLIT-001 — per-sub-surface root marker for the
+/// HUD top strip (`HeaderBar` primitive at viewport top). Lives on the same
+/// entity as [`HudTopStrip`] and rides the HUD root's `Visibility` chain via
+/// `Visibility::Inherited`, so a `Visibility::Visible` filter in
+/// [`crate::presentation::qa_snapshot::UiCountQueries`] reports `1` when the
+/// HUD is shown and `0` otherwise.
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct HudTopStripRoot;
+
+/// S17-UI-QA-SNAPSHOT-MARKER-SPLIT-001 — per-sub-surface root marker for the
+/// HUD bottom strip (`FooterBar` primitive at viewport bottom). Lives on the
+/// same entity as [`HudBottomStrip`].
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct HudBottomStripRoot;
+
+/// S17-UI-QA-SNAPSHOT-MARKER-SPLIT-001 — per-sub-surface root marker for the
+/// HUD scoreboard dot row entities. Applied to each scoreboard dot so the
+/// visible-count signal advances from 0 (HUD hidden) to
+/// `HUD_DOT_ROWS * HUD_DOTS_PER_ROW` (HUD visible).
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct HudScoreboardDotRoot;
+
+/// S17-UI-QA-SNAPSHOT-MARKER-SPLIT-001 — per-sub-surface root marker for the
+/// HUD RESOLUTION-phase dim overlay. Lives on the same entity as
+/// [`HudDimOverlay`]; visibility flips per phase.
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct HudDimOverlayRoot;
 
 /// PROMPT 1027 — marker for HUD pill containers (flex parents that
 /// group a prefix label with its value entity). Structural only —
@@ -663,6 +699,7 @@ fn spawn_hud(
         .spawn((
             Name::new("HUD Top Strip"),
             HudTopStrip,
+            HudTopStripRoot,
             strips::HeaderBar,
             hud_top_strip_node(),
             Visibility::Inherited,
@@ -674,6 +711,7 @@ fn spawn_hud(
         .spawn((
             Name::new("HUD Bottom Strip"),
             HudBottomStrip,
+            HudBottomStripRoot,
             strips::FooterBar,
             hud_bottom_strip_node(*config),
             Visibility::Inherited,
@@ -808,6 +846,7 @@ fn spawn_hud(
             Name::new("HUD Resolution Dim Overlay"),
             HudEntity,
             HudDimOverlay,
+            HudDimOverlayRoot,
             Node {
                 position_type: PositionType::Absolute,
                 left: Val::Px(0.0),
@@ -1085,6 +1124,7 @@ fn spawn_scoreboard_dots(
                         lane_index + 1
                     )),
                     HudEntity,
+                    HudScoreboardDotRoot,
                     ScoreboardDot {
                         row: row_marker,
                         lane_index,

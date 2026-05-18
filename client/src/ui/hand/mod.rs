@@ -793,7 +793,39 @@ pub struct HandUiEntities {
 }
 
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+#[deprecated(
+    since = "S17-UI-QA-SNAPSHOT-MARKER-SPLIT-001",
+    note = "Universal hand marker is too coarse for QA snapshot counts (SOURCE-1077-08). \
+            Use per-sub-surface root markers — HandBarRoot, HandFanRoot (existing), \
+            HandDraftGridSlotRoot, PlacementActionPanelRoot — for visibility-aware counting. \
+            The deprecated marker stays on existing entities for one Sprint cycle so \
+            historical PROMPT 1022 / 1034 / 1036 snapshot comparisons still resolve."
+)]
 pub struct HandUiEntity;
+
+/// S17-UI-QA-SNAPSHOT-MARKER-SPLIT-001 — per-sub-surface root marker for the
+/// canonical `strips::HandBar` viewport-edge strip. Lives on the
+/// `hand_bar` entity; the existing [`HandFanRoot`] marker tracks the fan
+/// area inside this strip. Counted under a `Visibility::Visible` filter
+/// in [`crate::presentation::qa_snapshot::UiCountQueries`].
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct HandBarRoot;
+
+/// S17-UI-QA-SNAPSHOT-MARKER-SPLIT-001 — per-sub-surface root marker
+/// applied to each `Hand UI Draft Grid Slot` entity. The DraftInitial /
+/// DraftShop grid surfaces these 9 entities; the visible-count signal is
+/// 0 outside DraftInitial / DraftShop and 9 when the grid is shown. No
+/// new wrapper entity is introduced — the slots themselves carry the
+/// marker so layout (`hand_draft_grid_slot_node`) is unchanged.
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct HandDraftGridSlotRoot;
+
+/// S17-UI-QA-SNAPSHOT-MARKER-SPLIT-001 — per-sub-surface root marker for
+/// the bordered placement action panel. Lives on the same entity as
+/// [`PlacementActionPanel`]; visibility tracks `HandUiMode::Staging` via
+/// `hand_ui_phase_transition_system`.
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PlacementActionPanelRoot;
 
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FanSlotIndex(pub u8);
@@ -3117,6 +3149,7 @@ pub fn spawn_hand_ui(
         .spawn((
             Name::new("Hand UI HandBar"),
             HandUiEntity,
+            HandBarRoot,
             strips::HandBar,
             strips::hand_bar_node(),
             Transform::default(),
@@ -3303,6 +3336,7 @@ pub fn spawn_hand_ui(
             .spawn((
                 Name::new(format!("Hand UI Draft Grid Slot {index}")),
                 HandUiEntity,
+                HandDraftGridSlotRoot,
                 GridSlotIndex(index as u8),
                 Button,
                 Interaction::None,
@@ -3342,6 +3376,7 @@ pub fn spawn_hand_ui(
             Name::new("Hand UI Placement Action Panel"),
             HandUiEntity,
             PlacementActionPanel,
+            PlacementActionPanelRoot,
             placement_action_panel_node(),
             BackgroundColor(PLACEMENT_ACTION_PANEL_BACKGROUND),
             BorderColor::all(PLACEMENT_ACTION_PANEL_BORDER),

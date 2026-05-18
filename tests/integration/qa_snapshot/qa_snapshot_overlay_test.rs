@@ -419,6 +419,7 @@ fn build_snapshot_includes_all_documented_fields_and_records_warnings() {
 }
 
 #[test]
+#[allow(deprecated)]
 fn build_snapshot_serialises_present_resources_without_warnings() {
     let phase_view = ClientPhaseView {
         phase: RoundPhase::DraftShop,
@@ -438,6 +439,7 @@ fn build_snapshot_serialises_present_resources_without_warnings() {
         Some(&phase_view),
         Some(identity),
         None,
+        #[allow(deprecated)]
         UiCounts {
             hud_entities: 23,
             hud_timer_bars: 1,
@@ -447,6 +449,10 @@ fn build_snapshot_serialises_present_resources_without_warnings() {
             result_screen_roots: 0,
             connection_lost_overlay_roots: 1,
             qa_snapshot_overlay_roots: 1,
+            // S17-UI-QA-SNAPSHOT-MARKER-SPLIT-001: new per-sub-surface
+            // visible fields default to 0; this test does not exercise
+            // them — it locks the legacy-counts contract.
+            ..UiCounts::default()
         },
     );
 
