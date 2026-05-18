@@ -445,6 +445,16 @@ path = "../tests/integration/qa_snapshot/qa_snapshot_overlay_test.rs"
 name = "qa_snapshot_layout_field_coverage_test"
 path = "../tests/integration/qa_snapshot/layout_field_coverage_test.rs"
 
+# PROMPT 1229 — S18-QA-SNAPSHOT-PLACEMENT-AUCTION-STATE-001 / B-1203-X-03.
+# Locks the top-level `placement_state`, `auction_state`, and
+# `current_phase.timer_remaining_ms` JSON fields against the
+# qa_snapshot::QASnapshotData schema so PROMPT 1203 audits can correlate
+# QA screenshots with placement intent + auction state without source
+# archaeology under `extras.*`.
+[[test]]
+name = "qa_snapshot_placement_auction_state_field_coverage_test"
+path = "../tests/integration/qa_snapshot/placement_auction_state_field_coverage_test.rs"
+
 # S17-UI-QA-SNAPSHOT-MARKER-SPLIT-001 — per-sub-surface marker split,
 # visibility-aware UI counts, and session-id-prefixed snapshot directory
 # names (SOURCE-1077-08 + SOURCE-1077-09 + SOURCE-1077-16). Covers ACs

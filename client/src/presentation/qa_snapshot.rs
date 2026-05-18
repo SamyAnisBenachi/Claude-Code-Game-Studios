@@ -406,6 +406,24 @@ pub struct QASnapshotData {
     /// computable from current ECS data — see
     /// [`LayoutSnapshot::limitations`] for the documented gaps.
     pub layout: LayoutSnapshot,
+    /// PROMPT 1229 (S18-QA-SNAPSHOT-PLACEMENT-AUCTION-STATE-001 /
+    /// B-1203-X-03) — top-level placement-phase state lift, projected
+    /// from the same `extras.hand` / `extras.drag` / `extras.timers`
+    /// resources but surfaced at the top of `snapshot.json` so PROMPT 1203
+    /// audits can correlate visual mismatches against the local placement
+    /// intent without descending into `extras.*`. Schema is stable across
+    /// phases: `available = false` + nested `null`s outside the placement
+    /// phase. See [`PlacementStateSnapshot`].
+    pub placement_state: PlacementStateSnapshot,
+    /// PROMPT 1229 (S18-QA-SNAPSHOT-PLACEMENT-AUCTION-STATE-001 /
+    /// B-1203-X-03) — top-level auction-phase state lift, projected from
+    /// the same `extras.shop_auction.auction` / `extras.resources.*`
+    /// resources but surfaced at the top of `snapshot.json` so PROMPT 1203
+    /// audits can correlate the QA screenshot against bid / leader /
+    /// timer / local-gold state without spelunking. Schema is stable
+    /// across phases: `available = false` + nested `null`s outside the
+    /// auction phase. See [`AuctionStateSnapshot`].
+    pub auction_state: AuctionStateSnapshot,
     pub warnings: Vec<String>,
 }
 
@@ -430,6 +448,13 @@ pub struct ScreenshotInfo {
 pub struct PhaseInfo {
     pub phase: Option<String>,
     pub round: Option<u32>,
+    /// PROMPT 1229 (S18-QA-SNAPSHOT-PLACEMENT-AUCTION-STATE-001 /
+    /// B-1203-X-03). Round-phase countdown remaining in milliseconds,
+    /// projected from [`crate::ui::hud::PhaseTimerState`] via
+    /// `duration_ms.saturating_sub(elapsed_ms)`. `None` when the timer
+    /// resource is absent (lobby / pre-handshake) — never inferred from
+    /// fixtures.
+    pub timer_remaining_ms: Option<u32>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -454,6 +479,126 @@ pub struct WindowInfo {
     pub width: Option<f32>,
     pub height: Option<f32>,
     pub scale_factor: Option<f32>,
+}
+
+/// PROMPT 1229 (S18-QA-SNAPSHOT-PLACEMENT-AUCTION-STATE-001 /
+/// B-1203-X-03). Top-level placement-phase state lifted out of
+/// [`ExtrasSnapshot`] so audits can correlate the QA screenshot against
+/// the active local placement intent without source archaeology. Every
+/// field is `Option` (or `false` on the boolean availability flag) so a
+/// snapshot captured outside the placement phase still produces a stable
+/// JSON shape: `available = false`, every nested field `null`. Read-only
+/// projection of [`crate::ui::hand::PendingPlacements`],
+/// [`crate::ui::hand::PlacementTimer`],
+/// [`crate::ui::hand::PlacementDisclosureState`], and
+/// [`crate::ui::hand::ActivePlacementDrag`] — never mutates those
+/// resources.
+#[derive(Debug, Clone, Default, Serialize)]
+pub struct PlacementStateSnapshot {
+    /// `true` when at least one placement-phase resource was present at
+    /// snapshot time (so the other fields carry meaningful nulls vs
+    /// values). `false` for lobby / pre-handshake / non-placement-phase
+    /// captures.
+    pub available: bool,
+    /// `PendingPlacements::staged_count()`. `None` when the resource is
+    /// absent.
+    pub staged_count: Option<usize>,
+    /// `staged_count > 0 && !submitted` — the same gate the placement
+    /// submit button uses to decide whether the SubmitPlacements C2S can
+    /// fire. `None` when the source resources are absent.
+    pub can_submit: Option<bool>,
+    /// `PlacementTimer::submitted`. `None` when the timer resource is
+    /// absent.
+    pub submitted: Option<bool>,
+    /// `true` when `ActivePlacementDrag::is_active()` (card + target_kind
+    /// both set). `None` when the resource is absent.
+    pub drag_active: Option<bool>,
+    /// `ActivePlacementDrag::card_id` when a drag is active. `None`
+    /// otherwise.
+    pub drag_card_id: Option<u32>,
+    /// `ActivePlacementDrag::target_kind` projected as a stable string
+    /// token (matches [`target_kind_name`]). `None` when no drag is
+    /// active.
+    pub drag_target_kind: Option<String>,
+    /// `PlacementDisclosureState::step` projected via
+    /// [`disclosure_step_name`]. Surfaces the local "what step is the
+    /// staging UI on" signal — `Hidden` / `CardSelection` /
+    /// `TargetSelection(<kind>)` / `StagedCard` / `Correction(<err>)` /
+    /// `Submitted`. `None` when the resource is absent.
+    pub disclosure_step: Option<String>,
+}
+
+/// PROMPT 1229 (S18-QA-SNAPSHOT-PLACEMENT-AUCTION-STATE-001 /
+/// B-1203-X-03). Top-level auction-phase state lifted out of
+/// [`ExtrasSnapshot`] so audits can diagnose bid/leader/timer mismatches
+/// from the JSON without spelunking through `extras.shop_auction.auction`
+/// and `extras.resources.local_gold_view`. Sub-fields are `Option` so a
+/// snapshot captured outside the auction phase produces a stable JSON
+/// shape (`available = false`, nested fields `null`). Read-only projection
+/// of [`crate::ui::shop_auction::ShopAuctionAuctionState`] +
+/// [`crate::ui::shop_auction::ShopAuctionLocalGoldView`] +
+/// [`crate::presentation::shared::economy_view::PlayerEconomyView`].
+#[derive(Debug, Clone, Default, Serialize)]
+pub struct AuctionStateSnapshot {
+    /// `true` when [`ShopAuctionAuctionState`] was present at snapshot
+    /// time (so the other fields carry meaningful nulls vs values).
+    pub available: bool,
+    /// `ShopAuctionAuctionState::panel_state` projected via
+    /// [`auction_panel_state_name`] (`Hidden` / `Preparing` / `Active` /
+    /// `Settling` / `ConnectionError`). `None` when unavailable.
+    pub panel_state: Option<String>,
+    /// `ShopAuctionAuctionState::card_id`. `None` when no card is
+    /// featured (pre-Preparing, between cards, or unavailable).
+    pub card_id: Option<u32>,
+    /// `ShopAuctionAuctionState::starting_price`. `None` when
+    /// unavailable.
+    pub starting_price: Option<u32>,
+    /// `ShopAuctionAuctionState::current_price` — the highest accepted
+    /// bid, or `starting_price` if no bid has landed yet. `None` when
+    /// unavailable.
+    pub current_price: Option<u32>,
+    /// `ShopAuctionAuctionState::current_leader` projected as Debug.
+    /// `None` when no bid has landed yet OR the auction resource is
+    /// absent — disambiguate via [`Self::available`].
+    pub current_leader: Option<String>,
+    /// `ShopAuctionAuctionState::timer_duration_ms`. `None` when
+    /// unavailable.
+    pub timer_duration_ms: Option<u32>,
+    /// `ShopAuctionAuctionState::timer_remaining_ms`. `None` when
+    /// unavailable.
+    pub timer_remaining_ms: Option<u32>,
+    /// `ShopAuctionAuctionState::in_flight_bid_amount` — the local
+    /// player's pending bid amount awaiting server confirmation. `None`
+    /// when no in-flight bid is staged or the resource is absent.
+    pub local_in_flight_bid_amount: Option<u32>,
+    /// `ShopAuctionLocalGoldView::initialized && PlayerEconomyView`
+    /// resolved local gold projection. `None` when either source is
+    /// absent — the inner [`AuctionLocalGoldSnapshot`] carries the
+    /// per-field nulls.
+    pub local_gold: Option<AuctionLocalGoldSnapshot>,
+}
+
+/// Per-snapshot projection of the local player's gold state at auction
+/// time: total gold, gold reserved for in-flight bids, and free
+/// (spendable) gold. Sourced from
+/// [`crate::ui::shop_auction::ShopAuctionLocalGoldView`] +
+/// [`crate::presentation::shared::economy_view::PlayerEconomyView`].
+#[derive(Debug, Clone, Serialize)]
+pub struct AuctionLocalGoldSnapshot {
+    /// `ShopAuctionLocalGoldView::gold` (fallback: `PlayerEconomyView::gold`
+    /// when the gold view is not yet initialised).
+    pub gold: u32,
+    /// `ShopAuctionLocalGoldView::reserved_gold` (0 when the view is not
+    /// initialised — matches the same fallback used by
+    /// [`ShopAuctionLocalGoldView::free_gold`]).
+    pub reserved_gold: u32,
+    /// `ShopAuctionLocalGoldView::free_gold(economy)` — the value the
+    /// auction UI feeds to bid affordability checks.
+    pub free_gold: u32,
+    /// `true` when the gold view itself has been initialised by a
+    /// `S2CGoldUpdate` (i.e. the broadcast gate is satisfied); `false`
+    /// when the snapshot fell back to `PlayerEconomyView::gold`.
+    pub view_initialized: bool,
 }
 
 /// Counts of bevy_ui entities matching each named UI surface marker.
@@ -2829,16 +2974,24 @@ pub fn build_snapshot_with_extras_and_layout(
         }
     };
 
+    // PROMPT 1229 — `current_phase.timer_remaining_ms` is lifted from
+    // `extras.timers.phase_timer.remaining_ms` (which itself is sourced
+    // from `PhaseTimerState`). Surfaces as `null` when the timer resource
+    // is absent (lobby / pre-handshake) or the extras bag is the default
+    // empty value.
+    let phase_timer_remaining_ms = extras.timers.phase_timer.as_ref().map(|t| t.remaining_ms);
     let current_phase_info = match current_phase {
         Some(p) => PhaseInfo {
             phase: Some(format!("{:?}", p.phase)),
             round: Some(p.round),
+            timer_remaining_ms: phase_timer_remaining_ms,
         },
         None => {
             warnings.push("CurrentClientPhase resource missing".to_string());
             PhaseInfo {
                 phase: None,
                 round: None,
+                timer_remaining_ms: phase_timer_remaining_ms,
             }
         }
     };
@@ -2893,6 +3046,14 @@ pub fn build_snapshot_with_extras_and_layout(
 
     let snapshot_id = format_snapshot_id(counter, unix_millis, identity.and_then(|i| i.session_id));
 
+    // PROMPT 1229 — derive the placement_state and auction_state top-level
+    // lifts from the already-collected `extras` bag. Pure projection: no
+    // additional resource reads, no UI mutation. `available` flags are
+    // emitted explicitly so a phase-stable JSON shape never gets confused
+    // with a missing-resource regression (B-1203-X-03).
+    let placement_state = build_placement_state_snapshot(&extras);
+    let auction_state = build_auction_state_snapshot(&extras);
+
     QASnapshotData {
         snapshot_id,
         counter,
@@ -2906,7 +3067,89 @@ pub fn build_snapshot_with_extras_and_layout(
         ui_counts,
         extras,
         layout,
+        placement_state,
+        auction_state,
         warnings,
+    }
+}
+
+/// PROMPT 1229 — build [`PlacementStateSnapshot`] from the already-collected
+/// [`ExtrasSnapshot`]. Pure projection: walks `extras.hand` /
+/// `extras.timers.placement_timer` / `extras.drag` and surfaces a stable
+/// JSON shape. Exposed (`pub`) so unit tests can verify the projection
+/// without spinning up a real Bevy app.
+pub fn build_placement_state_snapshot(extras: &ExtrasSnapshot) -> PlacementStateSnapshot {
+    let hand = extras.hand.as_ref();
+    let placement_timer = extras.timers.placement_timer.as_ref();
+    let drag = &extras.drag;
+
+    let available = hand.is_some() || placement_timer.is_some();
+    if !available {
+        return PlacementStateSnapshot::default();
+    }
+
+    let staged_count = hand.map(|h| h.staged_count);
+    let submitted = placement_timer.map(|t| t.submitted);
+    // `can_submit` requires both the staged-count source and the submitted
+    // flag — if either is missing we surface `None` rather than guessing.
+    let can_submit = match (staged_count, submitted) {
+        (Some(n), Some(s)) => Some(n > 0 && !s),
+        _ => None,
+    };
+
+    PlacementStateSnapshot {
+        available,
+        staged_count,
+        can_submit,
+        submitted,
+        drag_active: Some(drag.placement_drag_active),
+        drag_card_id: drag.placement_drag_card_id,
+        drag_target_kind: drag.placement_drag_target_kind.clone(),
+        disclosure_step: hand.and_then(|h| h.disclosure_step.clone()),
+    }
+}
+
+/// PROMPT 1229 — build [`AuctionStateSnapshot`] from the already-collected
+/// [`ExtrasSnapshot`]. Pure projection: walks
+/// `extras.shop_auction.auction` and `extras.resources.local_gold_view`
+/// and surfaces a stable JSON shape. Exposed (`pub`) so unit tests can
+/// verify the projection without spinning up a real Bevy app.
+pub fn build_auction_state_snapshot(extras: &ExtrasSnapshot) -> AuctionStateSnapshot {
+    let auction = extras
+        .shop_auction
+        .as_ref()
+        .and_then(|s| s.auction.as_ref());
+    let Some(a) = auction else {
+        // Local gold may still be available even when no auction is
+        // active (e.g. during shop phase), but surfacing it under
+        // `auction_state` would be misleading. We keep the shape stable
+        // (`available = false` + everything null) so audits can grep for
+        // the explicit availability flag.
+        return AuctionStateSnapshot::default();
+    };
+
+    let local_gold = extras
+        .resources
+        .as_ref()
+        .and_then(|r| r.local_gold_view.as_ref())
+        .map(|g| AuctionLocalGoldSnapshot {
+            gold: g.gold,
+            reserved_gold: g.reserved_gold,
+            free_gold: g.free_gold,
+            view_initialized: g.initialized,
+        });
+
+    AuctionStateSnapshot {
+        available: true,
+        panel_state: Some(a.panel_state.clone()),
+        card_id: a.card_id,
+        starting_price: Some(a.starting_price),
+        current_price: Some(a.current_price),
+        current_leader: a.current_leader.clone(),
+        timer_duration_ms: Some(a.timer_duration_ms),
+        timer_remaining_ms: Some(a.timer_remaining_ms),
+        local_in_flight_bid_amount: a.in_flight_bid_amount,
+        local_gold,
     }
 }
 

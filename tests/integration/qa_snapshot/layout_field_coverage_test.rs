@@ -532,6 +532,7 @@ fn test_snapshot_json_round_trip_preserves_layout_block_keys_after_write_to_dir(
         current_phase: client::presentation::qa_snapshot::PhaseInfo {
             phase: None,
             round: None,
+            timer_remaining_ms: None,
         },
         phase_view: client::presentation::qa_snapshot::PhaseViewInfo {
             phase: None,
@@ -551,6 +552,10 @@ fn test_snapshot_json_round_trip_preserves_layout_block_keys_after_write_to_dir(
         ui_counts: UiCounts::default(),
         extras: ExtrasSnapshot::default(),
         layout,
+        placement_state:
+            client::presentation::qa_snapshot::PlacementStateSnapshot::default(),
+        auction_state:
+            client::presentation::qa_snapshot::AuctionStateSnapshot::default(),
         warnings: vec![],
     };
 
