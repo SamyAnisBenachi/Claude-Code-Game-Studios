@@ -628,11 +628,13 @@ pub fn handle_list_rooms(
 }
 
 /// Sole drainer for `MessageReceiver<C2SJoinRoom>`.
+#[allow(clippy::too_many_arguments)]
 pub fn handle_join_room(
     time: Res<Time>,
     connections: Res<PlayerConnectionMap>,
     mut rooms: ResMut<RoomSessions>,
     mut active_sessions: ResMut<ActiveSessions>,
+    placement_timer_requests: Option<Res<PlacementTimerMultiplierRequests>>,
     mut receivers: Query<(&RemoteId, &mut MessageReceiver<C2SJoinRoom>)>,
     server: Query<&Server>,
     mut sender: Option<ServerMultiMessageSender>,
@@ -661,10 +663,45 @@ pub fn handle_join_room(
                 now,
             );
 
+            let settings_update = matches!(outcome, JoinRoomOutcome::Joined { .. })
+                .then(|| {
+                    rooms
+                        .get_by_code(&normalise_room_code(&msg.room_code))
+                        .map(|session| {
+                            effective_session_settings_update(
+                                &session.slots,
+                                placement_timer_requests.as_deref(),
+                            )
+                        })
+                })
+                .flatten();
+
             if let (Some(server), Some(sender)) = (server, sender.as_mut()) {
-                send_join_room_outcome(sender, server, &connections.0, remote.0, &outcome);
+                send_join_room_outcome(
+                    sender,
+                    server,
+                    &connections.0,
+                    remote.0,
+                    &outcome,
+                    settings_update.as_ref(),
+                );
             }
         }
+    }
+}
+
+/// Computes the room's effective session settings snapshot for a joining
+/// client. Pure helper; isolated so tests can verify the value the server will
+/// unicast on join without spinning up a full networking harness.
+pub fn effective_session_settings_update(
+    slots: &SessionSlots,
+    placement_timer_requests: Option<&PlacementTimerMultiplierRequests>,
+) -> S2CSessionSettingsUpdated {
+    S2CSessionSettingsUpdated {
+        placement_timer_multiplier_effective: effective_placement_timer_multiplier(
+            slots,
+            placement_timer_requests,
+        ),
     }
 }
 
@@ -2092,6 +2129,7 @@ fn send_join_room_outcome(
     connections: &HashMap<PeerId, PlayerId>,
     peer_id: PeerId,
     outcome: &JoinRoomOutcome,
+    settings_update: Option<&S2CSessionSettingsUpdated>,
 ) {
     match outcome {
         JoinRoomOutcome::Joined {
@@ -2115,6 +2153,29 @@ fn send_join_room_outcome(
                     err = ?e,
                     "S2C send failed: type=S2CJoinAck, handler=send_join_room_outcome"
                 );
+            }
+
+            // PROMPT 1212 F-03 fix: unicast the room's current effective
+            // session settings so the joining client's `SessionSettingsView`
+            // mirrors the room immediately instead of waiting for the next
+            // settings change broadcast.
+            if let Some(settings_update) = settings_update {
+                tracing::info!(
+                    peer_id = ?peer_id,
+                    placement_timer_multiplier = ?settings_update.placement_timer_multiplier_effective,
+                    "send_join_room_outcome unicast S2CSessionSettingsUpdated to joiner"
+                );
+                if let Err(e) = sender.send::<S2CSessionSettingsUpdated, ReliableChannel>(
+                    settings_update,
+                    server,
+                    &NetworkTarget::Single(peer_id),
+                ) {
+                    tracing::error!(
+                        peer_id = ?peer_id,
+                        err = ?e,
+                        "S2C send failed: type=S2CSessionSettingsUpdated, handler=send_join_room_outcome"
+                    );
+                }
             }
 
             let target_peers = slot_update_recipients
