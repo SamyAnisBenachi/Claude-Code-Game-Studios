@@ -117,7 +117,7 @@ const BUTTON_BG_BUILDER_ALLOWLIST: &[&str] = &[];
 const BUTTON_NO_BG_BASELINE: &[(&str, usize)] = &[
     ("src/ui/hand/mod.rs", 3362),
     ("src/ui/hand/mod.rs", 3503),
-    ("src/ui/hand/mod.rs", 3774),
+    ("src/ui/hand/mod.rs", 3783),
     ("src/ui/lobby.rs", 1637),
     ("src/ui/shop_auction/mod.rs", 4434),
     ("src/ui/shop_auction/mod.rs", 4514),
