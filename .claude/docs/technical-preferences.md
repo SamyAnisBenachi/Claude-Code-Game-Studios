@@ -76,9 +76,10 @@
 
 | ADR | File | Status | Summary |
 |---|---|---|---|
-| ADR-001 | `docs/architecture/adr-001-objective-identity-unicast.md` | Accepted | `ObjectiveIdentity` sent as unicast message at DRAFT_INITIAL, not replicated ECS component. Lightyear 0.26 has no per-component replication scope. |
+| ADR-001 | `docs/architecture/adr-001-objective-identity-unicast.md` | Accepted (Sang Méprise §5 sub-clause superseded by ADR-024) | `ObjectiveIdentity` sent as unicast message at DRAFT_INITIAL, not replicated ECS component. Lightyear 0.26 has no per-component replication scope. |
+| ADR-024 | `docs/architecture/adr-024-sang-meprise-reveal-mechanism.md` | Accepted | Sang Méprise reveal: parallel unicast of full alive-objective `reveal_set` to both players; server-state mutation contract for `sang_meprise_active` and `ReconnectTracker.sang_meprise_sent_to`; client `ObjectiveIdentityCache` lifecycle; OQ-BR-01 closure (cache IS the audio-suppression signal). |
 
-Pending ADRs needed: client-server authority model, card data schema, round state machine, auction event flow, Sang Méprise reveal mechanism
+Pending ADRs needed: client-server authority model, card data schema, round state machine, auction event flow
 
 ## Engine Specialists
 
