@@ -29,7 +29,17 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "time"] }
 
 [features]
-default = []
+# PROMPT 1150 (S17-UI-CLICK-PICKING-BACKEND-001) — `ui_picking` ships in the
+# default feature set so the Bevy UI picking backend is loaded by
+# `DefaultPlugins` in `client/src/main.rs`. Without that backend the
+# `bevy_ui` `Button` + `Interaction` state machine never transitions to
+# `Interaction::Pressed`, which silently kills every Shop / Auction click
+# handler (shop slot purchase, refresh, ready, bid increment, pass) and
+# every `Pointer<Press>` observer on the hand fan / placement drag pipeline.
+# ADR-021's "no-`ui_picking` CI build gate" still holds for the cfg-gated
+# `Pickable` insert sites — exercise it via
+# `cargo build -p client --no-default-features`.
+default = ["ui_picking"]
 ui_picking = ["bevy/ui_picking", "bevy/bevy_picking"]
 # S17-OPS-VULKAN-VALIDATION-GATING-001 (AUDIT-1076-18): opt-in WGPU validation
 # layer flags. OFF by default so a stock `cargo build -p client` / `trunk build`
@@ -612,6 +622,18 @@ path = "../tests/integration/shop_auction_ui/card_cost_combat_stat_rendering_tes
 [[test]]
 name = "shop_auction_ui_surface_paint_test"
 path = "../tests/integration/shop_auction_ui/shop_auction_surface_paint_test.rs"
+
+# PROMPT 1150 (S17-UI-CLICK-PICKING-BACKEND-001) — Interaction → click
+# hand-off regression coverage. Closes the structural gap surfaced by
+# PROMPT 1128 where every other `tests/integration/shop_auction_ui/`
+# bin bypasses `handle_shop_auction_control_interactions_system` /
+# `handle_auction_bid_button_interactions_system` by writing the
+# internal `*Clicked` events directly. These cases drive a real
+# `Pressed` transition on each Button entity and assert the production
+# handler emits the matching internal click message.
+[[test]]
+name = "shop_auction_ui_interaction_emits_click_test"
+path = "../tests/integration/shop_auction_ui/interaction_emits_click_test.rs"
 
 [[test]]
 name = "board_rendering_grid_camera_test"
