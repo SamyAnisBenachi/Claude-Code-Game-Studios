@@ -432,6 +432,156 @@ fn ac4_status_copy_preserves_players_substring_and_two_line_bound() {
     );
 }
 
+// ── AC5 (PROMPT 1178): slot panels read as muted status chips, not buttons.
+
+#[test]
+fn ac5_own_slot_panel_image_node_is_tinted_to_read_as_status_chip() {
+    test_helpers::init_test_tracing();
+    let mut app = spawn_lobby_test_app();
+    let world = app.world_mut();
+
+    let panel = world
+        .query_filtered::<Entity, With<LobbyOwnSlotPanel>>()
+        .iter(world)
+        .next()
+        .expect("AC5: LobbyOwnSlotPanel must exist");
+    let image = world
+        .entity(panel)
+        .get::<ImageNode>()
+        .expect("AC5: LobbyOwnSlotPanel must carry ImageNode");
+    let color = image.color.to_srgba();
+    // White (1, 1, 1, 1) is the bevy_ui default — would render the
+    // panel asset at full button-like saturation. PROMPT 1178 tints
+    // the asset down so the chip reads as informational status. The
+    // exact RGBA chosen is in `lobby_slot_chip_image_node`; this test
+    // just guards against a regression back to white.
+    let is_pure_white = (color.red - 1.0).abs() < 1e-4
+        && (color.green - 1.0).abs() < 1e-4
+        && (color.blue - 1.0).abs() < 1e-4
+        && (color.alpha - 1.0).abs() < 1e-4;
+    assert!(
+        !is_pure_white,
+        "AC5: LobbyOwnSlotPanel.ImageNode.color must be tinted (not \
+         pure white) so the chip reads as status, not a primary \
+         button. Got {color:?}"
+    );
+}
+
+#[test]
+fn ac5_opponent_slot_panel_image_node_is_tinted_to_read_as_status_chip() {
+    test_helpers::init_test_tracing();
+    let mut app = spawn_lobby_test_app();
+    let world = app.world_mut();
+
+    let panel = world
+        .query_filtered::<Entity, With<LobbyOpponentSlotPanel>>()
+        .iter(world)
+        .next()
+        .expect("AC5: LobbyOpponentSlotPanel must exist");
+    let image = world
+        .entity(panel)
+        .get::<ImageNode>()
+        .expect("AC5: LobbyOpponentSlotPanel must carry ImageNode");
+    let color = image.color.to_srgba();
+    let is_pure_white = (color.red - 1.0).abs() < 1e-4
+        && (color.green - 1.0).abs() < 1e-4
+        && (color.blue - 1.0).abs() < 1e-4
+        && (color.alpha - 1.0).abs() < 1e-4;
+    assert!(
+        !is_pure_white,
+        "AC5: LobbyOpponentSlotPanel.ImageNode.color must be tinted (not \
+         pure white) so the chip reads as status, not a primary \
+         button. Got {color:?}"
+    );
+}
+
+#[test]
+fn ac5_slot_panels_carry_no_button_marker() {
+    test_helpers::init_test_tracing();
+    let mut app = spawn_lobby_test_app();
+    let world = app.world_mut();
+
+    let own = world
+        .query_filtered::<Entity, With<LobbyOwnSlotPanel>>()
+        .iter(world)
+        .next()
+        .expect("AC5: LobbyOwnSlotPanel must exist");
+    assert!(
+        world.entity(own).get::<Button>().is_none(),
+        "AC5: LobbyOwnSlotPanel must NOT carry a Button marker — it is \
+         a status chip, not a primary action"
+    );
+    let opp = world
+        .query_filtered::<Entity, With<LobbyOpponentSlotPanel>>()
+        .iter(world)
+        .next()
+        .expect("AC5: LobbyOpponentSlotPanel must exist");
+    assert!(
+        world.entity(opp).get::<Button>().is_none(),
+        "AC5: LobbyOpponentSlotPanel must NOT carry a Button marker — it \
+         is a status chip, not a primary action"
+    );
+}
+
+// ── AC6 (PROMPT 1178): own-slot label prefers authoritative slot. ─────────
+
+#[test]
+fn ac6_own_slot_label_prefers_authoritative_lobby_slots_over_input_default() {
+    use shared::protocol::SessionSlot;
+    test_helpers::init_test_tracing();
+    // Server confirmed the local player is in slot 2; the
+    // `LobbyInputState::default()` `requested_slot = 1` is now stale.
+    let lobby = LobbyViewState {
+        local_player_id: Some(PlayerId(7)),
+        slots: vec![
+            SessionSlot {
+                slot: 2,
+                team: 1,
+                player_id: Some(PlayerId(7)),
+                class_id: None,
+                class_confirmed: false,
+            },
+            SessionSlot {
+                slot: 1,
+                team: 0,
+                player_id: Some(PlayerId(99)),
+                class_id: None,
+                class_confirmed: false,
+            },
+        ],
+        ..Default::default()
+    };
+    let input = LobbyInputState::default(); // requested_slot = 1.
+    let label = lobby_own_slot_label_text(&lobby, &input);
+    assert!(
+        label.contains("slot 2"),
+        "AC6: own-slot label must prefer the authoritative `lobby.slots` \
+         seat (slot 2) over the stale `input.requested_slot` default \
+         (slot 1). Got: {label:?}"
+    );
+    assert!(
+        !label.contains("slot 1"),
+        "AC6: own-slot label must NOT show the stale `input.requested_slot` \
+         (slot 1) when the server-confirmed slot differs. Got: {label:?}"
+    );
+}
+
+#[test]
+fn ac6_own_slot_label_falls_back_to_input_requested_slot_pre_join() {
+    test_helpers::init_test_tracing();
+    // Pre-join: `lobby.slots` is empty, `local_player_id` is None.
+    let lobby = LobbyViewState::default();
+    let mut input = LobbyInputState::default();
+    input.requested_slot = 3;
+    let label = lobby_own_slot_label_text(&lobby, &input);
+    assert!(
+        label.contains("slot 3"),
+        "AC6: pre-join own-slot label must fall back to \
+         `input.requested_slot` (slot 3) when `lobby.slots` is empty. \
+         Got: {label:?}"
+    );
+}
+
 #[test]
 fn ac4_status_copy_drops_redundant_status_and_join_prefixes() {
     test_helpers::init_test_tracing();
