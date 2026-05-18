@@ -809,3 +809,14 @@ path = "../tests/integration/session/lobby_chrome_wiring_test.rs"
 [[test]]
 name = "ui_viewport_invariants_test"
 path = "../tests/integration/ui_viewport_invariants_test.rs"
+
+# PROMPT 1185 / S18-UI-VIEWPORT-INVARIANT-LIVE-HARNESS-001 - live-spawn
+# replacement for the false-confidence fixture-baseline harness
+# (reports/PROMPT-1180-global-ui-layout-system-deep-audit.md RC-5).
+# Builds a production-faithful headless App with LobbyUiPlugin +
+# bevy::ui::UiPlugin and asserts real ComputedNode bounds across the
+# 7-entry LIVE_VIEWPORTS matrix (legacy 6 + 1280x720 Floor row per
+# PROMPT 1180 C-1).
+[[test]]
+name = "ui_viewport_live_test"
+path = "../tests/integration/ui_viewport_live_test.rs"

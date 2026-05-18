@@ -566,3 +566,255 @@ impl std::fmt::Display for AssertionFailure {
         )
     }
 }
+
+// ─────────────────────────────────────────────────────────────────────
+// PROMPT 1185 — Live-spawn invariant harness primitives.
+//
+// Replaces the false-confidence fixture-baseline pipeline (the legacy
+// `SurfaceBaseline` / `UiRootBounds` API above) per
+// `reports/PROMPT-1180-global-ui-layout-system-deep-audit.md` §RC-5.
+//
+// The legacy API asserted hand-authored `(x, y, w, h)` tuples against
+// themselves — every assertion was a tautology because the spawn site
+// wrote a fixture value into a component and the query read that same
+// value back. The live harness below builds a real Bevy `App` with the
+// production UI plugin set + `bevy::ui::UiPlugin` so `ui_layout_system`
+// runs taffy and populates `ComputedNode` / `UiGlobalTransform` against
+// a synthetic `Camera2d` whose `Camera.computed.target_info` is
+// hand-populated with the canonical viewport's `physical_size`. This
+// is the same trick the upstream `bevy_ui-0.18.1/src/update.rs` unit
+// tests use (`update_context_for_single_ui_root`, lines 222-264) to
+// exercise UI layout headlessly with no window and no GPU.
+//
+// Friend-game scope preserved: `QA-COND-0005`, `QA-COND-0006`,
+// `PAW-TD-*-a` are NOT advanced — the harness is a geometric regression
+// guard, not a Standard-tier accessibility claim.
+// ─────────────────────────────────────────────────────────────────────
+
+use bevy::ui::{ComputedNode, UiGlobalTransform};
+
+/// Post-layout bounding rectangle of one live-spawned UI root, queried
+/// directly from `ComputedNode` + `UiGlobalTransform` after taffy has
+/// run. `(x, y)` is the top-left corner in physical-pixel coordinates
+/// with `+y` pointing down (bevy_ui screen-space convention). `width`
+/// / `height` are the live `ComputedNode::size`.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct LiveSurfaceBounds {
+    pub name: &'static str,
+    pub x: f32,
+    pub y: f32,
+    pub width: f32,
+    pub height: f32,
+}
+
+impl LiveSurfaceBounds {
+    /// Returns `true` when the rectangle is fully contained in the
+    /// viewport `[0, 0, vw, vh]` with the conventional `f32::EPSILON`
+    /// tolerance.
+    pub fn fits_within(&self, viewport: ViewportSize) -> bool {
+        let vw = viewport.width as f32;
+        let vh = viewport.height as f32;
+        self.x >= -f32::EPSILON
+            && self.y >= -f32::EPSILON
+            && self.x + self.width <= vw + f32::EPSILON
+            && self.y + self.height <= vh + f32::EPSILON
+    }
+
+    /// Returns the right edge x-coordinate (in physical pixels).
+    pub fn right(&self) -> f32 {
+        self.x + self.width
+    }
+
+    /// Returns the bottom edge y-coordinate (in physical pixels).
+    pub fn bottom(&self) -> f32 {
+        self.y + self.height
+    }
+}
+
+/// Minimum number of `app.update()` ticks required for the bevy_ui
+/// pipeline to converge on a stable `ComputedNode`. UiPlugin chain is
+/// `Prepare -> Propagate -> Content -> Layout -> PostLayout` inside
+/// `PostUpdate`; one frame would suffice for inline-spawned roots, but
+/// production plugins (e.g. `LobbyUiPlugin`) spawn UI from
+/// `OnEnter(ClientState::Lobby)` which only runs at the end of the
+/// first `update()`. Three frames is therefore a hard floor; we use
+/// four to absorb any extra deferred command latency.
+pub const LIVE_LAYOUT_CONVERGENCE_FRAMES: usize = 4;
+
+/// **PROMPT 1185 (S18-UI-VIEWPORT-INVARIANT-LIVE-HARNESS-001)** — canonical
+/// viewport matrix consumed by the live-spawn invariant harness. Extends
+/// [`CANONICAL_VIEWPORTS`] with the `1280x720` Floor row mandated by
+/// `reports/PROMPT-1180-global-ui-layout-system-deep-audit.md` §C-1
+/// ("Floor (1280×720) is ADDED by this contract — the current playable
+/// client launches at 1280×720 in dev"). 7 entries total; ordering puts
+/// Floor first so smaller-viewport regressions surface earliest in the
+/// `--nocapture` log output. Friend-game scope preserved (`QA-COND-0005`,
+/// `QA-COND-0006`, `PAW-TD-*-a` are not advanced).
+pub const LIVE_VIEWPORTS: [ViewportSize; 7] = [
+    ViewportSize {
+        name: "1280x720",
+        width: 1280,
+        height: 720,
+    },
+    ViewportSize {
+        name: "1366x768",
+        width: 1366,
+        height: 768,
+    },
+    ViewportSize {
+        name: "1920x1080",
+        width: 1920,
+        height: 1080,
+    },
+    ViewportSize {
+        name: "1920x1200",
+        width: 1920,
+        height: 1200,
+    },
+    ViewportSize {
+        name: "1280x960",
+        width: 1280,
+        height: 960,
+    },
+    ViewportSize {
+        name: "3840x2160",
+        width: 3840,
+        height: 2160,
+    },
+    ViewportSize {
+        name: "2560x1080",
+        width: 2560,
+        height: 1080,
+    },
+];
+
+/// Spawns a synthetic `Camera2d` with a hand-populated
+/// `Camera::computed.target_info` so that `propagate_ui_target_cameras`
+/// (run by `UiPlugin`) propagates `ComputedUiRenderTargetInfo` to every
+/// UI root with the named viewport's `physical_size`. Without this,
+/// every UI root would propagate `physical_size = UVec2::ZERO` and
+/// taffy would produce zero-area `ComputedNode`s — the silent-zero
+/// regression we are explicitly guarding against.
+///
+/// Returns the spawned camera entity so callers may extend the bundle
+/// for multi-camera scenarios.
+pub fn spawn_synthetic_ui_camera(app: &mut App, viewport: ViewportSize) -> Entity {
+    use bevy::camera::{Camera, Camera2d, ComputedCameraValues, RenderTargetInfo};
+    use bevy::math::UVec2;
+    use bevy::ui::IsDefaultUiCamera;
+
+    let physical_size = UVec2::new(viewport.width, viewport.height);
+    app.world_mut()
+        .spawn((
+            Camera2d,
+            Camera {
+                computed: ComputedCameraValues {
+                    target_info: Some(RenderTargetInfo {
+                        physical_size,
+                        scale_factor: 1.0,
+                    }),
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+            IsDefaultUiCamera,
+        ))
+        .id()
+}
+
+/// Query a single UI root marked by `M` (e.g. `LobbyRoot`,
+/// `LobbyConfirmClassButton`) and return its post-layout bounds derived
+/// from `ComputedNode::size` + `UiGlobalTransform.translation`. The
+/// translation is the node's CENTER in physical pixels per Bevy 0.18
+/// convention (`UiGlobalTransform` is built from `Affine2`); the
+/// helper converts to a top-left corner so callers reason in
+/// viewport-rectangle coordinates.
+///
+/// Returns `None` if zero entities carry the marker, or if the marker
+/// entity does not yet carry both `ComputedNode` and
+/// `UiGlobalTransform` (i.e. layout has not run for it yet — caller
+/// should drive more frames).
+///
+/// **Diagnostic name**: the `name` field of the returned struct is the
+/// short label the caller will see in assertion failures. Choose a
+/// single canonical string per marker family (e.g. `"lobby_root"`,
+/// `"lobby_confirm_cta"`).
+pub fn extract_live_bounds_by_marker<M>(
+    app: &mut App,
+    name: &'static str,
+) -> Option<LiveSurfaceBounds>
+where
+    M: Component,
+{
+    let world = app.world_mut();
+    let mut query = world.query_filtered::<(&ComputedNode, &UiGlobalTransform), With<M>>();
+    let (computed, transform) = query.iter(world).next()?;
+    let size = computed.size();
+    let center = transform.translation;
+    Some(LiveSurfaceBounds {
+        name,
+        x: center.x - size.x * 0.5,
+        y: center.y - size.y * 0.5,
+        width: size.x,
+        height: size.y,
+    })
+}
+
+/// Live-spawn invariant — primary CTA visibility. Returns `Err` when
+/// the bounds extend past any viewport edge, identifying the edge by
+/// name. Canonical replacement for the legacy `assert_no_clipping`
+/// rule when applied to live-extracted [`LiveSurfaceBounds`] rather
+/// than a fixture-tuple [`UiRootBounds`].
+pub fn assert_live_bounds_inside_viewport(
+    bounds: &LiveSurfaceBounds,
+    viewport: ViewportSize,
+) -> Result<(), String> {
+    if bounds.fits_within(viewport) {
+        return Ok(());
+    }
+    let vw = viewport.width as f32;
+    let vh = viewport.height as f32;
+    let edge = if bounds.x < 0.0 {
+        "left"
+    } else if bounds.y < 0.0 {
+        "top"
+    } else if bounds.right() > vw {
+        "right"
+    } else if bounds.bottom() > vh {
+        "bottom"
+    } else {
+        "unknown"
+    };
+    Err(format!(
+        "live surface {} clips the {} edge of viewport {} (rect [x={:.1}, y={:.1}, \
+         w={:.1}, h={:.1}], viewport {}x{})",
+        bounds.name,
+        edge,
+        viewport.name,
+        bounds.x,
+        bounds.y,
+        bounds.width,
+        bounds.height,
+        viewport.width,
+        viewport.height,
+    ))
+}
+
+/// Live-spawn invariant — non-zero bounds. Taffy layout produces
+/// `Vec2::ZERO` size when (a) the UI root was never propagated a
+/// non-zero `ComputedUiRenderTargetInfo` (silent-camera regression),
+/// (b) the root's declared `Node` has every constraint set to `Auto`
+/// with no content, or (c) the layout system has not actually run
+/// yet. Each is a false-confidence failure mode for the legacy
+/// harness — assert against it explicitly.
+pub fn assert_live_bounds_have_area(bounds: &LiveSurfaceBounds) -> Result<(), String> {
+    if bounds.width > 0.0 && bounds.height > 0.0 {
+        return Ok(());
+    }
+    Err(format!(
+        "live surface {} produced zero-area ComputedNode (w={:.1}, h={:.1}); the \
+         taffy layout pass never ran OR the synthetic Camera2d viewport \
+         propagation failed - see helpers/ui_viewport.rs::spawn_synthetic_ui_camera",
+        bounds.name, bounds.width, bounds.height,
+    ))
+}
