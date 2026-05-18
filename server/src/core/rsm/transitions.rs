@@ -257,6 +257,12 @@ pub fn on_lightyear_disconnected(
     disconnected.write(PlayerDisconnected { player });
 }
 
+/// Server-side grace window between `placement_timer` expiry and the
+/// Placement→Resolution transition. See
+/// `RoundState::placement_deadline_grace_timer` for the rationale
+/// (HUNT-1201-14 / PROMPT 1209).
+pub const PLACEMENT_DEADLINE_GRACE_MS: u64 = 250;
+
 pub fn tick_rsm_timers(
     mut rsm: ResMut<RoundState>,
     time: Res<Time>,
@@ -267,6 +273,27 @@ pub fn tick_rsm_timers(
     }
 
     let elapsed = time.delta();
+
+    // Drain an active placement deadline grace window first. While the grace
+    // is running the phase stays `Placement` so `handle_placement_submission`
+    // continues to accept late-arriving C2SSubmitPlacement messages; once it
+    // finishes we request the Placement→Resolution advance just like the raw
+    // timer-expiry path used to. See HUNT-1201-14 / PROMPT 1209.
+    if rsm.phase == RoundPhase::Placement && rsm.placement_deadline_grace_timer.is_some() {
+        let grace_finished = tick_timer(rsm.placement_deadline_grace_timer.as_mut(), elapsed);
+        if grace_finished {
+            rsm.placement_deadline_grace_timer = None;
+            tracing::info!(
+                target: "server::game::placement",
+                round = rsm.round_number,
+                grace_ms = PLACEMENT_DEADLINE_GRACE_MS,
+                "RSM placement deadline grace expired; requesting Placement->Resolution advance"
+            );
+            pending.request(PhaseAdvanceRequest::new(RoundPhase::Placement));
+        }
+        return;
+    }
+
     let finished = match rsm.phase {
         RoundPhase::DraftInitial => tick_timer(rsm.draft_initial_timer.as_mut(), elapsed),
         RoundPhase::DraftShop => tick_timer(rsm.draft_shop_timer.as_mut(), elapsed),
@@ -295,6 +322,23 @@ pub fn tick_rsm_timers(
                 GameOverReason::ResolutionTimeout,
                 None,
             ));
+        } else if rsm.phase == RoundPhase::Placement {
+            // Defer the actual phase advance by a short grace window so a
+            // C2SSubmitPlacement drained on this same tick is still seen as
+            // arriving during Placement and committed by close_placement_phase.
+            // Drop the placement_timer here so tick_timer cannot fire again
+            // on subsequent frames while the grace is running.
+            rsm.placement_timer = None;
+            rsm.placement_deadline_grace_timer = Some(Timer::new(
+                Duration::from_millis(PLACEMENT_DEADLINE_GRACE_MS),
+                TimerMode::Once,
+            ));
+            tracing::info!(
+                target: "server::game::placement",
+                round = rsm.round_number,
+                grace_ms = PLACEMENT_DEADLINE_GRACE_MS,
+                "RSM placement timer finished; starting deadline grace window"
+            );
         } else {
             pending.request(PhaseAdvanceRequest::new(rsm.phase));
         }
@@ -397,6 +441,7 @@ pub fn advance_phase(
     if let Some(game_over) = &request.game_over {
         rsm.phase = RoundPhase::GameOver;
         rsm.placement_timer = None;
+        rsm.placement_deadline_grace_timer = None;
         rsm.draft_shop_timer = None;
         rsm.draft_initial_timer = None;
         rsm.resolution_safety_timer = None;
@@ -568,10 +613,12 @@ pub fn advance_phase(
                 from = ?from_phase,
                 round = rsm.round_number,
                 submissions_received = rsm.submissions_received.len(),
+                grace_active = rsm.placement_deadline_grace_timer.is_some(),
                 "advance_phase: Placement->Resolution entry (audit: R2 placement transition audit)"
             );
             rsm.phase = RoundPhase::Resolution;
             rsm.placement_timer = None;
+            rsm.placement_deadline_grace_timer = None;
             rsm.resolution_safety_timer = config
                 .as_ref()
                 .map(|config| once_timer(config.resolution_max_duration_seconds));
@@ -687,6 +734,7 @@ fn enter_draft_initial(
     rsm.submissions_received.clear();
     rsm.draft_shop_timer = None;
     rsm.placement_timer = None;
+    rsm.placement_deadline_grace_timer = None;
     rsm.draft_initial_timer = config
         .as_ref()
         .map(|config| once_timer(config.draft_initial_timer_seconds));
