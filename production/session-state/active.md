@@ -1,3 +1,32 @@
+# PROMPT 1279 State Banner -- Sprint 17 Closed With Conditions
+
+Updated 2026-05-18 by PROMPT 1279. Source-of-truth at close-out:
+`origin/main@946ca392c94a4988e9c6b4483848233fe6323061` (PROMPT 1276
+board-rendering message init main-land). Sprint 17 is now
+`closed-with-conditions`; stage remains `Polish`; Sprint 18 is not activated;
+no Polish->Release retry, release readiness, RC readiness, full-game,
+final-art, broad accessibility, or playtest validation claim is made.
+
+Close-out basis: PROMPT 1278 Team-QA is `APPROVED-WITH-CONDITIONS`.
+Sprint 17 row count is 7 done, 1 in_progress carry
+(`S17-UI-HUD-OPP-MANA-CLEANUP-001`; AC3 source repair on main via `c842668`
+but no final parent-row `/story-done` paperwork), and 1 human-operator-blocked
+ready carry (`S11-HUD-TIMER-EYEBALL-VISUAL-001`; no LLM `/story-done`
+authorised).
+
+Evidence conditions carried: no durable tracked PROMPT 1277 smoke report or
+tracked Sprint 17 smoke artifact exists on `origin/main`; PROMPT 1278 accepted
+the prompt-provided PASS/PASS-WITH-WARNINGS smoke rerun with local artifacts.
+The invalid placement auto-submit short-circuit warning and RSM disconnect
+grace timer breach warning remain documented conditions. PROMPT 761
+Polish->Release remains FAIL with no retry. `S8-QA-001-W1`, `QA-COND-0005`,
+`QA-COND-0006`, `PAW-TD-*-a`, `TQ-S12-C1..C7`, PROMPT 683-era runtime
+divergence, Sprint 12 story 019 cannot-reproduce, and PROMPT 1054 blocked-human
+visual retest are preserved.
+
+Current next action: Sprint 18 planning / activation flow only after explicit
+producer prompt. Do not activate Sprint 18 from this state banner.
+
 # PROMPT 1227 State Banner -- Placement Drag Landed + Auto-Submit Worker Launched
 
 Updated 2026-05-18 by orchestrator after PROMPT 1210 main-land and PROMPT

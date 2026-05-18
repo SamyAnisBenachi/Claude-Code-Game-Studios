@@ -1,3 +1,48 @@
+# Sprint 17 -- CLOSED-WITH-CONDITIONS (Polish stage; PROMPT 1279, 2026-05-18)
+
+> **PROMPT 1279 paperwork-only Sprint 17 close-out disposition (2026-05-18)**.
+> Source-of-truth at close-out:
+> `origin/main@946ca392c94a4988e9c6b4483848233fe6323061`
+> (PROMPT 1276 board-rendering message init main-land; includes PROMPT
+> 1272 ignored-test baseline `23d1c1b`, PROMPT 1275 shop prepool formula
+> `35a95d5`, and PROMPT 1274 UI clean-pass lint `c94514f`).
+>
+> **Status flip**: `production/sprint-status.yaml` top-level
+> `status: active -> closed-with-conditions`. `sprint: 17` and
+> `stage: Polish` are preserved. `production/stage.txt` is not touched.
+> Sprint 18 is **not** activated.
+>
+> **Disposition basis**: PROMPT 1278 Team-QA is
+> `APPROVED-WITH-CONDITIONS`. Sprint 17 closes with 7 of 9 rows done,
+> 1 row still `in_progress` (`S17-UI-HUD-OPP-MANA-CLEANUP-001`; AC3
+> source repair on `origin/main@c842668`, but no final `/story-done`
+> paperwork), and 1 row still human-operator-blocked
+> (`S11-HUD-TIMER-EYEBALL-VISUAL-001`; no LLM `/story-done` authorised).
+>
+> **Smoke evidence conditions**: the initial PROMPT 1264 smoke failed and
+> the late repair chain landed on `origin/main` through PROMPT 1272 /
+> 1274 / 1275 / 1276. PROMPT 1278 accepted the prompt-provided PROMPT 1277
+> PASS/PASS-WITH-WARNINGS disposition with local rerun artifacts, but no
+> durable tracked `reports/PROMPT-1277*` or
+> `production/qa/smoke-sprint-17*` artifact exists on `origin/main`.
+> That missing durable smoke artifact remains a close-out condition.
+> The two PROMPT 1278 smoke warnings are carried forward: the
+> `hand_ui_phase_transition_auto_submit_short_circuit` /
+> `invalid_submit_state` warning after one staged card at Placement ->
+> Resolution, and the `RSM disconnect timer breach: grace window exceeded`
+> warning after a later DraftShop disconnect.
+>
+> **Non-claims preserved**: no release readiness, no RC readiness, no full
+> game completion, no broad accessibility completion, no playtest
+> validation, no final-art completion, no full playable-client manual QA,
+> no two-client GAME_OVER closure, no Polish->Release retry, no stage
+> advance, no closure of `S8-QA-001-W1`, `QA-COND-0005`,
+> `QA-COND-0006`, `PAW-TD-*-a`, `TQ-S12-C1..C7`, PROMPT 683-era runtime
+> divergence, Sprint 12 story 019 cannot-reproduce disposition, or PROMPT
+> 1054 P1 UI snapshot visual retest blocked-human state.
+
+---
+
 # Sprint 17 -- ACTIVATED (Polish stage; PROMPT 1099, 2026-05-18)
 
 > **PROMPT 1099 paperwork-only Sprint 17 activation (2026-05-18)**.
