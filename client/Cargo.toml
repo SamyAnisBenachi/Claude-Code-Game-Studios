@@ -735,6 +735,14 @@ path = "../tests/integration/shop_auction_ui/interaction_emits_click_test.rs"
 name = "shop_auction_ui_responsive_layout_repair_test"
 path = "../tests/integration/shop_auction_ui/responsive_layout_repair_test.rs"
 
+# PROMPT 1230 (S18-DRAFT-INITIAL-NUMERIC-COUNTDOWN-001) — modal-local
+# numeric countdown for the keep-9 DraftInitial picker. Locks visibility
+# gating to the DraftInitial phase + canonical PhaseTimerState so the
+# label cannot leak into shop / auction / placement / resolution UIs.
+[[test]]
+name = "shop_auction_ui_draft_initial_countdown_test"
+path = "../tests/integration/shop_auction_ui/draft_initial_countdown_test.rs"
+
 [[test]]
 name = "board_rendering_grid_camera_test"
 path = "../tests/unit/board_rendering/board_grid_camera_test.rs"
