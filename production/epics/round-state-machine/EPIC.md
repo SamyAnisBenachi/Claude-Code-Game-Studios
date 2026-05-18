@@ -4,7 +4,7 @@
 > **GDD**: design/gdd/round-state-machine.md
 > **Architecture Module**: `server/core/rsm/` (full module — `state.rs`, `events.rs`, `transitions.rs`, `system.rs`, `plugin.rs`)
 > **Status**: Ready
-> **Stories**: 6 stories created — see Stories table below
+> **Stories**: 6 stories created (foundation) + 1 future Sprint 18 candidate hardening story (S18-RSM-SUBMISSIONS-RECEIVED-CLEAR-001 per PROMPT 1295), NOT activated — see Stories table below
 
 ## Overview
 
@@ -126,8 +126,9 @@ Three post-cutoff APIs converge in this epic:
 | 004 | [Win Condition and Game Over](story-004-win-condition-and-game-over.md) | Logic | Ready | ADR-009, ADR-010 |
 | 005 | [Disconnect Handling](story-005-disconnect-handling.md) | Logic | Ready | ADR-009 |
 | 006 | [Network Dispatch Wiring](story-006-network-dispatch-wiring.md) | Integration | Ready | ADR-009, ADR-010, ADR-008 |
+| 007 | [S18-RSM-SUBMISSIONS-RECEIVED-CLEAR-001 — Clear `submissions_received` on Placement→Resolution Exit](story-007-s18-rsm-submissions-received-clear.md) | Logic (one-line transition fix + regression test) | Draft — future Sprint 18 candidate (per PROMPT 1295 from PROMPT 1287 §3.10 Lane W9 / §5 row SA-4; PROMPT 1202 F-07), NOT activated | ADR-009, ADR-010 |
 
-Work through stories in order — each story's `Depends on:` field tells you what must be Done before you can start it.
+Work through stories in order — each story's `Depends on:` field tells you what must be Done before you can start it. Story 007 is a future Sprint 18 candidate hardening row sourced from `reports/PROMPT-1202-multiplayer-protocol-state-consistency-bug-audit.md` §2 row F-07; it is authored as a Sprint 18 candidate by PROMPT 1295 and is NOT activated. Activation flips to Ready via the Sprint 18 plan + `/sprint-plan sprint-18` workflow.
 
 ---
 
