@@ -1272,6 +1272,48 @@ pub struct HandUiPhaseTransitionQueries<'w, 's> {
     timer_states: Query<'w, 's, &'static mut TimerState, With<HandTimer>>,
 }
 
+/// PROMPT 1226 — auto-submit context for `hand_ui_phase_transition_system`.
+///
+/// Bundles the senders/resources required to fire one final
+/// `C2SSubmitPlacement` on the Placement → Resolution transition into a single
+/// `SystemParam` slot, keeping the host system at Bevy 0.18's 16-param ceiling.
+#[derive(SystemParam)]
+pub struct HandUiAutoSubmitParams<'w, 's> {
+    submit_senders: Query<'w, 's, &'static mut MessageSender<C2SSubmitPlacement>>,
+    outbound: ResMut<'w, HandUiOutboundMessages>,
+    economy: Res<'w, PlayerEconomyView>,
+    identity: Res<'w, ClientSessionIdentity>,
+    disclosure_state: ResMut<'w, PlacementDisclosureState>,
+}
+
+/// PROMPT 1226 — reason a phase-transition auto-submit short-circuited.
+///
+/// Each variant maps to one of the structured tracing branches required by
+/// the task. `Submitted` indicates the late `C2SSubmitPlacement` was queued
+/// before the existing `pending_placements.clear()` reset path ran.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PhaseTransitionAutoSubmitOutcome {
+    Submitted,
+    NotPlacementToResolution,
+    NoLocalPlayer,
+    NoPendingPlacements,
+    AlreadySubmitted,
+    InvalidSubmitState,
+}
+
+impl PhaseTransitionAutoSubmitOutcome {
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::Submitted => "submitted",
+            Self::NotPlacementToResolution => "not_placement_to_resolution",
+            Self::NoLocalPlayer => "no_local_player",
+            Self::NoPendingPlacements => "no_pending_placements",
+            Self::AlreadySubmitted => "already_submitted",
+            Self::InvalidSubmitState => "invalid_submit_state",
+        }
+    }
+}
+
 pub fn hand_ui_phase_transition_system(
     current: Res<CurrentClientPhase>,
     phase_view: Res<ClientPhaseView>,
@@ -1287,6 +1329,7 @@ pub fn hand_ui_phase_transition_system(
     mut commands: Commands,
     mut visibility_query: Query<&mut Visibility>,
     queries: HandUiPhaseTransitionQueries,
+    mut auto_submit_params: HandUiAutoSubmitParams,
     mut last_observed_phase: Local<Option<RoundPhase>>,
 ) {
     let HandUiPhaseTransitionQueries {
@@ -1347,6 +1390,28 @@ pub fn hand_ui_phase_transition_system(
     }
 
     if phase_changed {
+        // PROMPT 1226 — Placement → Resolution auto-submit. Must run BEFORE
+        // the `pending_placements.clear()` / timer reset below so the final
+        // `C2SSubmitPlacement` carries the staged set rather than an empty
+        // payload. Server already accepts late submissions inside the 250 ms
+        // grace window added by PROMPT 1209 (f48583d). The helper performs
+        // structured tracing for every short-circuit branch and remains
+        // server-authoritative (no optimistic local apply).
+        let _ = try_auto_submit_on_phase_transition(
+            *last_observed_phase,
+            &current,
+            &auto_submit_params.identity,
+            &pending_placements,
+            &mut placement_timer,
+            &*entities,
+            &mut submit_buttons,
+            &mut auto_submit_params.submit_senders,
+            &mut auto_submit_params.outbound,
+            &mut visibility_query,
+            &auto_submit_params.economy,
+            &mut commands,
+            &mut auto_submit_params.disclosure_state,
+        );
         let pending_before = pending_placements.staged_count();
         pending_placements.clear();
         tracing::info!(
@@ -4150,6 +4215,102 @@ fn set_timer_text(timer_texts: &mut Query<&mut Text, With<HandTimer>>, remaining
         text.0.clear();
         text.0.push_str(&seconds.to_string());
     }
+}
+
+/// PROMPT 1226 — auto-submit the staged placements when the client observes
+/// a Placement → Resolution phase transition.
+///
+/// **Why:** Without this, a player who staged placements but never clicked
+/// Submit would have their `PendingPlacements` cleared by the phase reset
+/// below with no `C2SSubmitPlacement` ever leaving the client. PROMPT 1209
+/// (f48583d) added a 250 ms server-side grace window for late submissions,
+/// but the grace window is moot if the client never sends. This helper
+/// fires one final submit before the clear path runs.
+///
+/// Returns the outcome variant so callers can inspect it; structured tracing
+/// covers every short-circuit branch (see `PhaseTransitionAutoSubmitOutcome`).
+/// Authority remains server-side — no local state is treated as
+/// optimistically accepted.
+#[allow(clippy::too_many_arguments)]
+fn try_auto_submit_on_phase_transition(
+    prev_phase: Option<RoundPhase>,
+    current: &CurrentClientPhase,
+    identity: &ClientSessionIdentity,
+    pending_placements: &PendingPlacements,
+    placement_timer: &mut PlacementTimer,
+    entities: &HandUiEntities,
+    submit_buttons: &mut Query<
+        (&mut Text, &mut HandSubmitInteractionState),
+        With<HandSubmitButton>,
+    >,
+    submit_senders: &mut Query<&mut MessageSender<C2SSubmitPlacement>>,
+    outbound: &mut HandUiOutboundMessages,
+    visibility_query: &mut Query<&mut Visibility>,
+    economy: &PlayerEconomyView,
+    commands: &mut Commands,
+    disclosure_state: &mut PlacementDisclosureState,
+) -> PhaseTransitionAutoSubmitOutcome {
+    // Only react to the specific Placement → Resolution edge. Every other
+    // transition (Placement → Auction during a reconnect rewind, Lobby →
+    // Placement at session entry, Resolution → DraftShop next-round, etc.)
+    // is a no-op for auto-submit. This branch is intentionally quiet (no
+    // tracing) because it fires on every non-target phase change and would
+    // otherwise spam the log on healthy round progression.
+    if !(current.phase == RoundPhase::Resolution
+        && prev_phase == Some(RoundPhase::Placement))
+    {
+        return PhaseTransitionAutoSubmitOutcome::NotPlacementToResolution;
+    }
+
+    let outcome = if identity.player_id.is_none() {
+        PhaseTransitionAutoSubmitOutcome::NoLocalPlayer
+    } else if pending_placements.placements.is_empty() {
+        PhaseTransitionAutoSubmitOutcome::NoPendingPlacements
+    } else if placement_timer.submitted {
+        PhaseTransitionAutoSubmitOutcome::AlreadySubmitted
+    } else {
+        let staged_count = pending_placements.staged_count();
+        let sent = submit_pending_placements(
+            pending_placements,
+            entities.submit_button,
+            entities.submitted_checkmark,
+            submit_buttons,
+            submit_senders,
+            outbound,
+            placement_timer,
+            visibility_query,
+            economy,
+            commands,
+            disclosure_state,
+        );
+        if sent {
+            tracing::info!(
+                target: "client::ui::hand",
+                msg_type = "C2SSubmitPlacement",
+                placements_len = staged_count,
+                player_id = ?identity.player_id,
+                round = current.round,
+                handler = "try_auto_submit_on_phase_transition",
+                reason = PhaseTransitionAutoSubmitOutcome::Submitted.as_str(),
+                "hand_ui_phase_transition_auto_submit"
+            );
+            return PhaseTransitionAutoSubmitOutcome::Submitted;
+        }
+        PhaseTransitionAutoSubmitOutcome::InvalidSubmitState
+    };
+
+    tracing::warn!(
+        target: "client::ui::hand",
+        reason = outcome.as_str(),
+        staged_count = pending_placements.staged_count(),
+        placement_timer_submitted = placement_timer.submitted,
+        player_id = ?identity.player_id,
+        round = current.round,
+        from_phase = ?prev_phase,
+        to_phase = ?current.phase,
+        "hand_ui_phase_transition_auto_submit_short_circuit"
+    );
+    outcome
 }
 
 fn submit_pending_placements(

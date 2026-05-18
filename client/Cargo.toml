@@ -159,6 +159,16 @@ path = "../tests/integration/hand-ui/placement_unstaging_test.rs"
 name = "hand_ui_placement_timer_test"
 path = "../tests/integration/hand-ui/placement_timer_test.rs"
 
+# PROMPT 1226 — Placement → Resolution auto-submit. Asserts the client
+# fires one final `C2SSubmitPlacement` before the existing PendingPlacements
+# clear / timer reset path runs, so PROMPT 1209's 250 ms server grace window
+# has an actual late submission to land. Pins all five short-circuit
+# branches (success, no_pending_placements, already_submitted,
+# no_local_player, not_placement_to_resolution).
+[[test]]
+name = "hand_ui_placement_auto_submit_phase_transition_test"
+path = "../tests/integration/hand-ui/hand_ui_placement_auto_submit_phase_transition_test.rs"
+
 [[test]]
 name = "hand_ui_placement_staged_disclosure_accessibility_test"
 path = "../tests/integration/hand-ui/placement_staged_disclosure_accessibility_test.rs"
