@@ -93,6 +93,7 @@ use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 use bevy::render::view::screenshot::{save_to_disk, Screenshot, ScreenshotCaptured};
 use bevy::time::Real;
+use bevy::ui::{ComputedNode, GlobalZIndex, UiGlobalTransform, UiScale};
 use bevy::window::PrimaryWindow;
 use serde::Serialize;
 
@@ -396,6 +397,15 @@ pub struct QASnapshotData {
     /// sub-field is `Option` (or empty by default) so missing resources or
     /// disabled plugins serialise as `null` / `[]` rather than panicking.
     pub extras: ExtrasSnapshot,
+    /// PROMPT 1186 (S18-OBS-SNAPSHOT-LAYOUT-FIELDS-001) — layout-debug
+    /// fields covering Q-01..Q-10 from the PROMPT 1180 audit. Captures
+    /// viewport size, per-surface root bounds (logical px), child counts,
+    /// resolved z-layer, content-overflow signal, button affordance states,
+    /// and explicit collision helpers for placement_action_panel and
+    /// shop_panel vs hand_bar. Sub-fields are `Option`/empty when not
+    /// computable from current ECS data — see
+    /// [`LayoutSnapshot::limitations`] for the documented gaps.
+    pub layout: LayoutSnapshot,
     pub warnings: Vec<String>,
 }
 
@@ -1710,6 +1720,553 @@ fn build_outbound_intents_snapshot(
     out
 }
 
+// ─────────────────────────────────────────────────────────────────────────
+// PROMPT 1186 — LayoutSnapshot + LayoutInputs
+// S18-OBS-SNAPSHOT-LAYOUT-FIELDS-001 / PROMPT 1180 Lane D / Q-01..Q-10
+// ─────────────────────────────────────────────────────────────────────────
+
+/// PROMPT 1186 — layout-debug fields added to every QA snapshot. Covers the
+/// Q-01..Q-10 items called out in
+/// `reports/PROMPT-1180-global-ui-layout-system-deep-audit.md` §4: viewport
+/// dimensions, per-surface root bounds (logical px), child counts, resolved
+/// z-layer, content-overflow signal, button affordance states, and explicit
+/// collision helpers for `placement_action_panel` and `shop_panel` vs
+/// `hand_bar`. Sub-fields are `Option`/empty when the marker is not spawned
+/// or when the data requires ECS support outside this module's owned write
+/// scope; see [`Self::limitations`] for the documented gaps (Q-05 text fit,
+/// Q-06 image aspect).
+#[derive(Debug, Clone, Default, Serialize)]
+pub struct LayoutSnapshot {
+    /// Viewport size resolved from `PrimaryWindow` (Q-01). `None` when the
+    /// window resource is absent (e.g. `MinimalPlugins` tests).
+    pub viewport: ViewportLayoutSnapshot,
+    /// Per-surface bounds + children_count + resolved z + overflow signal
+    /// (Q-02..Q-04, Q-08). Entries are emitted in stable declaration order;
+    /// surfaces whose marker is not currently spawned are still listed with
+    /// `spawned: false` so the JSON shape is stable across phases.
+    pub surfaces: Vec<SurfaceLayoutSnapshot>,
+    /// Button affordance probes (Q-07). One entry per entity carrying
+    /// [`bevy::ui::widget::Button`] with the current
+    /// [`bevy::ui::Interaction`] state surfaced as a stable string token
+    /// (`default` / `hover` / `pressed`). The `Name` component is surfaced
+    /// when present so the probe can be correlated with spawn sites.
+    pub button_affordances: Vec<ButtonAffordanceSnapshot>,
+    /// Explicit collision helpers (Q-09, Q-10). `placement_action_panel`
+    /// overlaps and the `shop_panel` bottom vs `hand_bar` top edge diff,
+    /// computed in logical px from the same surface bounds reported above.
+    pub collisions: LayoutCollisionsSnapshot,
+    /// Documented limitations: fields whose computation requires ECS data
+    /// outside this module's owned write scope. Stable strings, one per
+    /// limitation, so audit tooling can grep for them without reading the
+    /// surrounding doc comments.
+    pub limitations: Vec<String>,
+}
+
+/// Q-01 — viewport dimensions.
+#[derive(Debug, Clone, Default, Serialize)]
+pub struct ViewportLayoutSnapshot {
+    pub width_px: Option<f32>,
+    pub height_px: Option<f32>,
+    /// Resolved render scale factor. `1.0` when no override is applied
+    /// (default `UiScale`).
+    pub ui_scale: Option<f32>,
+    /// Window scale factor (DPI). Surfaced so audit tooling can disambiguate
+    /// between UiScale tweaks and OS-level DPI scaling.
+    pub window_scale_factor: Option<f32>,
+}
+
+/// Q-02..Q-04, Q-08 — per-surface bounds, child count, resolved z, overflow.
+#[derive(Debug, Clone, Serialize)]
+pub struct SurfaceLayoutSnapshot {
+    /// Canonical surface name (matches the per-sub-surface visible counts in
+    /// [`UiCounts`] — `hud_root`, `hand_bar`, `placement_action_panel`,
+    /// `shop_panel`, etc.).
+    pub name: String,
+    /// `true` when the surface root marker has at least one matching entity
+    /// in the world. Lets audit tooling distinguish "panel exists but
+    /// hidden" from "panel was never spawned".
+    pub spawned: bool,
+    /// Mirrors the `*_visible` reading semantic (`Visibility != Hidden`).
+    /// `None` when `spawned == false`.
+    pub visible: Option<bool>,
+    /// Q-02 — logical-pixel bounds, top-left origin. `None` when not spawned
+    /// or when the layout system has not yet produced a `ComputedNode`.
+    pub bounds: Option<SurfaceBoundsRect>,
+    /// Q-04 — direct child count via the `Children` component. `None` when
+    /// the marker is not spawned or the entity has no `Children` component
+    /// (a leaf or root with no children yet).
+    pub children_count: Option<usize>,
+    /// Q-08 — resolved global z-layer. `None` when the marker entity has no
+    /// `GlobalZIndex` component (inherits from the implicit stacking
+    /// context).
+    pub z_layer_resolved: Option<i32>,
+    /// `ComputedNode::stack_index` — the per-tick resolved stacking order
+    /// inside the UI tree. Useful for diagnosing same-z collisions on
+    /// surfaces that share `GlobalZIndex` (RC-1).
+    pub stack_index: Option<u32>,
+    /// Q-03 — content-overflow signal: `true` when
+    /// `ComputedNode::content_size` exceeds `ComputedNode::size` on either
+    /// axis. This catches RC-2 ("computed children extend past parent's
+    /// content_size") regardless of the parent's `Overflow` clip mode; the
+    /// audit's "clipped" semantic is conservative — content that overflows
+    /// is reported as `true` even when `Overflow::visible()` is set, so the
+    /// next audit can grep for true → investigate.
+    pub overflow_clipped: Option<bool>,
+}
+
+/// Logical-pixel axis-aligned bounding rectangle, top-left origin.
+#[derive(Debug, Clone, Copy, Serialize)]
+pub struct SurfaceBoundsRect {
+    pub x: f32,
+    pub y: f32,
+    pub w: f32,
+    pub h: f32,
+}
+
+impl SurfaceBoundsRect {
+    /// Returns the right edge x-coordinate (`x + w`).
+    #[inline]
+    pub fn right(&self) -> f32 {
+        self.x + self.w
+    }
+    /// Returns the bottom edge y-coordinate (`y + h`).
+    #[inline]
+    pub fn bottom(&self) -> f32 {
+        self.y + self.h
+    }
+    /// Returns `true` when this rect intersects `other` on both axes (open
+    /// intervals — touching edges do not count as collision).
+    #[inline]
+    pub fn intersects(&self, other: &SurfaceBoundsRect) -> bool {
+        self.x < other.right()
+            && other.x < self.right()
+            && self.y < other.bottom()
+            && other.y < self.bottom()
+    }
+}
+
+/// Q-07 — button affordance probe.
+#[derive(Debug, Clone, Serialize)]
+pub struct ButtonAffordanceSnapshot {
+    /// Stringified `Entity` so the probe can be cross-referenced with other
+    /// snapshot fields (e.g. `auction.bid_keyboard_focus`).
+    pub entity: String,
+    /// `Name` component value when present; `None` when the entity was
+    /// spawned without one.
+    pub name: Option<String>,
+    /// Current [`bevy::ui::Interaction`] state surfaced as a stable string
+    /// token: `default` (`Interaction::None`), `hover`
+    /// (`Interaction::Hovered`), or `pressed` (`Interaction::Pressed`). The
+    /// audit's `disabled` variant is not computable from the standard
+    /// `Interaction` enum (Bevy 0.18 has no built-in disabled state); see
+    /// [`LayoutSnapshot::limitations`].
+    pub interaction: String,
+}
+
+/// Q-09, Q-10 — explicit collision helpers.
+#[derive(Debug, Clone, Default, Serialize)]
+pub struct LayoutCollisionsSnapshot {
+    /// Q-09 — list of surface names whose bounds intersect with
+    /// `placement_action_panel`'s bounds. Empty when the panel is not
+    /// spawned/visible or when no other surface overlaps it.
+    pub placement_action_panel_overlaps: Vec<String>,
+    /// Q-10 — bottom edge y of the `shop_panel` surface (logical px).
+    /// `None` when `shop_panel` is not spawned/visible.
+    pub shop_panel_bottom_edge_y: Option<f32>,
+    /// Q-10 — top edge y of the `hand_bar` surface (logical px). `None`
+    /// when `hand_bar` is not spawned/visible.
+    pub hand_bar_top_edge_y: Option<f32>,
+    /// Q-10 — signed overlap in logical px between `shop_panel`'s bottom
+    /// edge and `hand_bar`'s top edge. Positive value means
+    /// `shop_panel.bottom_edge_y > hand_bar.top_edge_y` (panels collide on
+    /// the y axis). Negative or zero means a gap or touching edges. `None`
+    /// when either surface is missing.
+    pub shop_panel_vs_hand_bar_overlap_px: Option<f32>,
+}
+
+/// Bundles every surface-root layout query into a single [`SystemParam`].
+/// Nested sub-groups keep each `#[derive(SystemParam)]` struct under Bevy's
+/// 16-field ceiling.
+#[derive(SystemParam)]
+pub struct LayoutInputs<'w, 's> {
+    pub hud: LayoutHudQueries<'w, 's>,
+    pub hand: LayoutHandQueries<'w, 's>,
+    pub shop_auction: LayoutShopAuctionQueries<'w, 's>,
+    pub misc: LayoutMiscQueries<'w, 's>,
+    pub ui_scale: Option<Res<'w, UiScale>>,
+    pub interactions: Query<
+        'w,
+        's,
+        (Entity, &'static Interaction, Option<&'static Name>),
+        With<bevy::ui::widget::Button>,
+    >,
+}
+
+/// Shared component tuple read for every surface root: bounds, transform,
+/// visibility, optional global z, optional child list.
+type SurfaceTuple = (
+    &'static ComputedNode,
+    &'static UiGlobalTransform,
+    &'static Visibility,
+    Option<&'static GlobalZIndex>,
+    Option<&'static Children>,
+);
+
+#[derive(SystemParam)]
+pub struct LayoutHudQueries<'w, 's> {
+    pub hud_root: Query<'w, 's, SurfaceTuple, With<crate::ui::hud::HudRoot>>,
+    pub hud_top_strip: Query<'w, 's, SurfaceTuple, With<crate::ui::hud::HudTopStripRoot>>,
+    pub hud_bottom_strip: Query<'w, 's, SurfaceTuple, With<crate::ui::hud::HudBottomStripRoot>>,
+    pub hud_scoreboard_dot:
+        Query<'w, 's, SurfaceTuple, With<crate::ui::hud::HudScoreboardDotRoot>>,
+    pub hud_dim_overlay: Query<'w, 's, SurfaceTuple, With<crate::ui::hud::HudDimOverlayRoot>>,
+}
+
+#[derive(SystemParam)]
+pub struct LayoutHandQueries<'w, 's> {
+    pub hand_bar: Query<'w, 's, SurfaceTuple, With<crate::ui::hand::HandBarRoot>>,
+    pub hand_fan: Query<'w, 's, SurfaceTuple, With<crate::ui::hand::HandFanRoot>>,
+    pub hand_draft_grid_slot:
+        Query<'w, 's, SurfaceTuple, With<crate::ui::hand::HandDraftGridSlotRoot>>,
+    pub placement_action_panel:
+        Query<'w, 's, SurfaceTuple, With<crate::ui::hand::PlacementActionPanelRoot>>,
+}
+
+#[derive(SystemParam)]
+pub struct LayoutShopAuctionQueries<'w, 's> {
+    pub panel_roots: Query<
+        'w,
+        's,
+        (
+            &'static ComputedNode,
+            &'static UiGlobalTransform,
+            &'static Visibility,
+            Option<&'static GlobalZIndex>,
+            Option<&'static Children>,
+            &'static crate::ui::shop_auction::ShopAuctionPanelRoot,
+        ),
+    >,
+}
+
+#[derive(SystemParam)]
+pub struct LayoutMiscQueries<'w, 's> {
+    pub lobby_root: Query<'w, 's, SurfaceTuple, With<crate::ui::lobby::LobbyRoot>>,
+    pub connection_lost_overlay: Query<
+        'w,
+        's,
+        SurfaceTuple,
+        With<crate::presentation::connection_lost_overlay::ConnectionLostOverlayRoot>,
+    >,
+    pub result_screen:
+        Query<'w, 's, SurfaceTuple, With<crate::presentation::result_screen::ResultScreenRoot>>,
+    pub qa_snapshot_overlay: Query<'w, 's, SurfaceTuple, With<QASnapshotOverlayRoot>>,
+}
+
+/// Logical-px conversion: `ComputedNode::size` and
+/// `UiGlobalTransform::translation()` are in physical px; multiply by the
+/// node's `inverse_scale_factor` to recover logical/CSS px (matching the
+/// bid-target harness pattern in `shop_auction_bid_target_focus_harness.rs`).
+fn surface_bounds_logical(
+    computed: &ComputedNode,
+    transform: &UiGlobalTransform,
+) -> SurfaceBoundsRect {
+    let inv_scale = computed.inverse_scale_factor;
+    let center = transform.transform_point2(Vec2::ZERO) * inv_scale;
+    let w = computed.size.x * inv_scale;
+    let h = computed.size.y * inv_scale;
+    SurfaceBoundsRect {
+        x: center.x - w * 0.5,
+        y: center.y - h * 0.5,
+        w,
+        h,
+    }
+}
+
+/// Q-03 — content-overflow signal. Returns `true` when content extends
+/// past the node's box on either axis. Uses a small epsilon to swallow
+/// sub-pixel layout noise.
+fn surface_overflows_content(computed: &ComputedNode) -> bool {
+    const EPS: f32 = 0.5;
+    computed.content_size.x > computed.size.x + EPS
+        || computed.content_size.y > computed.size.y + EPS
+}
+
+fn interaction_token(interaction: Interaction) -> &'static str {
+    match interaction {
+        Interaction::Pressed => "pressed",
+        Interaction::Hovered => "hover",
+        Interaction::None => "default",
+    }
+}
+
+/// Best-effort projection of a `SurfaceTuple` into a `SurfaceLayoutSnapshot`.
+/// `name` is the canonical surface name. Returns an entry with
+/// `spawned: false` when the marker query is empty.
+fn build_surface_snapshot_from_query<M: Component>(
+    name: &str,
+    query: &Query<SurfaceTuple, With<M>>,
+) -> SurfaceLayoutSnapshot {
+    let mut iter = query.iter();
+    match iter.next() {
+        Some((computed, transform, visibility, global_z, children)) => {
+            SurfaceLayoutSnapshot {
+                name: name.to_string(),
+                spawned: true,
+                visible: Some(is_visibility_visible(visibility)),
+                bounds: Some(surface_bounds_logical(computed, transform)),
+                children_count: Some(children.map(|c| c.len()).unwrap_or(0)),
+                z_layer_resolved: global_z.map(|g| g.0),
+                stack_index: Some(computed.stack_index),
+                overflow_clipped: Some(surface_overflows_content(computed)),
+            }
+        }
+        None => SurfaceLayoutSnapshot {
+            name: name.to_string(),
+            spawned: false,
+            visible: None,
+            bounds: None,
+            children_count: None,
+            z_layer_resolved: None,
+            stack_index: None,
+            overflow_clipped: None,
+        },
+    }
+}
+
+impl<'w, 's> LayoutInputs<'w, 's> {
+    /// Collect every surface bound, button affordance, and explicit collision
+    /// helper into a [`LayoutSnapshot`]. `window` is the optional
+    /// `PrimaryWindow` already resolved by the host system — passing it in
+    /// keeps the SystemParam shallow and lets unit tests stub the viewport
+    /// directly.
+    pub fn snapshot(&self, window: Option<&Window>) -> LayoutSnapshot {
+        let viewport = ViewportLayoutSnapshot {
+            width_px: window.map(|w| w.resolution.width()),
+            height_px: window.map(|w| w.resolution.height()),
+            window_scale_factor: window.map(|w| w.resolution.scale_factor()),
+            ui_scale: self.ui_scale.as_deref().map(|s| s.0),
+        };
+
+        let mut surfaces: Vec<SurfaceLayoutSnapshot> = Vec::new();
+
+        // HUD surfaces.
+        surfaces.push(build_surface_snapshot_from_query::<crate::ui::hud::HudRoot>(
+            "hud_root",
+            &self.hud.hud_root,
+        ));
+        surfaces.push(build_surface_snapshot_from_query::<
+            crate::ui::hud::HudTopStripRoot,
+        >("hud_top_strip", &self.hud.hud_top_strip));
+        surfaces.push(build_surface_snapshot_from_query::<
+            crate::ui::hud::HudBottomStripRoot,
+        >("hud_bottom_strip", &self.hud.hud_bottom_strip));
+        surfaces.push(build_surface_snapshot_from_query::<
+            crate::ui::hud::HudScoreboardDotRoot,
+        >("hud_scoreboard_dot", &self.hud.hud_scoreboard_dot));
+        surfaces.push(build_surface_snapshot_from_query::<
+            crate::ui::hud::HudDimOverlayRoot,
+        >("hud_dim_overlay", &self.hud.hud_dim_overlay));
+
+        // Hand surfaces.
+        surfaces.push(build_surface_snapshot_from_query::<
+            crate::ui::hand::HandBarRoot,
+        >("hand_bar", &self.hand.hand_bar));
+        surfaces.push(build_surface_snapshot_from_query::<
+            crate::ui::hand::HandFanRoot,
+        >("hand_fan", &self.hand.hand_fan));
+        surfaces.push(build_surface_snapshot_from_query::<
+            crate::ui::hand::HandDraftGridSlotRoot,
+        >("hand_draft_grid_slot", &self.hand.hand_draft_grid_slot));
+        surfaces.push(build_surface_snapshot_from_query::<
+            crate::ui::hand::PlacementActionPanelRoot,
+        >(
+            "placement_action_panel", &self.hand.placement_action_panel
+        ));
+
+        // Shop / auction surfaces — five canonical variants. The enum-keyed
+        // query may produce more than one entry per variant if a panel ever
+        // gets duplicated; we keep the first hit (matching the
+        // `*_visible` count semantic in `UiCountQueries::snapshot`).
+        use crate::ui::shop_auction::ShopAuctionPanelRoot;
+        let mut shop_draft_offering: Option<SurfaceLayoutSnapshot> = None;
+        let mut shop_panel: Option<SurfaceLayoutSnapshot> = None;
+        let mut auction_panel: Option<SurfaceLayoutSnapshot> = None;
+        let mut shop_footer: Option<SurfaceLayoutSnapshot> = None;
+        let mut auction_toast: Option<SurfaceLayoutSnapshot> = None;
+        let mut settlement_overlay: Option<SurfaceLayoutSnapshot> = None;
+        for (computed, transform, visibility, global_z, children, variant) in
+            &self.shop_auction.panel_roots
+        {
+            let snap = SurfaceLayoutSnapshot {
+                name: shop_auction_variant_name(*variant).to_string(),
+                spawned: true,
+                visible: Some(is_visibility_visible(visibility)),
+                bounds: Some(surface_bounds_logical(computed, transform)),
+                children_count: Some(children.map(|c| c.len()).unwrap_or(0)),
+                z_layer_resolved: global_z.map(|g| g.0),
+                stack_index: Some(computed.stack_index),
+                overflow_clipped: Some(surface_overflows_content(computed)),
+            };
+            match variant {
+                ShopAuctionPanelRoot::DraftOffering if shop_draft_offering.is_none() => {
+                    shop_draft_offering = Some(snap);
+                }
+                ShopAuctionPanelRoot::Shop if shop_panel.is_none() => shop_panel = Some(snap),
+                ShopAuctionPanelRoot::Auction if auction_panel.is_none() => {
+                    auction_panel = Some(snap);
+                }
+                ShopAuctionPanelRoot::ShopFooter if shop_footer.is_none() => {
+                    shop_footer = Some(snap);
+                }
+                ShopAuctionPanelRoot::Toast if auction_toast.is_none() => {
+                    auction_toast = Some(snap);
+                }
+                ShopAuctionPanelRoot::SettlementOverlay if settlement_overlay.is_none() => {
+                    settlement_overlay = Some(snap);
+                }
+                _ => {}
+            }
+        }
+        for (name, slot) in [
+            ("shop_draft_offering", shop_draft_offering),
+            ("shop_panel", shop_panel),
+            ("auction_panel", auction_panel),
+            ("shop_footer", shop_footer),
+            ("auction_toast", auction_toast),
+            ("settlement_overlay", settlement_overlay),
+        ] {
+            surfaces.push(slot.unwrap_or_else(|| SurfaceLayoutSnapshot {
+                name: name.to_string(),
+                spawned: false,
+                visible: None,
+                bounds: None,
+                children_count: None,
+                z_layer_resolved: None,
+                stack_index: None,
+                overflow_clipped: None,
+            }));
+        }
+
+        // Misc surfaces (lobby + overlays).
+        surfaces.push(build_surface_snapshot_from_query::<
+            crate::ui::lobby::LobbyRoot,
+        >("lobby_root", &self.misc.lobby_root));
+        surfaces.push(build_surface_snapshot_from_query::<
+            crate::presentation::connection_lost_overlay::ConnectionLostOverlayRoot,
+        >(
+            "connection_lost_overlay",
+            &self.misc.connection_lost_overlay,
+        ));
+        surfaces.push(build_surface_snapshot_from_query::<
+            crate::presentation::result_screen::ResultScreenRoot,
+        >("result_screen", &self.misc.result_screen));
+        surfaces.push(build_surface_snapshot_from_query::<QASnapshotOverlayRoot>(
+            "qa_snapshot_overlay",
+            &self.misc.qa_snapshot_overlay,
+        ));
+
+        // Q-07 — button affordance probes for every entity carrying the
+        // `Button` widget marker. Sorted by stringified entity id so the
+        // ordering is stable across captures.
+        let mut button_affordances: Vec<ButtonAffordanceSnapshot> = self
+            .interactions
+            .iter()
+            .map(|(entity, interaction, name)| ButtonAffordanceSnapshot {
+                entity: format!("{:?}", entity),
+                name: name.map(|n| n.as_str().to_string()),
+                interaction: interaction_token(*interaction).to_string(),
+            })
+            .collect();
+        button_affordances.sort_by(|a, b| a.entity.cmp(&b.entity));
+
+        // Q-09, Q-10 — explicit collision helpers computed from the bounds
+        // collected above.
+        let collisions = build_layout_collisions(&surfaces);
+
+        // Documented limitations (Q-05 / Q-06 / Q-07 disabled).
+        let limitations = vec![
+            "Q-05 text.<marker>.fits / clipped_chars: not computable without \
+             per-text-marker components; adding markers requires touching \
+             client/src/ui/* (forbidden write scope for this story)."
+                .to_string(),
+            "Q-06 image.<marker>.aspect_ratio_src / aspect_ratio_rendered: \
+             not computable without per-image-marker components and an \
+             Assets<Image> read; adding markers requires touching \
+             client/src/ui/* (forbidden write scope for this story)."
+                .to_string(),
+            "Q-07 button.<marker>.affordance_state.disabled: Bevy 0.18 \
+             Interaction enum has no Disabled variant; only default / hover \
+             / pressed are emitted."
+                .to_string(),
+        ];
+
+        LayoutSnapshot {
+            viewport,
+            surfaces,
+            button_affordances,
+            collisions,
+            limitations,
+        }
+    }
+}
+
+fn shop_auction_variant_name(variant: crate::ui::shop_auction::ShopAuctionPanelRoot) -> &'static str {
+    use crate::ui::shop_auction::ShopAuctionPanelRoot;
+    match variant {
+        ShopAuctionPanelRoot::DraftOffering => "shop_draft_offering",
+        ShopAuctionPanelRoot::Shop => "shop_panel",
+        ShopAuctionPanelRoot::Auction => "auction_panel",
+        ShopAuctionPanelRoot::ShopFooter => "shop_footer",
+        ShopAuctionPanelRoot::Toast => "auction_toast",
+        ShopAuctionPanelRoot::SettlementOverlay => "settlement_overlay",
+    }
+}
+
+/// Build [`LayoutCollisionsSnapshot`] from the per-surface bounds collected
+/// in [`LayoutInputs::snapshot`]. Exposed (`pub`) so integration tests can
+/// exercise the collision math without spinning up a real Bevy world.
+pub fn build_layout_collisions(surfaces: &[SurfaceLayoutSnapshot]) -> LayoutCollisionsSnapshot {
+    let find_bounds = |name: &str| -> Option<SurfaceBoundsRect> {
+        surfaces
+            .iter()
+            .find(|s| s.name == name && s.visible == Some(true))
+            .and_then(|s| s.bounds)
+    };
+
+    let placement_panel_bounds = find_bounds("placement_action_panel");
+    let placement_action_panel_overlaps = match placement_panel_bounds {
+        Some(target) => surfaces
+            .iter()
+            .filter(|s| {
+                s.name != "placement_action_panel"
+                    && s.visible == Some(true)
+                    && s.bounds
+                        .as_ref()
+                        .map(|b| b.intersects(&target))
+                        .unwrap_or(false)
+            })
+            .map(|s| s.name.clone())
+            .collect(),
+        None => Vec::new(),
+    };
+
+    let shop_panel_bounds = find_bounds("shop_panel");
+    let hand_bar_bounds = find_bounds("hand_bar");
+    let shop_panel_bottom_edge_y = shop_panel_bounds.map(|b| b.bottom());
+    let hand_bar_top_edge_y = hand_bar_bounds.map(|b| b.y);
+    let shop_panel_vs_hand_bar_overlap_px = match (shop_panel_bounds, hand_bar_bounds) {
+        (Some(shop), Some(hand)) => Some(shop.bottom() - hand.y),
+        _ => None,
+    };
+
+    LayoutCollisionsSnapshot {
+        placement_action_panel_overlaps,
+        shop_panel_bottom_edge_y,
+        hand_bar_top_edge_y,
+        shop_panel_vs_hand_bar_overlap_px,
+    }
+}
+
 impl Plugin for QASnapshotPlugin {
     fn build(&self, app: &mut App) {
         if !app.world().contains_resource::<QASnapshotConfig>() {
@@ -1891,6 +2448,7 @@ pub fn write_qa_snapshot_system(
     windows: Query<&Window, With<PrimaryWindow>>,
     ui_count_queries: UiCountQueries,
     extras_inputs: ExtrasInputs,
+    layout_inputs: LayoutInputs,
 ) {
     if requests.is_empty() {
         return;
@@ -1926,7 +2484,14 @@ pub fn write_qa_snapshot_system(
         let mut extras_warnings = Vec::new();
         let extras = extras_inputs.snapshot_with_warnings(&mut extras_warnings);
 
-        let mut snapshot = build_snapshot_with_extras(
+        // PROMPT 1186 — collect Q-01..Q-10 layout fields. The layout
+        // SystemParam reads `ComputedNode` / `UiGlobalTransform` /
+        // `Visibility` / `Children` for every per-sub-surface root marker;
+        // surfaces that have not yet spawned are emitted with
+        // `spawned: false` so the JSON shape is phase-stable.
+        let layout = layout_inputs.snapshot(window);
+
+        let mut snapshot = build_snapshot_with_extras_and_layout(
             counter_value,
             requested_at_ms,
             ScreenshotInfo {
@@ -1945,6 +2510,7 @@ pub fn write_qa_snapshot_system(
             window,
             ui_counts,
             extras,
+            layout,
         );
         snapshot.warnings.extend(extras_warnings);
 
@@ -2205,7 +2771,9 @@ pub fn build_snapshot(
 /// Same as [`build_snapshot`] but accepts a fully-populated
 /// [`ExtrasSnapshot`] (PROMPT 1132). The host system pre-collects extras
 /// through [`ExtrasInputs::snapshot_with_warnings`] so this function is
-/// pure / non-`SystemParam`-using and remains test-friendly.
+/// pure / non-`SystemParam`-using and remains test-friendly. Pre-1186 callers
+/// receive `LayoutSnapshot::default()` (every layout sub-field empty / `None`).
+/// For PROMPT 1186 layout fields see [`build_snapshot_with_extras_and_layout`].
 #[allow(clippy::too_many_arguments)]
 pub fn build_snapshot_with_extras(
     counter: u64,
@@ -2218,6 +2786,38 @@ pub fn build_snapshot_with_extras(
     window: Option<&Window>,
     ui_counts: UiCounts,
     extras: ExtrasSnapshot,
+) -> QASnapshotData {
+    build_snapshot_with_extras_and_layout(
+        counter,
+        unix_millis,
+        screenshot,
+        state,
+        current_phase,
+        phase_view,
+        identity,
+        window,
+        ui_counts,
+        extras,
+        LayoutSnapshot::default(),
+    )
+}
+
+/// Same as [`build_snapshot_with_extras`] but also accepts a fully-populated
+/// [`LayoutSnapshot`] (PROMPT 1186). The host system pre-collects layout
+/// data through [`LayoutInputs::snapshot`].
+#[allow(clippy::too_many_arguments)]
+pub fn build_snapshot_with_extras_and_layout(
+    counter: u64,
+    unix_millis: u128,
+    screenshot: ScreenshotInfo,
+    state: Option<ClientState>,
+    current_phase: Option<CurrentClientPhase>,
+    phase_view: Option<&ClientPhaseView>,
+    identity: Option<ClientSessionIdentity>,
+    window: Option<&Window>,
+    ui_counts: UiCounts,
+    extras: ExtrasSnapshot,
+    layout: LayoutSnapshot,
 ) -> QASnapshotData {
     let mut warnings: Vec<String> = Vec::new();
 
@@ -2305,6 +2905,7 @@ pub fn build_snapshot_with_extras(
         window: window_info,
         ui_counts,
         extras,
+        layout,
         warnings,
     }
 }

@@ -505,6 +505,7 @@ fn write_snapshot_to_dir_creates_per_id_subdirectory() {
         },
         ui_counts: UiCounts::default(),
         extras: client::presentation::qa_snapshot::ExtrasSnapshot::default(),
+        layout: client::presentation::qa_snapshot::LayoutSnapshot::default(),
         warnings: vec![],
     };
 
@@ -555,6 +556,7 @@ fn update_snapshot_json_status_flips_to_captured_when_png_present() {
         },
         ui_counts: UiCounts::default(),
         extras: client::presentation::qa_snapshot::ExtrasSnapshot::default(),
+        layout: client::presentation::qa_snapshot::LayoutSnapshot::default(),
         warnings: vec![],
     };
     let json_path = write_snapshot_to_dir(&tmp, &snapshot).unwrap();
@@ -610,6 +612,7 @@ fn update_snapshot_json_status_marks_failed_when_png_missing() {
         },
         ui_counts: UiCounts::default(),
         extras: client::presentation::qa_snapshot::ExtrasSnapshot::default(),
+        layout: client::presentation::qa_snapshot::LayoutSnapshot::default(),
         warnings: vec![],
     };
     let json_path = write_snapshot_to_dir(&tmp, &snapshot).unwrap();
@@ -662,6 +665,7 @@ fn capture_completed_message_updates_feedback_to_saved() {
         },
         ui_counts: UiCounts::default(),
         extras: client::presentation::qa_snapshot::ExtrasSnapshot::default(),
+        layout: client::presentation::qa_snapshot::LayoutSnapshot::default(),
         warnings: vec![],
     };
     let json_path = write_snapshot_to_dir(&tmp, &snapshot).unwrap();
@@ -734,6 +738,7 @@ fn capture_completed_with_missing_png_demotes_to_failed() {
         },
         ui_counts: UiCounts::default(),
         extras: client::presentation::qa_snapshot::ExtrasSnapshot::default(),
+        layout: client::presentation::qa_snapshot::LayoutSnapshot::default(),
         warnings: vec![],
     };
     let json_path = write_snapshot_to_dir(&tmp, &snapshot).unwrap();
