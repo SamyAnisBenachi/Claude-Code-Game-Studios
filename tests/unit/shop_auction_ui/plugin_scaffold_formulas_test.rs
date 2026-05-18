@@ -47,19 +47,26 @@ fn shop_auction_ui_prepooled_panel_roots_are_bevy_ui_nodes() {
     // child: the draft_initial_modal_footer band hosting Ready /
     // Retract Ready and the waiting status text — collected in the
     // trailing `+ 1` term.
+    // PROMPT 1085 adds one affordance label per shop slot plus two
+    // featured-card readouts (price + timer). PROMPT 1230 adds the
+    // draft_initial_countdown_label; these six child entities are
+    // intentional UI nodes, not extra panel roots.
     assert_eq!(
         count_with::<ShopAuctionUiEntity>(&mut app),
         1 + SHOP_AUCTION_UI_PANEL_ROOT_COUNT * 2
             + 2
             + SHOP_AUCTION_UI_DRAFT_INITIAL_SLOT_COUNT * 3
             + 3
+            + 1
             + 4
+            + SHOP_AUCTION_UI_SHOP_SLOT_COUNT
             + SHOP_AUCTION_UI_SHOP_SLOT_COUNT
             + 1
             + AUCTION_FREE_GOLD_COUNTER_COUNT * 3
             + 4
             + SHOP_AUCTION_UI_SHOP_SLOT_COUNT
             + 12
+            + 2
             + 3
             + 1
     );
