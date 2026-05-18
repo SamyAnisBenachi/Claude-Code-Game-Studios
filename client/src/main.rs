@@ -6,6 +6,8 @@
 use bevy::asset::AssetPlugin;
 use bevy::log::LogPlugin;
 use bevy::prelude::*;
+use bevy::render::settings::{InstanceFlags, RenderCreation, WgpuSettings};
+use bevy::render::RenderPlugin;
 use bevy::window::{PresentMode, Window, WindowPlugin};
 use client::asset_wiring::AssetWiringPlugin;
 use client::audio::AudioSystemPlugin;
@@ -47,6 +49,20 @@ fn main() {
 
     let mut app = App::new();
 
+    // S17-OPS-VULKAN-VALIDATION-GATING-001 (AUDIT-1076-18): Bevy's default
+    // `WgpuSettings` calls `wgpu::InstanceFlags::from_build_config()`, which
+    // requests `VK_LAYER_KHRONOS_validation` on every debug build. The layer
+    // is not installed on the test / dev / end-user Windows machine, so wgpu
+    // emits three warning lines on every client launch that bury real
+    // diagnostics. Force `InstanceFlags::empty()` on the default build and
+    // restore the build-config flags only when the developer opts in with
+    // `cargo build -p client --features wgpu-validation`.
+    let instance_flags = if cfg!(feature = "wgpu-validation") {
+        InstanceFlags::from_build_config()
+    } else {
+        InstanceFlags::empty()
+    };
+
     // `LogPlugin` is pulled in transitively by the `2d` feature collection.
     // It would attempt to install its own `tracing-subscriber` on startup and
     // collide with the one set just above ("Could not set global logger ...
@@ -55,6 +71,13 @@ fn main() {
     let default_plugins = DefaultPlugins
         .build()
         .disable::<LogPlugin>()
+        .set(RenderPlugin {
+            render_creation: RenderCreation::Automatic(WgpuSettings {
+                instance_flags,
+                ..default()
+            }),
+            ..default()
+        })
         .set(WindowPlugin {
             primary_window: Some(Window {
                 title: "Lanes and Lies".to_string(),
