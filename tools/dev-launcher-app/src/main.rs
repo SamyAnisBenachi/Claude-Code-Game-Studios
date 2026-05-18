@@ -51,6 +51,21 @@ const SIDECAR_FILENAME: &str = "ccgs-dev-launcher.repo-root.txt";
 // via the `CCGS_CANONICAL_REPO_ROOT` env var.
 const CANONICAL_REPO_CANDIDATES: &[&str] = &["D:\\_DEV\\Work\\Claude-Code-Game-Studios"];
 const MAIN_BRANCH: &str = "main";
+
+// PROMPT 1309: dedicated play/build checkout. The launcher resolves a SECOND
+// path -- the "play repo root" -- separate from the script-source repo root.
+// `Rebuild Latest Main` and `Start Two-Client Play Session` operate inside the
+// play root so the orchestrator/canonical checkout (which may be dirty or on a
+// worker branch at any time) is never destructively switched. The dedicated
+// checkout is materialised as a git worktree off the launcher repo root the
+// first time `Rebuild Latest Main` runs.
+const PLAY_REPO_DEFAULT: &str = "D:\\_DEV\\ccgs-play-main";
+// Preferred env override (PROMPT 1309). `CCGS_CANONICAL_MAIN_ROOT` is accepted
+// as an alias so users who already typed the latter form do not get a second
+// surprise. Both point at an absolute path that the launcher hands to the
+// PowerShell scripts via `-PlayRepoRoot`.
+const PLAY_REPO_ENV: &str = "CCGS_PLAY_REPO_ROOT";
+const PLAY_REPO_ENV_ALIAS: &str = "CCGS_CANONICAL_MAIN_ROOT";
 // Start-TwoClients.ps1 writes per-run logs under this path; the launcher
 // surfaces the exact directory parsed from script stdout.
 #[cfg(test)]
@@ -137,9 +152,66 @@ enum RepoRootResolution {
     },
 }
 
+// PROMPT 1309: source of the play/build repo root path. The launcher reports
+// this verbatim in diagnostics so testers can tell whether they are on an env
+// override vs. the documented default.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum PlayRootSource {
+    Env,             // `CCGS_PLAY_REPO_ROOT`
+    LegacyEnv,       // `CCGS_CANONICAL_MAIN_ROOT` (alias)
+    DedicatedDefault, // documented `D:\_DEV\ccgs-play-main`
+}
+
+impl PlayRootSource {
+    fn human(self) -> &'static str {
+        match self {
+            PlayRootSource::Env => "CCGS_PLAY_REPO_ROOT env var",
+            PlayRootSource::LegacyEnv => "CCGS_CANONICAL_MAIN_ROOT env var (alias)",
+            PlayRootSource::DedicatedDefault => "documented dedicated default",
+        }
+    }
+}
+
+// Snapshot of what the launcher knows about the play/build checkout *before*
+// the rebuild script runs. The script is the only thing that creates the
+// worktree, switches branches, or merges -- the launcher just reports what is
+// there right now so the user can see why a rebuild will proceed or refuse.
+#[derive(Clone, Debug, PartialEq, Eq)]
+enum PlayRootStatus {
+    OnMain,                    // exists, validates, branch == "main"
+    OnOtherBranch(String),     // exists, validates, branch == something else
+    DetachedOrUnknown,         // exists, validates, but no usable branch label
+    Missing,                   // path does not exist on disk
+    InvalidRepo(String),       // exists, does not validate as a CCGS workspace
+}
+
+impl PlayRootStatus {
+    fn human(&self) -> String {
+        match self {
+            PlayRootStatus::OnMain => "exists, on main".to_string(),
+            PlayRootStatus::OnOtherBranch(b) => format!("exists, on branch '{}'", b),
+            PlayRootStatus::DetachedOrUnknown => "exists, detached HEAD or unknown".to_string(),
+            PlayRootStatus::Missing => {
+                "missing -- will be created as a worktree on first rebuild".to_string()
+            }
+            PlayRootStatus::InvalidRepo(why) => {
+                format!("path exists but is not a CCGS workspace ({})", why)
+            }
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+struct PlayRootResolution {
+    path: PathBuf,
+    source: PlayRootSource,
+    status: PlayRootStatus,
+}
+
 struct LauncherState {
     repo_root: Option<PathBuf>,
     repo_source: Option<ResolutionSource>,
+    play_root: Option<PlayRootResolution>,
     error_message: Option<String>,
     job: Option<JobKind>,
     rx: Option<Receiver<WorkerMessage>>,
@@ -153,11 +225,13 @@ impl LauncherState {
     fn new(
         repo_root: Option<PathBuf>,
         repo_source: Option<ResolutionSource>,
+        play_root: Option<PlayRootResolution>,
         error_message: Option<String>,
     ) -> Self {
         Self {
             repo_root,
             repo_source,
+            play_root,
             error_message,
             job: None,
             rx: None,
@@ -376,6 +450,8 @@ impl LauncherUi {
             }
         });
 
+        let play_root_init = locate_play_root();
+
         let (
             repo_root,
             repo_source,
@@ -388,13 +464,22 @@ impl LauncherUi {
             RepoRootResolution::Resolved { root, source } => {
                 let mut lines = Vec::new();
                 lines.push(format!(
-                    "Repo root: {} (via {})",
+                    "Launcher repo root: {} (via {})",
                     root.display(),
                     source.human()
                 ));
                 let branch_label =
                     read_head_branch(&root).unwrap_or_else(|| "<detached or unknown>".to_string());
-                lines.push(format!("Current branch: {}", branch_label));
+                lines.push(format!("Launcher branch: {}", branch_label));
+                lines.push(format!(
+                    "Play/build root: {} (via {})",
+                    play_root_init.path.display(),
+                    play_root_init.source.human()
+                ));
+                lines.push(format!(
+                    "Play/build status: {}",
+                    play_root_init.status.human()
+                ));
                 lines.push(format!("Scripts: {} | {}", REBUILD_SCRIPT, LAUNCH_SCRIPT));
                 (
                     Some(root),
@@ -433,7 +518,8 @@ impl LauncherUi {
         };
 
         let mut guard = self.state.lock().expect("state poisoned at init");
-        let mut state = LauncherState::new(repo_root, repo_source, error_message);
+        let mut state =
+            LauncherState::new(repo_root, repo_source, Some(play_root_init), error_message);
         for line in init_lines {
             state.append(line);
         }
@@ -512,16 +598,28 @@ impl LauncherUi {
             return;
         }
 
+        let play_root_path = state.play_root.as_ref().map(|r| r.path.clone());
         state.last_exit = None;
         state.last_evidence_dir = None;
         state.add_banner(&format!("STARTING: {}", job.human()));
         state.append(format!("Script: {}", script_path.display()));
+        if let Some(ref p) = play_root_path {
+            state.append(format!("Play/build root passed to script: {}", p.display()));
+        }
 
         let (tx, rx) = mpsc::channel();
         let tx_clone = tx.clone();
         let repo_root_clone = repo_root.clone();
         let script_path_clone = script_path.clone();
-        thread::spawn(move || run_powershell_job(repo_root_clone, script_path_clone, tx_clone));
+        let play_root_clone = play_root_path.clone();
+        thread::spawn(move || {
+            run_powershell_job(
+                repo_root_clone,
+                script_path_clone,
+                play_root_clone,
+                tx_clone,
+            )
+        });
 
         state.job = Some(job);
         state.rx = Some(rx);
@@ -666,14 +764,22 @@ impl LauncherUi {
     }
 }
 
-fn run_powershell_job(repo_root: PathBuf, script_path: PathBuf, tx: Sender<WorkerMessage>) {
+fn run_powershell_job(
+    repo_root: PathBuf,
+    script_path: PathBuf,
+    play_root: Option<PathBuf>,
+    tx: Sender<WorkerMessage>,
+) {
     let mut cmd = Command::new("powershell.exe");
     cmd.arg("-NoProfile")
         .arg("-ExecutionPolicy")
         .arg("Bypass")
         .arg("-File")
-        .arg(&script_path)
-        .current_dir(&repo_root)
+        .arg(&script_path);
+    if let Some(ref p) = play_root {
+        cmd.arg("-PlayRepoRoot").arg(p);
+    }
+    cmd.current_dir(&repo_root)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
 
@@ -742,6 +848,81 @@ fn parse_evidence_dir(line: &str) -> Option<PathBuf> {
         None
     } else {
         Some(PathBuf::from(tail))
+    }
+}
+
+// PROMPT 1309: resolves the play/build repo root path (where rebuild + start
+// actually run) using the documented priority:
+//   1. `CCGS_PLAY_REPO_ROOT` env override.
+//   2. `CCGS_CANONICAL_MAIN_ROOT` env alias.
+//   3. `D:\_DEV\ccgs-play-main` (documented dedicated default).
+// Existence and branch state are reported but never determine the path itself;
+// the script handles creation + safety so the launcher does not need to.
+fn locate_play_root() -> PlayRootResolution {
+    let env_value = env::var(PLAY_REPO_ENV).ok();
+    let legacy_env_value = env::var(PLAY_REPO_ENV_ALIAS).ok();
+    let default_path = PathBuf::from(PLAY_REPO_DEFAULT);
+    resolve_play_root_pure(
+        env_value.as_deref(),
+        legacy_env_value.as_deref(),
+        &default_path,
+        |p| p.exists(),
+        is_repo_root,
+        read_head_branch,
+    )
+}
+
+// Pure version used by `locate_play_root` and unit tests. `path_exists` is
+// kept distinct from `validate_repo` so the test suite can distinguish
+// "missing on disk" from "exists but malformed".
+fn resolve_play_root_pure<E, V, B>(
+    env_play_root: Option<&str>,
+    legacy_env: Option<&str>,
+    default_path: &Path,
+    path_exists: E,
+    validate_repo: V,
+    read_branch: B,
+) -> PlayRootResolution
+where
+    E: Fn(&Path) -> bool,
+    V: Fn(&Path) -> bool,
+    B: Fn(&Path) -> Option<String>,
+{
+    let trim_nonempty = |s: &str| -> Option<String> {
+        let t = s.trim();
+        if t.is_empty() {
+            None
+        } else {
+            Some(t.to_string())
+        }
+    };
+
+    let (path, source) = if let Some(raw) = env_play_root.and_then(trim_nonempty) {
+        (PathBuf::from(raw), PlayRootSource::Env)
+    } else if let Some(raw) = legacy_env.and_then(trim_nonempty) {
+        (PathBuf::from(raw), PlayRootSource::LegacyEnv)
+    } else {
+        (default_path.to_path_buf(), PlayRootSource::DedicatedDefault)
+    };
+
+    let status = if !path_exists(&path) {
+        PlayRootStatus::Missing
+    } else if !validate_repo(&path) {
+        PlayRootStatus::InvalidRepo(
+            "missing Cargo.toml / .git / tools/dev-launcher under the configured path".to_string(),
+        )
+    } else {
+        match read_branch(&path) {
+            Some(b) if b == MAIN_BRANCH => PlayRootStatus::OnMain,
+            Some(b) => PlayRootStatus::OnOtherBranch(b),
+            None => PlayRootStatus::DetachedOrUnknown,
+        }
+    };
+
+    PlayRootResolution {
+        path,
+        source,
+        status,
     }
 }
 
@@ -1013,11 +1194,11 @@ fn diagnostics_text(state: &LauncherState) -> String {
     let mut lines = Vec::new();
     match (&state.repo_root, state.repo_source) {
         (Some(root), Some(source)) => {
-            lines.push(format!("Repo root: {}", root.display()));
+            lines.push(format!("Launcher repo root: {}", root.display()));
             lines.push(format!("Resolved via: {}", source.human()));
             let branch_label =
                 read_head_branch(root).unwrap_or_else(|| "<detached or unknown>".to_string());
-            lines.push(format!("Current branch: {}", branch_label));
+            lines.push(format!("Launcher branch: {}", branch_label));
             lines.push(format!(
                 "Rebuild script: {}",
                 root.join(Path::new(REBUILD_SCRIPT)).display()
@@ -1028,7 +1209,7 @@ fn diagnostics_text(state: &LauncherState) -> String {
             ));
         }
         _ => {
-            lines.push("Repo root: UNRESOLVED".to_string());
+            lines.push("Launcher repo root: UNRESOLVED".to_string());
             lines.push(format!(
                 "Expected sidecar: {} beside ccgs-dev-launcher.exe",
                 SIDECAR_FILENAME
@@ -1037,6 +1218,36 @@ fn diagnostics_text(state: &LauncherState) -> String {
                 "Set CCGS_REPO_ROOT to an absolute repo path if the EXE is outside the repo tree."
                     .to_string(),
             );
+        }
+    }
+
+    match &state.play_root {
+        Some(p) => {
+            lines.push(format!("Play/build root: {}", p.path.display()));
+            lines.push(format!("Play/build source: {}", p.source.human()));
+            lines.push(format!("Play/build status: {}", p.status.human()));
+            match &p.status {
+                PlayRootStatus::OnMain => {
+                    lines.push("Play/build branch: main".to_string());
+                }
+                PlayRootStatus::OnOtherBranch(b) => {
+                    lines.push(format!("Play/build branch: {}", b));
+                }
+                PlayRootStatus::DetachedOrUnknown => {
+                    lines.push("Play/build branch: <detached or unknown>".to_string());
+                }
+                PlayRootStatus::Missing => {
+                    lines.push(
+                        "Play/build branch: <none -- not yet created>".to_string(),
+                    );
+                }
+                PlayRootStatus::InvalidRepo(_) => {
+                    lines.push("Play/build branch: <path is not a CCGS workspace>".to_string());
+                }
+            }
+        }
+        None => {
+            lines.push("Play/build root: UNRESOLVED".to_string());
         }
     }
 
@@ -1292,7 +1503,7 @@ mod tests {
 
     #[test]
     fn launcher_state_truncates_log_beyond_cap() {
-        let mut s = LauncherState::new(Some(PathBuf::from(".")), None, None);
+        let mut s = LauncherState::new(Some(PathBuf::from(".")), None, None, None);
         for i in 0..(MAX_LOG_LINES + 50) {
             s.append(format!("line {}", i));
         }
@@ -1933,14 +2144,29 @@ mod tests {
     #[test]
     fn diagnostics_text_surfaces_scrollworthy_paths() {
         let root = PathBuf::from("D:\\_DEV\\Work\\Claude-Code-Game-Studios");
-        let mut state = LauncherState::new(Some(root.clone()), Some(ResolutionSource::Env), None);
+        let play = PlayRootResolution {
+            path: PathBuf::from("D:\\_DEV\\ccgs-play-main"),
+            source: PlayRootSource::DedicatedDefault,
+            status: PlayRootStatus::Missing,
+        };
+        let mut state = LauncherState::new(
+            Some(root.clone()),
+            Some(ResolutionSource::Env),
+            Some(play),
+            None,
+        );
         state.last_evidence_dir =
             Some(root.join("production\\qa\\evidence\\dev-runs\\2026-05-18-120000"));
         let text = diagnostics_text(&state);
-        assert!(text.contains("Repo root:"));
+        assert!(text.contains("Launcher repo root:"));
         assert!(text.contains(REBUILD_SCRIPT));
         assert!(text.contains(LAUNCH_SCRIPT));
         assert!(text.contains("Evidence:"));
+        // PROMPT 1309: both the launcher root AND the play/build root should
+        // appear in diagnostics so testers can see they are distinct paths.
+        assert!(text.contains("Play/build root:"));
+        assert!(text.contains("D:\\_DEV\\ccgs-play-main"));
+        assert!(text.contains("Play/build status:"));
     }
 
     #[test]
@@ -1948,5 +2174,260 @@ mod tests {
         assert_ne!(StatusTone::Idle.colors().0, StatusTone::Running.colors().0);
         assert_ne!(StatusTone::Success.colors().0, StatusTone::Error.colors().0);
         assert_ne!(COLOR_LOG_BG, COLOR_PANEL_BG);
+    }
+
+    // ----- PROMPT 1309: play/build dedicated checkout resolution -----
+
+    fn path_never_exists(_: &Path) -> bool {
+        false
+    }
+    fn path_always_exists(_: &Path) -> bool {
+        true
+    }
+
+    #[test]
+    fn play_root_default_constant_is_separate_from_canonical_root() {
+        // PROMPT 1309 invariant: the dedicated play/build path MUST be
+        // distinct from the orchestrator/canonical checkout. If they collide,
+        // a worker-branched orchestrator root would be the rebuild target
+        // again -- the exact failure mode this task repairs.
+        assert_ne!(PLAY_REPO_DEFAULT, "D:\\_DEV\\Work\\Claude-Code-Game-Studios");
+        assert!(
+            PLAY_REPO_DEFAULT.contains("ccgs-play"),
+            "PLAY_REPO_DEFAULT={} should advertise its dedicated purpose",
+            PLAY_REPO_DEFAULT
+        );
+    }
+
+    #[test]
+    fn play_root_default_is_not_inside_worktree_directory() {
+        // Defensive: the worker worktree tree at
+        // D:\_DEV\claude-code-game-studios-worktrees\ must not collide with
+        // the dedicated play checkout. Otherwise a tester juggling worker
+        // sessions could be rebuilding inside someone else's branch.
+        assert!(!PLAY_REPO_DEFAULT
+            .to_ascii_lowercase()
+            .contains("claude-code-game-studios-worktrees"));
+    }
+
+    #[test]
+    fn resolve_play_root_prefers_env_over_legacy_and_default() {
+        let res = resolve_play_root_pure(
+            Some("D:\\env-play"),
+            Some("D:\\legacy-env-play"),
+            Path::new("D:\\default-play"),
+            path_never_exists,
+            always_false,
+            branch_main,
+        );
+        assert_eq!(res.path, PathBuf::from("D:\\env-play"));
+        assert_eq!(res.source, PlayRootSource::Env);
+        assert_eq!(res.status, PlayRootStatus::Missing);
+    }
+
+    #[test]
+    fn resolve_play_root_uses_legacy_env_when_primary_unset() {
+        let res = resolve_play_root_pure(
+            None,
+            Some("D:\\legacy-env-play"),
+            Path::new("D:\\default-play"),
+            path_never_exists,
+            always_false,
+            branch_main,
+        );
+        assert_eq!(res.path, PathBuf::from("D:\\legacy-env-play"));
+        assert_eq!(res.source, PlayRootSource::LegacyEnv);
+    }
+
+    #[test]
+    fn resolve_play_root_uses_documented_default_when_no_env() {
+        let res = resolve_play_root_pure(
+            None,
+            None,
+            Path::new(PLAY_REPO_DEFAULT),
+            path_never_exists,
+            always_false,
+            branch_main,
+        );
+        assert_eq!(res.path, PathBuf::from(PLAY_REPO_DEFAULT));
+        assert_eq!(res.source, PlayRootSource::DedicatedDefault);
+    }
+
+    #[test]
+    fn resolve_play_root_treats_empty_or_whitespace_env_as_unset() {
+        let res = resolve_play_root_pure(
+            Some("   "),
+            Some("\t\n"),
+            Path::new(PLAY_REPO_DEFAULT),
+            path_never_exists,
+            always_false,
+            branch_main,
+        );
+        assert_eq!(res.source, PlayRootSource::DedicatedDefault);
+    }
+
+    #[test]
+    fn resolve_play_root_status_missing_when_path_absent() {
+        let res = resolve_play_root_pure(
+            None,
+            None,
+            Path::new(PLAY_REPO_DEFAULT),
+            path_never_exists,
+            always_true,
+            branch_main,
+        );
+        assert_eq!(res.status, PlayRootStatus::Missing);
+        // Status human label should mention the worktree creation intent.
+        assert!(res.status.human().contains("worktree"));
+    }
+
+    #[test]
+    fn resolve_play_root_status_on_main_when_validated_and_main() {
+        let res = resolve_play_root_pure(
+            None,
+            None,
+            Path::new(PLAY_REPO_DEFAULT),
+            path_always_exists,
+            always_true,
+            branch_main,
+        );
+        assert_eq!(res.status, PlayRootStatus::OnMain);
+    }
+
+    #[test]
+    fn resolve_play_root_status_other_branch_when_worker_checkout() {
+        let res = resolve_play_root_pure(
+            Some("D:\\some-worker-worktree"),
+            None,
+            Path::new(PLAY_REPO_DEFAULT),
+            path_always_exists,
+            always_true,
+            branch_worker,
+        );
+        match res.status {
+            PlayRootStatus::OnOtherBranch(b) => {
+                assert!(b.starts_with("work/"));
+            }
+            other => panic!("expected OnOtherBranch, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn resolve_play_root_status_detached_when_branch_unknown() {
+        let res = resolve_play_root_pure(
+            None,
+            None,
+            Path::new(PLAY_REPO_DEFAULT),
+            path_always_exists,
+            always_true,
+            branch_unknown,
+        );
+        assert_eq!(res.status, PlayRootStatus::DetachedOrUnknown);
+    }
+
+    #[test]
+    fn resolve_play_root_status_invalid_when_path_exists_but_not_repo() {
+        let res = resolve_play_root_pure(
+            None,
+            None,
+            Path::new(PLAY_REPO_DEFAULT),
+            path_always_exists,
+            always_false,
+            branch_main,
+        );
+        match res.status {
+            PlayRootStatus::InvalidRepo(_) => {}
+            other => panic!("expected InvalidRepo, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn play_root_source_human_strings_are_distinct() {
+        let all = [
+            PlayRootSource::Env.human(),
+            PlayRootSource::LegacyEnv.human(),
+            PlayRootSource::DedicatedDefault.human(),
+        ];
+        for (i, a) in all.iter().enumerate() {
+            for (j, b) in all.iter().enumerate() {
+                if i != j {
+                    assert_ne!(a, b, "{} and {} collide", a, b);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn play_root_env_constant_names_match_documented_pair() {
+        // The build script, docs, and Update-LatestMain.ps1 all reference
+        // these env var names. If we rename one, the rest must move together.
+        assert_eq!(PLAY_REPO_ENV, "CCGS_PLAY_REPO_ROOT");
+        assert_eq!(PLAY_REPO_ENV_ALIAS, "CCGS_CANONICAL_MAIN_ROOT");
+    }
+
+    #[test]
+    fn diagnostics_text_reports_play_root_status_distinctly_from_launcher() {
+        // User-reported scenario regression: launcher resolves to the
+        // orchestrator root on a worker branch, the play root is missing.
+        // Diagnostics MUST surface both so the user can see the rebuild will
+        // target the dedicated path, not the orchestrator checkout.
+        let launcher_root = PathBuf::from("D:\\_DEV\\Work\\Claude-Code-Game-Studios");
+        let play = PlayRootResolution {
+            path: PathBuf::from(PLAY_REPO_DEFAULT),
+            source: PlayRootSource::DedicatedDefault,
+            status: PlayRootStatus::Missing,
+        };
+        let state = LauncherState::new(
+            Some(launcher_root.clone()),
+            Some(ResolutionSource::CanonicalFallback),
+            Some(play),
+            None,
+        );
+        let text = diagnostics_text(&state);
+        assert!(text.contains("Launcher repo root: D:\\_DEV\\Work\\Claude-Code-Game-Studios"));
+        assert!(text.contains("Play/build root: D:\\_DEV\\ccgs-play-main"));
+        assert!(text.contains("Play/build source: documented dedicated default"));
+        assert!(
+            text.contains("not yet created"),
+            "diagnostics should call out that the play root will be created -- text was:\n{}",
+            text
+        );
+    }
+
+    #[test]
+    fn diagnostics_text_shows_play_branch_when_play_root_on_other_branch() {
+        // If the dedicated checkout exists but somehow ended up on a non-main
+        // branch (e.g. tester left it there), diagnostics must surface that
+        // explicitly so the rebuild outcome is predictable.
+        let play = PlayRootResolution {
+            path: PathBuf::from(PLAY_REPO_DEFAULT),
+            source: PlayRootSource::Env,
+            status: PlayRootStatus::OnOtherBranch("work/foo".to_string()),
+        };
+        let state = LauncherState::new(
+            Some(PathBuf::from("D:\\launcher")),
+            Some(ResolutionSource::Env),
+            Some(play),
+            None,
+        );
+        let text = diagnostics_text(&state);
+        assert!(
+            text.contains("Play/build branch: work/foo"),
+            "missing play branch in diagnostics:\n{}",
+            text
+        );
+        assert!(text.contains("CCGS_PLAY_REPO_ROOT"));
+    }
+
+    #[test]
+    fn play_root_status_human_labels_are_actionable() {
+        // The diagnostics panel surfaces these labels verbatim. They must
+        // tell the user WHAT the launcher will do next.
+        assert!(PlayRootStatus::OnMain.human().contains("main"));
+        assert!(PlayRootStatus::Missing.human().contains("created"));
+        let other = PlayRootStatus::OnOtherBranch("work/foo".to_string());
+        assert!(other.human().contains("work/foo"));
+        let invalid = PlayRootStatus::InvalidRepo("X".to_string());
+        assert!(invalid.human().contains("not a CCGS workspace"));
     }
 }
