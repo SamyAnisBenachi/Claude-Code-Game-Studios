@@ -195,6 +195,16 @@ path = "../tests/integration/hand-ui/hand_ui_drag_end_non_instant_test.rs"
 name = "hand_ui_drag_to_board_cell_test"
 path = "../tests/integration/hand-ui/hand_ui_drag_to_board_cell_test.rs"
 
+# PROMPT 1210 — drag cursor viewport → world-space coord-space repair.
+# Drives `produce_drag_cursor_moved_from_pointer_move_system` with a real
+# `Camera2d`+`Transform`+`BoardLayout` so the viewport-space `Pointer<Move>`
+# position resolves to the expected `BoardCell` via the same producer /
+# consumer / drop path the UI runs in production. Pins the fix for
+# B-1203-PLA-01 (Hearthstone-style drag-to-board-cell).
+[[test]]
+name = "hand_ui_drag_cursor_world_projection_test"
+path = "../tests/integration/hand-ui/hand_ui_drag_cursor_world_projection_test.rs"
+
 [[test]]
 name = "hand_ui_drag_state_visuals_test"
 path = "../tests/integration/hand-ui/hand_ui_drag_state_visuals_test.rs"

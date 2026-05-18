@@ -173,8 +173,12 @@ fn start_drag(app: &mut App, slot_index: u8, owner_id: PlayerId) {
 }
 
 fn move_cursor(app: &mut App, position: Vec2) {
+    // PROMPT 1210 — Instant drops are gated by the viewport-space fan-plate
+    // hit test. Drive `screen_position`; leave `world_position` empty so we
+    // exercise only the screen-space path.
     app.world_mut().write_message(HandUiPlacementCursorMoved {
-        world_position: Some(position),
+        world_position: None,
+        screen_position: Some(position),
     });
     app.update();
 }

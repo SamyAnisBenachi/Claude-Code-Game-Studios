@@ -99,7 +99,11 @@ fn hu_drag_02_move_during_active_drag_emits_cursor_moved_and_updates_node() {
         1,
         "Pointer<Move> must produce exactly one HandUiPlacementCursorMoved"
     );
-    assert_eq!(moves[0].world_position, Some(first_pos));
+    // PROMPT 1210 — viewport position is preserved on `screen_position`. The
+    // dummy camera has no `Camera`/`GlobalTransform`, so the producer cannot
+    // resolve a world-space conversion and leaves `world_position` empty.
+    assert_eq!(moves[0].screen_position, Some(first_pos));
+    assert_eq!(moves[0].world_position, None);
     assert_eq!(
         node_position(&app, drag_sprite),
         (Val::Px(first_pos.x), Val::Px(first_pos.y)),
@@ -114,7 +118,8 @@ fn hu_drag_02_move_during_active_drag_emits_cursor_moved_and_updates_node() {
 
     let moves = messages_since(&app, &mut moved_cursor);
     assert_eq!(moves.len(), 1);
-    assert_eq!(moves[0].world_position, Some(second_pos));
+    assert_eq!(moves[0].screen_position, Some(second_pos));
+    assert_eq!(moves[0].world_position, None);
     assert_eq!(
         node_position(&app, drag_sprite),
         (Val::Px(second_pos.x), Val::Px(second_pos.y)),
@@ -200,8 +205,12 @@ fn hu_drag_04_full_press_move_release_sequence_tracks_sprite_and_ends_clean() {
     assert_eq!(messages_since(&app, &mut started_cursor).len(), 1);
     let moves = messages_since(&app, &mut moved_cursor);
     assert_eq!(moves.len(), 2);
-    assert_eq!(moves[0].world_position, Some(Vec2::new(680.0, 540.0)));
-    assert_eq!(moves[1].world_position, Some(Vec2::new(740.0, 460.0)));
+    // PROMPT 1210 — without a real Camera2d the producer cannot resolve the
+    // viewport → world conversion, so it forwards only `screen_position`.
+    assert_eq!(moves[0].screen_position, Some(Vec2::new(680.0, 540.0)));
+    assert_eq!(moves[1].screen_position, Some(Vec2::new(740.0, 460.0)));
+    assert_eq!(moves[0].world_position, None);
+    assert_eq!(moves[1].world_position, None);
     assert_eq!(messages_since(&app, &mut ended_cursor).len(), 1);
     // Drag state is fully reset; sprite hide gates on drop-resolved (PROMPT 697).
     assert!(!active_drag_active(&app));
