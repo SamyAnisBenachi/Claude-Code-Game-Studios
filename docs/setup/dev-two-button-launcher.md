@@ -156,15 +156,60 @@ the same two PowerShell scripts. Built from the in-workspace Rust crate
 
 ### What it looks like
 
-- Title: `CCGS Dev Launcher`
-- Two buttons, exact labels:
+- Window title: `CCGS Dev Launcher` (with the launcher icon in the title bar,
+  Alt-Tab, and taskbar).
+- Header (large): `CCGS Dev Launcher`.
+- Subtitle (one line): `Rebuild latest main, then launch one server + two
+  clients for manual play.`
+- A `Repo root:` line that shows the resolved root **and** the resolution
+  source (env / sidecar / EXE walk-up / cwd walk-up), or surfaces the exact
+  recovery steps when nothing resolved.
+- Two big primary action buttons (bold Segoe UI Semibold, two rows tall):
   - `Rebuild Latest Main`
   - `Start Two-Client Play Session`
-- A status line above the buttons (Idle / RUNNING / DONE / ERROR with exit code).
-- A `Logs / evidence:` line that fills in once `Start Two-Client Play Session`
-  prints its `Evidence dir:` marker.
-- A read-only log box below the buttons that streams stdout (and `[err]`-prefixed
-  stderr) from the underlying script.
+- A `Status:` line beneath the buttons (`Idle` / `RUNNING` / `DONE` /
+  `DONE WITH ERRORS` / `ERROR` with the job name and exit code).
+- An `Evidence:` line that fills in once `Start Two-Client Play Session`
+  prints its `Evidence dir:` marker on stdout.
+- A `Script output (live):` heading above a read-only Consolas log box that
+  streams stdout (and `[err]`-prefixed stderr) from the underlying script.
+
+### App icon
+
+The launcher ships with a repo-local multi-size `.ico` at
+`tools/dev-launcher-app/res/ccgs-dev-launcher.ico` (16 / 32 / 48 / 64 / 128 /
+256 px, PNG-encoded entries). It is embedded into the EXE in two redundant
+ways so the OS shell **and** the in-process window both pick it up:
+
+1. `tools/dev-launcher-app/build.rs` uses the `winresource` crate to compile
+   the `.ico` into the EXE as the Win32 `ICON` resource. Windows Explorer,
+   the taskbar, "Open With...", and Alt-Tab read this resource directly.
+2. `src/main.rs` also bundles the same `.ico` bytes via `include_bytes!` and
+   calls `nwg::Window::set_icon` at startup so the title-bar icon and the
+   process's own taskbar group reflect the launcher's identity even before
+   any Explorer cache refresh.
+
+The `.ico` is checked in. To regenerate it (after a palette tweak, etc.),
+run the Pillow-based generator:
+
+```text
+python tools\dev-launcher\generate-launcher-icon.py
+```
+
+The generator has no external network dependencies and only requires
+`Pillow` (already part of the workspace's standard Python toolchain). The
+build script is **not** required to regenerate the icon -- the checked-in
+`.ico` is the source of truth for the build.
+
+If you need to verify the embed manually, the EXE's Win32 resource section
+will contain `ICON` entries totalling roughly the size of the source `.ico`
+plus a small `GROUP_ICON` directory. A quick sanity check:
+
+```text
+python -c "import os; print(os.path.getsize(r'D:\_DEV\cargo-target\ccgs-msvc\debug\ccgs-dev-launcher.exe'))"
+# Expect the EXE to grow by approximately the .ico size relative to a
+# build without the resource (the rest of the binary is unchanged).
+```
 
 ### Button-to-script mapping
 
@@ -240,10 +285,30 @@ the filesystem.
 
 - Both buttons are **disabled** while a job is running. They re-enable when
   the script exits (or errors).
-- The status line shows the job kind plus the exit code (`DONE: ... (exit 0)`
-  or `DONE WITH ERRORS: ... (exit N)`).
+- The status line shows the job kind plus the exit code (`Status: DONE -- ...
+  (exit 0)` or `Status: DONE WITH ERRORS -- ... (exit N)`).
 - The log box has a 2000-line ring buffer so a long run cannot grow it
   unboundedly.
+
+### Styling notes
+
+`native-windows-gui` exposes raw Win32 controls, so the launcher does **not**
+attempt CSS-style theming, custom button gradients, or non-native chrome.
+Hierarchy is conveyed through:
+
+- Per-control font tiers (`Segoe UI Semibold 26 / 20`, `Segoe UI 16 / 15`,
+  `Consolas 14`), applied in `LauncherUi::on_init`.
+- A 6-column grid with deliberate row spans (the two primary buttons span two
+  rows so they read as the main actions, the log box spans ten rows so it
+  dominates vertical real-estate).
+- 16/18 px margins and 4 px inter-cell spacing.
+- A dedicated `Repo root:` label that surfaces the resolution source inline
+  on a single line so the user does not have to scroll the log to see how the
+  EXE found the worktree.
+
+If you need richer styling (animated state transitions, custom paints) the
+launcher should stay on this codepath -- introducing a heavier UI framework
+would defeat its zero-friction "double-click and go" purpose.
 
 ### Build the EXE
 
@@ -364,6 +429,51 @@ long as that sibling sidecar travels with it.
   `read_sidecar_root_handles_utf8_bom_with_comment_header` (end-to-end:
   write a BOM+comment-header+path body via `fs::write` into a temp dir
   and assert the parser returns the bare path, not the BOM line).
+
+### Validation (PROMPT 1179 -- icon + UI polish)
+
+- Added `tools/dev-launcher-app/res/ccgs-dev-launcher.ico` (multi-size:
+  16 / 32 / 48 / 64 / 128 / 256 px, PNG-encoded entries; 9690 bytes total).
+- Added `tools/dev-launcher-app/build.rs` using the `winresource` crate to
+  embed the `.ico` as the Win32 `ICON` resource on Windows targets (no-op
+  on every other target). Manual verification: the EXE built under the
+  documented MSVC Cargo policy contains the source `ICONDIR` header bytes
+  and 12 occurrences of the PNG magic (6 ICO entries x 2 copies from
+  winresource's resource compiler output).
+- Added `tools/dev-launcher/generate-launcher-icon.py` (Pillow-based) so
+  the asset can be regenerated deterministically without an external image
+  editor or downloads.
+- Bundled the same `.ico` bytes in `src/main.rs` via `include_bytes!` and
+  set them as the in-process window icon in `LauncherUi::on_init` (held in
+  `window_icon: RefCell<Option<nwg::Icon>>` so the HICON lives for the
+  window lifetime; Win32 stores only the HICON pointer on the window
+  class).
+- Polished the layout (4 px spacing, 16/18 px margins, 6-col grid with the
+  primary action buttons spanning two rows for visual weight) and added a
+  named `title_label` / `subtitle_label` / `repo_root_label` /
+  `state_label` / `evidence_label` / `log_heading_label` set with their
+  own font tiers (`Segoe UI Semibold 26 / 20`, `Segoe UI 16 / 15`,
+  `Consolas 14`).
+- Sharpened the unresolved-repo-root error UX: the status label is the
+  one-line summary; the `Repo root:` label calls out the missing sidecar
+  by exact filename; the log box opens with three numbered fixes plus the
+  list of every resolution attempt tried.
+- `cargo fmt -p dev-launcher-app -- --check` (clean), `cargo test -p
+  dev-launcher-app` (30 passed / 0 failed / 1 ignored opt-in), and
+  `cargo build -p dev-launcher-app --bin ccgs-dev-launcher` (clean) under
+  the documented MSVC policy.
+- `tools/dev-launcher/build-launcher-exe.ps1` was **not** rerun
+  programmatically in this PROMPT (PowerShell execution was blocked by
+  the local Claude Code sandbox). The script was inspected statically:
+  it still resolves repo root from its own location, applies the same
+  Cargo env block, invokes the unchanged `cargo build` command, and
+  writes the unchanged sidecar layout next to the resulting EXE -- and
+  the bare `cargo build` it wraps was exercised end-to-end with a clean
+  build + 30/30 tests pass + verified-embedded icon.
+- New unit-test coverage: `launcher_icon_bytes_are_a_real_ico_header`,
+  `launcher_icon_bytes_match_committed_asset_on_disk`,
+  `app_title_and_subtitle_are_distinct_nonempty`,
+  `app_subtitle_mentions_both_buttons`.
 
 ## Recommended workflow
 

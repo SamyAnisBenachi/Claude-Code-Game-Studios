@@ -13,11 +13,14 @@
 // policy, evidence dir naming, port selection, process spawning, and safety
 // guards.
 
-#![cfg_attr(all(target_os = "windows", not(debug_assertions)), windows_subsystem = "windows")]
+#![cfg_attr(
+    all(target_os = "windows", not(debug_assertions)),
+    windows_subsystem = "windows"
+)]
 #![cfg(windows)]
 
-extern crate native_windows_gui as nwg;
 extern crate native_windows_derive as nwd;
+extern crate native_windows_gui as nwg;
 
 use nwd::NwgUi;
 use nwg::NativeUi;
@@ -32,6 +35,9 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 
+const APP_TITLE: &str = "CCGS Dev Launcher";
+const APP_SUBTITLE: &str =
+    "Rebuild latest main, then launch one server + two clients for manual play.";
 const REBUILD_BUTTON_LABEL: &str = "Rebuild Latest Main";
 const LAUNCH_BUTTON_LABEL: &str = "Start Two-Client Play Session";
 const REBUILD_SCRIPT: &str = "tools\\dev-launcher\\Update-LatestMain.ps1";
@@ -45,6 +51,12 @@ const SIDECAR_FILENAME: &str = "ccgs-dev-launcher.repo-root.txt";
 const EVIDENCE_HINT: &str = "production/qa/evidence/dev-runs/";
 const MAX_LOG_LINES: usize = 2000;
 const TIMER_INTERVAL_MS: u64 = 150;
+
+// Same .ico bytes that build.rs embeds as the EXE Win32 ICON resource. We
+// also bundle them inline so the launcher can set them as the in-process
+// window icon (title bar + Alt-Tab + taskbar tooltip) -- the EXE resource
+// alone only covers the OS shell.
+const LAUNCHER_ICON_BYTES: &[u8] = include_bytes!("../res/ccgs-dev-launcher.ico");
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum JobKind {
@@ -152,33 +164,52 @@ impl LauncherState {
 
 #[derive(Default, NwgUi)]
 pub struct LauncherUi {
-    #[nwg_control(size: (820, 560), position: (260, 180), title: "CCGS Dev Launcher", flags: "WINDOW|VISIBLE|MAIN_WINDOW")]
+    #[nwg_control(size: (860, 640), position: (240, 140), title: APP_TITLE, flags: "WINDOW|VISIBLE|MAIN_WINDOW|MINIMIZE_BOX")]
     #[nwg_events(OnWindowClose: [LauncherUi::on_close], OnInit: [LauncherUi::on_init])]
     window: nwg::Window,
 
-    #[nwg_layout(parent: window, spacing: 6)]
+    // 18-row x 6-col grid. Row heights are uniform but row_span lets buttons
+    // breathe vs labels. Tighter spacing than the v1 layout (4px vs 6px) so
+    // the log area gets more pixels without the window growing.
+    #[nwg_layout(parent: window, spacing: 4, margin: [16, 18, 16, 18])]
     layout: nwg::GridLayout,
 
-    #[nwg_control(text: "Idle. Choose a button to begin.")]
+    #[nwg_control(text: APP_TITLE)]
     #[nwg_layout_item(layout: layout, col: 0, row: 0, col_span: 6)]
-    state_label: nwg::Label,
+    title_label: nwg::Label,
+
+    #[nwg_control(text: APP_SUBTITLE)]
+    #[nwg_layout_item(layout: layout, col: 0, row: 1, col_span: 6)]
+    subtitle_label: nwg::Label,
+
+    #[nwg_control(text: "Repo root: (resolving...)")]
+    #[nwg_layout_item(layout: layout, col: 0, row: 2, col_span: 6)]
+    repo_root_label: nwg::Label,
 
     #[nwg_control(text: REBUILD_BUTTON_LABEL)]
     #[nwg_events(OnButtonClick: [LauncherUi::on_rebuild])]
-    #[nwg_layout_item(layout: layout, col: 0, row: 1, col_span: 3)]
+    #[nwg_layout_item(layout: layout, col: 0, row: 3, col_span: 3, row_span: 2)]
     rebuild_btn: nwg::Button,
 
     #[nwg_control(text: LAUNCH_BUTTON_LABEL)]
     #[nwg_events(OnButtonClick: [LauncherUi::on_launch])]
-    #[nwg_layout_item(layout: layout, col: 3, row: 1, col_span: 3)]
+    #[nwg_layout_item(layout: layout, col: 3, row: 3, col_span: 3, row_span: 2)]
     launch_btn: nwg::Button,
 
-    #[nwg_control(text: "Logs / evidence: (not yet)")]
-    #[nwg_layout_item(layout: layout, col: 0, row: 2, col_span: 6)]
+    #[nwg_control(text: "Status: Idle. Choose a button to begin.")]
+    #[nwg_layout_item(layout: layout, col: 0, row: 5, col_span: 6)]
+    state_label: nwg::Label,
+
+    #[nwg_control(text: "Evidence: (not yet -- the launch script will print its evidence directory)")]
+    #[nwg_layout_item(layout: layout, col: 0, row: 6, col_span: 6)]
     evidence_label: nwg::Label,
 
+    #[nwg_control(text: "Script output (live):")]
+    #[nwg_layout_item(layout: layout, col: 0, row: 7, col_span: 6)]
+    log_heading_label: nwg::Label,
+
     #[nwg_control(text: "", flags: "VISIBLE|VSCROLL|AUTOVSCROLL")]
-    #[nwg_layout_item(layout: layout, col: 0, row: 3, col_span: 6, row_span: 9)]
+    #[nwg_layout_item(layout: layout, col: 0, row: 8, col_span: 6, row_span: 10)]
     log_box: nwg::TextBox,
 
     #[nwg_control(interval: Duration::from_millis(TIMER_INTERVAL_MS), active: true)]
@@ -188,6 +219,19 @@ pub struct LauncherUi {
     state: Arc<Mutex<Option<LauncherState>>>,
 
     resolution_init: RefCell<Option<RepoRootResolution>>,
+
+    // Win32 keeps an HICON reference on the window class but does not own the
+    // icon object. We hold the nwg::Icon here so it lives as long as the UI
+    // -- otherwise the title-bar icon disappears as soon as on_init returns.
+    window_icon: RefCell<Option<nwg::Icon>>,
+
+    // Fonts built in on_init. Kept owned on the struct so the HFONTs survive
+    // for the window lifetime. nwg::Font drops the HFONT in its Drop impl.
+    title_font: RefCell<Option<nwg::Font>>,
+    subtitle_font: RefCell<Option<nwg::Font>>,
+    button_font: RefCell<Option<nwg::Font>>,
+    body_font: RefCell<Option<nwg::Font>>,
+    mono_font: RefCell<Option<nwg::Font>>,
 }
 
 impl LauncherUi {
@@ -197,63 +241,133 @@ impl LauncherUi {
     }
 
     fn on_init(&self) {
-        let resolution = self
-            .resolution_init
-            .borrow_mut()
-            .take()
-            .unwrap_or_else(|| RepoRootResolution::Failed {
-                attempts: vec!["resolution missing at UI init".to_string()],
-            });
+        // ---- Window icon -------------------------------------------------
+        // Build from the embedded .ico bytes. NWG copies the icon data into
+        // an HICON during build(), but Win32 expects that HICON to remain
+        // valid for the window's lifetime -- so we stash the Icon on the
+        // struct via window_icon. Soft-fail (log + carry on) on any error so
+        // a broken icon never blocks the launcher from being usable.
+        let mut icon = nwg::Icon::default();
+        match nwg::Icon::builder()
+            .source_bin(Some(LAUNCHER_ICON_BYTES))
+            .strict(true)
+            .build(&mut icon)
+        {
+            Ok(()) => {
+                self.window.set_icon(Some(&icon));
+                *self.window_icon.borrow_mut() = Some(icon);
+            }
+            Err(e) => {
+                eprintln!(
+                    "[ccgs-dev-launcher] icon build failed ({} bytes): {:?}",
+                    LAUNCHER_ICON_BYTES.len(),
+                    e
+                );
+            }
+        }
 
-        let (repo_root, error_message, init_lines, state_label_text, buttons_enabled) =
-            match resolution {
-                RepoRootResolution::Resolved { root, source } => {
-                    let mut lines = Vec::new();
-                    lines.push(format!(
-                        "Repo root: {} (via {})",
-                        root.display(),
-                        source.human()
-                    ));
-                    lines.push(format!(
-                        "Scripts: {} | {}",
-                        REBUILD_SCRIPT, LAUNCH_SCRIPT
-                    ));
-                    lines.push(
-                        "Click 'Rebuild Latest Main' first if you just pulled, then \
-                         'Start Two-Client Play Session' to launch one server + two clients."
-                            .to_string(),
-                    );
-                    (
-                        Some(root),
-                        None,
-                        lines,
-                        "Idle. Choose a button to begin.".to_string(),
-                        true,
-                    )
+        // ---- Fonts -------------------------------------------------------
+        // Bumping each tier above the default Segoe UI 16 produces a clearer
+        // header / body / button hierarchy than the v1 single-font layout.
+        // Each font is parked on the struct so the underlying HFONT outlives
+        // the controls that reference it.
+        let title_font = build_font("Segoe UI Semibold", 26, Some(700));
+        let subtitle_font = build_font("Segoe UI", 16, None);
+        let button_font = build_font("Segoe UI Semibold", 20, Some(600));
+        let body_font = build_font("Segoe UI", 15, None);
+        let mono_font = build_font("Consolas", 14, None);
+
+        apply_font(&self.title_label, title_font.as_ref());
+        apply_font(&self.subtitle_label, subtitle_font.as_ref());
+        apply_font(&self.rebuild_btn, button_font.as_ref());
+        apply_font(&self.launch_btn, button_font.as_ref());
+        apply_font(&self.repo_root_label, body_font.as_ref());
+        apply_font(&self.state_label, body_font.as_ref());
+        apply_font(&self.evidence_label, body_font.as_ref());
+        apply_font(&self.log_heading_label, body_font.as_ref());
+        apply_font(&self.log_box, mono_font.as_ref());
+
+        *self.title_font.borrow_mut() = title_font;
+        *self.subtitle_font.borrow_mut() = subtitle_font;
+        *self.button_font.borrow_mut() = button_font;
+        *self.body_font.borrow_mut() = body_font;
+        *self.mono_font.borrow_mut() = mono_font;
+
+        // ---- Repo-root resolution + initial state ------------------------
+        let resolution = self.resolution_init.borrow_mut().take().unwrap_or_else(|| {
+            RepoRootResolution::Failed {
+                attempts: vec!["resolution missing at UI init".to_string()],
+            }
+        });
+
+        let (
+            repo_root,
+            error_message,
+            init_lines,
+            state_label_text,
+            repo_root_label_text,
+            buttons_enabled,
+        ) = match resolution {
+            RepoRootResolution::Resolved { root, source } => {
+                let mut lines = Vec::new();
+                lines.push(format!(
+                    "Repo root: {} (via {})",
+                    root.display(),
+                    source.human()
+                ));
+                lines.push(format!("Scripts: {} | {}", REBUILD_SCRIPT, LAUNCH_SCRIPT));
+                lines.push(
+                    "Click 'Rebuild Latest Main' first if you just pulled, then \
+                     'Start Two-Client Play Session' to launch one server + two clients."
+                        .to_string(),
+                );
+                let repo_root_text =
+                    format!("Repo root: {}  (via {})", root.display(), source.human());
+                (
+                    Some(root),
+                    None,
+                    lines,
+                    "Status: Idle. Choose a button to begin.".to_string(),
+                    repo_root_text,
+                    true,
+                )
+            }
+            RepoRootResolution::Failed { attempts } => {
+                let sidecar_hint = format!(
+                    "ERROR: could not locate the CCGS repo root.\r\n\
+                     - Fix 1: rebuild the launcher with \
+                     tools\\dev-launcher\\build-launcher-exe.ps1 -- this writes \
+                     the {} sidecar next to the EXE.\r\n\
+                     - Fix 2: set CCGS_REPO_ROOT=<absolute path> before launching the EXE.\r\n\
+                     - Fix 3: copy the EXE inside the repo worktree so walk-up resolution works.",
+                    SIDECAR_FILENAME
+                );
+                let status_text =
+                    "Status: ERROR -- repo root unresolved. Buttons disabled. See log for fixes."
+                        .to_string();
+                let mut lines = vec![sidecar_hint.clone(), "Resolution attempts:".to_string()];
+                for a in &attempts {
+                    lines.push(format!("  - {}", a));
                 }
-                RepoRootResolution::Failed { attempts } => {
-                    let err = format!(
-                        "ERROR: could not locate CCGS repo root. \
-                         Set CCGS_REPO_ROOT or rebuild via tools\\dev-launcher\\build-launcher-exe.ps1 \
-                         (writes the {} sidecar beside the EXE).",
-                        SIDECAR_FILENAME
-                    );
-                    let mut lines = vec![err.clone(), "Attempts:".to_string()];
-                    for a in &attempts {
-                        lines.push(format!("  - {}", a));
-                    }
-                    lines.push(
-                        "Buttons are disabled until a valid repo root is resolved.".to_string(),
-                    );
-                    (
-                        None,
-                        Some(err.clone()),
-                        lines,
-                        err,
-                        false,
-                    )
-                }
-            };
+                lines.push(
+                    "Buttons are disabled until a valid repo root is resolved. \
+                     Apply one of the fixes above and relaunch the EXE."
+                        .to_string(),
+                );
+                let repo_root_text = format!(
+                    "Repo root: UNRESOLVED -- sidecar file ({} next to EXE) is missing or invalid.",
+                    SIDECAR_FILENAME
+                );
+                (
+                    None,
+                    Some(sidecar_hint),
+                    lines,
+                    status_text,
+                    repo_root_text,
+                    false,
+                )
+            }
+        };
 
         let mut guard = self.state.lock().expect("state poisoned at init");
         let mut state = LauncherState::new(repo_root, error_message);
@@ -265,6 +379,7 @@ impl LauncherUi {
         drop(guard);
 
         self.state_label.set_text(&state_label_text);
+        self.repo_root_label.set_text(&repo_root_label_text);
         self.set_buttons_enabled(buttons_enabled);
         // Flush initial log paint without waiting for the first timer tick.
         self.refresh_log();
@@ -336,7 +451,7 @@ impl LauncherUi {
 
         self.set_buttons_enabled(false);
         self.state_label
-            .set_text(&format!("RUNNING: {}", job.human()));
+            .set_text(&format!("Status: RUNNING -- {}", job.human()));
         self.refresh_log();
     }
 
@@ -415,21 +530,25 @@ impl LauncherUi {
 
         if let Some(p) = new_evidence {
             self.evidence_label
-                .set_text(&format!("Logs / evidence: {}", p.display()));
+                .set_text(&format!("Evidence: {}", p.display()));
         }
         if let Some((job, code)) = finished {
             self.set_buttons_enabled(true);
             let msg = if code == 0 {
-                format!("DONE: {} (exit 0)", job.human())
+                format!("Status: DONE -- {} (exit 0)", job.human())
             } else {
-                format!("DONE WITH ERRORS: {} (exit {})", job.human(), code)
+                format!(
+                    "Status: DONE WITH ERRORS -- {} (exit {})",
+                    job.human(),
+                    code
+                )
             };
             self.state_label.set_text(&msg);
         }
         if let Some((job, why)) = errored {
             self.set_buttons_enabled(true);
             self.state_label
-                .set_text(&format!("ERROR: {} -- {}", job.human(), why));
+                .set_text(&format!("Status: ERROR -- {} ({})", job.human(), why));
         }
 
         self.refresh_log();
@@ -694,16 +813,73 @@ fn is_repo_root(p: &Path) -> bool {
         && p.join(".git").exists()
 }
 
+// Helper -- build a font with the given family / size / optional weight.
+// Returns None when nwg fails to resolve the family (e.g. Consolas missing on
+// a stripped-down Windows install) so callers can leave the control on the
+// system default rather than crashing the launcher.
+fn build_font(family: &str, size: u32, weight: Option<u32>) -> Option<nwg::Font> {
+    let mut font = nwg::Font::default();
+    let mut builder = nwg::Font::builder().family(family).size(size);
+    if let Some(w) = weight {
+        builder = builder.weight(w);
+    }
+    match builder.build(&mut font) {
+        Ok(()) => Some(font),
+        Err(e) => {
+            eprintln!(
+                "[ccgs-dev-launcher] font build failed (family={} size={} weight={:?}): {:?}",
+                family, size, weight, e
+            );
+            None
+        }
+    }
+}
+
+// Helper -- apply a font to any nwg control that exposes set_font. We pass
+// Option<&Font> through `set_font(Some(&f))` so the helper is a no-op when
+// the font failed to build.
+fn apply_font<C: HasFont>(control: &C, font: Option<&nwg::Font>) {
+    if let Some(f) = font {
+        control.apply_font(f);
+    }
+}
+
+// Trait wrapper -- nwg controls all expose set_font(Option<&Font>) but there
+// is no shared trait in the public API. We adapt locally so apply_font() is
+// generic over the controls the launcher uses.
+trait HasFont {
+    fn apply_font(&self, font: &nwg::Font);
+}
+
+impl HasFont for nwg::Label {
+    fn apply_font(&self, font: &nwg::Font) {
+        self.set_font(Some(font));
+    }
+}
+
+impl HasFont for nwg::Button {
+    fn apply_font(&self, font: &nwg::Font) {
+        self.set_font(Some(font));
+    }
+}
+
+impl HasFont for nwg::TextBox {
+    fn apply_font(&self, font: &nwg::Font) {
+        self.set_font(Some(font));
+    }
+}
+
 fn main() {
     let resolution = locate_repo_root();
 
     nwg::init().expect("Failed to init native-windows-gui");
-    let mut default_font = nwg::Font::default();
-    let _ = nwg::Font::builder()
-        .family("Segoe UI")
-        .size(16)
-        .build(&mut default_font);
-    nwg::Font::set_global_default(Some(default_font));
+
+    // Global fallback: every control gets per-control fonts in on_init, but
+    // any control that might briefly paint between build_ui and on_init (and
+    // any future control that forgets to opt in) gets a sensible default.
+    if let Some(default_font) = build_font("Segoe UI", 16, None) {
+        nwg::Font::set_global_default(Some(default_font));
+    }
 
     let app_template = LauncherUi {
         resolution_init: RefCell::new(Some(resolution)),
@@ -896,7 +1072,8 @@ mod tests {
         };
         let got = read_sidecar_root(&dir).expect("read_sidecar_root returned None");
         assert_eq!(
-            got, expected,
+            got,
+            expected,
             "real sidecar at {} resolved to {} but expected {}",
             dir.display(),
             got.display(),
@@ -936,8 +1113,7 @@ mod tests {
     fn read_sidecar_root_returns_path_when_present() {
         let dir = unique_temp_dir("with-sidecar");
         let sidecar = dir.join(SIDECAR_FILENAME);
-        fs::write(&sidecar, "D:\\_DEV\\Work\\Claude-Code-Game-Studios\r\n")
-            .expect("write sidecar");
+        fs::write(&sidecar, "D:\\_DEV\\Work\\Claude-Code-Game-Studios\r\n").expect("write sidecar");
         assert_eq!(
             read_sidecar_root(&dir),
             Some(PathBuf::from("D:\\_DEV\\Work\\Claude-Code-Game-Studios"))
@@ -1046,13 +1222,8 @@ mod tests {
         let exe_dir = PathBuf::from("D:\\_DEV\\cargo-target\\ccgs-msvc\\debug");
         let cwd = PathBuf::from("D:\\_DEV\\cargo-target\\ccgs-msvc\\debug");
 
-        let res = resolve_repo_root_pure(
-            None,
-            Some(&exe_dir),
-            Some(&cwd),
-            always_false,
-            no_sidecar,
-        );
+        let res =
+            resolve_repo_root_pure(None, Some(&exe_dir), Some(&cwd), always_false, no_sidecar);
 
         match res {
             RepoRootResolution::Failed { attempts } => {
@@ -1148,10 +1319,76 @@ mod tests {
             always_true,
             no_sidecar,
         );
-        assert_resolved(
-            res,
-            &PathBuf::from("D:\\anything"),
-            ResolutionSource::Env,
+        assert_resolved(res, &PathBuf::from("D:\\anything"), ResolutionSource::Env);
+    }
+
+    // ---- PROMPT 1179 -- icon + UI polish regression coverage ----------
+
+    #[test]
+    fn launcher_icon_bytes_are_a_real_ico_header() {
+        // Defensive: detect "icon dropped or replaced with the wrong file"
+        // regressions at test time instead of at first launch. The ICO header
+        // is 6 bytes: u16 reserved (0), u16 type (1=icon), u16 count (>0).
+        assert!(
+            LAUNCHER_ICON_BYTES.len() > 6,
+            "icon bytes too short to be an ICO header ({} bytes)",
+            LAUNCHER_ICON_BYTES.len()
+        );
+        assert_eq!(
+            &LAUNCHER_ICON_BYTES[0..4],
+            &[0x00, 0x00, 0x01, 0x00],
+            "first 4 bytes are not the ICONDIR magic (reserved=0, type=1)"
+        );
+        let count = u16::from_le_bytes([LAUNCHER_ICON_BYTES[4], LAUNCHER_ICON_BYTES[5]]);
+        assert!(
+            count >= 1,
+            "ICO declares zero embedded images -- expected at least one"
+        );
+    }
+
+    #[test]
+    fn launcher_icon_bytes_match_committed_asset_on_disk() {
+        // Wire check: include_bytes! resolves to the .ico under res/, not to
+        // some stale copy. Mirror the include_bytes! path relative to this
+        // source file so the test fails immediately if the asset is moved or
+        // the include_bytes! invocation diverges from the build.rs target.
+        let on_disk =
+            std::fs::read(Path::new(env!("CARGO_MANIFEST_DIR")).join("res/ccgs-dev-launcher.ico"))
+                .expect("read res/ccgs-dev-launcher.ico from disk");
+        assert_eq!(
+            on_disk.len(),
+            LAUNCHER_ICON_BYTES.len(),
+            "embedded icon size differs from on-disk asset"
+        );
+        assert_eq!(
+            on_disk, LAUNCHER_ICON_BYTES,
+            "embedded icon bytes differ from on-disk asset"
+        );
+    }
+
+    #[test]
+    fn app_title_and_subtitle_are_distinct_nonempty() {
+        // The header label and the subtitle are deliberately separate strings
+        // (different fonts, different rows). A copy-paste collapse to the
+        // same text would defeat the visual hierarchy.
+        assert!(!APP_TITLE.trim().is_empty());
+        assert!(!APP_SUBTITLE.trim().is_empty());
+        assert_ne!(APP_TITLE, APP_SUBTITLE);
+        assert!(
+            APP_SUBTITLE.len() > APP_TITLE.len(),
+            "subtitle should be the explanatory copy, not a re-run of the title"
+        );
+    }
+
+    #[test]
+    fn app_subtitle_mentions_both_buttons() {
+        // Soft contract -- the subtitle exists to teach a first-time user the
+        // two-button workflow, so it should reference both actions even if
+        // the wording is later softened.
+        let lower = APP_SUBTITLE.to_lowercase();
+        assert!(
+            lower.contains("rebuild") && lower.contains("client"),
+            "subtitle should describe rebuild + client launch flow: {APP_SUBTITLE:?}"
         );
     }
 }
