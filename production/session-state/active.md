@@ -1,3 +1,158 @@
+# PROMPT 1099 State Banner -- Sprint 17 Activated
+
+Updated 2026-05-18 by PROMPT 1099. Source-of-truth at activation:
+`origin/main@bc3db291fb2e9b840c986b68ea8899664bba94b6` (PROMPT 1097
+paperwork-only main integration tip:
+`integrate(s17): merge PROMPT 1095 net-new Sprint 17 story authoring
+batch into main (PROMPT 1097 paperwork-only)`). Strict fast-forward
+descendant of `origin/main@e6a6e11` (PROMPT 1090 Sprint 17 plan draft
+commit base) and of `origin/main@fec13ff` (PROMPT 1088 Sprint 16
+close-out main integration tip). Worktree: in-place edits on the
+primary checkout. Branch: `activate/sprint-17-1099` from base
+`origin/main@bc3db29`.
+
+PROMPT 1099 is a paperwork-only Sprint 17 activation run.
+`production/sprint-status.yaml` top-level flipped `sprint: 16 -> 17`
+and `status: closed-with-conditions -> active`; `stage: Polish`
+**UNCHANGED**. `production/stage.txt` **NOT modified** (remains
+`Polish`). PROMPT 761 `Polish->Release` gate-check `FAIL` preserved at
+`production/gate-checks/gate-polish-release-2026-05-12.md`; **NO
+retry** in scope for Sprint 17. Sprint 17 is **NOT** a
+`Polish->Release` activation.
+
+Five draft conditional Must Have rows DROPPED at activation because
+their repairs already landed on `origin/main` between PROMPT 1090
+draft commit (`e6a6e11`) and PROMPT 1099 activation (`bc3db29`):
+
+- `S17-UI-MODAL-BLACK-SLAB-001` -- via PROMPT 1080 worker (`cbc11b2`)
+  + PROMPT 1083 integration (`e4bbca3`) + PROMPT 1094 stack merge
+  (`a6ecc47`); AUDIT-1076-01 P0 discharged.
+- `S17-UI-SHOP-AUCTION-SURFACE-PAINT-001` -- via PROMPT 1085 worker
+  (`8a67460`) + PROMPT 1094 stack merge (`6b5eb8e`); AUDIT-1076-04 P1
+  + AUDIT-1076-13 P2 discharged.
+- `S17-UI-PLACEMENT-PERSPECTIVE-001` -- via PROMPT 1086 worker
+  (`d87939c`) + PROMPT 1092 integration (`e6a6e11`); AUDIT-1076-09 P1
+  UX + PROMPT 1079 client residual risk #2 discharged.
+- `S17-UI-LOBBY-CLASS-ART-CONFIRM-001` -- via PROMPT 1081 worker
+  (`7f10b42`) + PROMPT 1087 integration (`eec2a91`) + PROMPT 1089
+  refresh (`d51e246`); AUDIT-1076-06 + AUDIT-1076-07 discharged with
+  placeholder PNGs only (real-art deferred to Sprint 18+ under
+  `PAW-TD-*-a` accept-risk).
+- `S17-SERVER-AUCTION-TIMER-001` -- via PROMPT 1091 worker (`4b5d751`
+  `fix(server/auction): anchor LiveBidding deadline to Time<Real>
+  (PROMPT 1091)`) + PROMPT 1091 integration (`e3c91d5`);
+  AUDIT-1076-12 P2 discharged.
+
+Sprint 17 final 9-row active set (2 Must Have + 4 Should Have + 3
+Nice to Have; ~2.65d / 7.5d capacity):
+
+- **Must Have (~1.0d)**:
+  - `S11-HUD-TIMER-EYEBALL-VISUAL-001` (0.25d, conditional
+    human-operator-blocked Sprint 13 -> 14 -> 15 -> 16 -> 17 carry;
+    closure gated on human-operator screenshot capture; no LLM
+    `/story-done` authorised; story file
+    `production/epics/hud/story-014-hud-timer-eyeball-visual-check.md`
+    unchanged on `origin/main` since Sprint 13).
+  - `S17-UI-CARD-DISPLAY-ART-HELPER-001` (0.75d; story
+    `production/epics/ui-clean-pass/story-017-card-display-art-helper-bundle.md`;
+    SOURCE-1077-01 / 02 / 03 / 04 bundled).
+- **Should Have (~1.25d)**:
+  - `S17-UI-HUD-OPP-MANA-CLEANUP-001` 0.5d (AUDIT-1076-10 / 16 / 17).
+  - `S17-UI-CARD-SLOT-INSET-WIRING-001` 0.25d (SOURCE-1077-06).
+  - `S17-UI-QA-SNAPSHOT-MARKER-SPLIT-001` 0.25d (SOURCE-1077-08 / 09
+    / 16).
+  - `S17-UI-BID-BUTTON-PHASE-RACE-001` 0.25d (SOURCE-1077-10).
+- **Nice to Have (~0.4d)**:
+  - `S17-OPS-VULKAN-VALIDATION-GATING-001` 0.15d (AUDIT-1076-18).
+  - `S17-SERVER-START-OF-TURN-DEBUG-001` 0.1d (AUDIT-1076-15).
+  - `S17-UI-HAND-B0004-CLEANUP-001` 0.15d (AUDIT-1076-14).
+
+All 9 story files exist on `origin/main` at activation HEAD
+`bc3db29` (PROMPT 1097 integrated the 8 net-new Sprint 17 story
+files authored by PROMPT 1095; story-014 HUD timer file unchanged
+since Sprint 13).
+
+**Next launchable prompt**: `PROMPT 1100 -- /qa-plan sprint-17`.
+Authored ONLY after PROMPT 1099 activation lands on `origin/main`;
+MUST reference each Sprint 17 active row test evidence type per
+`.claude/docs/coding-standards.md`. No `/dev-story` authorised
+before the QA plan exists on `origin/main`. Per-row
+`/story-readiness` reruns against Sprint 17 activation HEAD
+`bc3db29` follow PROMPT 1100 for the 8 net-new rows.
+
+Non-claims preserved verbatim at PROMPT 1099 activation:
+
+- No public release readiness, RC readiness, full game completion.
+- No `QA-COND-0005` Standard-tier accessibility advancement
+  (accepted-risk preserved).
+- No `QA-COND-0006` playtest / fun-hypothesis validation
+  advancement (accepted-risk preserved).
+- No full playable-client manual QA.
+- No `S8-QA-001-W1` closure (remains OPEN; Sprint 13 story 017 AC12
+  forbid-auto-closure preserved through Sprint 13 / 14 / 15 / 16 /
+  17).
+- No `PAW-TD-*-a` final-art completion (accept-risk preserved
+  across PAW-002..PAW-006; dropped conditional
+  `S17-UI-LOBBY-CLASS-ART-CONFIRM-001` row landed placeholder PNGs
+  only).
+- No `Polish->Release` gate-check retry (PROMPT 761 `FAIL`
+  preserved).
+- No stage advance from Polish to Release (`production/stage.txt`
+  NOT modified).
+- No underlying drag-runtime bug fix (Sprint 12 story 019
+  `cannot-reproduce` preserved, NOT bug-fixed).
+- No `TQ-S12-C7` closure.
+- No LLM closure of `S11-HUD-TIMER-EYEBALL-VISUAL-001` (closure
+  remains gated on human-operator action).
+- No pixel-level closure of PROMPT 1054 P1 UI snapshot visual
+  retest (`BLOCKED-HUMAN-OPERATOR` preserved).
+- No closure of any PROMPT 1076 / PROMPT 1077 finding for which a
+  concrete repair is not on `origin/main` at activation.
+- No closure of any of the 24 PROMPT 1022 QA snapshot audit
+  findings.
+- No Sprint 16 / 15 / 14 / 13 / 12 / 11 / 10 row reopen.
+- No Sprint 16 close-out reopen or re-author.
+
+Files changed by PROMPT 1099:
+
+- `production/sprint-status.yaml` (top-level sprint / status flip;
+  goal / scope / start / end / generated / updated refreshed;
+  stories block replaced with 9-row active set;
+  `next_sprint_17_draft:` block replaced with
+  `sprint_17_activation:` block at EOF; all prior
+  `sprint_N_closeout:` / `sprint_N_activation:` /
+  `sprint_N_story_done:` blocks preserved verbatim above
+  `sprint_17_activation:`).
+- `production/sprints/sprint-17.md` (PROMPT 1099 ACTIVATED banner
+  prepended above PROMPT 1090 DRAFT banner; plan body NOT
+  rewritten).
+- `production/session-state/active.md` (this PROMPT 1099 banner
+  prepended above PROMPT 1090 banner).
+- `production/session-state/codex-orchestrator-state.md` (PROMPT
+  1099 paragraph prepended above PROMPT 1090 paragraph).
+- `reports/PROMPT-1099-sprint-17-activation.md` (mandatory final
+  report file; `reports/` is gitignored; not staged or committed).
+
+Files explicitly NOT touched by PROMPT 1099: `client/`, `server/`,
+`shared/`, `tests/`, `Cargo.toml`, `Cargo.lock`, `.cargo/`,
+`.github/`, `Trunk.toml`, `production/stage.txt`,
+`production/qa/**`, `production/gate-checks/**`,
+`production/epics/**`, `production/sprints/sprint-16.md` /
+`sprint-15.md` / `sprint-14.md` / `sprint-13.md` / `sprint-12.md` /
+`sprint-11.md` / `sprint-10.md`, `production/sprint-status.yaml`
+`sprint_16_closeout:` / `sprint_16_activation:` /
+`sprint_16_story_done:` and all prior `sprint_N_*` blocks,
+`.octogent/`, `.claude/settings.json`,
+`.claude/scheduled_tasks.lock`. No cargo / trunk / CI command
+invoked. **Cargo policy: N/A** for this paperwork-only activation.
+
+Branch / push: PROMPT 1099 commits the activation paperwork on
+branch `activate/sprint-17-1099` from base
+`origin/main@bc3db291fb2e9b840c986b68ea8899664bba94b6`. Push target:
+worker branch only; never `main`.
+
+---
+
 # PROMPT 1090 State Banner -- Sprint 17 Plan Draft
 
 Updated 2026-05-18 by PROMPT 1090. Source-of-truth at authoring:
