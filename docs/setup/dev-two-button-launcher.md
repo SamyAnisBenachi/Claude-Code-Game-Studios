@@ -4,10 +4,13 @@
 > Two-Client Test Launcher.
 > PROMPT 1162 added the optional native Windows EXE wrapper under
 > `tools/dev-launcher-app/`.
+> PROMPT 1309 added the dedicated play/build checkout (`-PlayRepoRoot`,
+> `CCGS_PLAY_REPO_ROOT`) so the rebuild flow no longer depends on the
+> orchestrator/launcher checkout being on `main`.
 > Path: `tools/dev-launcher/` (scripts), `update-latest-main.bat` +
 > `start-two-clients.bat` (one-click wrappers at repo root),
 > `tools/dev-launcher-app/` (EXE wrapper).
-> Authored: 2026-05-18.
+> Authored: 2026-05-18; last updated 2026-05-19.
 
 Three equivalent entry points for the manual two-client friend-game
 test loop:
@@ -38,31 +41,85 @@ The EXE wrapper (`ccgs-dev-launcher.exe`) calls those same scripts with no
 extra flags and streams their stdout/stderr into a scrolling log window.
 See [Button 3 -- the EXE wrapper](#button-3----ccgs-dev-launcherexe) below.
 
+## Dedicated play/build checkout (PROMPT 1309)
+
+Both buttons now operate against a **dedicated play/build checkout** that is
+structurally separate from the orchestrator/launcher checkout. The
+orchestrator checkout (the one that owns the launcher scripts) is allowed to
+be dirty or on a worker/integration branch at any time -- the dedicated
+checkout is the only one the rebuild flow is ever permitted to switch.
+
+### Resolution priority
+
+The launcher EXE and the PowerShell scripts pick the dedicated path in this
+order (first non-empty wins):
+
+1. `-PlayRepoRoot <absolute-path>` script argument (the EXE always passes this).
+2. `$env:CCGS_PLAY_REPO_ROOT` (preferred environment override).
+3. `$env:CCGS_CANONICAL_MAIN_ROOT` (alias retained for back-compat).
+4. `D:\_DEV\ccgs-play-main` -- documented default. **Distinct** from
+   `D:\_DEV\Work\Claude-Code-Game-Studios` and from worker worktrees under
+   `D:\_DEV\claude-code-game-studios-worktrees\`.
+
+### Auto-creation
+
+If the resolved play/build path does not exist on disk, `Update-LatestMain.ps1`
+materialises it as a linked git worktree off the launcher repo root:
+
+```text
+git -C <launcher-root> fetch origin
+git -C <launcher-root> worktree add <play-root> main
+# (or, if local `main` is missing, the script auto-falls-back to:)
+git -C <launcher-root> worktree add -B main <play-root> origin/main
+```
+
+This is a non-destructive operation: it never modifies the launcher checkout's
+branch, and it never deletes anything. The new worktree starts on `main`. The
+rebuild then continues inside the new worktree.
+
+### Branch-safety policy
+
+Inside the dedicated play/build checkout only:
+
+| Tree state | Outcome |
+|---|---|
+| On `main`, clean | rebuild proceeds normally |
+| On a non-main branch, **clean** | `git switch main` then rebuild |
+| On a non-main branch, **dirty** | refuse (exit 2) unless `-Force` |
+| Dirty on any branch | refuse (exit 2) unless `-Force` |
+| `main` ahead of `origin/main` | refuse (exit 2) unless `-Force` (destructive reset) |
+
+`Update-LatestMain.ps1` **never** switches the launcher/orchestrator checkout,
+regardless of `-Force`.
+
 ## Button 1 -- Update + Rebuild (`update-latest-main.bat`)
 
 ### What it does (in order)
 
-1. Resolves the repo root from the script location.
-2. Aborts unless the working tree is clean and the current branch is `main`
-   (override with `-Force`).
-3. `git fetch origin`.
-4. Fast-forwards local `main` to `origin/main`. Aborts on non-FF unless
-   `-Force` is passed (which then performs a destructive
+1. Resolves two roots: the **launcher root** (where the script lives) and the
+   **play/build root** (the dedicated checkout) per the priority above.
+2. If the play/build path is missing, creates it as a linked git worktree off
+   the launcher root, starting on `main`.
+3. Inside the play/build root: if on a non-main branch, attempts
+   `git switch main` (clean tree only); aborts on dirty tree unless `-Force`.
+4. `git fetch origin` (inside the play/build root).
+5. Fast-forwards local `main` to `origin/main` inside the play/build root.
+   Aborts on non-FF unless `-Force` (which then performs a destructive
    `git reset --hard origin/main`).
-5. Applies the documented Windows / MSVC Cargo resource policy:
+6. Applies the documented Windows / MSVC Cargo resource policy:
    - `CARGO_TARGET_DIR='D:\_DEV\cargo-target\ccgs-msvc'`
    - `CARGO_PROFILE_DEV_DEBUG='0'`
    - `CARGO_PROFILE_TEST_DEBUG='0'`
    - `CARGO_INCREMENTAL='0'`
    - `RUSTFLAGS='-C debuginfo=0 -C link-arg=/DEBUG:NONE'`
-6. Checks D: free space. Under 40 GB plus `-AllowCacheClean` triggers
+7. Checks D: free space. Under 40 GB plus `-AllowCacheClean` triggers
    cleanup of stale subdirectories **only under** the resolved
    `CARGO_TARGET_DIR` (a hard-coded match against
    `D:\_DEV\cargo-target\ccgs-msvc` -- never source, reports, production,
    `.git`, or evidence).
-7. `cargo build -p server`.
-8. `cargo build -p client --bin client`.
-9. Prints the resolved binary paths and a "Next: ..." hint.
+8. `cargo build -p server`.
+9. `cargo build -p client --bin client`.
+10. Prints the resolved binary paths and a "Next: ..." hint.
 
 ### What it does NOT do
 
@@ -76,10 +133,11 @@ See [Button 3 -- the EXE wrapper](#button-3----ccgs-dev-launcherexe) below.
 
 | Flag | Effect |
 |------|--------|
-| `-Force` | Allow dirty tree (no stash) and non-FF main reset. DESTRUCTIVE. |
+| `-Force` | Allow dirty tree (no stash) and non-FF main reset. DESTRUCTIVE. Limited to the play/build root; the launcher/orchestrator checkout is never switched. |
 | `-Release` | Build in release profile (default is debug). |
 | `-AllowCacheClean` | Under-40-GB free space cleans stale Cargo target subdirs. |
 | `-DryRun` | Print every step; run no git, cargo, or rm command. |
+| `-PlayRepoRoot P` | Absolute path of the dedicated play/build checkout. Overrides the env / default. |
 | `-Help` | Print usage and exit. |
 
 ### Logs / artifacts created
@@ -128,6 +186,7 @@ See [Button 3 -- the EXE wrapper](#button-3----ccgs-dev-launcherexe) below.
 | `-Release` | Use release-profile binaries. |
 | `-ServerWaitSeconds N` | Bind-wait budget (default 8). |
 | `-DryRun` | Print every step; start no process. |
+| `-PlayRepoRoot P` | Absolute path of the dedicated play/build checkout under which the build runs and the evidence dir is created. Falls back to `$env:CCGS_PLAY_REPO_ROOT`, then `$env:CCGS_CANONICAL_MAIN_ROOT`, then `D:\_DEV\ccgs-play-main`, then the launcher root if none exists. |
 | `-Help` | Print usage and exit. |
 
 ### Logs / artifacts created (per run)
@@ -170,18 +229,44 @@ the same two PowerShell scripts. Built from the in-workspace Rust crate
 
 | EXE button | What it spawns |
 |------------|----------------|
-| `Rebuild Latest Main` | `powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools\dev-launcher\Update-LatestMain.ps1` |
-| `Start Two-Client Play Session` | `powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools\dev-launcher\Start-TwoClients.ps1` |
+| `Rebuild Latest Main` | `powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools\dev-launcher\Update-LatestMain.ps1 -PlayRepoRoot <play-root>` |
+| `Start Two-Client Play Session` | `powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools\dev-launcher\Start-TwoClients.ps1 -PlayRepoRoot <play-root>` |
 
-Both invocations use the **resolved repo root** as the working directory.
+Both invocations use the **launcher repo root** as the working directory and
+pass `-PlayRepoRoot` so the script operates inside the dedicated checkout
+described above. The launcher root is where the scripts live; the play/build
+root is where rebuild + start actually run.
 
 ### Repo-root resolution order
+
+The EXE resolves **two** independent roots at startup:
+
+- **Launcher repo root** -- where `tools\dev-launcher\Update-LatestMain.ps1`
+  and `tools\dev-launcher\Start-TwoClients.ps1` live. This is what gets
+  passed as the spawned PowerShell's working directory.
+- **Play/build root** -- the dedicated checkout the rebuild + start actually
+  operate inside. This is what gets passed via `-PlayRepoRoot <path>` to the
+  spawned PowerShell.
+
+Both are surfaced in the Diagnostics panel along with each one's branch and
+the resolution source. Examples:
+
+```text
+Launcher repo root: D:\_DEV\Work\Claude-Code-Game-Studios
+Resolved via: canonical-checkout fallback
+Launcher branch: work/s18-server-dead-state-hygiene-...
+Play/build root: D:\_DEV\ccgs-play-main
+Play/build source: documented dedicated default
+Play/build status: missing -- will be created as a worktree on first rebuild
+```
+
+#### Launcher root resolution
 
 The EXE typically lives at
 `D:\_DEV\cargo-target\ccgs-msvc\debug\ccgs-dev-launcher.exe` -- **outside** the
 repo tree. Walking up from there never reaches the worktree. The launcher
-therefore resolves the repo root in the following order at startup, stopping at
-the first source whose path passes the validation check
+therefore resolves the launcher repo root in the following order at startup,
+stopping at the first source whose path passes the validation check
 (`Cargo.toml`, `tools/dev-launcher/`, and `.git` all present):
 
 1. `CCGS_REPO_ROOT` environment variable (any branch).
@@ -199,12 +284,12 @@ the first source whose path passes the validation check
    inside the worktree).
 5. The current working directory, walked upward.
 
-If none of these resolves to a valid repo root the EXE **does not** silently
-adopt the EXE directory as the repo root. Instead it opens with both buttons
-disabled, the status line shows `ERROR: could not locate a canonical CCGS repo
-root...`, and the log box lists every resolution attempt that was tried,
-including which sidecar branch was rejected and which canonical candidate(s)
-were tried. To recover:
+If none of these resolves to a valid launcher repo root the EXE **does not**
+silently adopt the EXE directory as the repo root. Instead it opens with both
+buttons disabled, the status line shows `ERROR: could not locate a canonical
+CCGS repo root...`, and the log box lists every resolution attempt that was
+tried, including which sidecar branch was rejected and which canonical
+candidate(s) were tried. To recover:
 
 - Rebuild via `powershell -ExecutionPolicy Bypass -File tools\dev-launcher\build-launcher-exe.ps1`
   from your canonical checkout so the sidecar is regenerated next to the EXE
@@ -213,6 +298,32 @@ were tried. To recover:
 - Set `CCGS_CANONICAL_REPO_ROOT` if your canonical checkout lives outside the
   documented default location, or
 - Copy the EXE inside the worktree so walk-up resolves.
+
+#### Play/build root resolution
+
+Independent of how the launcher root was found, the **play/build root** is
+chosen in this order:
+
+1. `$env:CCGS_PLAY_REPO_ROOT` (preferred environment override).
+2. `$env:CCGS_CANONICAL_MAIN_ROOT` (alias retained for back-compat).
+3. `D:\_DEV\ccgs-play-main` -- documented dedicated default.
+
+The play/build path is **not** validated for existence at launcher startup --
+the rebuild script handles the "doesn't exist yet" case by creating the path
+as a linked git worktree off the launcher root. The Diagnostics panel reports
+the current status (`exists, on main` / `exists, on branch 'X'` /
+`missing -- will be created` / `path exists but is not a CCGS workspace`)
+along with the source so testers can predict the rebuild outcome.
+
+Notes:
+
+- The play/build root **must** be distinct from the launcher root and from any
+  worker worktree under `D:\_DEV\claude-code-game-studios-worktrees\`. If you
+  set the env override to the launcher root, the EXE prints a warning that the
+  dedicated-checkout safety net is disabled.
+- `CCGS_REPO_ROOT` and `CCGS_CANONICAL_REPO_ROOT` continue to govern the
+  **launcher** repo root only. `CCGS_PLAY_REPO_ROOT` (or its alias
+  `CCGS_CANONICAL_MAIN_ROOT`) governs the play/build root.
 
 ### Why the sidecar must point at a canonical (on-main) checkout
 
@@ -436,6 +547,51 @@ long as that sibling sidecar travels with it.
   - `read_head_branch_returns_worker_branch_name`
   - `read_head_branch_returns_none_for_detached_head`
   - `read_head_branch_follows_worktree_gitdir_pointer`
+
+### Validation (PROMPT 1309 -- dedicated play/build checkout)
+
+- User-reported regression after PROMPT 1304: the canonical-checkout
+  fallback resolved the launcher repo root to
+  `D:\_DEV\Work\Claude-Code-Game-Studios`, but that orchestrator checkout was
+  on branch `work/s18-server-dead-state-hygiene-...`. `Update-LatestMain.ps1`
+  refused with `current branch is 'work/...', not 'main'`.
+- Root cause: the two-button launcher conflated the **launcher** repo root
+  (where the scripts live) with the **play/build** root (where the rebuild
+  switches and merges). The orchestrator checkout can legitimately be dirty
+  or on a worker branch at any time; coupling the two meant the rebuild was
+  blocked whenever the orchestrator was busy.
+- Fix: introduced a structurally separate **play/build root** with its own
+  resolution priority (`-PlayRepoRoot` > `CCGS_PLAY_REPO_ROOT` >
+  `CCGS_CANONICAL_MAIN_ROOT` > `D:\_DEV\ccgs-play-main`). `Update-LatestMain.ps1`
+  materialises this path as a linked git worktree off the launcher root the
+  first time it runs, and only ever switches branches inside the dedicated
+  checkout. `Start-TwoClients.ps1` builds and writes evidence under the same
+  dedicated path. The launcher EXE always passes `-PlayRepoRoot <path>` so
+  the script gets a single, well-defined target.
+- Diagnostics panel now shows two blocks: launcher repo root + branch +
+  resolution source, and play/build root + branch + status + source. Status
+  values are `exists, on main` / `exists, on branch '<X>'` /
+  `exists, detached HEAD or unknown` / `missing -- will be created as a
+  worktree on first rebuild` / `path exists but is not a CCGS workspace`.
+- New unit tests in `tools/dev-launcher-app/src/main.rs`:
+  - `play_root_default_constant_is_separate_from_canonical_root`
+  - `play_root_default_is_not_inside_worktree_directory`
+  - `resolve_play_root_prefers_env_over_legacy_and_default`
+  - `resolve_play_root_uses_legacy_env_when_primary_unset`
+  - `resolve_play_root_uses_documented_default_when_no_env`
+  - `resolve_play_root_treats_empty_or_whitespace_env_as_unset`
+  - `resolve_play_root_status_missing_when_path_absent`
+  - `resolve_play_root_status_on_main_when_validated_and_main`
+  - `resolve_play_root_status_other_branch_when_worker_checkout`
+  - `resolve_play_root_status_detached_when_branch_unknown`
+  - `resolve_play_root_status_invalid_when_path_exists_but_not_repo`
+  - `play_root_source_human_strings_are_distinct`
+  - `play_root_env_constant_names_match_documented_pair`
+  - `diagnostics_text_reports_play_root_status_distinctly_from_launcher`
+  - `diagnostics_text_shows_play_branch_when_play_root_on_other_branch`
+  - `play_root_status_human_labels_are_actionable`
+- Existing PROMPT 1170 / 1173 / 1290 sidecar + BOM + canonical-fallback
+  tests remain green; the dedicated-checkout change is additive.
 
 ### Validation (PROMPT 1173 -- BOM repair on integration refresh)
 

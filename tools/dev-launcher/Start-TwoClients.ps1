@@ -37,7 +37,8 @@ param(
     [switch]$Release,
     [int]$ServerWaitSeconds = 8,
     [switch]$DryRun,
-    [switch]$Help
+    [switch]$Help,
+    [string]$PlayRepoRoot = ''
 )
 
 Set-StrictMode -Version Latest
@@ -56,6 +57,12 @@ PARAMETERS
   -Release               Use the release-profile binaries.
   -ServerWaitSeconds N   How long to wait for the server bind line (default 8).
   -DryRun                Print every step but do not start any process.
+  -PlayRepoRoot P        Absolute path to the dedicated play/build checkout
+                         (the directory under which the build runs and the
+                         evidence dir is created). Falls back to
+                         `$env:CCGS_PLAY_REPO_ROOT, `$env:CCGS_CANONICAL_MAIN_ROOT,
+                         then 'D:\_DEV\ccgs-play-main', then the script's own
+                         parent-of-parent if the dedicated path does not exist.
   -Help                  Show this help and exit.
 
 OUTPUT (per run)
@@ -74,14 +81,43 @@ EXIT CODES
 
 if ($Help) { Show-Help; exit 0 }
 
-# ---- 1. Resolve repo root ------------------------------------------------
-$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$ToolsDir  = Split-Path -Parent $ScriptDir
-$RepoRoot  = Split-Path -Parent $ToolsDir
+# ---- 1. Resolve launcher root + play root --------------------------------
+$ScriptDir    = Split-Path -Parent $MyInvocation.MyCommand.Path
+$ToolsDir     = Split-Path -Parent $ScriptDir
+$LauncherRoot = Split-Path -Parent $ToolsDir
+
+$DefaultPlayRoot = 'D:\_DEV\ccgs-play-main'
+$PlayRoot        = ''
+$PlayRootSource  = ''
+if ($PSBoundParameters.ContainsKey('PlayRepoRoot') -and $PlayRepoRoot.Trim().Length -gt 0) {
+    $PlayRoot       = $PlayRepoRoot.Trim()
+    $PlayRootSource = '-PlayRepoRoot argument'
+} elseif ($env:CCGS_PLAY_REPO_ROOT) {
+    $PlayRoot       = $env:CCGS_PLAY_REPO_ROOT.Trim()
+    $PlayRootSource = '$env:CCGS_PLAY_REPO_ROOT'
+} elseif ($env:CCGS_CANONICAL_MAIN_ROOT) {
+    $PlayRoot       = $env:CCGS_CANONICAL_MAIN_ROOT.Trim()
+    $PlayRootSource = '$env:CCGS_CANONICAL_MAIN_ROOT (alias)'
+} elseif (Test-Path $DefaultPlayRoot) {
+    $PlayRoot       = $DefaultPlayRoot
+    $PlayRootSource = 'documented dedicated default'
+} else {
+    # Last-resort fallback to the launcher root so a tester who never ran
+    # Update-LatestMain.ps1 still gets a usable Start session. This is the
+    # only path that can step on the orchestrator checkout, so we surface
+    # it loudly.
+    $PlayRoot       = $LauncherRoot
+    $PlayRootSource = 'launcher root (no dedicated checkout configured)'
+    Write-Warning "No dedicated play/build checkout configured; falling back to the launcher root. Run Update-LatestMain.ps1 (or set CCGS_PLAY_REPO_ROOT) to create the dedicated checkout."
+}
+
+$RepoRoot = $PlayRoot
 Set-Location $RepoRoot
 
-Write-Section "Repo root"
-Write-Host "Repo root: $RepoRoot"
+Write-Section "Roots"
+Write-Host "Launcher repo root: $LauncherRoot"
+Write-Host "Play/build root:    $RepoRoot"
+Write-Host "Play/build source:  $PlayRootSource"
 if (-not (Test-Path (Join-Path $RepoRoot 'Cargo.toml'))) {
     Write-Host -ForegroundColor Red "No Cargo.toml at $RepoRoot -- this does not look like the CCGS workspace."
     exit 1

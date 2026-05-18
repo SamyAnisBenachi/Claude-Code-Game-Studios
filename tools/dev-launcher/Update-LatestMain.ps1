@@ -1,35 +1,53 @@
 # Update-LatestMain.ps1 -- Button 1 of the dev two-button launcher.
 #
+# PROMPT 1309: this script now operates against a **dedicated play/build
+# checkout** that is structurally separate from the orchestrator/launcher
+# checkout. The launcher EXE passes the dedicated path via -PlayRepoRoot;
+# command-line callers can pass the same flag or rely on
+# $env:CCGS_PLAY_REPO_ROOT / the documented default `D:\_DEV\ccgs-play-main`.
+# The orchestrator/launcher repo root (the one that owns the scripts) is
+# NEVER switched or reset by this script.
+#
 # What it does (in order):
-#   1. Resolves the repo root (parent-of-parent of this script).
-#   2. Aborts unless the current branch is `main` and the working tree is
-#      clean (override with -Force).
-#   3. `git fetch origin` and `git merge --ff-only origin/main`. Aborts if the
-#      merge is not a fast-forward (override with -Force forces a hard reset,
-#      DESTRUCTIVE).
-#   4. Applies the documented Windows/MSVC Cargo resource policy:
+#   1. Resolves two roots:
+#        $LauncherRoot -- where this script lives (parent-of-parent dir).
+#        $PlayRoot     -- the dedicated play/build checkout, from
+#                         -PlayRepoRoot, $env:CCGS_PLAY_REPO_ROOT,
+#                         $env:CCGS_CANONICAL_MAIN_ROOT, or the documented
+#                         default. May initially be missing.
+#   2. If $PlayRoot is missing and $LauncherRoot is a git repo, materialises
+#      $PlayRoot as a linked git worktree off $LauncherRoot:
+#        git -C $LauncherRoot worktree add $PlayRoot main
+#      (creating local `main` from origin/main if necessary).
+#   3. Inside $PlayRoot, aborts unless the working tree is clean (override
+#      with -Force). If the dedicated checkout is on a non-main branch,
+#      attempts `git switch main` only if clean; refuses otherwise.
+#   4. `git fetch origin` and `git merge --ff-only origin/main`. Aborts on
+#      non-FF unless -Force (which then performs git reset --hard, DESTRUCTIVE).
+#   5. Applies the documented Windows/MSVC Cargo resource policy:
 #        CARGO_TARGET_DIR='D:\_DEV\cargo-target\ccgs-msvc'
 #        CARGO_PROFILE_DEV_DEBUG='0'
 #        CARGO_PROFILE_TEST_DEBUG='0'
 #        CARGO_INCREMENTAL='0'
 #        RUSTFLAGS='-C debuginfo=0 -C link-arg=/DEBUG:NONE'
-#   5. Checks D: free space. If under 40 GB AND -AllowCacheClean is passed,
+#   6. Checks D: free space. If under 40 GB AND -AllowCacheClean is passed,
 #      cleans verified-stale subdirectories under the resolved Cargo target
 #      directory (only that exact tree -- never repo source, reports,
-#      production, .git, or evidence). Always prints the resolved target dir
-#      and confirms it is safe before deleting anything.
-#   6. Builds the `server` and `client` binaries (debug by default, release
-#      with -Release).
+#      production, .git, or evidence).
+#   7. Builds the `server` and `client` binaries (debug by default, release
+#      with -Release) inside $PlayRoot.
 #
 # What it does NOT do:
 #   - It does not start the server or any client.
 #   - It does not push, force-push, or modify any remote branch.
 #   - It does not edit production/, qa/, story/sprint trackers, or evidence.
+#   - It does not switch branches in the launcher/orchestrator checkout.
 #   - It does not run tests.
 #
 # Usage from PowerShell:
 #   powershell -ExecutionPolicy Bypass -File tools\dev-launcher\Update-LatestMain.ps1
 #   powershell -ExecutionPolicy Bypass -File tools\dev-launcher\Update-LatestMain.ps1 -Release
+#   powershell -ExecutionPolicy Bypass -File tools\dev-launcher\Update-LatestMain.ps1 -PlayRepoRoot D:\_DEV\ccgs-play-main
 #   powershell -ExecutionPolicy Bypass -File tools\dev-launcher\Update-LatestMain.ps1 -Help
 #
 # One-click: double-click `update-latest-main.bat` at the repo root.
@@ -40,7 +58,8 @@ param(
     [switch]$Release,
     [switch]$AllowCacheClean,
     [switch]$DryRun,
-    [switch]$Help
+    [switch]$Help,
+    [string]$PlayRepoRoot = ''
 )
 
 Set-StrictMode -Version Latest
@@ -54,21 +73,31 @@ function Write-Section {
 
 function Show-Help {
     @"
-Update-LatestMain.ps1 -- fetch origin, fast-forward main, rebuild server + client.
+Update-LatestMain.ps1 -- fetch origin, fast-forward main, rebuild server + client
+                        inside a dedicated play/build checkout.
 
 PARAMETERS
   -Force             Allow operation on a dirty tree (stash discarded) and allow
                      non-FF main to be hard-reset to origin/main. DESTRUCTIVE.
+                     Never affects the launcher/orchestrator checkout.
   -Release           Build in release mode (default is debug for faster turn).
   -AllowCacheClean   If D: free space is under 40 GB, allow cleanup of stale
                      subdirectories under the resolved CARGO_TARGET_DIR.
   -DryRun            Print every step but do not run git, cargo, or rm.
+  -PlayRepoRoot P    Absolute path to the dedicated play/build checkout. If
+                     omitted, falls back to `$env:CCGS_PLAY_REPO_ROOT, then
+                     `$env:CCGS_CANONICAL_MAIN_ROOT, then the documented
+                     default 'D:\_DEV\ccgs-play-main'. If the resolved path
+                     does not exist, this script will create it as a git
+                     worktree off the launcher repo root.
   -Help              Show this help and exit.
 
 SAFETY
-  Dirty tree -> abort unless -Force.
-  Not on main -> abort unless -Force.
-  Non-FF main -> abort unless -Force.
+  The launcher/orchestrator checkout is NEVER switched or reset by this script.
+  Inside the dedicated play root only:
+    Dirty tree   -> abort unless -Force.
+    Not on main  -> attempt 'git switch main' only if clean; abort unless -Force.
+    Non-FF main  -> abort unless -Force.
   Low disk and not -AllowCacheClean -> warn, continue without cleanup.
   Cleanup is restricted to the resolved CARGO_TARGET_DIR only.
 
@@ -79,58 +108,142 @@ EXIT CODES
 
 if ($Help) { Show-Help; exit 0 }
 
-# ---- 1. Resolve repo root ------------------------------------------------
-$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$ToolsDir  = Split-Path -Parent $ScriptDir
-$RepoRoot  = Split-Path -Parent $ToolsDir
+# ---- 1. Resolve launcher root + play root -------------------------------
+$ScriptDir    = Split-Path -Parent $MyInvocation.MyCommand.Path
+$ToolsDir     = Split-Path -Parent $ScriptDir
+$LauncherRoot = Split-Path -Parent $ToolsDir
+
+$DefaultPlayRoot = 'D:\_DEV\ccgs-play-main'
+$PlayRoot       = ''
+$PlayRootSource = ''
+if ($PSBoundParameters.ContainsKey('PlayRepoRoot') -and $PlayRepoRoot.Trim().Length -gt 0) {
+    $PlayRoot       = $PlayRepoRoot.Trim()
+    $PlayRootSource = '-PlayRepoRoot argument'
+} elseif ($env:CCGS_PLAY_REPO_ROOT) {
+    $PlayRoot       = $env:CCGS_PLAY_REPO_ROOT.Trim()
+    $PlayRootSource = '$env:CCGS_PLAY_REPO_ROOT'
+} elseif ($env:CCGS_CANONICAL_MAIN_ROOT) {
+    $PlayRoot       = $env:CCGS_CANONICAL_MAIN_ROOT.Trim()
+    $PlayRootSource = '$env:CCGS_CANONICAL_MAIN_ROOT (alias)'
+} else {
+    $PlayRoot       = $DefaultPlayRoot
+    $PlayRootSource = 'documented dedicated default'
+}
+
+Write-Section "Roots"
+Write-Host "Launcher repo root: $LauncherRoot"
+Write-Host "Play/build root:    $PlayRoot"
+Write-Host "Play/build source:  $PlayRootSource"
+
+if (-not (Test-Path (Join-Path $LauncherRoot '.git'))) {
+    Write-Host -ForegroundColor Red "Launcher root has no .git directory at $LauncherRoot."
+    exit 1
+}
+if (-not (Test-Path (Join-Path $LauncherRoot 'Cargo.toml'))) {
+    Write-Host -ForegroundColor Red "No Cargo.toml at $LauncherRoot -- this does not look like the CCGS workspace."
+    exit 1
+}
+
+$LauncherRootNorm = [System.IO.Path]::GetFullPath($LauncherRoot)
+$PlayRootNorm     = [System.IO.Path]::GetFullPath($PlayRoot)
+if ($LauncherRootNorm -ieq $PlayRootNorm) {
+    Write-Warning "Play/build root equals the launcher root ($LauncherRootNorm). Operating on a single checkout -- the dedicated-checkout safety net is disabled."
+}
+
+# ---- 1b. Materialise play root as a worktree if missing ------------------
+if (-not (Test-Path $PlayRoot)) {
+    Write-Section "Create play/build worktree"
+    Write-Host "Path $PlayRoot does not exist -- creating as a linked git worktree."
+    if ($DryRun) {
+        Write-Host "[dry-run] git -C $LauncherRoot fetch origin"
+        Write-Host "[dry-run] git -C $LauncherRoot worktree add $PlayRoot main"
+    } else {
+        # Make sure origin/main is up to date so the new worktree starts on a
+        # current ref. This fetch is read-only and does not modify any branch.
+        git -C $LauncherRoot fetch origin
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host -ForegroundColor Red "git fetch failed in launcher root; cannot create worktree."
+            exit 1
+        }
+        # Prefer `worktree add ... main` so the new checkout carries the local
+        # `main` ref. If `main` is already checked out in another worktree,
+        # fall back to creating a fresh branch tracking origin/main.
+        git -C $LauncherRoot show-ref --verify --quiet refs/heads/main
+        $localMainExists = ($LASTEXITCODE -eq 0)
+        if ($localMainExists) {
+            Write-Host "Attempting: git -C $LauncherRoot worktree add $PlayRoot main"
+            git -C $LauncherRoot worktree add $PlayRoot main
+        } else {
+            Write-Host "Local 'main' not found; creating from origin/main."
+            git -C $LauncherRoot worktree add -B main $PlayRoot origin/main
+        }
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host -ForegroundColor Red "git worktree add failed. Resolve the conflict (likely 'main' is checked out elsewhere) and retry."
+            exit 1
+        }
+        Write-Host "Worktree created at $PlayRoot."
+    }
+}
+
+if (-not $DryRun) {
+    if (-not (Test-Path (Join-Path $PlayRoot '.git'))) {
+        Write-Host -ForegroundColor Red "Play/build root has no .git after creation: $PlayRoot."
+        exit 1
+    }
+    if (-not (Test-Path (Join-Path $PlayRoot 'Cargo.toml'))) {
+        Write-Host -ForegroundColor Red "Play/build root has no Cargo.toml: $PlayRoot (not a CCGS workspace)."
+        exit 1
+    }
+}
+
+$RepoRoot = $PlayRoot
+if ($DryRun -and -not (Test-Path $RepoRoot)) {
+    Write-Host "[dry-run] would Set-Location $RepoRoot (skipped: path not materialised)"
+    Write-Host ""
+    Write-Host "[dry-run] Stopping here -- subsequent git/cargo steps require an existing play/build root."
+    exit 0
+}
 Set-Location $RepoRoot
 
-Write-Section "Repo root"
-Write-Host "Repo root: $RepoRoot"
-if (-not (Test-Path (Join-Path $RepoRoot '.git'))) {
-    Write-Host -ForegroundColor Red "Not a git repo (no .git at $RepoRoot)."
-    exit 1
-}
-if (-not (Test-Path (Join-Path $RepoRoot 'Cargo.toml'))) {
-    Write-Host -ForegroundColor Red "No Cargo.toml at $RepoRoot -- this does not look like the CCGS workspace."
-    exit 1
-}
-
-# ---- 2. Branch + dirty checks --------------------------------------------
-Write-Section "Git pre-checks"
+# ---- 2. Branch + dirty checks (play root only) --------------------------
+Write-Section "Git pre-checks (play/build root)"
 $Branch = (git rev-parse --abbrev-ref HEAD).Trim()
-Write-Host "Current branch: $Branch"
-if ($Branch -ne 'main' -and -not $Force) {
-    Write-Host -ForegroundColor Red "Refusing to fast-forward: current branch is '$Branch', not 'main'. Re-run with -Force only if you really want to switch to main first."
-    exit 2
-}
+Write-Host "Current branch (play/build root): $Branch"
 
 $Dirty = (git status --porcelain) -join "`n"
+if ($Branch -ne 'main') {
+    if ($Dirty -and -not $Force) {
+        Write-Host -ForegroundColor Red "Play/build root is on '$Branch' AND its working tree is dirty -- refusing to switch."
+        Write-Host -ForegroundColor Red "Commit/stash inside $PlayRoot, or re-run with -Force (DESTRUCTIVE)."
+        Write-Host $Dirty
+        exit 2
+    }
+    Write-Host "Play/build root is on '$Branch' (clean) -- switching to main."
+    if ($DryRun) {
+        Write-Host "[dry-run] git switch main"
+    } else {
+        git switch main
+        if ($LASTEXITCODE -ne 0) { Write-Host -ForegroundColor Red "git switch main failed."; exit 1 }
+        $Branch = 'main'
+    }
+}
+
 if ($Dirty -and -not $Force) {
-    Write-Host -ForegroundColor Red "Refusing to fast-forward: working tree is dirty. Commit, stash, or re-run with -Force (DESTRUCTIVE -- discards changes)."
+    Write-Host -ForegroundColor Red "Refusing to fast-forward: play/build tree is dirty. Commit, stash, or re-run with -Force (DESTRUCTIVE -- discards changes)."
     Write-Host $Dirty
     exit 2
 }
 if ($Dirty -and $Force) {
-    Write-Warning "Dirty tree detected and -Force passed -- will reset hard after fetch."
+    Write-Warning "Dirty tree in play/build root detected and -Force passed -- will reset hard after fetch."
 }
 
-# ---- 3. Fetch + fast-forward ---------------------------------------------
+# ---- 3. Fetch + fast-forward (play root only) ---------------------------
 Write-Section "git fetch origin"
 if ($DryRun) {
     Write-Host "[dry-run] git fetch origin"
 } else {
     git fetch origin
     if ($LASTEXITCODE -ne 0) { Write-Host -ForegroundColor Red "git fetch failed."; exit 1 }
-}
-
-if ($Branch -ne 'main') {
-    if ($DryRun) {
-        Write-Host "[dry-run] git switch main"
-    } else {
-        git switch main
-        if ($LASTEXITCODE -ne 0) { Write-Host -ForegroundColor Red "git switch main failed."; exit 1 }
-    }
 }
 
 Write-Section "Fast-forward main -> origin/main"
