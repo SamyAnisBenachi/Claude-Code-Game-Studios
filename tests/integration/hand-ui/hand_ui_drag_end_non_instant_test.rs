@@ -294,8 +294,11 @@ fn move_cursor_to_cell(app: &mut App, lane: u8, cell: u8) {
         .world()
         .resource::<BoardLayout>()
         .cell_to_world(lane, cell);
+    // PROMPT 1210 — board-cell drop resolution runs on `cursor_world_position`;
+    // the screen-space sibling is not consulted on this path.
     app.world_mut().write_message(HandUiPlacementCursorMoved {
         world_position: Some(position),
+        screen_position: None,
     });
     app.update();
 }

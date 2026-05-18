@@ -345,8 +345,11 @@ fn start_drag(app: &mut App, slot_index: u8, owner_id: PlayerId) {
 }
 
 fn move_cursor(app: &mut App, position: Vec2) {
+    // PROMPT 1210 — disclosure tests only exercise the Instant fan-plate path,
+    // which is viewport-space, so drive `screen_position`.
     app.world_mut().write_message(HandUiPlacementCursorMoved {
-        world_position: Some(position),
+        world_position: None,
+        screen_position: Some(position),
     });
     app.update();
 }

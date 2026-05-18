@@ -403,7 +403,16 @@ pub struct ActivePlacementDrag {
     pub card_id: Option<CardId>,
     pub owner_id: Option<PlayerId>,
     pub target_kind: Option<PlacementTargetKind>,
+    // Cursor coordinates carried as two coexisting frames. PROMPT 1210 split:
+    // `cursor_world_position` is world-space (Y-up, origin matches
+    // `BoardLayout::board_origin`) and is the only coordinate that may feed
+    // `cursor_to_lane_cell` / `cursor_over_unit`. `cursor_screen_position` is
+    // viewport-space pixels (Y-down, origin = window top-left) and is the only
+    // coordinate that may drive UI `Node.left`/`Node.top` or rectangle-in-
+    // viewport checks like `cursor_over_fan_plate`. Mixing them was the source
+    // of P0 B-1203-PLA-01 — drops over the board never resolved a `BoardCell`.
     pub cursor_world_position: Option<Vec2>,
+    pub cursor_screen_position: Option<Vec2>,
 }
 
 impl ActivePlacementDrag {
@@ -419,6 +428,7 @@ impl ActivePlacementDrag {
         self.owner_id = Some(owner_id);
         self.target_kind = Some(target_kind);
         self.cursor_world_position = None;
+        self.cursor_screen_position = None;
     }
 
     fn clear(&mut self) {
@@ -499,9 +509,17 @@ pub struct HandUiPlacementDragStarted {
     pub owner_id: PlayerId,
 }
 
-#[derive(Message, Debug, Clone, Copy, PartialEq)]
+#[derive(Message, Debug, Default, Clone, Copy, PartialEq)]
 pub struct HandUiPlacementCursorMoved {
+    /// World-space cursor position (Y-up, origin matches
+    /// `BoardLayout::board_origin`). Required for `cursor_to_lane_cell` and
+    /// `cursor_over_unit`. `None` when no active 2D camera is available to
+    /// resolve the viewport → world conversion.
     pub world_position: Option<Vec2>,
+    /// Viewport-space cursor position in pixels (Y-down, origin = window
+    /// top-left). Required for `cursor_over_fan_plate` and the UI drag-sprite
+    /// `Node.left`/`Node.top` follow.
+    pub screen_position: Option<Vec2>,
 }
 
 #[derive(Message, Debug, Clone, Copy, PartialEq, Eq)]
@@ -1058,8 +1076,9 @@ impl Plugin for HandUiPlugin {
                         // PROMPT 696 / HU-DRAG-04: HandDragSprite Node trails the
                         // cursor every frame while the drag is live. Placed in
                         // StateSync so it runs after the Input set has already
-                        // updated `active_drag.cursor_world_position` from the
-                        // produced `HandUiPlacementCursorMoved` messages.
+                        // updated `active_drag.cursor_screen_position` from the
+                        // produced `HandUiPlacementCursorMoved` messages
+                        // (viewport-space; PROMPT 1210 split).
                         sync_hand_drag_sprite_position_system,
                         sync_placement_disclosure_guidance_system,
                         // PROMPT 1043 — keep the "X placed" readout in
@@ -2555,16 +2574,20 @@ pub fn handle_placement_cursor_moved_system(
         tracing::debug!(
             target: "client::ui::hand::placement_cursor_move",
             cursor_world_position = ?cursor_move.world_position,
+            cursor_screen_position = ?cursor_move.screen_position,
             active_drag_is_active = active_drag.is_active(),
             active_drag_card = ?active_drag.card,
             "placement cursor move"
         );
         if active_drag.is_active() {
             active_drag.cursor_world_position = cursor_move.world_position;
+            active_drag.cursor_screen_position = cursor_move.screen_position;
         }
 
+        // PROMPT 1210 — ghost-unstage hit-test reads viewport pixels (Y-down),
+        // so it must consume `screen_position`, not the world-space conversion.
         if active_ghost_drag.is_active() {
-            active_ghost_drag.cursor_screen_position = cursor_move.world_position;
+            active_ghost_drag.cursor_screen_position = cursor_move.screen_position;
         }
     }
 }
@@ -2592,8 +2615,12 @@ pub fn handle_placement_drag_ended_system(
                     .as_ref()
                     .and_then(|entities| fan_plates.get(entities.fan_root).ok())
                     .and_then(|node| {
+                        // PROMPT 1210 — `cursor_over_fan_plate` checks a
+                        // viewport-pixel rectangle (Y-down), so it must read
+                        // `cursor_screen_position` rather than the world-space
+                        // sibling.
                         active_drag
-                            .cursor_world_position
+                            .cursor_screen_position
                             .filter(|cursor| cursor_over_fan_plate(*cursor, node, *viewport))
                     })
                     .map(|_cursor| PlayTarget::Instant),
@@ -2696,18 +2723,36 @@ pub fn produce_fan_slot_drag_started_from_pointer_press_system(
 /// position to the cursor-moved message. Entity-agnostic on purpose: cursor
 /// position must continue to update once the cursor leaves the fan slot and
 /// passes over the board, which is the entire point of the drag flow.
+///
+/// PROMPT 1210 — converts `pointer_location.position` (viewport pixels, Y-down)
+/// into world-space (Y-up) via `Camera::viewport_to_world_2d` so the downstream
+/// `cursor_to_lane_cell` / `cursor_over_unit` math runs in the coordinate frame
+/// it actually expects. The raw viewport position is preserved on
+/// `screen_position` for the drag sprite and the fan-plate hit test. Defensive
+/// against a missing or inactive camera and projection edge cases — no panics
+/// and no `unwrap` in the runtime path.
 pub fn produce_drag_cursor_moved_from_pointer_move_system(
     active_drag: Res<ActivePlacementDrag>,
     mut moves: MessageReader<Pointer<Move>>,
     mut writer: MessageWriter<HandUiPlacementCursorMoved>,
+    cameras: Query<(&Camera, &GlobalTransform), With<Camera2d>>,
 ) {
     if !active_drag.is_active() {
         for _ in moves.read() {}
         return;
     }
+    let active_camera = cameras
+        .iter()
+        .find(|(camera, _)| camera.is_active);
     for ev in moves.read() {
+        let screen_position = ev.pointer_location.position;
+        let world_position = active_camera
+            .and_then(|(camera, transform)| {
+                camera.viewport_to_world_2d(transform, screen_position).ok()
+            });
         writer.write(HandUiPlacementCursorMoved {
-            world_position: Some(ev.pointer_location.position),
+            world_position,
+            screen_position: Some(screen_position),
         });
     }
 }
@@ -2744,8 +2789,10 @@ pub fn produce_drag_ended_from_pointer_release_system(
 
 /// PROMPT 696 / HU-DRAG-02, HU-DRAG-04 — Per-frame follow for the drag sprite.
 ///
-/// Mirrors `ActivePlacementDrag::cursor_world_position` (a viewport-space
-/// `Vec2` despite the legacy field name) onto the `HandDragSprite` UI node.
+/// Mirrors `ActivePlacementDrag::cursor_screen_position` (viewport pixels,
+/// Y-down) onto the `HandDragSprite` UI node. `Node.left`/`Node.top` are
+/// viewport-space, so the screen-space sibling — not `cursor_world_position`
+/// — is the only correct source after the PROMPT 1210 coord-space split.
 /// `handle_placement_drag_started_system` flips visibility to `Visible` on
 /// drag start and `handle_placement_drag_ended_system` flips it back to
 /// `Hidden`; this system only touches `Node.left` / `Node.top` so the sprite
@@ -2757,7 +2804,7 @@ pub fn sync_hand_drag_sprite_position_system(
     if !active_drag.is_active() {
         return;
     }
-    let Some(position) = active_drag.cursor_world_position else {
+    let Some(position) = active_drag.cursor_screen_position else {
         return;
     };
     for mut node in &mut drag_sprite {

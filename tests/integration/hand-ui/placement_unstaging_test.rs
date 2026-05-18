@@ -208,8 +208,11 @@ fn stage_card(app: &mut App, slot_index: u8, owner_id: PlayerId, target: PlayTar
 fn drag_ghost_and_release(app: &mut App, card_id: CardId, release_position: Vec2) {
     app.world_mut()
         .write_message(GhostDragStartEvent { card_id });
+    // PROMPT 1210 — ghost unstage reads `cursor_screen_position` (viewport
+    // pixels) to decide whether the release lands inside the fan zone.
     app.world_mut().write_message(HandUiPlacementCursorMoved {
-        world_position: Some(release_position),
+        world_position: None,
+        screen_position: Some(release_position),
     });
     app.world_mut().write_message(HandUiPlacementDragEnded);
     app.update();

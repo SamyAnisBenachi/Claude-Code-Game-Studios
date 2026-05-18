@@ -231,8 +231,11 @@ fn move_cursor_to_cell(app: &mut App, lane: u8, cell: u8) {
         .world()
         .resource::<BoardLayout>()
         .cell_to_world(lane, cell);
+    // PROMPT 1210 — harness exercises the board-cell drop path, which reads
+    // `cursor_world_position`; no screen-space sibling needed.
     app.world_mut().write_message(HandUiPlacementCursorMoved {
         world_position: Some(world_position),
+        screen_position: None,
     });
     app.update();
 }
