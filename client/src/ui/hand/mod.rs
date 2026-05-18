@@ -680,7 +680,9 @@ pub enum SubmitValidationError {
     /// `C2SSubmitPlacement` batch via `S2CPlacementRejected`. The submit
     /// affordance is re-enabled and the disclosure step surfaces the
     /// rejection reason via the existing `Correction { error }` variant.
-    ServerRejected { reason: PlacementRejectedReason },
+    ServerRejected {
+        reason: PlacementRejectedReason,
+    },
 }
 
 #[derive(Resource, Debug, Clone, Copy, PartialEq, Eq)]
@@ -710,14 +712,18 @@ impl PlacementDisclosureState {
 pub enum PlacementDisclosureStep {
     Hidden,
     CardSelection,
-    TargetSelection { target_kind: PlacementTargetKind },
+    TargetSelection {
+        target_kind: PlacementTargetKind,
+    },
     StagedCard,
     /// Surfaces a corrective hint: client-side mana misallocation
     /// ([`SubmitValidationError::ReserveOverdrawn`] /
     /// [`SubmitValidationError::ManaOverdrawn`]) OR a server-authoritative
     /// rejection of the last submitted batch
     /// ([`SubmitValidationError::ServerRejected`] — PROMPT 1244).
-    Correction { error: SubmitValidationError },
+    Correction {
+        error: SubmitValidationError,
+    },
     Submitted,
 }
 
@@ -2450,10 +2456,7 @@ pub fn handle_placement_rejected_system(
     mut placement_timer: ResMut<PlacementTimer>,
     mut disclosure_state: ResMut<PlacementDisclosureState>,
     mut commands: Commands,
-    mut submit_buttons: Query<
-        (&mut Text, &mut HandSubmitInteractionState),
-        With<HandSubmitButton>,
-    >,
+    mut submit_buttons: Query<(&mut Text, &mut HandSubmitInteractionState), With<HandSubmitButton>>,
     mut visibility_query: Query<&mut Visibility>,
 ) {
     let Some(entities) = entities else {
@@ -2477,8 +2480,7 @@ pub fn handle_placement_rejected_system(
             submit_buttons.get_mut(entities.submit_button)
         {
             text.0.clear();
-            text.0
-                .push_str(&format!("Submit ({staged_count} cards)"));
+            text.0.push_str(&format!("Submit ({staged_count} cards)"));
             *interaction_state = HandSubmitInteractionState::Active;
         }
 
@@ -3004,15 +3006,12 @@ pub fn produce_drag_cursor_moved_from_pointer_move_system(
         for _ in moves.read() {}
         return;
     }
-    let active_camera = cameras
-        .iter()
-        .find(|(camera, _)| camera.is_active);
+    let active_camera = cameras.iter().find(|(camera, _)| camera.is_active);
     for ev in moves.read() {
         let screen_position = ev.pointer_location.position;
-        let world_position = active_camera
-            .and_then(|(camera, transform)| {
-                camera.viewport_to_world_2d(transform, screen_position).ok()
-            });
+        let world_position = active_camera.and_then(|(camera, transform)| {
+            camera.viewport_to_world_2d(transform, screen_position).ok()
+        });
         writer.write(HandUiPlacementCursorMoved {
             world_position,
             screen_position: Some(screen_position),
@@ -4644,9 +4643,7 @@ fn try_auto_submit_on_phase_transition(
     // is a no-op for auto-submit. This branch is intentionally quiet (no
     // tracing) because it fires on every non-target phase change and would
     // otherwise spam the log on healthy round progression.
-    if !(current.phase == RoundPhase::Resolution
-        && prev_phase == Some(RoundPhase::Placement))
-    {
+    if !(current.phase == RoundPhase::Resolution && prev_phase == Some(RoundPhase::Placement)) {
         return PhaseTransitionAutoSubmitOutcome::NotPlacementToResolution;
     }
 

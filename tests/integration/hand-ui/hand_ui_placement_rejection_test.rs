@@ -303,10 +303,7 @@ fn submit_button_interaction(app: &mut App) -> HandSubmitInteractionState {
 }
 
 fn submitted_checkmark_visibility(app: &mut App) -> Visibility {
-    let entity = app
-        .world()
-        .resource::<HandUiEntities>()
-        .submitted_checkmark;
+    let entity = app.world().resource::<HandUiEntities>().submitted_checkmark;
     app.world()
         .get::<Visibility>(entity)
         .copied()

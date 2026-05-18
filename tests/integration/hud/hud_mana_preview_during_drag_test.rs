@@ -19,9 +19,7 @@ use client::presentation::PlayerEconomyView;
 use client::state::{ClientState, CurrentClientPhase};
 use client::ui::hand::{ActivePlacementDrag, HandCardCatalog, PlacementTargetKind};
 use client::ui::hud::{HudEntities, HudPlugin};
-use shared::card::{
-    CardCatalog, CardData, CardId, CardType, ClassId, Keyword, Rarity, UnitType,
-};
+use shared::card::{CardCatalog, CardData, CardId, CardType, ClassId, Keyword, Rarity, UnitType};
 use shared::protocol::RoundPhase;
 use shared::session::PlayerId;
 
@@ -42,7 +40,9 @@ fn mana_preview_shows_projected_value_during_active_drag() {
     let mut app = app_with_hud_in_session();
     seed_hand_catalog(&mut app);
     set_phase(&mut app, RoundPhase::Placement);
-    apply_economy(&mut app, /* current */ 5, /* reserve */ 2, /* cap */ 8);
+    apply_economy(
+        &mut app, /* current */ 5, /* reserve */ 2, /* cap */ 8,
+    );
     settle_hud_tween(&mut app);
 
     // Baseline — no drag yet; mana label reads authoritative "5 / 8" and the

@@ -30,8 +30,8 @@ use std::time::Duration;
 use bevy::prelude::*;
 use client::network::register_lightyear_protocol;
 use client::presentation::board_rendering::{
-    drain_placement_reveal_system, BoardLocalPlayer, BoardRenderState,
-    PlacementRevealCollectState, ResolutionRevealWait,
+    drain_placement_reveal_system, BoardLocalPlayer, BoardRenderState, PlacementRevealCollectState,
+    ResolutionRevealWait,
 };
 use client::presentation::draft_shop_hand_bridge_fanout_system;
 use client::state::{ClientIdempotencyState, CurrentClientPhase};
@@ -47,9 +47,7 @@ use lightyear::prelude::client::{
 use lightyear::prelude::server::{
     ClientOf, RawServer, Server, ServerConfig, ServerPlugins, Start, WebSocketServerIo,
 };
-use lightyear::prelude::{
-    Connected, LocalAddr, NetworkTarget, RemoteId, ServerMultiMessageSender,
-};
+use lightyear::prelude::{Connected, LocalAddr, NetworkTarget, RemoteId, ServerMultiMessageSender};
 use shared::card::CardId;
 use shared::protocol::{
     CardSource, PlacedCardReveal, PlayTarget, ReliableChannel, S2CAuctionCard, S2CCardAcquired,
@@ -389,7 +387,10 @@ fn s2c_card_acquired_draft_initial_drains_to_hand_and_draft_initial_writers() {
     let hand = read_messages::<HandUiCardAcquiredReceived>(&client_app);
     let draft = read_messages::<ShopAuctionCardAcquiredReceived>(&client_app);
     let shop_purchase = read_messages::<ShopAuctionShopCardAcquiredReceived>(&client_app);
-    assert_eq!(hand, vec![HandUiCardAcquiredReceived { card_id: CardId(3) }]);
+    assert_eq!(
+        hand,
+        vec![HandUiCardAcquiredReceived { card_id: CardId(3) }]
+    );
     assert_eq!(
         draft,
         vec![ShopAuctionCardAcquiredReceived { card_id: CardId(3) }]
@@ -469,7 +470,10 @@ fn s2c_card_acquired_shop_purchase_drains_to_hand_and_shop_purchase_writers() {
     let hand = read_messages::<HandUiCardAcquiredReceived>(&client_app);
     let shop_purchase = read_messages::<ShopAuctionShopCardAcquiredReceived>(&client_app);
     let draft = read_messages::<ShopAuctionCardAcquiredReceived>(&client_app);
-    assert_eq!(hand, vec![HandUiCardAcquiredReceived { card_id: CardId(9) }]);
+    assert_eq!(
+        hand,
+        vec![HandUiCardAcquiredReceived { card_id: CardId(9) }]
+    );
     assert_eq!(
         shop_purchase,
         vec![ShopAuctionShopCardAcquiredReceived { card_id: CardId(9) }]

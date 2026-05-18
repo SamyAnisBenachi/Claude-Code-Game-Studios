@@ -60,7 +60,10 @@ fn phase_labels_are_visually_distinct_at_a_glance() {
     ];
 
     fn first_token(label: &str) -> &str {
-        label.split(|c: char| c == ' ' || c == '-').next().unwrap_or(label)
+        label
+            .split(|c: char| c == ' ' || c == '-')
+            .next()
+            .unwrap_or(label)
     }
 
     for i in 0..visible_labels.len() {

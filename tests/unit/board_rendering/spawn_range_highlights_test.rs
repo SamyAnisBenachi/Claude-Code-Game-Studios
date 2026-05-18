@@ -428,10 +428,11 @@ fn forward_local_spawn_range_changes_noop_when_local_player_is_none() {
             .chain(),
     );
 
-    app.world_mut().spawn(ForwardingScript(script(vec![spawn_range_changed(
-        player(1),
-        2,
-    )])));
+    app.world_mut()
+        .spawn(ForwardingScript(script(vec![spawn_range_changed(
+            player(1),
+            2,
+        )])));
     app.update();
 
     let captured = &app.world().resource::<CapturedLocalSpawnRangeChanges>().0;

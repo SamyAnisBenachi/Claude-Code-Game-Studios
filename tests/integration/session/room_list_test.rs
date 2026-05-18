@@ -26,7 +26,16 @@ fn create_fixed_room(
     mode: GameMode,
     now: f64,
 ) {
-    match create_room(rooms, active, owner, mode, now, 90, id, RoomCode(code.to_string())) {
+    match create_room(
+        rooms,
+        active,
+        owner,
+        mode,
+        now,
+        90,
+        id,
+        RoomCode(code.to_string()),
+    ) {
         CreateRoomOutcome::Created(_) => {}
         CreateRoomOutcome::Rejected(rejection) => {
             panic!("room creation should succeed, got {:?}", rejection.reason)
@@ -214,7 +223,11 @@ fn test_build_room_list_excludes_requesters_own_session() {
     assert_eq!(everything.rooms.len(), 2);
 
     let excluded = build_room_list(&rooms, Some(own_id));
-    let codes: Vec<&str> = excluded.rooms.iter().map(|e| e.room_code.as_str()).collect();
+    let codes: Vec<&str> = excluded
+        .rooms
+        .iter()
+        .map(|e| e.room_code.as_str())
+        .collect();
     assert_eq!(
         codes,
         vec!["BBBBBB"],

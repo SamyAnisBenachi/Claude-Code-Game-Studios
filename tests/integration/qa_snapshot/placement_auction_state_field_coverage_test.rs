@@ -409,8 +409,10 @@ fn test_auction_state_marks_unavailable_when_only_resources_present() {
 
     let state = build_auction_state_snapshot(&extras);
     assert!(!state.available);
-    assert!(state.local_gold.is_none(),
-        "local_gold must NOT surface under auction_state when no auction resource is present");
+    assert!(
+        state.local_gold.is_none(),
+        "local_gold must NOT surface under auction_state when no auction resource is present"
+    );
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -490,11 +492,7 @@ fn test_auction_state_timer_remaining_ms_agrees_with_extras_auction_timer() {
     };
     let state = build_auction_state_snapshot(&extras);
     assert_eq!(state.timer_remaining_ms, Some(9_750));
-    let extras_remaining = extras
-        .timers
-        .auction_timer
-        .as_ref()
-        .map(|t| t.remaining_ms);
+    let extras_remaining = extras.timers.auction_timer.as_ref().map(|t| t.remaining_ms);
     assert_eq!(
         state.timer_remaining_ms, extras_remaining,
         "top-level auction_state.timer_remaining_ms must agree with extras.timers.auction_timer.remaining_ms"

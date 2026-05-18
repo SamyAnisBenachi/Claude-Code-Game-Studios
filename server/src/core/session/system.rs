@@ -1329,10 +1329,7 @@ pub fn initialise_slots(mode: GameMode, creator: PlayerId) -> SessionSlots {
 /// omitted (used so a player browsing rooms does not see their own room as
 /// joinable). Results are sorted ascending by `room_code` for stable rendering
 /// and deterministic snapshot tests.
-pub fn build_room_list(
-    rooms: &RoomSessions,
-    exclude_session: Option<SessionId>,
-) -> S2CRoomList {
+pub fn build_room_list(rooms: &RoomSessions, exclude_session: Option<SessionId>) -> S2CRoomList {
     let mut entries: Vec<RoomListEntry> = rooms
         .session_ids()
         .into_iter()

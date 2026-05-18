@@ -241,7 +241,9 @@ fn countdown_label_entity(app: &App) -> Entity {
     let entities = app.world().resource::<ShopAuctionUiEntities>();
     let label = entities.draft_initial_countdown_label;
     assert!(
-        app.world().get::<DraftInitialCountdownLabel>(label).is_some(),
+        app.world()
+            .get::<DraftInitialCountdownLabel>(label)
+            .is_some(),
         "draft_initial_countdown_label entity must carry the marker component",
     );
     label

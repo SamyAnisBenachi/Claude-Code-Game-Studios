@@ -2109,7 +2109,9 @@ pub fn sync_mana_text_system(
     let preview = active_drag
         .as_deref()
         .zip(hand_catalog.as_deref())
-        .and_then(|(drag, catalog)| compute_placement_drag_mana_preview(drag, catalog, &economy_view));
+        .and_then(|(drag, catalog)| {
+            compute_placement_drag_mana_preview(drag, catalog, &economy_view)
+        });
 
     if let Some((preview_current, preview_reserve)) = preview {
         mana_text.0 = format!(

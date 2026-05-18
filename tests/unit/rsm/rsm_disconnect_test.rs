@@ -465,7 +465,10 @@ fn rsm_disconnect_reconnect_stops_periodic_notices() {
         .write_message(PlayerDisconnected { player: player(1) });
     run_once(&mut app);
     let after_first = notice_log(&app).len();
-    assert_eq!(after_first, 1, "first PlayerDisconnected should emit one notice");
+    assert_eq!(
+        after_first, 1,
+        "first PlayerDisconnected should emit one notice"
+    );
 
     app.world_mut()
         .write_message(PlayerReconnected { player: player(1) });
@@ -497,7 +500,10 @@ fn rsm_disconnect_heartbeat_stops_periodic_notices() {
         .write_message(PlayerDisconnected { player: player(1) });
     run_once(&mut app);
     let after_first = notice_log(&app).len();
-    assert_eq!(after_first, 1, "first PlayerDisconnected should emit one notice");
+    assert_eq!(
+        after_first, 1,
+        "first PlayerDisconnected should emit one notice"
+    );
 
     app.world_mut()
         .write_message(PlayerHeartbeat { player: player(1) });
