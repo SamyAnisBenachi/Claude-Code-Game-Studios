@@ -109,7 +109,10 @@ fn opponent_reserved_gold_tweens_in_inline_auction_format() {
         gold_target(&app, entities.opponent_gold_parent).reserved_gold,
         4.0,
     );
-    assert_eq!(text_span(&app, entities.opponent_gold_span), " (4r)");
+    assert_eq!(
+        text_span(&app, entities.opponent_gold_span),
+        " (+4 reserve)"
+    );
 }
 
 #[test]

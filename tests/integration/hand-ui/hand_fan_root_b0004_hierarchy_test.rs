@@ -61,10 +61,7 @@ fn hand_fan_root_parent_carries_global_transform() {
     let fan_root = single_entity_with::<HandFanRoot>(&mut app)
         .expect("HandFanRoot must be spawned after entering InSession");
 
-    let fan_root_has_global = app
-        .world()
-        .get::<GlobalTransform>(fan_root)
-        .is_some();
+    let fan_root_has_global = app.world().get::<GlobalTransform>(fan_root).is_some();
     assert!(
         fan_root_has_global,
         "AC4 precondition: HandFanRoot must carry GlobalTransform so the B0004 \
@@ -87,10 +84,7 @@ fn hand_fan_root_parent_carries_global_transform() {
          the regression canary needs reauthoring rather than passing silently.",
     );
 
-    let parent_has_global = app
-        .world()
-        .get::<GlobalTransform>(parent)
-        .is_some();
+    let parent_has_global = app.world().get::<GlobalTransform>(parent).is_some();
     assert!(
         parent_has_global,
         "AC2 / AC4: HandFanRoot's parent ({parent:?}) must carry GlobalTransform so Bevy \

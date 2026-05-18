@@ -397,7 +397,10 @@ fn ac7_no_client_side_class_inference_introduced() {
     let block = source
         .split("pub fn sync_class_reveal_from_lobby_view_system")
         .nth(1)
-        .and_then(|tail| tail.split("/// S17-UI-HUD-OPP-MANA-CLEANUP — MessageDrain: project the snapshot").next())
+        .and_then(|tail| {
+            tail.split("/// S17-UI-HUD-OPP-MANA-CLEANUP — MessageDrain: project the snapshot")
+                .next()
+        })
         .expect("sync_class_reveal_from_lobby_view_system body");
     for forbidden in [
         "Unit",
@@ -454,10 +457,7 @@ fn ac8_adr_001_invariant_preserved_opp_carriers_carry_only_class() {
     // The function body ends at the first top-level `\n}\n` after the
     // function signature; everything past that closing brace is the
     // next sibling (its doc comment may legally mention `Objective`).
-    let display_block = display_tail
-        .split("\n}\n")
-        .next()
-        .unwrap_or(display_tail);
+    let display_block = display_tail.split("\n}\n").next().unwrap_or(display_tail);
     for forbidden in ["was_fake", "Objective", "Unit", "lane", "is_real"] {
         assert!(
             !display_block.contains(forbidden),

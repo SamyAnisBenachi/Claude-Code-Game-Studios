@@ -61,7 +61,8 @@ fn resolve_missing_sentinel_routes_to_placeholder() {
     // AC7 — `art_id == "missing"` is the documented sentinel and must route
     // through the placeholder path (no warn fires for this sentinel).
     let card = test_card_with_art_id(2, CARD_ART_MISSING_SENTINEL);
-    let path = resolve_card_display_art(Some(&card)).expect("missing sentinel resolves to placeholder");
+    let path =
+        resolve_card_display_art(Some(&card)).expect("missing sentinel resolves to placeholder");
     assert_eq!(path, CARD_ART_PLACEHOLDER_ASSET);
 }
 
@@ -72,7 +73,10 @@ fn resolve_production_art_id_returns_canonical_path() {
     // `art/cards/display/card_{art_id}_art_display.png` shape.
     let card = test_card_with_art_id(3, "cra_archer_001");
     let path = resolve_card_display_art(Some(&card)).expect("production art_id resolves");
-    assert_eq!(path, "art/cards/display/card_cra_archer_001_art_display.png");
+    assert_eq!(
+        path,
+        "art/cards/display/card_cra_archer_001_art_display.png"
+    );
 }
 
 #[test]
@@ -90,8 +94,8 @@ fn resolve_empty_art_id_returns_no_art_id_fallback() {
     assert_eq!(reason, CardDisplayArtFallbackReason::NoArtId);
 
     let card = test_card_with_art_id(5, "   ");
-    let reason = resolve_card_display_art(Some(&card))
-        .expect_err("whitespace-only art_id yields NoArtId");
+    let reason =
+        resolve_card_display_art(Some(&card)).expect_err("whitespace-only art_id yields NoArtId");
     assert_eq!(reason, CardDisplayArtFallbackReason::NoArtId);
 }
 
@@ -101,5 +105,8 @@ fn resolve_trims_surrounding_whitespace_in_art_id() {
     // whitespace in the catalog does not break path resolution.
     let card = test_card_with_art_id(6, "  iop_knight_001  ");
     let path = resolve_card_display_art(Some(&card)).expect("trimmed art_id resolves");
-    assert_eq!(path, "art/cards/display/card_iop_knight_001_art_display.png");
+    assert_eq!(
+        path,
+        "art/cards/display/card_iop_knight_001_art_display.png"
+    );
 }

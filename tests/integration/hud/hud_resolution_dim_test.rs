@@ -268,7 +268,7 @@ fn test_frozen_mode_tiebreak_dim_overlay_hidden_on_game_over_then_restored_by_sn
 // ── Sub-test 7: HUD_ENTITY_COUNT invariant (post-opponent-figurine = 23) ─────
 
 #[test]
-fn test_hud_entity_count_is_twenty_three_after_opponent_figurine_added() {
+fn test_hud_entity_count_invariant_matches_timer_countdown_bump() {
     test_helpers::init_test_tracing();
     let mut app = app_with_hud_in_session();
 
@@ -278,10 +278,12 @@ fn test_hud_entity_count_is_twenty_three_after_opponent_figurine_added() {
         "HUD_ENTITY_COUNT constant ({HUD_ENTITY_COUNT}) must match the actual count \
          of HudEntity-marked entities after S10-POLISH-001 (dim overlay = +1)"
     );
+    // PROMPT 1139 (UI-1129-06): the count steps 23 → 24 with the
+    // `HudTimerCountdown` numeric readout addition.
     assert_eq!(
-        HUD_ENTITY_COUNT, 23,
-        "Post-S14-HUD-OPP-FIGURINE invariant: HUD_ENTITY_COUNT must be 23 \
-         (PAW-004 baseline 21 + dim overlay 1 + opponent figurine 1)"
+        HUD_ENTITY_COUNT, 24,
+        "Post-PROMPT-1139 invariant: HUD_ENTITY_COUNT must be 24 \
+         (PAW-004 baseline 21 + dim overlay 1 + opponent figurine 1 + numeric timer countdown 1)"
     );
 }
 

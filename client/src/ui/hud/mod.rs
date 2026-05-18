@@ -30,15 +30,19 @@ pub const HUD_DOTS_PER_ROW: usize = 5;
 /// PAW-004: +2 for figurine + timer bar (19 → 21).
 /// S10-POLISH-001: +1 for the RESOLUTION dim overlay (21 → 22).
 /// S14-HUD-OPP-FIGURINE: +1 for opponent figurine (22 → 23).
+/// S18-UI-HUD-OPP-CLASS-TIMER-SCOREBOARD-REPAIR (PROMPT 1139): +1 for the
+/// HUD phase-timer **numeric** countdown text label (23 → 24). The bar
+/// alone was not legible as a remaining-time signal (UI-1129-06 /
+/// AUDIT-1131-12).
 ///
 /// PROMPT 1027: the per-pill prefix labels (PHASE / ROUND / GOLD / OPP / MANA)
 /// and their structural pill containers are intentionally **not** tagged
 /// `HudEntity`. They are read-only decorations that ride on the
 /// `Visibility::Inherited` chain from the HUD root and do not participate in
 /// the prepooled-entity contract that downstream systems rely on. Keeping
-/// them outside the `HudEntity` count preserves the 23-entity invariant
+/// them outside the `HudEntity` count preserves the 24-entity invariant
 /// without inflating it.
-pub const HUD_ENTITY_COUNT: usize = 23;
+pub const HUD_ENTITY_COUNT: usize = 24;
 /// Alpha applied to the RESOLUTION dim overlay's BackgroundColor — visibly
 /// dims the underlying HUD without obscuring gold/mana/phase readouts.
 /// Recorded in production/qa/evidence/sprint-10-hud-chrome-evidence.md.
@@ -178,6 +182,7 @@ pub struct HudEntities {
     pub figurine: Entity,
     pub opponent_figurine: Entity,
     pub timer_bar: Entity,
+    pub timer_countdown: Entity,
     pub dim_overlay: Entity,
     pub dots: [[Entity; HUD_DOTS_PER_ROW]; HUD_DOT_ROWS],
 }
@@ -409,6 +414,19 @@ pub struct HudClassReveal {
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct HudTimerBar;
 
+/// S18-UI-HUD-OPP-CLASS-TIMER-SCOREBOARD-REPAIR (PROMPT 1139) — marker
+/// for the HUD phase-timer **numeric** countdown text label sitting beside
+/// the timer bar. Renders the remaining seconds (`"45s"` style) so the
+/// player has a scannable time-left signal even when the bar fill is
+/// difficult to read against the surrounding chrome (UI-1129-06).
+///
+/// Visibility is driven by [`sync_hud_timer_countdown_text_system`] off the
+/// same [`PhaseTimerState`] that powers [`HudTimerBar`]: hidden while the
+/// timer is inactive (duration_ms == 0), visible otherwise. The countdown
+/// is a passive surface — it never writes to [`PhaseTimerState`].
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct HudTimerCountdown;
+
 /// Display state for the HUD phase timer bar.
 ///
 /// `duration_ms` is the phase budget echoed by `S2CPhaseChanged.timer_duration_ms`;
@@ -518,8 +536,7 @@ impl Plugin for HudPlugin {
                     sync_figurine_image_system.in_set(HudSystemSet::StateSync),
                     sync_dot_image_on_objective_destroyed_system.in_set(HudSystemSet::StateSync),
                     sync_dim_overlay_for_resolution_system.in_set(HudSystemSet::StateSync),
-                    sync_class_reveal_from_lobby_view_system
-                        .in_set(HudSystemSet::MessageDrain),
+                    sync_class_reveal_from_lobby_view_system.in_set(HudSystemSet::MessageDrain),
                     sync_class_reveal_from_snapshot_system
                         .in_set(HudSystemSet::MessageDrain)
                         .after(handle_game_snapshot_system),
@@ -527,6 +544,32 @@ impl Plugin for HudPlugin {
                         .in_set(HudSystemSet::StateSync)
                         .after(sync_gold_text_system)
                         .after(sync_figurine_image_system),
+                    // S18-UI-HUD-OPP-CLASS-TIMER-SCOREBOARD-REPAIR
+                    // (PROMPT 1139) — the two new systems are nested
+                    // into a sub-tuple so the outer tuple stays under
+                    // the Bevy-0.18 20-element `IntoScheduleConfigs`
+                    // arity ceiling. Bevy flattens nested tuples
+                    // transparently; ordering constraints are identical
+                    // to what a flat 21-element tuple would express.
+                    (
+                        sync_hud_timer_countdown_text_system
+                            .in_set(HudSystemSet::StateSync)
+                            .after(tick_phase_timer_system),
+                        // Membership in `HudSystemSet::StateSync` is the
+                        // only ordering constraint we publish for this
+                        // system. An `.after(sync_dot_image_on_objective_destroyed_system)`
+                        // would trip Bevy 0.18's "tried to order against
+                        // a SystemTypeSet that has more than one
+                        // instance" guard because the
+                        // `hud_asset_wiring_test` integration suite
+                        // re-registers the destroyed-asset sync inside
+                        // its own test schedule. Both systems write
+                        // identical assets when both fire on the same
+                        // frame, so the ordering is correctness-neutral.
+                        sync_scoreboard_dot_image_for_state_system
+                            .in_set(HudSystemSet::StateSync)
+                            .after(handle_game_snapshot_system),
+                    ),
                 ),
             );
     }
@@ -837,6 +880,28 @@ fn spawn_hud(
         ))
         .id();
 
+    // S18-UI-HUD-OPP-CLASS-TIMER-SCOREBOARD-REPAIR (PROMPT 1139) — numeric
+    // remaining-seconds readout. Sits in the top strip as a structural
+    // sibling of the timer bar so users have a scannable countdown for
+    // every timed phase (Placement / DraftShop / DraftInitial). The bar
+    // fill alone was not legible as a remaining-time signal
+    // (UI-1129-06). Visibility is governed by
+    // `sync_hud_timer_countdown_text_system` reading `PhaseTimerState`.
+    let timer_countdown = commands
+        .spawn((
+            Name::new("HUD Phase Timer Countdown"),
+            HudEntity,
+            HudTimerCountdown,
+            Text::new(""),
+            hud_text_font(HUD_SECONDARY_FONT_SIZE_PX),
+            TextColor(HUD_PRIMARY_TEXT_COLOR),
+            BackgroundColor(HUD_TEXT_BACKGROUND_COLOR),
+            top_strip_text_node(),
+            Visibility::Hidden,
+            ChildOf(top_strip),
+        ))
+        .id();
+
     // ── S10-POLISH-001: RESOLUTION dim/freeze overlay ─────────────────────────
     // Pre-pooled at session entry — visibility flips via
     // sync_dim_overlay_for_resolution_system reading Res<CurrentClientPhase>.
@@ -896,6 +961,7 @@ fn spawn_hud(
         figurine,
         opponent_figurine,
         timer_bar,
+        timer_countdown,
         dim_overlay,
         dots,
     });
@@ -1472,6 +1538,15 @@ fn sync_one_figurine_image(
 /// (Sprint 14 story 017 AC6 / TR-HUD-009) holds for incremental reveals;
 /// snapshot rebuilds remain free to overwrite via
 /// [`sync_class_reveal_from_snapshot_system`] (AC6 binding).
+///
+/// S18-UI-HUD-OPP-CLASS-TIMER-SCOREBOARD-REPAIR (PROMPT 1139,
+/// UI-1129-03) — the lookup now prefers
+/// [`ClientSessionIdentity::player_id`] (the handshake-assigned local
+/// id) over [`LobbyViewState::local_player_id`]. The two should agree
+/// in steady state; the explicit priority guards against a stale lobby
+/// mirror after a reconnect handshake re-assigns the local id. If only
+/// one source is populated, that source is used. If both are populated
+/// and they disagree, the identity wins and a `tracing::warn!` fires.
 pub fn sync_class_reveal_from_lobby_view_system(
     lobby: Option<Res<LobbyViewState>>,
     identity: Option<Res<ClientSessionIdentity>>,
@@ -1487,11 +1562,18 @@ pub fn sync_class_reveal_from_lobby_view_system(
     if lobby.revealed_classes.is_empty() {
         return;
     }
-    let local_id = identity
-        .as_deref()
-        .and_then(|i| i.player_id)
-        .or(lobby.local_player_id);
-    let Some(local_id) = local_id else {
+    let identity_id = identity.as_deref().and_then(|i| i.player_id);
+    let lobby_id = lobby.local_player_id;
+    if let (Some(identity_id), Some(lobby_id)) = (identity_id, lobby_id) {
+        if identity_id != lobby_id {
+            warn!(
+                identity_local = ?identity_id,
+                lobby_local = ?lobby_id,
+                "HUD: lobby local_player_id differs from session identity; using identity for class projection (UI-1129-03 defence)"
+            );
+        }
+    }
+    let Some(local_id) = identity_id.or(lobby_id) else {
         return;
     };
 
@@ -1523,18 +1605,63 @@ pub fn sync_class_reveal_from_lobby_view_system(
 /// value text. Intentionally NOT gated by `HudMode::Frozen` — per AC6
 /// only the snapshot path is allowed to overwrite class identity once
 /// `GAME_OVER` freezes the HUD.
+///
+/// S18-UI-HUD-OPP-CLASS-TIMER-SCOREBOARD-REPAIR (PROMPT 1139,
+/// UI-1129-03) — the projection now prefers the canonical
+/// handshake-assigned local id ([`ClientSessionIdentity::player_id`],
+/// falling back to [`LobbyViewState::local_player_id`]) over
+/// `S2CGameSnapshot::recipient_player_id` when resolving "own" vs
+/// "opponent". This defends against any flow where the snapshot's
+/// recipient field would invert the mapping (the AUDIT-1129 mirror-bug
+/// report observed `OPP` rendering the local player's class on both
+/// clients); the snapshot recipient remains the fallback so the system
+/// keeps working on test paths that never insert a
+/// `ClientSessionIdentity`. A `tracing::warn!` fires on mismatch so
+/// future routing regressions surface in logs.
 pub fn sync_class_reveal_from_snapshot_system(
     mut messages: MessageReader<PresentationGameSnapshotMessage>,
+    identity: Option<Res<ClientSessionIdentity>>,
+    lobby: Option<Res<LobbyViewState>>,
     mut reveal: ResMut<HudClassReveal>,
 ) {
+    let trusted_local_id = identity
+        .as_deref()
+        .and_then(|i| i.player_id)
+        .or_else(|| lobby.as_deref().and_then(|l| l.local_player_id));
+
     for msg in messages.read() {
-        if let Some((own, opponent)) = snapshot_hud_players(&msg.0) {
-            if reveal.local != Some(own.class_id) {
-                reveal.local = Some(own.class_id);
+        let snapshot = &msg.0;
+        let resolved_local = trusted_local_id.unwrap_or(snapshot.recipient_player_id);
+        if let Some(trusted) = trusted_local_id {
+            if trusted != snapshot.recipient_player_id {
+                warn!(
+                    trusted_local = ?trusted,
+                    snapshot_recipient = ?snapshot.recipient_player_id,
+                    "HUD: snapshot recipient differs from trusted local id; using trusted id for class projection (UI-1129-03 defence)"
+                );
             }
-            if reveal.opponent != Some(opponent.class_id) {
-                reveal.opponent = Some(opponent.class_id);
-            }
+        }
+
+        let Some(own) = snapshot
+            .players
+            .iter()
+            .find(|p| p.player_id == resolved_local)
+        else {
+            continue;
+        };
+        let Some(opponent) = snapshot
+            .players
+            .iter()
+            .find(|p| p.player_id != resolved_local)
+        else {
+            continue;
+        };
+
+        if reveal.local != Some(own.class_id) {
+            reveal.local = Some(own.class_id);
+        }
+        if reveal.opponent != Some(opponent.class_id) {
+            reveal.opponent = Some(opponent.class_id);
         }
     }
 }
@@ -1677,6 +1804,54 @@ pub fn sync_dot_image_on_objective_destroyed_system(
     }
 }
 
+/// S18-UI-HUD-OPP-CLASS-TIMER-SCOREBOARD-REPAIR (PROMPT 1139,
+/// UI-1129-11 / AUDIT-1131-03) — StateSync: refresh the scoreboard dot
+/// `ImageNode` whenever `ScoreboardDotState` changes so the visible
+/// image stays in step with the alive/destroyed split.
+///
+/// The opponent row is spawned with the Unknown / fog-of-war asset
+/// (`HUD_OBJECTIVE_DOT_UNKNOWN_ASSET`) because no snapshot has landed
+/// yet at session entry. After the first `S2CGameSnapshot`,
+/// [`write_dot_destroyed`] flips `ScoreboardDotState.destroyed` to
+/// `false` (alive) but historically did **not** rewrite the
+/// `ImageNode`, leaving the opponent dots painted as grey skulls for
+/// the entire run (UI-1129-11). This system closes that gap by
+/// reading the change-detected `ScoreboardDotState` and binding the
+/// image to the matching alive/destroyed asset.
+///
+/// `HudPlayerIds` gating: the spawn-time Unknown image must survive
+/// until the *first snapshot has actually landed* (i.e. until
+/// `handle_game_snapshot_system` has inserted `HudPlayerIds`).
+/// `ScoreboardDotState::default()` is already `{ destroyed: false }`
+/// at spawn so a naive `Changed` filter would repaint the dots to the
+/// Alive asset on the very first update tick, defeating the
+/// fog-of-war placeholder. Gating on `HudPlayerIds` (the snapshot-only
+/// resource) keeps the placeholder intact until the snapshot writes
+/// the real lane states.
+pub fn sync_scoreboard_dot_image_for_state_system(
+    asset_server: Option<Res<AssetServer>>,
+    player_ids: Option<Res<HudPlayerIds>>,
+    mut dots: Query<
+        (&mut ImageNode, &ScoreboardDotState),
+        (With<ScoreboardDot>, Changed<ScoreboardDotState>),
+    >,
+) {
+    let Some(server) = asset_server else {
+        return;
+    };
+    if player_ids.is_none() {
+        return;
+    }
+    for (mut image, state) in &mut dots {
+        let asset = if state.destroyed {
+            HUD_OBJECTIVE_DOT_DESTROYED_ASSET
+        } else {
+            crate::asset_wiring::HUD_OBJECTIVE_DOT_ALIVE_ASSET
+        };
+        image.image = server.load(asset);
+    }
+}
+
 /// S10-POLISH-001: StateSync — flip the pre-pooled `HudDimOverlay` entity's
 /// `Visibility` to `Visible` while `Phase::Resolution`, `Hidden` otherwise.
 ///
@@ -1739,7 +1914,14 @@ pub fn phase_label_text(phase: RoundPhase) -> Option<&'static str> {
     match phase {
         RoundPhase::Lobby => None,
         RoundPhase::DraftInitial => Some("DRAFT INITIAL"),
-        RoundPhase::DraftShop => Some("DRAFT"),
+        // S18-UI-HUD-OPP-CLASS-TIMER-SCOREBOARD-REPAIR (PROMPT 1139,
+        // UI-1129-18 / AUDIT-1131-12): the shop sub-phase was collapsed
+        // to the bare `DRAFT` literal, which the user could not
+        // distinguish from `DRAFT INITIAL` in the top strip. Promote
+        // the shop label to the explicit `DRAFT SHOP` so the three
+        // draft sub-phases each carry a distinct chrome string
+        // (`DRAFT INITIAL` / `DRAFT SHOP` / `AUCTION`).
+        RoundPhase::DraftShop => Some("DRAFT SHOP"),
         RoundPhase::DraftAuction => Some("AUCTION"),
         RoundPhase::Placement => Some("PLACEMENT"),
         RoundPhase::Resolution => Some("RESOLUTION"),
@@ -1948,9 +2130,20 @@ fn unpopulated_gold_placeholder(owner: GoldLabelOwner) -> &'static str {
     }
 }
 
+/// Format the small inline reserved-gold span that hangs off the primary
+/// gold readout while the auction is live.
+///
+/// S18-UI-HUD-OPP-CLASS-TIMER-SCOREBOARD-REPAIR (PROMPT 1139,
+/// UI-1129-15) — the bare `(0r)` short-hand from PROMPT 1027 read as
+/// "parenthetical zero-r" without a legend explaining `r = reserve`.
+/// Replace with the explicit `(+N reserve)` wording so the suffix is
+/// self-describing and reads in step with the mana microbadge
+/// (`+N reserve`). Empty state remains the canonical "no auction
+/// reserve" signal so this never adds whitespace outside the auction
+/// mode.
 fn format_reserved_gold_span(state: &GoldDisplayState, mode: HudMode) -> String {
     if mode == HudMode::EconomyAuction && state.is_populated {
-        format!(" ({}r)", display_reserved_gold(state))
+        format!(" (+{} reserve)", display_reserved_gold(state))
     } else {
         String::new()
     }
@@ -2289,6 +2482,44 @@ pub fn sync_hud_timer_bar_system(
     };
     for (mut node, mut visibility) in &mut query {
         node.width = Val::Px(target_width_px);
+        if *visibility != target_visibility {
+            *visibility = target_visibility;
+        }
+    }
+}
+
+/// S18-UI-HUD-OPP-CLASS-TIMER-SCOREBOARD-REPAIR (PROMPT 1139,
+/// UI-1129-06) — reflect [`PhaseTimerState`] onto the
+/// [`HudTimerCountdown`] text label as a remaining-seconds readout
+/// (`"45s"` style). Mirrors the visibility gating of
+/// [`sync_hud_timer_bar_system`]: hidden while the timer is inactive
+/// (duration_ms == 0) or the HUD itself is hidden; visible otherwise
+/// for every phase that publishes a non-zero `timer_duration_ms`
+/// (DraftInitial / DraftShop / Placement / DraftAuction — the
+/// auction modal also publishes its own internal timer in
+/// `client/src/ui/shop_auction/mod.rs`; the HUD countdown stays the
+/// canonical top-strip remaining-time signal for *any* phase with a
+/// non-zero duration).
+pub fn sync_hud_timer_countdown_text_system(
+    timer: Res<PhaseTimerState>,
+    mut query: Query<(&mut Text, &mut Visibility), With<HudTimerCountdown>>,
+) {
+    if !timer.is_changed() {
+        return;
+    }
+    let (target_text, target_visibility) = if timer.active && timer.duration_ms > 0 {
+        let remaining_ms = timer.duration_ms.saturating_sub(timer.elapsed_ms);
+        // Round-up so the user never sees `0s` while time is still
+        // remaining; the bar continues to drain smoothly underneath.
+        let remaining_s = remaining_ms.div_ceil(1_000);
+        (format!("{remaining_s}s"), Visibility::Visible)
+    } else {
+        (String::new(), Visibility::Hidden)
+    };
+    for (mut text, mut visibility) in &mut query {
+        if text.0 != target_text {
+            text.0 = target_text.clone();
+        }
         if *visibility != target_visibility {
             *visibility = target_visibility;
         }
