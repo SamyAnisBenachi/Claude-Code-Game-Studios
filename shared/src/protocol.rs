@@ -57,6 +57,7 @@ pub fn register_protocol(registry: &mut impl ProtocolRegistry) {
     register_c2s::<C2SHello>(registry, ProtocolChannel::Reliable);
     register_c2s::<C2SCreateRoom>(registry, ProtocolChannel::Reliable);
     register_c2s::<C2SJoinRoom>(registry, ProtocolChannel::Reliable);
+    register_c2s::<C2SListRooms>(registry, ProtocolChannel::Reliable);
     register_c2s::<C2SClassChoice>(registry, ProtocolChannel::Reliable);
     register_c2s::<C2SSelectClass>(registry, ProtocolChannel::Reliable);
     register_c2s::<C2SConfirmClass>(registry, ProtocolChannel::Reliable);
@@ -95,6 +96,7 @@ pub fn register_protocol(registry: &mut impl ProtocolRegistry) {
     register_s2c::<S2COpponentReconnected>(registry, ProtocolChannel::Reliable);
     register_s2c::<S2CRoomCreated>(registry, ProtocolChannel::Reliable);
     register_s2c::<S2CCreateRoomRejected>(registry, ProtocolChannel::Reliable);
+    register_s2c::<S2CRoomList>(registry, ProtocolChannel::Reliable);
     register_s2c::<S2CJoinAck>(registry, ProtocolChannel::Reliable);
     register_s2c::<S2CJoinRejected>(registry, ProtocolChannel::Reliable);
     register_s2c::<S2CSlotUpdated>(registry, ProtocolChannel::Reliable);
@@ -422,6 +424,9 @@ pub struct C2SJoinRoom {
     pub requested_slot: u8,
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone, Default, PartialEq, Eq)]
+pub struct C2SListRooms {}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct C2SClassChoice {
     pub class: ClassId,
@@ -611,6 +616,30 @@ pub struct S2CRoomCreated {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct S2CCreateRoomRejected {
     pub reason: CreateRoomRejectedReason,
+}
+
+/// One joinable room in the lobby browser. See `S2CRoomList` for filters/order.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct RoomListEntry {
+    /// 6-char uppercase alphanumeric code — passable directly to `C2SJoinRoom`.
+    pub room_code: String,
+    /// Mode determines `slots_max` (2 for OneVOne, 4 for TwoVTwo).
+    pub mode: GameMode,
+    /// Number of slots already filled. Includes the owner. <= `slots_max`.
+    pub slots_filled: u8,
+    /// Total slots in this room (2 for OneVOne, 4 for TwoVTwo).
+    pub slots_max: u8,
+    /// First slot index whose `player` is `None`. `None` only appears for
+    /// transient cases — `S2CRoomList` itself filters out fully occupied rooms.
+    pub first_open_slot: Option<u8>,
+}
+
+/// Response to `C2SListRooms`. Only rooms in `LobbyState::LobbyWaiting` with at
+/// least one open slot are included. Sorted by `room_code` ascending for stable
+/// rendering and snapshot-friendly tests. Empty `Vec` when no rooms are joinable.
+#[derive(Serialize, Deserialize, Debug, Clone, Default, PartialEq, Eq)]
+pub struct S2CRoomList {
+    pub rooms: Vec<RoomListEntry>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -957,6 +986,37 @@ mod tests {
         assert_eq!(
             PlacementTimerMultiplier::from_ratio_capped(4, 1),
             Some(PlacementTimerMultiplier::X3)
+        );
+    }
+
+    #[test]
+    fn lobby_room_browser_messages_are_registered_reliable() {
+        let mut registry = RecordingRegistry::default();
+        register_protocol(&mut registry);
+
+        assert_eq!(
+            registry
+                .messages
+                .iter()
+                .find(|(name, _, _)| { *name == std::any::type_name::<C2SListRooms>() }),
+            Some(&(
+                std::any::type_name::<C2SListRooms>(),
+                ProtocolDirection::ClientToServer,
+                ProtocolChannel::Reliable,
+            )),
+            "C2SListRooms must be registered ClientToServer/Reliable"
+        );
+        assert_eq!(
+            registry
+                .messages
+                .iter()
+                .find(|(name, _, _)| { *name == std::any::type_name::<S2CRoomList>() }),
+            Some(&(
+                std::any::type_name::<S2CRoomList>(),
+                ProtocolDirection::ServerToClient,
+                ProtocolChannel::Reliable,
+            )),
+            "S2CRoomList must be registered ServerToClient/Reliable"
         );
     }
 

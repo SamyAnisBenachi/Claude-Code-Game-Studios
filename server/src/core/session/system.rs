@@ -7,11 +7,12 @@ use lightyear::prelude::*;
 use shared::card::ClassId;
 use shared::protocol::{
     self, C2SAcknowledgeResult, C2SConfirmClass, C2SCreateRoom, C2SHeartbeat, C2SJoinRoom,
-    C2SSelectClass, C2SSetPlacementTimerMultiplier, ConfirmClassRejectedReason,
+    C2SListRooms, C2SSelectClass, C2SSetPlacementTimerMultiplier, ConfirmClassRejectedReason,
     CreateRoomRejectedReason, GameMode, JoinRejectedReason, PlacementTimerMultiplier,
-    ReliableChannel, RoundPhase as ProtocolRoundPhase, S2CClassLocked, S2CClassesRevealed,
-    S2CConfirmClassRejected, S2CCreateRoomRejected, S2CGameOver, S2CJoinAck, S2CJoinRejected,
-    S2CRoomCreated, S2CSessionCancelled, S2CSessionSettingsUpdated, S2CSlotUpdated,
+    ReliableChannel, RoomListEntry, RoundPhase as ProtocolRoundPhase, S2CClassLocked,
+    S2CClassesRevealed, S2CConfirmClassRejected, S2CCreateRoomRejected, S2CGameOver, S2CJoinAck,
+    S2CJoinRejected, S2CRoomCreated, S2CRoomList, S2CSessionCancelled, S2CSessionSettingsUpdated,
+    S2CSlotUpdated,
 };
 use shared::session::PlayerId;
 use uuid::Uuid;
@@ -589,6 +590,38 @@ pub fn handle_create_room(
 
             if let (Some(server), Some(sender)) = (server, sender.as_mut()) {
                 send_create_room_outcome(sender, server, remote.0, &outcome);
+            }
+        }
+    }
+}
+
+/// Sole drainer for `MessageReceiver<C2SListRooms>`. Builds the joinable-room
+/// list (`build_room_list`) excluding the requester's own active session, then
+/// unicasts the result on `ReliableChannel`. Defensive when server/sender are
+/// absent (mirrors `handle_create_room`).
+pub fn handle_list_rooms(
+    rooms: Res<RoomSessions>,
+    connections: Res<PlayerConnectionMap>,
+    active_sessions: Res<ActiveSessions>,
+    mut receivers: Query<(&RemoteId, &mut MessageReceiver<C2SListRooms>)>,
+    server: Query<&Server>,
+    mut sender: Option<ServerMultiMessageSender>,
+) {
+    let server = server.single().ok();
+
+    for (remote, mut receiver) in receivers.iter_mut() {
+        for _msg in receiver.receive() {
+            tracing::info!(peer_id = ?remote.0, "c2s_list_rooms: recv");
+
+            let exclude_session = connections
+                .0
+                .get(&remote.0)
+                .and_then(|player_id| active_sessions.0.get(player_id).copied());
+
+            let payload = build_room_list(&rooms, exclude_session);
+
+            if let (Some(server), Some(sender)) = (server, sender.as_mut()) {
+                send_room_list(sender, server, remote.0, &payload);
             }
         }
     }
@@ -1252,6 +1285,48 @@ pub fn initialise_slots(mode: GameMode, creator: PlayerId) -> SessionSlots {
     }
 }
 
+/// Builds an `S2CRoomList` payload from the current `RoomSessions` registry.
+///
+/// Includes only rooms in `LobbyState::LobbyWaiting` that still have at least
+/// one open slot. When `exclude_session` is `Some`, the room with that id is
+/// omitted (used so a player browsing rooms does not see their own room as
+/// joinable). Results are sorted ascending by `room_code` for stable rendering
+/// and deterministic snapshot tests.
+pub fn build_room_list(
+    rooms: &RoomSessions,
+    exclude_session: Option<SessionId>,
+) -> S2CRoomList {
+    let mut entries: Vec<RoomListEntry> = rooms
+        .session_ids()
+        .into_iter()
+        .filter_map(|session_id| rooms.get(session_id))
+        .filter(|session| session.state == LobbyState::LobbyWaiting)
+        .filter(|session| match exclude_session {
+            Some(sid) => session.session_id != sid,
+            None => true,
+        })
+        .filter_map(|session| {
+            let slots = &session.slots.0;
+            let slots_filled = slots.iter().filter(|slot| slot.player.is_some()).count();
+            let first_open_slot = slots
+                .iter()
+                .find(|slot| slot.player.is_none())
+                .map(|slot| slot.index);
+
+            first_open_slot.map(|open_slot| RoomListEntry {
+                room_code: session.room_code.0.clone(),
+                mode: session.mode,
+                slots_filled: u8::try_from(slots_filled).unwrap_or(u8::MAX),
+                slots_max: u8::try_from(slots.len()).unwrap_or(u8::MAX),
+                first_open_slot: Some(open_slot),
+            })
+        })
+        .collect();
+
+    entries.sort_by(|a, b| a.room_code.cmp(&b.room_code));
+    S2CRoomList { rooms: entries }
+}
+
 pub fn protocol_slots(slots: &SessionSlots) -> Vec<protocol::SessionSlot> {
     slots
         .0
@@ -1903,6 +1978,31 @@ fn send_create_room_outcome(
                 );
             }
         }
+    }
+}
+
+fn send_room_list(
+    sender: &mut ServerMultiMessageSender,
+    server: &Server,
+    peer_id: PeerId,
+    payload: &S2CRoomList,
+) {
+    tracing::info!(
+        peer_id = ?peer_id,
+        room_count = payload.rooms.len(),
+        "send_room_list enter"
+    );
+    if let Err(e) = sender.send::<S2CRoomList, ReliableChannel>(
+        payload,
+        server,
+        &NetworkTarget::Single(peer_id),
+    ) {
+        tracing::error!(
+            peer_id = ?peer_id,
+            room_count = payload.rooms.len(),
+            err = ?e,
+            "S2C send failed: type=S2CRoomList, handler=send_room_list"
+        );
     }
 }
 
