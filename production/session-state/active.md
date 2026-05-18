@@ -1,3 +1,78 @@
+# PROMPT 1100 State Banner -- Sprint 17 QA Plan Authored
+
+Updated 2026-05-18 by PROMPT 1100. Source-of-truth at authoring:
+`origin/main@cb62a9e4c23d18e89d886b525c92e0274aa038f9` (PROMPT 1099
+Sprint 17 activation commit `activate(s17): flip Sprint 17 from
+draft to active (PROMPT 1099)`; strict fast-forward descendant of
+`origin/main@bc3db29` PROMPT 1097 net-new Sprint 17 story authoring
+batch integration tip and of `origin/main@e6a6e11` PROMPT 1090
+Sprint 17 plan draft commit base). Worktree: in-place edits on the
+primary checkout. Branch: `qa-plan/sprint-17-1100` from base
+`origin/main@cb62a9e`.
+
+PROMPT 1100 is a paperwork-only Sprint 17 `/qa-plan sprint-17`
+authoring run. `production/qa/qa-plan-sprint-17.md` authored NEW
+(9-row active set: 1 Must Have human-operator-blocked carry + 1
+Must Have non-conditional + 4 Should Have + 3 Nice to Have). Per-
+row test-type classification per `.claude/docs/coding-standards.md`
+"Test Evidence by Story Type" matrix: Manual / Visual (row 1) +
+Logic + Integration (row 2 card-display-art helper bundle) +
+Integration (rows 3 hud opp/mana / 5 qa snapshot marker split / 6
+bid-button phase race / 9 hand B0004) + Logic (row 4 card-slot
+inset wiring) + Config / Data (rows 7 vulkan validation gating + 8
+server start-of-turn debug downgrade). All non-claims preserved
+verbatim: `S8-QA-001-W1` OPEN, `QA-COND-0005` / `QA-COND-0006`
+accepted-risk, `PAW-TD-*-a` preserved, `TQ-S12-C1..C7` preserved
+(`TQ-S12-C7` explicitly NOT closed), PROMPT 683-era runtime
+divergence preserved, PROMPT 761 `Polish->Release` FAIL preserved
+with NO retry, PROMPT 1054 P1 UI snapshot retest BLOCKED-HUMAN
+preserved, 24 PROMPT 1022 QA snapshot audit findings preserved,
+long-tail AUDIT-1076-05 / 08 / 11 + SOURCE-1077-05 / 07 / 11 / 12
+/ 13 / 14 / 15 deferred to Sprint 18+, all five dropped conditional
+Must Have rows preserved on `origin/main`, no LLM closure of
+`S11-HUD-TIMER-EYEBALL-VISUAL-001`. Stage `Polish` UNCHANGED;
+`production/stage.txt` NOT modified.
+
+Files changed by PROMPT 1100:
+
+- `production/qa/qa-plan-sprint-17.md` (NEW).
+- `production/session-state/active.md` (PROMPT 1100 banner
+  prepended above PROMPT 1099 banner).
+- `production/session-state/codex-orchestrator-state.md` (PROMPT
+  1100 paragraph prepended above PROMPT 1099 paragraph).
+- `reports/PROMPT-1100-sprint-17-qa-plan.md` (mandatory final
+  report; `reports/` is gitignored; not staged or committed).
+
+Files explicitly NOT touched by PROMPT 1100: `client/`, `server/`,
+`shared/`, `tests/`, `Cargo.toml`, `Cargo.lock`, `.cargo/`,
+`.github/`, `Trunk.toml`, `production/stage.txt`,
+`production/gate-checks/**`, `production/epics/**`,
+`production/sprints/**` (sprint-17 plan body NOT rewritten),
+`production/sprint-status.yaml` (top-level + `stories:` block +
+`sprint_17_activation:` block + all prior `sprint_N_*` blocks
+preserved verbatim — existing schema does not require per-sprint
+QA-plan metadata distinct from `sprint_17_activation.qa_plan_found`
+and `qa_plan_note`, both of which the PROMPT 1099 activation set
+intentionally referenced as "to be authored by PROMPT 1100"; PROMPT
+1100 leaves those fields unchanged so the activation history reads
+correctly through time. A Sprint 17 close-out prompt MAY add a
+`sprint_17_qa_plan:` block analogous to the `sprint_N_closeout:`
+pattern; PROMPT 1100 explicitly defers that to close-out).
+`.octogent/`, `.claude/settings.json`, `.claude/scheduled_tasks.lock`.
+No cargo / trunk / CI command invoked. **Cargo policy: N/A** for
+this paperwork-only authoring.
+
+Branch / push: PROMPT 1100 commits the QA plan paperwork on branch
+`qa-plan/sprint-17-1100` from base `origin/main@cb62a9e`. Push
+target: worker branch only; never `main`. Orchestrator integrates
+separately. **No `/dev-story` is authorised before this plan is on
+`origin/main` AND the per-row `/story-readiness` rerun returns READY
+against the post-`/qa-plan` HEAD.** Per-row `/story-readiness` for
+the 8 non-human Sprint 17 rows is the next launchable prompt
+sequence (PROMPT 1101 onward).
+
+---
+
 # PROMPT 1099 State Banner -- Sprint 17 Activated
 
 Updated 2026-05-18 by PROMPT 1099. Source-of-truth at activation:
