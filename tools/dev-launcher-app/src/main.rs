@@ -6,10 +6,12 @@
 // Button 2 -- "Start Two-Client Play Session" -- invokes Start-TwoClients.ps1.
 //
 // The launcher is intentionally a thin wrapper: it does not duplicate any
-// launcher logic. Repo root is resolved from the EXE working directory or
-// from the `CCGS_REPO_ROOT` env override. The scripts themselves remain the
-// source of truth for cargo policy, evidence dir naming, port selection,
-// process spawning, and safety guards.
+// launcher logic. Repo root is resolved from the `CCGS_REPO_ROOT` env
+// override, a sidecar file beside the EXE (written by
+// `tools/dev-launcher/build-launcher-exe.ps1`), or by walking up from the
+// EXE/cwd. The scripts themselves remain the source of truth for cargo
+// policy, evidence dir naming, port selection, process spawning, and safety
+// guards.
 
 #![cfg_attr(all(target_os = "windows", not(debug_assertions)), windows_subsystem = "windows")]
 #![cfg(windows)]
@@ -34,6 +36,9 @@ const REBUILD_BUTTON_LABEL: &str = "Rebuild Latest Main";
 const LAUNCH_BUTTON_LABEL: &str = "Start Two-Client Play Session";
 const REBUILD_SCRIPT: &str = "tools\\dev-launcher\\Update-LatestMain.ps1";
 const LAUNCH_SCRIPT: &str = "tools\\dev-launcher\\Start-TwoClients.ps1";
+// Sidecar written next to the EXE by `tools/dev-launcher/build-launcher-exe.ps1`.
+// Contains the absolute repo root path on the first non-blank line.
+const SIDECAR_FILENAME: &str = "ccgs-dev-launcher.repo-root.txt";
 // Start-TwoClients.ps1 writes per-run logs under this path; the launcher
 // surfaces the exact directory parsed from script stdout.
 #[cfg(test)]
@@ -70,8 +75,39 @@ enum WorkerMessage {
     Error(String),
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum ResolutionSource {
+    Env,
+    Sidecar,
+    ExeWalkUp,
+    CwdWalkUp,
+}
+
+impl ResolutionSource {
+    fn human(self) -> &'static str {
+        match self {
+            ResolutionSource::Env => "CCGS_REPO_ROOT env var",
+            ResolutionSource::Sidecar => "sidecar file beside EXE",
+            ResolutionSource::ExeWalkUp => "walk-up from EXE directory",
+            ResolutionSource::CwdWalkUp => "walk-up from current working directory",
+        }
+    }
+}
+
+#[derive(Debug)]
+enum RepoRootResolution {
+    Resolved {
+        root: PathBuf,
+        source: ResolutionSource,
+    },
+    Failed {
+        attempts: Vec<String>,
+    },
+}
+
 struct LauncherState {
-    repo_root: PathBuf,
+    repo_root: Option<PathBuf>,
+    error_message: Option<String>,
     job: Option<JobKind>,
     rx: Option<Receiver<WorkerMessage>>,
     last_exit: Option<i32>,
@@ -81,9 +117,10 @@ struct LauncherState {
 }
 
 impl LauncherState {
-    fn new(repo_root: PathBuf) -> Self {
+    fn new(repo_root: Option<PathBuf>, error_message: Option<String>) -> Self {
         Self {
             repo_root,
+            error_message,
             job: None,
             rx: None,
             last_exit: None,
@@ -150,7 +187,7 @@ pub struct LauncherUi {
 
     state: Arc<Mutex<Option<LauncherState>>>,
 
-    repo_root_init: RefCell<Option<PathBuf>>,
+    resolution_init: RefCell<Option<RepoRootResolution>>,
 }
 
 impl LauncherUi {
@@ -160,30 +197,76 @@ impl LauncherUi {
     }
 
     fn on_init(&self) {
-        // The state Arc is constructed empty by Default; populate it now that
-        // we have resolved the repo root.
-        let root = self
-            .repo_root_init
+        let resolution = self
+            .resolution_init
             .borrow_mut()
             .take()
-            .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
+            .unwrap_or_else(|| RepoRootResolution::Failed {
+                attempts: vec!["resolution missing at UI init".to_string()],
+            });
+
+        let (repo_root, error_message, init_lines, state_label_text, buttons_enabled) =
+            match resolution {
+                RepoRootResolution::Resolved { root, source } => {
+                    let mut lines = Vec::new();
+                    lines.push(format!(
+                        "Repo root: {} (via {})",
+                        root.display(),
+                        source.human()
+                    ));
+                    lines.push(format!(
+                        "Scripts: {} | {}",
+                        REBUILD_SCRIPT, LAUNCH_SCRIPT
+                    ));
+                    lines.push(
+                        "Click 'Rebuild Latest Main' first if you just pulled, then \
+                         'Start Two-Client Play Session' to launch one server + two clients."
+                            .to_string(),
+                    );
+                    (
+                        Some(root),
+                        None,
+                        lines,
+                        "Idle. Choose a button to begin.".to_string(),
+                        true,
+                    )
+                }
+                RepoRootResolution::Failed { attempts } => {
+                    let err = format!(
+                        "ERROR: could not locate CCGS repo root. \
+                         Set CCGS_REPO_ROOT or rebuild via tools\\dev-launcher\\build-launcher-exe.ps1 \
+                         (writes the {} sidecar beside the EXE).",
+                        SIDECAR_FILENAME
+                    );
+                    let mut lines = vec![err.clone(), "Attempts:".to_string()];
+                    for a in &attempts {
+                        lines.push(format!("  - {}", a));
+                    }
+                    lines.push(
+                        "Buttons are disabled until a valid repo root is resolved.".to_string(),
+                    );
+                    (
+                        None,
+                        Some(err.clone()),
+                        lines,
+                        err,
+                        false,
+                    )
+                }
+            };
+
         let mut guard = self.state.lock().expect("state poisoned at init");
-        *guard = Some(LauncherState::new(root));
-        if let Some(s) = guard.as_mut() {
-            s.append(format!("Repo root: {}", s.repo_root.display()));
-            s.append(format!(
-                "Scripts: {} | {}",
-                REBUILD_SCRIPT, LAUNCH_SCRIPT
-            ));
-            s.append(
-                "Click 'Rebuild Latest Main' first if you just pulled, then \
-                 'Start Two-Client Play Session' to launch one server + two clients."
-                    .to_string(),
-            );
-            s.log_dirty = true;
+        let mut state = LauncherState::new(repo_root, error_message);
+        for line in init_lines {
+            state.append(line);
         }
-        // Flush initial log paint without waiting for the first timer tick.
+        state.log_dirty = true;
+        *guard = Some(state);
         drop(guard);
+
+        self.state_label.set_text(&state_label_text);
+        self.set_buttons_enabled(buttons_enabled);
+        // Flush initial log paint without waiting for the first timer tick.
         self.refresh_log();
     }
 
@@ -208,7 +291,22 @@ impl LauncherUi {
         if state.busy() {
             return;
         }
-        let repo_root = state.repo_root.clone();
+
+        let repo_root = match state.repo_root.clone() {
+            Some(r) => r,
+            None => {
+                let msg = state
+                    .error_message
+                    .clone()
+                    .unwrap_or_else(|| "repo root unresolved -- cannot launch".to_string());
+                state.append(format!("ERROR: {}", msg));
+                state.log_dirty = true;
+                drop(guard);
+                self.refresh_log();
+                return;
+            }
+        };
+
         let script_path = repo_root.join(Path::new(job.script_rel()));
         if !script_path.exists() {
             state.append(format!(
@@ -436,38 +534,151 @@ fn parse_evidence_dir(line: &str) -> Option<PathBuf> {
     }
 }
 
-fn locate_repo_root() -> PathBuf {
-    if let Ok(env_root) = env::var("CCGS_REPO_ROOT") {
-        let p = PathBuf::from(env_root);
-        if is_repo_root(&p) {
-            return p;
-        }
-    }
-
+fn locate_repo_root() -> RepoRootResolution {
+    let env_value = env::var("CCGS_REPO_ROOT").ok();
     let exe_dir = env::current_exe()
         .ok()
         .and_then(|p| p.parent().map(|p| p.to_path_buf()));
-    if let Some(dir) = exe_dir {
-        if let Some(root) = walk_up_for_repo_root(&dir) {
-            return root;
+    let cwd = env::current_dir().ok();
+
+    resolve_repo_root_pure(
+        env_value.as_deref(),
+        exe_dir.as_deref(),
+        cwd.as_deref(),
+        is_repo_root,
+        read_sidecar_root,
+    )
+}
+
+// Pure resolution function used both by `locate_repo_root` and unit tests.
+// Validators (`validate`, `read_sidecar`) are injected so tests can supply
+// in-memory fakes without touching the real filesystem.
+fn resolve_repo_root_pure<F, G>(
+    env_value: Option<&str>,
+    exe_dir: Option<&Path>,
+    cwd: Option<&Path>,
+    validate: F,
+    read_sidecar: G,
+) -> RepoRootResolution
+where
+    F: Fn(&Path) -> bool,
+    G: Fn(&Path) -> Option<PathBuf>,
+{
+    let mut attempts: Vec<String> = Vec::new();
+
+    match env_value {
+        Some(raw) => {
+            let trimmed = raw.trim();
+            if trimmed.is_empty() {
+                attempts.push("CCGS_REPO_ROOT is set but empty".to_string());
+            } else {
+                let p = PathBuf::from(trimmed);
+                if validate(&p) {
+                    return RepoRootResolution::Resolved {
+                        root: p,
+                        source: ResolutionSource::Env,
+                    };
+                }
+                attempts.push(format!(
+                    "CCGS_REPO_ROOT={} -- not a valid repo root",
+                    trimmed
+                ));
+            }
+        }
+        None => {
+            attempts.push("CCGS_REPO_ROOT not set".to_string());
         }
     }
 
-    let cwd = env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
-    if let Some(root) = walk_up_for_repo_root(&cwd) {
-        return root;
+    match exe_dir {
+        Some(dir) => {
+            match read_sidecar(dir) {
+                Some(candidate) => {
+                    if validate(&candidate) {
+                        return RepoRootResolution::Resolved {
+                            root: candidate,
+                            source: ResolutionSource::Sidecar,
+                        };
+                    }
+                    attempts.push(format!(
+                        "sidecar {}\\{} pointed at {} -- not a valid repo root",
+                        dir.display(),
+                        SIDECAR_FILENAME,
+                        candidate.display()
+                    ));
+                }
+                None => {
+                    attempts.push(format!(
+                        "no sidecar at {}\\{}",
+                        dir.display(),
+                        SIDECAR_FILENAME
+                    ));
+                }
+            }
+            if let Some(root) = walk_up_for_repo_root_with(dir, &validate) {
+                return RepoRootResolution::Resolved {
+                    root,
+                    source: ResolutionSource::ExeWalkUp,
+                };
+            }
+            attempts.push(format!(
+                "walk-up from EXE dir {} found no repo root",
+                dir.display()
+            ));
+        }
+        None => {
+            attempts.push("could not determine EXE directory".to_string());
+        }
     }
 
-    cwd
+    match cwd {
+        Some(dir) => {
+            if let Some(root) = walk_up_for_repo_root_with(dir, &validate) {
+                return RepoRootResolution::Resolved {
+                    root,
+                    source: ResolutionSource::CwdWalkUp,
+                };
+            }
+            attempts.push(format!(
+                "walk-up from cwd {} found no repo root",
+                dir.display()
+            ));
+        }
+        None => {
+            attempts.push("could not determine current working directory".to_string());
+        }
+    }
+
+    RepoRootResolution::Failed { attempts }
 }
 
-fn walk_up_for_repo_root(start: &Path) -> Option<PathBuf> {
+fn walk_up_for_repo_root_with<F: Fn(&Path) -> bool>(start: &Path, validate: F) -> Option<PathBuf> {
     let mut current = Some(start.to_path_buf());
     while let Some(dir) = current {
-        if is_repo_root(&dir) {
+        if validate(&dir) {
             return Some(dir);
         }
         current = dir.parent().map(|p| p.to_path_buf());
+    }
+    None
+}
+
+fn read_sidecar_root(exe_dir: &Path) -> Option<PathBuf> {
+    let sidecar = exe_dir.join(SIDECAR_FILENAME);
+    let raw = std::fs::read_to_string(&sidecar).ok()?;
+    parse_sidecar_content(&raw)
+}
+
+// Sidecar format: the first non-blank line is the absolute repo root path.
+// Subsequent lines (e.g. a build-time comment) are ignored. Whitespace around
+// the path is trimmed. Empty / whitespace-only contents return None.
+fn parse_sidecar_content(raw: &str) -> Option<PathBuf> {
+    for line in raw.lines() {
+        let trimmed = line.trim();
+        if trimmed.is_empty() || trimmed.starts_with('#') {
+            continue;
+        }
+        return Some(PathBuf::from(trimmed));
     }
     None
 }
@@ -479,7 +690,7 @@ fn is_repo_root(p: &Path) -> bool {
 }
 
 fn main() {
-    let repo_root = locate_repo_root();
+    let resolution = locate_repo_root();
 
     nwg::init().expect("Failed to init native-windows-gui");
     let mut default_font = nwg::Font::default();
@@ -490,7 +701,7 @@ fn main() {
     nwg::Font::set_global_default(Some(default_font));
 
     let app_template = LauncherUi {
-        repo_root_init: RefCell::new(Some(repo_root)),
+        resolution_init: RefCell::new(Some(resolution)),
         ..Default::default()
     };
 
@@ -501,6 +712,37 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs;
+    use std::sync::atomic::{AtomicU64, Ordering};
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    fn unique_temp_dir(label: &str) -> PathBuf {
+        static COUNTER: AtomicU64 = AtomicU64::new(0);
+        let nanos = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|d| d.as_nanos())
+            .unwrap_or(0);
+        let n = COUNTER.fetch_add(1, Ordering::Relaxed);
+        let dir = env::temp_dir().join(format!(
+            "ccgs-dev-launcher-test-{}-{}-{}-{}",
+            label,
+            std::process::id(),
+            nanos,
+            n
+        ));
+        fs::create_dir_all(&dir).expect("create temp dir");
+        dir
+    }
+
+    fn always_true(_: &Path) -> bool {
+        true
+    }
+    fn always_false(_: &Path) -> bool {
+        false
+    }
+    fn no_sidecar(_: &Path) -> Option<PathBuf> {
+        None
+    }
 
     #[test]
     fn parse_evidence_dir_extracts_path() {
@@ -520,8 +762,6 @@ mod tests {
 
     #[test]
     fn parse_evidence_dir_strips_leading_prefix() {
-        // Useful when stderr/stdout interleaves with `[err] ` prefixes after
-        // we add them, but the raw line from PowerShell is what we parse first.
         let line = "    Evidence dir: production/qa/evidence/dev-runs/2026-05-18-120000";
         assert_eq!(
             parse_evidence_dir(line).unwrap(),
@@ -549,18 +789,279 @@ mod tests {
 
     #[test]
     fn launcher_state_truncates_log_beyond_cap() {
-        let mut s = LauncherState::new(PathBuf::from("."));
+        let mut s = LauncherState::new(Some(PathBuf::from(".")), None);
         for i in 0..(MAX_LOG_LINES + 50) {
             s.append(format!("line {}", i));
         }
         assert_eq!(s.log_lines.len(), MAX_LOG_LINES);
-        // Oldest lines should have been dropped.
         assert!(s.log_lines[0].contains("line 50") || s.log_lines[0].contains("line 51"));
     }
 
     #[test]
     fn evidence_hint_constant_matches_script_output() {
-        // Start-TwoClients.ps1 writes evidence under this prefix.
         assert!(EVIDENCE_HINT.contains("dev-runs"));
+    }
+
+    #[test]
+    fn sidecar_filename_is_documented_value() {
+        // The build script and docs both reference this exact filename. If we
+        // ever rename it we want a compile-time-visible test failure so the
+        // ps1 + docs are updated together.
+        assert_eq!(SIDECAR_FILENAME, "ccgs-dev-launcher.repo-root.txt");
+    }
+
+    #[test]
+    fn parse_sidecar_content_returns_first_nonblank_trimmed_line() {
+        let raw = "   D:\\_DEV\\Work\\Claude-Code-Game-Studios   \r\n";
+        assert_eq!(
+            parse_sidecar_content(raw),
+            Some(PathBuf::from("D:\\_DEV\\Work\\Claude-Code-Game-Studios"))
+        );
+    }
+
+    #[test]
+    fn parse_sidecar_content_skips_blank_and_comment_lines() {
+        let raw = "\n# generated by build-launcher-exe.ps1\n\n  D:\\some\\path\n";
+        assert_eq!(
+            parse_sidecar_content(raw),
+            Some(PathBuf::from("D:\\some\\path"))
+        );
+    }
+
+    #[test]
+    fn parse_sidecar_content_rejects_empty_or_blank_only() {
+        assert_eq!(parse_sidecar_content(""), None);
+        assert_eq!(parse_sidecar_content("   \r\n\t\n"), None);
+        assert_eq!(parse_sidecar_content("# only a comment\n"), None);
+    }
+
+    #[test]
+    fn read_sidecar_root_returns_none_when_missing() {
+        let dir = unique_temp_dir("missing-sidecar");
+        assert_eq!(read_sidecar_root(&dir), None);
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn read_sidecar_root_returns_path_when_present() {
+        let dir = unique_temp_dir("with-sidecar");
+        let sidecar = dir.join(SIDECAR_FILENAME);
+        fs::write(&sidecar, "D:\\_DEV\\Work\\Claude-Code-Game-Studios\r\n")
+            .expect("write sidecar");
+        assert_eq!(
+            read_sidecar_root(&dir),
+            Some(PathBuf::from("D:\\_DEV\\Work\\Claude-Code-Game-Studios"))
+        );
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn read_sidecar_root_rejects_empty_file() {
+        let dir = unique_temp_dir("empty-sidecar");
+        let sidecar = dir.join(SIDECAR_FILENAME);
+        fs::write(&sidecar, "   \r\n").expect("write empty sidecar");
+        assert_eq!(read_sidecar_root(&dir), None);
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    fn assert_resolved(
+        res: RepoRootResolution,
+        expected_root: &Path,
+        expected_source: ResolutionSource,
+    ) {
+        match res {
+            RepoRootResolution::Resolved { root, source } => {
+                assert_eq!(root, expected_root);
+                assert_eq!(source, expected_source);
+            }
+            RepoRootResolution::Failed { attempts } => {
+                panic!("expected Resolved, got Failed: {:?}", attempts)
+            }
+        }
+    }
+
+    #[test]
+    fn resolve_repo_root_prefers_env_when_valid() {
+        let env_root = PathBuf::from("D:\\repo-from-env");
+        let exe_dir = PathBuf::from("D:\\exe");
+        let cwd = PathBuf::from("D:\\cwd");
+
+        let res = resolve_repo_root_pure(
+            Some("D:\\repo-from-env"),
+            Some(&exe_dir),
+            Some(&cwd),
+            |p: &Path| p == env_root.as_path(),
+            |dir: &Path| Some(dir.join("sidecar-says-other")),
+        );
+        assert_resolved(res, &env_root, ResolutionSource::Env);
+    }
+
+    #[test]
+    fn resolve_repo_root_falls_through_invalid_env_to_sidecar() {
+        let sidecar_root = PathBuf::from("D:\\repo-from-sidecar");
+        let exe_dir = PathBuf::from("D:\\exe");
+        let sidecar_root_for_closure = sidecar_root.clone();
+
+        let res = resolve_repo_root_pure(
+            Some("D:\\not-a-repo"),
+            Some(&exe_dir),
+            Some(Path::new("D:\\cwd")),
+            move |p: &Path| p == sidecar_root_for_closure.as_path(),
+            move |_dir: &Path| Some(PathBuf::from("D:\\repo-from-sidecar")),
+        );
+        assert_resolved(res, &sidecar_root, ResolutionSource::Sidecar);
+    }
+
+    #[test]
+    fn resolve_repo_root_falls_through_invalid_sidecar_to_exe_walkup() {
+        // EXE dir lives outside the repo (mirrors the user's bug: under
+        // D:\_DEV\cargo-target\ccgs-msvc\debug). With a malformed sidecar and
+        // no valid walk-up from EXE, we should land on the cwd walk-up.
+        let exe_dir = PathBuf::from("D:\\cargo-target\\ccgs-msvc\\debug");
+        let cwd = PathBuf::from("D:\\some\\subdir\\of\\repo");
+        let repo_via_cwd = PathBuf::from("D:\\some\\subdir\\of\\repo");
+        let repo_for_closure = repo_via_cwd.clone();
+
+        let res = resolve_repo_root_pure(
+            None,
+            Some(&exe_dir),
+            Some(&cwd),
+            move |p: &Path| p == repo_for_closure.as_path(),
+            |_dir: &Path| Some(PathBuf::from("D:\\bogus-sidecar-target")),
+        );
+        assert_resolved(res, &repo_via_cwd, ResolutionSource::CwdWalkUp);
+    }
+
+    #[test]
+    fn resolve_repo_root_uses_exe_walkup_when_sidecar_absent() {
+        let exe_dir = PathBuf::from("D:\\repo\\target\\debug");
+        let repo = PathBuf::from("D:\\repo");
+        let repo_for_closure = repo.clone();
+
+        let res = resolve_repo_root_pure(
+            None,
+            Some(&exe_dir),
+            Some(Path::new("D:\\cwd")),
+            move |p: &Path| p == repo_for_closure.as_path(),
+            no_sidecar,
+        );
+        assert_resolved(res, &repo, ResolutionSource::ExeWalkUp);
+    }
+
+    #[test]
+    fn resolve_repo_root_fails_when_nothing_works() {
+        // This is exactly the user-reported scenario: EXE lives in
+        // D:\_DEV\cargo-target\ccgs-msvc\debug (outside the repo), no env
+        // override, no sidecar, no walk-up match from EXE or cwd.
+        let exe_dir = PathBuf::from("D:\\_DEV\\cargo-target\\ccgs-msvc\\debug");
+        let cwd = PathBuf::from("D:\\_DEV\\cargo-target\\ccgs-msvc\\debug");
+
+        let res = resolve_repo_root_pure(
+            None,
+            Some(&exe_dir),
+            Some(&cwd),
+            always_false,
+            no_sidecar,
+        );
+
+        match res {
+            RepoRootResolution::Failed { attempts } => {
+                assert!(!attempts.is_empty(), "attempts should not be empty");
+                let joined = attempts.join("\n");
+                assert!(joined.contains("CCGS_REPO_ROOT not set"));
+                assert!(joined.contains("no sidecar"));
+                assert!(joined.contains("walk-up from EXE dir"));
+                assert!(joined.contains("walk-up from cwd"));
+            }
+            RepoRootResolution::Resolved { root, source } => {
+                panic!(
+                    "expected Failed for outside-repo EXE with no env/sidecar, \
+                     but got Resolved({}, {:?})",
+                    root.display(),
+                    source
+                )
+            }
+        }
+    }
+
+    #[test]
+    fn resolve_repo_root_does_not_accept_target_debug_as_root() {
+        // Defensive: even if both `exe_dir` and `cwd` point at target/debug
+        // (the user-reported bug from PROMPT 1170), and neither walk-up ever
+        // visits the real repo root, the function must return Failed -- never
+        // silently treat target/debug or any ancestor of it as the repo root.
+        let target_debug = PathBuf::from("D:\\_DEV\\cargo-target\\ccgs-msvc\\debug");
+        let res = resolve_repo_root_pure(
+            None,
+            Some(&target_debug),
+            Some(&target_debug),
+            // Only the actual repo path (which is NOT on either walk-up
+            // chain) is a valid repo root.
+            |p: &Path| p == Path::new("D:\\some-other-real-repo"),
+            no_sidecar,
+        );
+        match res {
+            RepoRootResolution::Failed { attempts } => {
+                let joined = attempts.join("\n");
+                assert!(joined.contains("walk-up from EXE dir"));
+                assert!(joined.contains("walk-up from cwd"));
+            }
+            RepoRootResolution::Resolved { root, source } => panic!(
+                "PROMPT 1170 invariant violated: returned Resolved({}, {:?}) \
+                 instead of Failed when EXE/cwd are target/debug",
+                root.display(),
+                source
+            ),
+        }
+    }
+
+    #[test]
+    fn resolve_repo_root_handles_empty_env_value() {
+        let exe_dir = PathBuf::from("D:\\repo");
+        let repo = PathBuf::from("D:\\repo");
+        let repo_for_closure = repo.clone();
+        let res = resolve_repo_root_pure(
+            Some("   "),
+            Some(&exe_dir),
+            Some(Path::new("D:\\cwd")),
+            move |p: &Path| p == repo_for_closure.as_path(),
+            no_sidecar,
+        );
+        // Empty/whitespace env should not crash and should fall through to
+        // walk-up resolution.
+        assert_resolved(res, &repo, ResolutionSource::ExeWalkUp);
+    }
+
+    #[test]
+    fn resolution_source_human_strings_are_distinct() {
+        let all = [
+            ResolutionSource::Env.human(),
+            ResolutionSource::Sidecar.human(),
+            ResolutionSource::ExeWalkUp.human(),
+            ResolutionSource::CwdWalkUp.human(),
+        ];
+        for (i, a) in all.iter().enumerate() {
+            for (j, b) in all.iter().enumerate() {
+                if i != j {
+                    assert_ne!(a, b, "{} and {} collide", a, b);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn always_true_validator_accepts_env_path() {
+        let res = resolve_repo_root_pure(
+            Some("D:\\anything"),
+            Some(Path::new("D:\\exe")),
+            Some(Path::new("D:\\cwd")),
+            always_true,
+            no_sidecar,
+        );
+        assert_resolved(
+            res,
+            &PathBuf::from("D:\\anything"),
+            ResolutionSource::Env,
+        );
     }
 }
