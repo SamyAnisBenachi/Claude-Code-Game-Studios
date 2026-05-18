@@ -6057,3 +6057,306 @@ sprint_16_closeout:
     - ".claude/scheduled_tasks.lock NOT modified"
     - ".claude/settings.json NOT modified"
     - "no /dev-story, no /story-done, no /story-readiness, no /smoke-check, no /team-qa, no /gate-check, no /release-check, no /qa-plan, no implementation work, no cargo / trunk build / test run, no Polish->Release retry, no stage advance, no S8-QA-001-W1 closure, no S11-HUD-TIMER-EYEBALL-VISUAL-001 closure, no pixel-level PROMPT 1054 retest closure, no TQ-S12-C7 closure, no Sprint 17 activation, no Sprint 17 sprint-status active row, no Sprint 16 row reopen, no Sprint 15 / 14 / 13 / 12 / 11 / 10 row reopen"
+
+# PROMPT 1090 -- Sprint 17 plan draft pointer (paperwork-only).
+# Top-level sprint: 16 / status: closed-with-conditions / stage: Polish
+# preserved verbatim above. This block is the only Sprint 17 marker in
+# this file. Sprint 17 is NOT activated by PROMPT 1090.
+
+next_sprint_17_draft:
+  date: "2026-05-18"
+  prompt: "1090"
+  source_of_truth_at_authoring: "origin/main@fec13ffc3723d9d68afdda4b6e4bf62af5d6da2a"
+  source_of_truth_at_commit: "origin/main@e6a6e11b7c3359e076dd1e3c71d47015fa1cf739"
+  source_of_truth_at_commit_note: "origin/main advanced 5 commits between authoring and commit (7f10b42 PROMPT 1081 + eec2a91 PROMPT 1087 + d87939c PROMPT 1086 + d51e246 PROMPT 1089 refresh + e6a6e11 PROMPT 1092). Branch was rebased onto e6a6e11 before commit. PROMPT 1086 client placement perspective + PROMPT 1087 / 1089 lobby class art repairs are NOW on origin/main. Conditional Must Have rows S17-UI-PLACEMENT-PERSPECTIVE-001 + S17-UI-LOBBY-CLASS-ART-CONFIRM-001 are PRE-DROPPED at draft commit time; activation prompt (PROMPT 1093) should drop them from the Sprint 17 active set. Remaining conditional Must Have rows at commit time: S17-UI-MODAL-BLACK-SLAB-001 (PROMPT 1080 / 1083 NOT on origin/main) + S17-UI-SHOP-AUCTION-SURFACE-PAINT-001 (PROMPT 1085 worker only; NOT on origin/main; depends on modal repair landing). Sprint 17 Must Have scope at commit time: ~2.75d-3.5d (HUD timer 0.25d conditional human-operator-blocked + modal repair 0.25d-1.0d conditional + shop / auction surface paint 1.5d conditional + card-display-art helper bundle 0.75d non-conditional). next_launchable_prompts list updated implicitly: PROMPT 1091c (placement perspective integration) and PROMPT 1091d (lobby class art main-push refresh) are SUPERSEDED by the landed PROMPT 1086 + 1087 / 1089 commits and may be dropped; PROMPT 1091a (modal main-push refresh) and PROMPT 1091b (shop / auction surface paint integration) remain priority next-launchable prompts."
+  source_of_truth_note: "PROMPT 1088 Sprint 16 close-out main integration tip on origin/main (`integrate(s16): merge Sprint 16 close-out paperwork into main (PROMPT 1088)`) -- merges PROMPT 1082 close-out paperwork (860e08e) into origin/main. Sprint 16 disposition closed-with-conditions verified: top-level sprint=16, status=closed-with-conditions, stage=Polish; sprint_16_closeout block at EOF; sprint_16_story_done PROMPT 1072 + PROMPT 1074 entries preserved verbatim; stories block preserved verbatim (4 Sprint 16 rows, 3 closed, 1 ready / human-operator-blocked carry)."
+  status: "draft"
+  active: false
+  branch: "sprint-plan/sprint-17-draft-1090"
+  worktree: "D:/_DEV/claude-code-game-studios-worktrees/sprint-17-plan-draft-1090"
+  base: "origin/main@fec13ffc3723d9d68afdda4b6e4bf62af5d6da2a"
+  sprint: 17
+  stage: "Polish"
+  sprint_plan_file: "production/sprints/sprint-17.md"
+  goal: "Sprint 17 focused runtime / UI repair sprint -- discharges (1) up to four in-flight Sprint 16-era repair tracks that did NOT land on origin/main before Sprint 16 close-out (PROMPT 1080 / 1083 modal black-slab; PROMPT 1085 client shop / auction surface paint + intent; PROMPT 1086 client placement perspective + invalid-drop feedback; PROMPT 1087 / 1089 lobby class art + Confirm-class button); (2) the PROMPT 1077 P0 structural card-display-art bundle (SOURCE-1077-01 slot-well chrome preservation + SOURCE-1077-02 duplicate-helper dedup + SOURCE-1077-03 Box::leak fix + SOURCE-1077-04 existence check) as a single bundled Must Have row; (3) the Sprint 13 -> 14 -> 15 -> 16 -> 17 human-operator-blocked HUD timer eyeball visual check conditional carry (S11-HUD-TIMER-EYEBALL-VISUAL-001; story 014; carried unchanged from Sprint 16 close-out as Must Have human-operator-blocked / human-later evidence only; not a stop-the-line blocker for non-human Sprint 17 development lanes; no LLM /story-done authorised; closure remains gated on human-operator screenshot capture across DraftInitial 45s / DraftShop 30s / Placement 10-12s phases); (4) five visible UX cleanup Should Have rows (HUD opponent figurine + OPP label + mana microbadge dedup; auction state-machine timer latency repair; card-slot primitive image / text inset wiring; QA snapshot marker split + visibility-aware counts; bid-button phase-entry race cleanup); (5) three small Nice to Have hygiene rows (Vulkan validation gating; start_of_turn_dispatch warn -> debug downgrade; Hand UI B0004 hierarchy warning cleanup). Sprint 17 is NOT a Polish->Release sprint and explicitly does NOT claim public release readiness, release-candidate readiness, full game completion, broad / Standard-tier accessibility completion (QA-COND-0005 accepted-risk), playtest validation (QA-COND-0006 accepted-risk), full playable-client manual QA, two-client GAME_OVER closure (S8-QA-001-W1 OPEN), final-art / asset-production completion (PAW-TD-*-a accepted-risk; Sprint 17 lobby class art row uses placeholder PNGs only), Polish->Release gate-check retry (PROMPT 761 FAIL preserved), stage advance from Polish to Release, underlying drag-runtime bug fix (Sprint 12 story 019 cannot-reproduce preserved), Sprint 16 / 15 / 14 / 13 / 12 / 11 / 10 row reopen, OR closure of any PROMPT 1076 / 1077 finding for which a concrete repair is not on origin/main at activation time. Stage Polish preserved verbatim; production/stage.txt NOT touched by PROMPT 1090 and MUST NOT be touched by PROMPT 1093 activation."
+  provisional_start: "2026-08-27"
+  provisional_end: "2026-09-09"
+  workdays: 10
+  capacity:
+    total_workdays: 10
+    buffer_workdays: 2.5
+    available_effective_workdays: 7.5
+    must_have_estimated_upper_bound: 5.0
+    must_have_estimated_lower_bound: 1.0
+    should_have_estimated: 1.75
+    nice_to_have_estimated: 0.4
+    total_implementation_upper_bound: 7.15
+    notes: "Upper bound assumes all four conditional Must Have rows are pulled forward and require worker re-runs. Lower bound assumes all four in-flight repair tracks (PROMPT 1080 / 1083 modal, PROMPT 1085 shop / auction, PROMPT 1086 placement perspective, PROMPT 1087 / 1089 lobby class art) land on origin/main before Sprint 17 activation; the corresponding rows are then dropped from Sprint 17. Producer + orchestrator MUST audit origin/main at activation time and drop conditional rows accordingly."
+  candidate_rows:
+    must_have:
+      - id: "S11-HUD-TIMER-EYEBALL-VISUAL-001"
+        priority: "must-have"
+        conditional: true
+        conditional_note: "Dropped from Sprint 17 if closed on origin/main before activation; carried as Sprint 13 -> 14 -> 15 -> 16 -> 17 human-operator-blocked carry."
+        estimate_days: 0.25
+        source: "Sprint 16 carry per PROMPT 1082 close-out + PROMPT 1088 main integration; originally Sprint 10 smoke retry-7 W2 -> Sprint 11 -> 12 -> 13 -> 14 -> 15 -> 16 -> 17."
+        story_file: "production/epics/hud/story-014-hud-timer-eyeball-visual-check.md"
+        story_file_exists_on_main: true
+        story_authoring_required: false
+        closure_gate: "human-operator screenshot capture across DraftInitial 45s / DraftShop 30s / Placement 10-12s phases; no LLM /story-done authorised"
+        evidence_target: "production/qa/evidence/sprint-17-hud-timer-visual-check/ (NEW)"
+      - id: "S17-UI-MODAL-BLACK-SLAB-001"
+        priority: "must-have"
+        conditional: true
+        conditional_note: "Dropped from Sprint 17 if PROMPT 1080 / 1083 modal repair lands on origin/main before activation."
+        estimate_days_paperwork: 0.25
+        estimate_days_worker_rerun: 1.0
+        source: "AUDIT-1076-01 (P0) -- giant ~850 x 340 px black modal obscures the board through every InSession phase."
+        in_flight_worker: "origin/work/client-phase-modal-black-slab-1080 tip cbc11b2c29b1cb9671ce4e8606ed7b3a44a519ee"
+        in_flight_integration: "origin/integrate/client-phase-modal-black-slab-1083 tip e4bbca3935bfa4fcfae406d19f7dfd3536e207e5"
+        in_flight_status_at_draft: "integration PASS (10/10 focused tests); NOT on origin/main; PROMPT 1083 report at reports/PROMPT-1083-client-phase-modal-black-slab-integration.md"
+        files_owned:
+          - "client/src/ui/shop_auction/mod.rs"
+          - "tests/integration/shop_auction_ui/draft_initial_centered_modal_layout_test.rs"
+        story_file: "TBD by story-authoring prompt at production/epics/ui-clean-pass/story-XXX-modal-black-slab.md (or refresh of existing PROMPT 1080 story file if present)"
+        story_authoring_required: "conditional (paperwork-only if main-push refresh is FF; net-new authoring if worker re-run is required)"
+      - id: "S17-UI-SHOP-AUCTION-SURFACE-PAINT-001"
+        priority: "must-have"
+        conditional: true
+        conditional_note: "Dropped from Sprint 17 if PROMPT 1085 shop / auction surface paint repair lands on origin/main before activation. Depends on S17-UI-MODAL-BLACK-SLAB-001 landing first."
+        estimate_days: 1.5
+        source: "AUDIT-1076-04 (P1) + AUDIT-1076-13 (P2) -- shop / auction surfaces render as empty black slabs even though drain_shop_slots + drain_auction_card arrive on the client; shop card clicks fire C2SActivateCard storms with no C2SPurchaseCard follow-up."
+        in_flight_worker: "origin/work/client-shop-auction-surface-paint-1085"
+        in_flight_integration: "none at draft time"
+        in_flight_status_at_draft: "worker branch only; no integration prompt; NOT on origin/main; no PROMPT 1085 report present at draft time"
+        files_owned:
+          - "client/src/ui/shop_auction/shop_slot*.rs"
+          - "client/src/ui/shop_auction/auction_*.rs"
+          - "client/src/ui/design_tokens/z_layers.rs"
+          - "client/src/ui/shop_auction/shop_slot_click*.rs"
+        story_file: "TBD by story-authoring prompt at production/epics/ui-clean-pass/story-XXX-shop-auction-surface-paint.md"
+        story_authoring_required: true
+      - id: "S17-UI-PLACEMENT-PERSPECTIVE-001"
+        priority: "must-have"
+        conditional: true
+        conditional_note: "Dropped from Sprint 17 if PROMPT 1086 client placement perspective repair lands on origin/main before activation. AUDIT-1076-02 + AUDIT-1076-03 (server side) ARE on origin/main via PROMPT 1079 + PROMPT 1084."
+        estimate_days: 1.0
+        source: "AUDIT-1076-09 (P1 UX) + PROMPT 1079 client residual risk #2 -- staged placements silently dropped on phase transition with no auto_submit_on_phase_end log; user staged 2 cards but C2SSubmitPlacement was never sent."
+        in_flight_worker: "origin/work/client-placement-perspective-submit-1086"
+        in_flight_integration: "none at draft time"
+        in_flight_status_at_draft: "worker branch only; no integration prompt; NOT on origin/main; no PROMPT 1086 report present at draft time"
+        files_owned:
+          - "client/src/ui/hand/staging*.rs"
+          - "client/src/ui/shop_auction/placement_submit*.rs"
+        story_file: "TBD by story-authoring prompt at production/epics/ui-clean-pass/story-XXX-placement-perspective.md"
+        story_authoring_required: true
+      - id: "S17-UI-LOBBY-CLASS-ART-CONFIRM-001"
+        priority: "must-have"
+        conditional: true
+        conditional_note: "Dropped from Sprint 17 if PROMPT 1087 / 1089 lobby class art + Confirm-class button integration lands on origin/main before activation."
+        estimate_days_paperwork: 0.25
+        estimate_days_worker_rerun: 1.5
+        source: "AUDIT-1076-06 (P1) + AUDIT-1076-07 (P1) -- class picker shows generic ? cards for all 7 classes; Confirm-class button reads as a dim text band with no border / fill."
+        in_flight_worker: "origin/work/lobby-class-art-confirm-1081"
+        in_flight_integration: "origin/integrate/lobby-class-art-confirm-1087 tip eec2a917652e48281ba1294da2e29d08797b5a0d"
+        in_flight_status_at_draft: "integration PASS (49/49 tests, 5 files M3/A2); PROMPT 1089 main-push attempt BLOCKED NEEDS-REFRESH (non-FF would lose PROMPT 1082 + 1088 close-out paperwork); NOT on origin/main; PROMPT 1087 + 1089 reports at reports/PROMPT-1087-lobby-class-art-confirm-button-integration.md + reports/PROMPT-1089-lobby-class-art-confirm-main-push.md"
+        files_owned:
+          - "client/src/ui/lobby/class_picker*.rs"
+          - "client/src/ui/lobby/confirm_class*.rs"
+          - "client/src/ui/lobby/intent_chain*.rs"
+          - "client/src/asset_wiring.rs"
+          - "assets/art/lobby/ placeholder PNGs"
+        story_file: "TBD by story-authoring prompt or refresh of existing PROMPT 1081 story file"
+        story_authoring_required: "conditional (paperwork-only refresh if rebase is FF; net-new authoring if worker re-run is required)"
+        placeholder_asset_gaps_at_draft: "lobby-portrait-png x7 + slot-panel + room-code-chip + board-sprite x7 placeholder-md5 noted by PROMPT 1087"
+        non_claim: "real-art production deferred to Sprint 18+; PAW-TD-*-a accept-risk preserved"
+      - id: "S17-UI-CARD-DISPLAY-ART-HELPER-001"
+        priority: "must-have"
+        conditional: false
+        estimate_days: 0.75
+        source: "SOURCE-1077-01 (P0) slot-well chrome lost when card art is missing + SOURCE-1077-02 (P0) duplicate apply_card_display_art definitions + SOURCE-1077-03 (P1) per-render Box::leak in resolve_card_display_art + SOURCE-1077-04 (P1) resolve_card_display_art returns path without existence check. Bundled because dedup MUST land in the same commit as the slot-well chrome fix."
+        files_owned:
+          - "client/src/asset_wiring.rs"
+          - "client/src/ui/shop_auction/mod.rs"
+          - "client/src/ui/hand/mod.rs"
+        story_file: "TBD by story-authoring prompt at production/epics/ui-clean-pass/story-XXX-card-display-art-helper.md"
+        story_authoring_required: true
+        evidence_target: "production/qa/evidence/sprint-17-card-display-art-helper/ (NEW)"
+    should_have:
+      - id: "S17-UI-HUD-OPP-MANA-CLEANUP-001"
+        priority: "should-have"
+        conditional: false
+        estimate_days: 0.5
+        source: "AUDIT-1076-10 (P2) + AUDIT-1076-16 (P3) + AUDIT-1076-17 (P3) -- opponent figurine strip + OPP label never repaint after S2CClassesRevealed; duplicate floating mana microbadge."
+        files_owned:
+          - "client/src/ui/hud/opponent_figurine*.rs"
+          - "client/src/ui/hud/opp_label*.rs"
+          - "client/src/ui/hud/mana_*.rs"
+          - "client/src/state/mod.rs"
+        story_file: "TBD by story-authoring prompt at production/epics/hud/story-XXX-opp-mana-cleanup.md"
+        story_authoring_required: true
+      - id: "S17-SERVER-AUCTION-TIMER-001"
+        priority: "should-have"
+        conditional: true
+        conditional_note: "Dropped from Sprint 17 if a separate repair lands the auction state-machine timer fix on origin/main before activation."
+        estimate_days: 0.5
+        source: "AUDIT-1076-12 (P2) -- run-7: auction settles ~149 s after last bid instead of <=30 s; either Resolving transition is gated on a longer phase timer or the per-bid extension is mis-multiplied."
+        files_owned:
+          - "server/src/game/auction*.rs"
+          - "server/src/core/rsm/transitions.rs"
+        story_file: "TBD by story-authoring prompt at production/epics/server-auction/story-XXX-auction-timer-state-machine.md"
+        story_authoring_required: true
+      - id: "S17-UI-CARD-SLOT-INSET-WIRING-001"
+        priority: "should-have"
+        conditional: false
+        estimate_days: 0.25
+        source: "SOURCE-1077-06 (P1) -- card_slot_node(kind) builds outer rectangle only; image inset, text inset, padding, GlobalZIndex not wired. Completes Sprint 16 Phase 1 primitive ratification."
+        files_owned:
+          - "client/src/ui/design_tokens/card_slot.rs"
+        story_file: "TBD by story-authoring prompt at production/epics/ui-clean-pass/story-XXX-card-slot-inset-wiring.md"
+        story_authoring_required: true
+        scope_note: "Per-surface migration of hand-fan / draft-grid / auction-featured / board-staged-ghost surfaces remains Sprint 17+ Backlog (S17-UI-CARD-SLOT-MIGRATION-* family); NOT in this row."
+      - id: "S17-UI-QA-SNAPSHOT-MARKER-SPLIT-001"
+        priority: "should-have"
+        conditional: false
+        estimate_days: 0.25
+        source: "SOURCE-1077-08 (P2) + SOURCE-1077-09 (P2) + SOURCE-1077-16 (P3) -- universal markers + visibility-blind counts produce misleading QA snapshot JSON; snapshot ID format aliases across concurrent clients."
+        files_owned:
+          - "client/src/presentation/qa_snapshot.rs"
+          - "client/src/ui/hud/"
+          - "client/src/ui/hand/"
+          - "client/src/ui/shop_auction/"
+          - "client/src/presentation/connection_lost_overlay.rs"
+          - "client/src/presentation/board_rendering.rs"
+        story_file: "TBD by story-authoring prompt at production/epics/ui-clean-pass/story-XXX-qa-snapshot-marker-split.md"
+        story_authoring_required: true
+      - id: "S17-UI-BID-BUTTON-PHASE-RACE-001"
+        priority: "should-have"
+        conditional: false
+        estimate_days: 0.25
+        source: "SOURCE-1077-10 (P2) -- bid-button text spawn-state is Text::new(empty); ui_bid_button_disabled.png has ? baked in; phase-entry race produces visible empty / ? buttons."
+        files_owned:
+          - "client/src/ui/shop_auction/auction_bid_buttons*.rs (or equivalent)"
+          - "assets/ui/ui_bid_button_disabled.png"
+        story_file: "TBD by story-authoring prompt at production/epics/ui-clean-pass/story-XXX-bid-button-phase-race.md"
+        story_authoring_required: true
+    nice_to_have:
+      - id: "S17-OPS-VULKAN-VALIDATION-GATING-001"
+        priority: "nice-to-have"
+        conditional: false
+        estimate_days: 0.15
+        source: "AUDIT-1076-18 (P3) -- 3 Vulkan validation warnings on every client launch; dev-only, harmless."
+        files_owned:
+          - "client/src/main.rs (or wherever App::new() configures WGPU plugin)"
+        story_file: "TBD by story-authoring prompt at production/epics/devops/story-XXX-vulkan-validation-gating.md"
+        story_authoring_required: true
+      - id: "S17-SERVER-START-OF-TURN-DEBUG-001"
+        priority: "nice-to-have"
+        conditional: false
+        estimate_days: 0.1
+        source: "AUDIT-1076-15 (P3) -- start_of_turn_dispatch_system not yet implemented WARN spam 6x per session."
+        files_owned:
+          - "server/src/game/mod.rs (or server/src/game/dispatch*.rs)"
+        story_file: "TBD by story-authoring prompt at production/epics/server-game/story-XXX-start-of-turn-debug-downgrade.md"
+        story_authoring_required: true
+      - id: "S17-UI-HAND-B0004-CLEANUP-001"
+        priority: "nice-to-have"
+        conditional: false
+        estimate_days: 0.15
+        source: "AUDIT-1076-14 (P3) -- B0004 hierarchy warning: Hand UI Fan Root has GlobalTransform but parent (HandBar) does not."
+        files_owned:
+          - "client/src/ui/hand/fan_root*.rs"
+          - "client/src/ui/hand/hand_bar*.rs"
+        story_file: "TBD by story-authoring prompt at production/epics/ui-clean-pass/story-XXX-hand-b0004-hierarchy.md"
+        story_authoring_required: true
+  deferred_to_sprint_18_plus:
+    - "Per-surface card-slot primitive migration siblings (S17-UI-CARD-SLOT-MIGRATION-HAND-001 / -DRAFT-GRID-001 / -AUCTION-FEATURED-001 / -BOARD-GHOST-001); producer may pull one row into Sprint 17 if capacity allows"
+    - "Real-art production for 7 lobby portraits + slot-panel chrome + room-code-chip + 7 board sprites (PAW-TD-*-a accept-risk preserved)"
+    - "24 PROMPT 1022 QA snapshot audit findings"
+    - "12 remaining PROMPT 1077 SOURCE-* structural findings (SOURCE-1077-05/07/11/12/13/14/15) not absorbed by Sprint 17 Must Have card-display-art helper bundle or Sprint 17 Should Have rows"
+    - "Sprint 11/12/13 server hardening backlog (S11-TD-NET-001/002/003, S11-TD-PRISM-COV-001, S11-TD-HARNESS-MESSAGES-001, S11-TD-HARNESS-HANDUI-ENTITIES-001, S11-TD-BOARD-RENDERING-SNAPSHOT-PHASE-COUPLING-001, S11-TD-FIXTURE-MESSAGES-002, S11-TD-CI-NORMALIZE-COMMENTS-001)"
+    - "PROMPT 803 §5 Should/Nice rows not pulled into Sprint 13/14/15/16"
+    - "Tier 2 cosmetic captures bundle (S17-UX-CAPTURES-CLEAN-PASS-001 candidate slug)"
+    - "PROMPT 1076 long-tail (AUDIT-1076-05 P1 giant blurry ? glyph; AUDIT-1076-08 P1 TO PLACE ART placeholder; AUDIT-1076-11 P2 Resolution phase no visualisation) -- reassess after Sprint 17 Must Have rows land"
+  next_launchable_prompts:
+    - "PROMPT 1091a -- PROMPT 1083 modal integration main-push refresh (rebase e4bbca3 onto fec13ff + re-run 10 focused tests + push integration branch + paperwork main-push)"
+    - "PROMPT 1091b -- PROMPT 1085 client shop / auction surface paint integration prompt (worker -> integration + tests + main-push paperwork); sequenced AFTER PROMPT 1091a"
+    - "PROMPT 1091c -- PROMPT 1086 client placement perspective integration prompt (worker -> integration + tests + main-push paperwork); may run in parallel with PROMPT 1091a"
+    - "PROMPT 1091d -- PROMPT 1087 / 1089 lobby class art main-push refresh (rebase eec2a91 onto current origin/main + resolve placeholder-asset md5 gaps + re-run 49 tests + paperwork main-push)"
+    - "PROMPT 1092 -- story-authoring prompts for Sprint 17 net-new candidate rows (one prompt may author multiple sibling story files if file-disjoint; each story file embeds source AUDIT-1076-* or SOURCE-1077-* ID and minimal repair surface from the audit)"
+    - "PROMPT 1093 -- Sprint 17 activation (flip top-level sprint: 16 -> 17 + status: closed-with-conditions -> active; replace stories: block with Sprint 17 active set after auditing origin/main for conditional-row drops; append sprint_17_activation: block; preserve stage: Polish verbatim)"
+    - "PROMPT 1094 -- Sprint 17 QA plan via /qa-plan sprint-17 (authored ONLY after PROMPT 1093 activation; MUST reference each row's test evidence type per coding-standards.md)"
+  conditions_carried_forward_unchanged:
+    - "Sprint 16 disposition: closed-with-conditions per PROMPT 1082 + PROMPT 1088 (UNCHANGED; Sprint 16 close-out NOT reopened by PROMPT 1090)."
+    - "Stage Polish (UNCHANGED; production/stage.txt NOT touched by PROMPT 1090)."
+    - "PROMPT 761 Polish->Release gate-check FAIL preserved at production/gate-checks/gate-polish-release-2026-05-12.md; NO retry attempted by PROMPT 1090."
+    - "S11-HUD-TIMER-EYEBALL-VISUAL-001 preserved as Sprint 13 -> 14 -> 15 -> 16 -> 17 human-operator-blocked carry; closure remains gated on human-operator screenshot capture; no LLM /story-done authorised."
+    - "S8-QA-001-W1 OPEN preserved."
+    - "QA-COND-0005 Standard-tier accessibility remains accepted-risk."
+    - "QA-COND-0006 playtest / fun-hypothesis validation remains accepted-risk / deferred."
+    - "PAW-TD-*-a placeholder-art accept-risk preserved across PAW-002..PAW-006; Sprint 17 lobby class art row uses placeholder PNGs only; real-art production deferred to Sprint 18+."
+    - "PROMPT 683-era runtime divergence question preserved (no third same-scope retest per TQ-S12-C2)."
+    - "Sprint 12 story 019 underlying drag-runtime bug NOT claimed fixed (cannot-reproduce preserved)."
+    - "TQ-S12-C1..C7 (all 7 Sprint 12 Team-QA conditions) preserved verbatim; TQ-S12-C7 NOT closed."
+    - "Sprint 15 disposition preserved: closed-with-conditions per PROMPT 1056."
+    - "Sprint 14 disposition preserved: closed-with-conditions per PROMPT 987."
+    - "Sprint 13 disposition preserved: closed-with-conditions per PROMPT 894."
+    - "Sprint 12 / 11 / 10 dispositions preserved unchanged."
+    - "All 3 closed Sprint 16 /story-done closures preserved unchanged on origin/main (PROMPT 1072 AppCompat + dead-code + PROMPT 1074 card-slot primitive)."
+    - "All 4 closed Sprint 15 rows preserved unchanged on origin/main."
+    - "All 16 closed Sprint 14 rows preserved unchanged on origin/main."
+    - "PROMPT 1076 latest user-test log/snapshot deep audit + PROMPT 1077 UI state source consistency deep audit findings preserved verbatim as Sprint 17 inputs; only findings absorbed by Sprint 17 active rows above are pulled forward."
+    - "PROMPT 1054 P1 UI snapshot visual retest BLOCKED-HUMAN-OPERATOR deferred preserved."
+    - "Sprint 16 PROMPT 1075 smoke PASS-WITH-WARNINGS + PROMPT 1078 Team-QA APPROVED-WITH-CONDITIONS preserved on QA branches (origin/qa/sprint-16-smoke-check-1075 + origin/qa/sprint-16-team-qa-1078); NOT integrated under production/qa/ on origin/main by Sprint 17 planning."
+  explicitly_not_claimed:
+    - "Sprint 17 activation"
+    - "Sprint 17 sprint-status active row"
+    - "Sprint 16 close-out reopen or re-author"
+    - "closure of S11-HUD-TIMER-EYEBALL-VISUAL-001 (human-operator-blocked carry; no LLM /story-done authorised)"
+    - "public release readiness; release-candidate readiness; full game completion"
+    - "broad / Standard-tier accessibility completion (QA-COND-0005 accept-risk preserved)"
+    - "playtest / fun-hypothesis validation (QA-COND-0006 accept-risk preserved)"
+    - "full playable-client manual QA"
+    - "two-client GAME_OVER closure (S8-QA-001-W1 remains OPEN)"
+    - "final-art / asset-production completion (PAW-TD-*-a accept-risk preserved; Sprint 17 lobby class art row authors placeholder PNGs only)"
+    - "Polish->Release gate-check retry (PROMPT 761 FAIL preserved)"
+    - "stage advance from Polish to Release (production/stage.txt NOT modified)"
+    - "underlying drag-runtime bug fix (Sprint 12 story 019 cannot-reproduce preserved)"
+    - "closure of TQ-S12-C7 Sprint 12 AppCompat informational condition"
+    - "closure of any of the 24 PROMPT 1022 QA snapshot audit findings"
+    - "closure of any PROMPT 1076 finding for which a concrete repair is not on origin/main at activation time"
+    - "closure of any PROMPT 1077 finding outside the Sprint 17 Must Have S17-UI-CARD-DISPLAY-ART-HELPER-001 bundle and Should Have S17-UI-CARD-SLOT-INSET-WIRING-001 + S17-UI-QA-SNAPSHOT-MARKER-SPLIT-001 + S17-UI-BID-BUTTON-PHASE-RACE-001 rows"
+    - "Sprint 15 row reopen"
+    - "Sprint 14 / 13 / 12 / 11 / 10 row reopen"
+    - "Sprint 16 row reopen"
+    - "any /smoke-check, /team-qa, /gate-check, /release-check, /qa-plan run by PROMPT 1090"
+    - "any change to client/ / server/ / shared/ / tests/ / Cargo.toml / Cargo.lock / .cargo/ / .github/ / Trunk.toml by PROMPT 1090 (paperwork-only draft)"
+    - "any change to production/stage.txt by PROMPT 1090 (stage remains Polish)"
+    - "any change to production/sprint-status.yaml top-level sprint / status / stage by PROMPT 1090 (only next_sprint_17_draft block appended at EOF)"
+    - "any change to production/qa/* by PROMPT 1090 (Sprint 16 QA evidence preserved on QA branches; no Sprint 17 QA plan authored)"
+    - "any change to production/gate-checks/* by PROMPT 1090"
+    - "any story file under production/epics/ touched by PROMPT 1090 (story authoring deferred to PROMPT 1092)"
+  files_changed_by_prompt_1090:
+    - "production/sprints/sprint-17.md (NEW; Sprint 17 DRAFT plan body)"
+    - "production/sprint-status.yaml (next_sprint_17_draft: block appended at EOF only; top-level sprint: 16 / status: closed-with-conditions / stage: Polish preserved verbatim; all prior closeout / activation / story-done blocks preserved verbatim above)"
+    - "production/session-state/active.md (PROMPT 1090 banner prepended above PROMPT 1082 banner)"
+    - "production/session-state/codex-orchestrator-state.md (PROMPT 1090 section prepended above PROMPT 1082 section)"
+    - "reports/PROMPT-1090-Sprint-17-Plan-Draft.md (mandatory final report; NOT staged or committed; reports/ is gitignored)"
+  forbidden_changes_observed:
+    - "client/** / server/** / shared/** / tests/** NOT modified (zero code changes by PROMPT 1090)"
+    - "Cargo.toml / Cargo.lock / .cargo/ NOT modified"
+    - "Trunk.toml NOT modified"
+    - ".github/ NOT modified"
+    - "production/stage.txt NOT modified (remains Polish)"
+    - "production/sprints/sprint-16.md / sprint-15.md / sprint-14.md / sprint-13.md / sprint-12.md / sprint-11.md / sprint-10.md NOT modified"
+    - "production/qa/* NOT modified (no Sprint 17 QA plan authored by PROMPT 1090)"
+    - "production/gate-checks/* NOT modified"
+    - "production/epics/** NOT modified (no story files authored by PROMPT 1090)"
+    - "production/sprint-status.yaml top-level sprint / status / stage NOT modified by PROMPT 1090 (preserved verbatim sprint: 16 / status: closed-with-conditions / stage: Polish)"
+    - "production/sprint-status.yaml sprint_16_closeout: / sprint_16_activation: / sprint_16_story_done: / sprint_15_closeout: / sprint_15_activation: / sprint_15_story_done: / sprint_14_closeout: / sprint_14_activation: / sprint_14_story_done: / sprint_13_closeout: / sprint_13_activation: / sprint_13_story_done: / sprint_12_closeout: / sprint_11_closeout: / sprint_10_closeout: blocks NOT modified (all preserved verbatim above next_sprint_17_draft:)"
+    - "production/sprint-status.yaml stories: block NOT modified (all 4 Sprint 16 rows preserved verbatim)"
+    - "release artifacts, release-checklist, launch-checklist, changelog, patch notes NOT modified or created"
+    - ".octogent/ NOT modified"
+    - ".claude/scheduled_tasks.lock NOT modified"
+    - ".claude/settings.json NOT modified"
+    - "no /smoke-check, no /team-qa, no /gate-check, no /release-check, no /qa-plan, no /dev-story, no /story-readiness, no /story-done run by PROMPT 1090; no implementation work, no cargo / trunk build / test run, no Polish->Release retry, no Sprint 17 activation, no Sprint 16 row reopen"
