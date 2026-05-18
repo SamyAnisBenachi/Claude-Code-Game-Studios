@@ -26,6 +26,17 @@ pub struct RoundState {
     pub phase: RoundPhase,
     pub round_number: u32,
     pub placement_timer: Option<Timer>,
+    /// Short grace window that begins when `placement_timer` expires.
+    ///
+    /// Bridges the same-frame race where a `C2SSubmitPlacement` is drained on
+    /// the same tick that `placement_timer` finishes: without grace the
+    /// submission lands after `advance_phase` has flipped phase to Resolution
+    /// and `process_placement_submission` rejects it with `DiscardedWrongPhase`.
+    /// While the grace is active the phase stays `Placement` so late submissions
+    /// are still buffered into `PendingPlacements` and committed by
+    /// `close_placement_phase` on the eventual transition.
+    /// See HUNT-1201-14 / PROMPT 1209.
+    pub placement_deadline_grace_timer: Option<Timer>,
     pub draft_shop_timer: Option<Timer>,
     pub draft_initial_timer: Option<Timer>,
     pub auction_safety_timer: Option<Timer>,
@@ -42,6 +53,7 @@ impl RoundState {
             phase: RoundPhase::Lobby,
             round_number: 0,
             placement_timer: None,
+            placement_deadline_grace_timer: None,
             draft_shop_timer: None,
             draft_initial_timer: None,
             auction_safety_timer: None,

@@ -160,10 +160,24 @@ fn rsm_timers_placement_timer_waits_until_expiry_with_partial_submissions() {
         RoundPhase::Placement
     );
 
+    // Placement timer fires here; a small server-side grace window starts so
+    // late-arriving C2SSubmitPlacement messages can still be buffered before
+    // the phase advance. Phase must remain `Placement` for the grace span.
+    // See PROMPT 1209 / HUNT-1201-14.
     run_for(&mut app, Duration::from_millis(1));
+    {
+        let rsm = app.world().resource::<RoundState>();
+        assert_eq!(rsm.phase, RoundPhase::Placement);
+        assert!(rsm.placement_timer.is_none());
+        assert!(rsm.placement_deadline_grace_timer.is_some());
+    }
+
+    // After the grace duration the advance request fires and the chain runs.
+    run_for(&mut app, Duration::from_millis(250));
 
     let rsm = app.world().resource::<RoundState>();
     assert_eq!(rsm.phase, RoundPhase::Resolution);
+    assert!(rsm.placement_deadline_grace_timer.is_none());
     assert!(rsm.submissions_received.contains(&player(1)));
 
     let resolutions = read_messages::<ResolutionPhaseEntered>(&app);
@@ -171,6 +185,131 @@ fn rsm_timers_placement_timer_waits_until_expiry_with_partial_submissions() {
     assert_eq!(resolutions.len(), 1);
     assert_eq!(broadcasts.len(), 1);
     assert_eq!(broadcasts[0].phase, RoundPhase::Resolution);
+}
+
+#[test]
+fn rsm_timers_placement_timer_grace_accepts_late_submission_before_advance() {
+    // Arrange: placement_timer at 10s with no submissions yet.
+    let mut app = app_with_rsm(RoundPhase::Placement, 2);
+    app.world_mut().resource_mut::<RoundState>().placement_timer =
+        Some(Timer::from_seconds(10.0, TimerMode::Once));
+
+    // Act 1: tick to placement_timer expiry. Phase should remain Placement,
+    // grace timer should now be running, and no advance should be pending.
+    run_for(&mut app, Duration::from_millis(10_000));
+    {
+        let rsm = app.world().resource::<RoundState>();
+        assert_eq!(
+            rsm.phase,
+            RoundPhase::Placement,
+            "Placement phase must persist into the grace window"
+        );
+        assert!(
+            rsm.placement_timer.is_none(),
+            "placement_timer should be dropped once grace starts"
+        );
+        assert!(
+            rsm.placement_deadline_grace_timer.is_some(),
+            "grace window should be started on placement_timer expiry"
+        );
+        assert!(rsm.submissions_received.is_empty());
+    }
+
+    // Act 2: simulate a late C2SSubmitPlacement arriving inside the grace by
+    // writing PlacementSubmitted (the internal signal produced after
+    // handle_placement_submission accepts the submission). rsm_input_reader
+    // must still see phase=Placement and record the player.
+    app.world_mut()
+        .write_message(PlacementSubmitted { player: player(1) });
+    app.world_mut()
+        .write_message(PlacementSubmitted { player: player(2) });
+    run_for(&mut app, Duration::from_millis(50));
+
+    // With both submissions recorded the rsm_input_reader requests the
+    // advance immediately even while the grace timer is still running.
+    let rsm = app.world().resource::<RoundState>();
+    assert_eq!(rsm.phase, RoundPhase::Resolution);
+    assert!(rsm.placement_deadline_grace_timer.is_none());
+    assert!(rsm.submissions_received.contains(&player(1)));
+    assert!(rsm.submissions_received.contains(&player(2)));
+
+    let resolutions = read_messages::<ResolutionPhaseEntered>(&app);
+    assert_eq!(resolutions.len(), 1);
+}
+
+#[test]
+fn rsm_timers_placement_timer_grace_advances_when_no_submission_arrives() {
+    // Arrange: placement_timer at 10s, no submissions at any point.
+    let mut app = app_with_rsm(RoundPhase::Placement, 2);
+    app.world_mut().resource_mut::<RoundState>().placement_timer =
+        Some(Timer::from_seconds(10.0, TimerMode::Once));
+
+    // Act: tick well past placement_timer + grace.
+    run_for(&mut app, Duration::from_millis(10_000));
+    {
+        let rsm = app.world().resource::<RoundState>();
+        assert_eq!(rsm.phase, RoundPhase::Placement);
+        assert!(rsm.placement_deadline_grace_timer.is_some());
+    }
+    run_for(&mut app, Duration::from_millis(250));
+
+    // Assert: phase advances after grace expires; pending submissions remain
+    // empty so close_placement_phase has nothing to commit. The acceptance
+    // criterion "if no pending placements exist, behavior remains unchanged"
+    // means: a no-submission timeout still transitions to Resolution.
+    let rsm = app.world().resource::<RoundState>();
+    assert_eq!(rsm.phase, RoundPhase::Resolution);
+    assert!(rsm.placement_timer.is_none());
+    assert!(rsm.placement_deadline_grace_timer.is_none());
+    assert!(rsm.submissions_received.is_empty());
+
+    let resolutions = read_messages::<ResolutionPhaseEntered>(&app);
+    assert_eq!(resolutions.len(), 1);
+}
+
+#[test]
+fn rsm_timers_placement_timer_does_not_double_advance_after_manual_submit() {
+    // Arrange: both players submit before the placement_timer expires; this
+    // already requests Placement->Resolution and the grace window must NOT
+    // kick in afterwards. Monotonicity guarantee from acceptance shape.
+    let mut app = app_with_rsm(RoundPhase::Placement, 2);
+    app.world_mut().resource_mut::<RoundState>().placement_timer =
+        Some(Timer::from_seconds(10.0, TimerMode::Once));
+
+    app.world_mut()
+        .write_message(PlacementSubmitted { player: player(1) });
+    app.world_mut()
+        .write_message(PlacementSubmitted { player: player(2) });
+    run_once(&mut app);
+
+    {
+        let rsm = app.world().resource::<RoundState>();
+        assert_eq!(rsm.phase, RoundPhase::Resolution);
+        assert!(rsm.placement_timer.is_none());
+        assert!(rsm.placement_deadline_grace_timer.is_none());
+    }
+
+    // Act: keep ticking well past where the placement_timer would have
+    // expired. There must not be a second Placement->Resolution advance and
+    // the grace window must never start in Resolution.
+    run_for(&mut app, Duration::from_millis(11_000));
+
+    let rsm = app.world().resource::<RoundState>();
+    assert_eq!(rsm.phase, RoundPhase::Resolution);
+    assert!(rsm.placement_deadline_grace_timer.is_none());
+
+    // exactly one ResolutionPhaseEntered emission across the whole run
+    let resolutions = read_messages::<ResolutionPhaseEntered>(&app);
+    assert_eq!(
+        resolutions.len(),
+        1,
+        "exactly one Placement->Resolution advance should fire"
+    );
+    let advances_to_resolution = read_messages::<BroadcastPhaseChanged>(&app)
+        .into_iter()
+        .filter(|m| m.phase == RoundPhase::Resolution)
+        .count();
+    assert_eq!(advances_to_resolution, 1);
 }
 
 #[test]
