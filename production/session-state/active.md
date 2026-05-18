@@ -1,3 +1,1096 @@
+# PROMPT 1121 State Banner -- Sprint 17 S17-UI-BID-BUTTON-PHASE-RACE-001 Story-Done
+
+Updated 2026-05-18 by PROMPT 1121. Source-of-truth at closure:
+`origin/main@d35d24d01ebc59e387ba749883596aa1f29418e4` (PROMPT 1119
+integration tip `integrate(s17): merge PROMPT 1116 bid-button
+phase-race into main (PROMPT 1119)`), the integration tip for the
+row this prompt closes. `origin/main` HEAD at the start of this
+PROMPT 1121 closure window is
+`89ce1498953c362a86d70037bbc71f7452fdcab5` (PROMPT 1120 story-done
+`story-done(s17): close S17-UI-HAND-B0004-CLEANUP-001 (PROMPT
+1120)`), a strict fast-forward descendant of `d35d24d`. PROMPT 1119
+merged PROMPT 1116 worker
+`6f8f5ae169a3ca89568a0c8bea49326eb818ec73`
+`dev-story(s17-bid-button-phase-race): spawn-state Loading… +
+HiddenLeading chrome override (PROMPT 1116)` onto `origin/main` via
+no-ff merge; strict fast-forward descendant of
+`origin/main@29ad4c6` PROMPT 1118 hand-fan-root B0004 cleanup
+integration tip, of `origin/main@30c9e0f` PROMPT 1114 card-display
+art-helper integration tip, of `origin/main@2250add` PROMPT 1117
+card-display art-helper story-done tip, of `origin/main@f2ba917`
+PROMPT 1112 paperwork-only PARTIAL DISPOSITION tip, of
+`origin/main@4bd4f56` PROMPT 1111 PARTIAL integration tip, of
+`origin/main@9a9b1dc` PROMPT 1110 card-slot inset wiring
+story-done tip, of `origin/main@30f166f` PROMPT 1106 card-slot
+inset wiring integration tip, of `origin/main@72d56bc` PROMPT 1108
+server start-of-turn-debug story-done tip, and of
+`origin/main@dc8adb6` PROMPT 1107 server warn->debug integration
+tip. Branch: in-place edits on the primary checkout (`main`).
+
+PROMPT 1121 is a paperwork-only Sprint 17 `/story-done` closure for
+`S17-UI-BID-BUTTON-PHASE-RACE-001` (Should Have; story 019 in
+`production/epics/shop-auction-ui/`; SOURCE-1077-10 P2 bid-button
+text-spawn / chrome-asset race). Closure paperwork records the
+PROMPT 1116 worker + PROMPT 1119 integration result on the story
+file, in `production/sprint-status.yaml`, in
+`production/session-state/*`, and authors the mandatory final
+report under `reports/` (gitignored).
+
+**Result delivered on origin/main@d35d24d by PROMPT 1119:**
+
+- **Source-side remediation for SOURCE-1077-10 applied** -- three
+  concrete edits in `client/src/ui/shop_auction/mod.rs`:
+  1. New `pub const AUCTION_BID_BUTTON_LOADING_LABEL: &str =
+     "Loading…"` at module scope (`mod.rs:40`).
+  2. Spawn-state `Text::new("")` → `Text::new(
+     AUCTION_BID_BUTTON_LOADING_LABEL)` at the bid-button spawn
+     site (`mod.rs:4883`).
+  3. `sync_auction_panel_system` text branch surfaces the
+     pending label when `auction_state.card_id.is_none()`
+     (`mod.rs:3831`); chrome apply site falls back to
+     `Handle::<Image>::default()` when the
+     `auction_bid_chrome_state` mapper returns `None`
+     (`mod.rs:3783`).
+  4. `auction_bid_chrome_state` (`mod.rs:5890`) now returns
+     `Option<BidButtonChromeState>` with the new
+     `HiddenLeading => None` branch; `Normal` (Enabled) and
+     `Disabled` (every other non-`HiddenLeading` variant)
+     mappings preserved verbatim.
+- **AC3 strategy chosen by worker**: both (a)
+  `Visibility::Hidden` AND (b) `Handle::<Image>::default()`
+  chrome simultaneously. (a) was already in place; (b) is
+  defensive so a future refactor of the visibility logic cannot
+  reintroduce the baked-`?` glyph on the entity-rendered chrome.
+  `Handle::<Image>::default()` is the AC3 (b) "no-image asset"
+  branch -- no new `BID_BUTTON_HIDDEN_LEADING_ASSET` constant
+  added; `client/src/asset_wiring.rs` NOT modified.
+- **`PAW-TD-*-a` preserved verbatim** --
+  `assets/art/ui/auction/ui_bid_button_disabled.png` (baked-`?`
+  PNG) NOT modified.
+- **PROMPT 1042 Pass affordance preserved** -- the existing
+  `auction_bid_buttons_test.rs` Pass-affordance assertions PASS
+  (9/9) at the integration tip; this row is additive over
+  PROMPT 1042.
+- **`chrome_wiring_test` invariant preserved** -- chrome override
+  narrowed to `HiddenLeading` only; InSession-idle bid buttons
+  continue to carry a non-default `ImageNode.image` (the
+  `GenericDisabled` path with `card_id == None` still maps to
+  `Some(Disabled)`).
+
+**Tests delivered**:
+`tests/integration/shop_auction_ui/auction_bid_buttons_phase_race_test.rs`
+(NEW; AC9) 5/5 PASS at integration tip
+(`s17_phase_race_ac1_spawn_state_text_is_loading_label`,
+`s17_phase_race_ac2_text_updates_to_numeric_on_auction_card_arrival`,
+`s17_phase_race_ac3_ac5_hidden_leading_clears_chrome_and_hides_row`,
+`s17_phase_race_ac4_draft_auction_without_card_keeps_loading_or_hidden`,
+`s17_phase_race_ac7_chrome_mapping_preserved_for_enabled_and_disabled_states`).
+Adjacent bid-button regression sweep at integration tip
+(PROMPT 1119), 42/42 PASS across 7 test bins
+(`auction_activation_test 8/8`, `auction_bid_buttons_test 9/9`,
+`auction_bid_target_focus_test 4/4`, `auction_feedback_test 6/6`,
+`auction_lead_loss_state_test 4/4`, `auction_settlement_test 7/7`,
+`chrome_wiring_test 4/4`). `cargo check -p client` PASS in 7.04s.
+`git diff --check origin/main...HEAD` clean.
+
+**AC1..AC15 all PASS** via PROMPT 1116 worker + PROMPT 1119
+integration. The exhaustive per-AC outcome is recorded inline in
+the story-019 Completion Notes section, the PROMPT 1121
+`sprint_17_story_done` block in `production/sprint-status.yaml`,
+the PROMPT 1121 paragraph in
+`production/session-state/codex-orchestrator-state.md`, and the
+final report under `reports/`.
+
+**Cargo resource policy advisory (AC15)**: PROMPT 1116 worker
+applied all 5 env vars before every cargo invocation
+(`CARGO_TARGET_DIR=D:\_DEV\cargo-target\ccgs-msvc` +
+`CARGO_PROFILE_DEV_DEBUG=0` + `CARGO_PROFILE_TEST_DEBUG=0` +
+`CARGO_INCREMENTAL=0` +
+`RUSTFLAGS='-C debuginfo=0 -C link-arg=/DEBUG:NONE'`); build line
+printed `[optimized]` with no `+ debuginfo`. PROMPT 1119
+integration encountered a one-call env-var propagation gap on the
+first `cargo check` (bash-tool `$env:` token-expansion gap; that
+one invocation used the worktree-local `target/`). All subsequent
+calls used inline bash env-var syntax that propagated correctly;
+D: free remained > 770 GB; build correctness gate UNAFFECTED (all
+47/47 targeted sub-tests + 2 cargo check invocations PASS at
+integration tip). Recorded explicitly above and in PROMPT 1119's
+integration report; NOT hidden as a product failure. PROMPT 1121
+itself does NOT invoke Cargo (paperwork-only closure).
+
+**Sprint 17 active row coverage after PROMPT 1121**: 5 of 9 active
+rows DONE (S17-SERVER-START-OF-TURN-DEBUG-001 by PROMPT 1108 +
+S17-UI-CARD-SLOT-INSET-WIRING-001 by PROMPT 1110 +
+S17-UI-CARD-DISPLAY-ART-HELPER-001 by PROMPT 1117 +
+S17-UI-HAND-B0004-CLEANUP-001 by PROMPT 1120 +
+S17-UI-BID-BUTTON-PHASE-RACE-001 by PROMPT 1121); 1 of 9 active
+rows PARTIAL / IN_PROGRESS (S17-UI-HUD-OPP-MANA-CLEANUP-001 via
+PROMPT 1112 with AC3 carried); 3 rows preserved as `ready` and
+NOT closed by PROMPT 1121 (S11-HUD-TIMER-EYEBALL-VISUAL-001 Must
+Have human-operator-blocked carry, S17-UI-QA-SNAPSHOT-MARKER-SPLIT-001
+Should Have, S17-OPS-VULKAN-VALIDATION-GATING-001 Nice to Have).
+Must Have 1/2 done + Should Have 2/4 done + 1 partial / 4 + Nice
+to Have 2/3 done.
+
+**SOURCE-1077-10 (P2) discharged on origin/main by PROMPT 1119
+integration** -- the closure target of this row. SOURCE-1077-01/02/03/04
+discharged by PROMPT 1114/1117 closure; SOURCE-1077-06 by
+PROMPT 1106/1110; SOURCE-1077-08/09/16 reserved for
+`S17-UI-QA-SNAPSHOT-MARKER-SPLIT-001`; SOURCE-1077-05/07/11/12/13/14/15
+deferred to Sprint 18+. PROMPT 1121 does NOT discharge any
+SOURCE-1077-* finding outside SOURCE-1077-10.
+
+**PROMPT 1112 AC3 hand reserve-strip carry (AUDIT-1076-17 floating
+`Reserve N + / Current N` microbadge in `client/src/ui/hand/mod.rs`
+reserve strip) preserved OPEN; PROMPT 1121 does NOT close it.**
+Semantically distinct surface: the hand reserve-strip per-card
+microbadge vs the auction bid-button chrome / spawn-state
+behaviour.
+
+**Files changed by PROMPT 1121**:
+- `production/epics/shop-auction-ui/story-019-bid-button-phase-race.md`
+  (Status banner Draft → Done; AC1..AC15 flipped to `[x]`;
+  Closure Trail replaced with Completion Notes containing PROMPT
+  1116 worker + PROMPT 1119 integration outcome, Test evidence,
+  Cargo resource policy advisory, Per-AC outcome, Closure trail
+  (commits) numbered list, Conditions carried forward,
+  Explicitly NOT claimed; final status line `DRAFT` → `DONE`).
+- `production/sprint-status.yaml` (S17-UI-BID-BUTTON-PHASE-RACE-001
+  row in `stories:` block flipped `status: ready` → `done` with
+  `completed: 2026-05-18` + worker/integration/integrated_commit/
+  story_done_prompt/evidence metadata + closure notes;
+  `sprint_17_story_done:` PROMPT 1121 block appended after the
+  PROMPT 1120 entry and before the `sprint_17_partial_disposition:`
+  block with `stories_closed` entry covering AC1..AC15 outcomes,
+  `rows_not_closed_by_prompt_1121` enumerating the other 8 Sprint
+  17 active rows, `cargo_resource_policy_advisory`,
+  `conditions_carried_forward_unchanged`,
+  `explicitly_not_claimed`, `files_changed_by_prompt_1121`, and
+  `forbidden_changes_observed` sections).
+- `production/session-state/active.md` (this PROMPT 1121 banner
+  prepended above the PROMPT 1120 banner).
+- `production/session-state/codex-orchestrator-state.md` (PROMPT
+  1121 paragraph prepended above the PROMPT 1120 paragraph).
+- `reports/PROMPT-1121-s17-bid-button-phase-race-story-done.md`
+  (mandatory final report; `reports/` is gitignored; not staged
+  or committed).
+
+**Files explicitly NOT touched by PROMPT 1121**: `client/`,
+`server/`, `shared/`, `tests/`, `Cargo.toml`, `Cargo.lock`,
+`.cargo/`, `.github/`, `Trunk.toml`, `production/stage.txt`
+(remains `Polish`), `production/sprints/**`,
+`production/qa/qa-plan-sprint-17.md`, `production/qa/smoke-*.md`,
+`production/qa/team-qa-*.md`, `production/qa/evidence/*`
+(`sprint-17-bid-button-phase-race/` preserved verbatim on
+`origin/main` via PROMPT 1119 integration),
+`production/gate-checks/**` (PROMPT 761 Polish→Release FAIL
+preserved with NO retry), `docs/architecture/adr-*.md`, all 8
+other Sprint 17 active row story files under `production/epics/`
+(`S11-HUD-TIMER-EYEBALL-VISUAL-001` story 014 untouched;
+`S17-UI-HUD-OPP-MANA-CLEANUP-001` story 018 PROMPT 1112 PARTIAL
+disposition preserved verbatim; `S17-UI-CARD-DISPLAY-ART-HELPER-001`
+story 017 PROMPT 1117 closure preserved verbatim;
+`S17-UI-HAND-B0004-CLEANUP-001` story 021 PROMPT 1120 closure
+preserved verbatim), all prior `sprint_N_*` blocks in
+`production/sprint-status.yaml` (including PROMPT 1108 + PROMPT
+1110 + PROMPT 1117 + PROMPT 1120 `sprint_17_story_done` entries
+and the PROMPT 1112 `sprint_17_partial_disposition` entry which
+are preserved verbatim above and below this new PROMPT 1121
+entry), `.octogent/`, `.claude/settings.json`,
+`.claude/scheduled_tasks.lock`. No cargo / trunk / CI command
+invoked.
+
+**Next launchable prompts**: per-row `/story-readiness` reruns
+against PROMPT 1121 closure HEAD for the 2 remaining `ready`
+Sprint 17 active rows (`S17-UI-QA-SNAPSHOT-MARKER-SPLIT-001`,
+`S17-OPS-VULKAN-VALIDATION-GATING-001`); AC3 carry-forward
+producer decision on `S17-UI-HUD-OPP-MANA-CLEANUP-001` (Sprint 17
+pull vs Sprint 18 deferral) before final `/story-done` closure of
+that row; per-row `/dev-story` + integration + `/story-done`
+paperwork for the remaining `ready` rows; Sprint 17 smoke harness
+prompt with two-client session.
+
+**Branch / push**: PROMPT 1121 commits `story-done(s17): close
+S17-UI-BID-BUTTON-PHASE-RACE-001 (PROMPT 1121)` on `main`; pushes
+to `origin/main` if policy allows; if direct `main` push is
+blocked, the commit is pushed on a worker branch and the exact
+commit/branch reported, never force-pushed.
+
+---
+
+# PROMPT 1120 State Banner -- Sprint 17 S17-UI-HAND-B0004-CLEANUP-001 Story-Done
+
+Updated 2026-05-18 by PROMPT 1120. Source-of-truth at closure:
+`origin/main@d35d24d01ebc59e387ba749883596aa1f29418e4` (PROMPT 1119
+integration tip `integrate(s17): merge PROMPT 1116 bid-button
+phase-race into main (PROMPT 1119)`), a strict fast-forward descendant
+of the PROMPT 1118 integration tip
+`origin/main@29ad4c6cb066f61d82db02820d42612e66a97256`
+(`integrate(s17): merge PROMPT 1115 hand-fan-root B0004 cleanup into
+main (PROMPT 1118)`) which is the integration tip for the row this
+prompt closes. PROMPT 1119 (bid-button phase-race integration) landed
+during the PROMPT 1120 closure window after the initial origin/main
+read at 29ad4c6; PROMPT 1120 rebased its in-place paperwork edits onto
+the new tip via `git pull --rebase --autostash`. PROMPT 1119 touched
+only `client/`, `tests/`, `evidence/` paths; zero file overlap with
+PROMPT 1120 paperwork-only edits. PROMPT 1118 merged PROMPT 1115
+worker
+`535450d101fb034f5946896f303533f4ce4f6435`
+`dev-story(s17-hand-fan-root-b0004): Strategy A — Transform on HandBar
+(PROMPT 1115)` onto `origin/main` via no-ff merge; strict fast-forward
+descendant of `origin/main@30c9e0f` PROMPT 1114 card-display
+art-helper integration tip, of `origin/main@2250add` PROMPT 1117
+card-display art-helper story-done tip, of `origin/main@f2ba917`
+PROMPT 1112 paperwork-only PARTIAL DISPOSITION tip, of
+`origin/main@4bd4f56` PROMPT 1111 PARTIAL integration tip, of
+`origin/main@9a9b1dc` PROMPT 1110 card-slot inset wiring story-done
+tip, of `origin/main@30f166f` PROMPT 1106 card-slot inset wiring
+integration tip, of `origin/main@72d56bc` PROMPT 1108 server
+start-of-turn-debug story-done tip, and of `origin/main@dc8adb6`
+PROMPT 1107 server warn->debug integration tip). Branch:
+`story-done/s17-hand-b0004-cleanup-1120` from base
+`origin/main@29ad4c6`; in-place edits on the primary checkout.
+
+PROMPT 1120 is a paperwork-only Sprint 17 `/story-done` closure for
+`S17-UI-HAND-B0004-CLEANUP-001` (Nice to Have; story 021 in
+`production/epics/hand-ui/`; AUDIT-1076-14 P3 single B0004 hierarchy
+warning per client per InSession entry). Closure paperwork records the
+PROMPT 1115 worker + PROMPT 1118 integration result on the story file,
+in `production/sprint-status.yaml`, in `production/session-state/*`,
+and authors the mandatory final report under `reports/` (gitignored).
+
+**Result delivered on origin/main@29ad4c6 by PROMPT 1118:**
+- **Strategy A applied** — `Transform::default()` inserted on the
+  `HandBar` strip entity at `client/src/ui/hand/mod.rs:3122` inside
+  `spawn_hand_ui`. The Bevy 0.18 Required Components API
+  (`Transform` `#[require(GlobalTransform, TransformTreeChanged)]`)
+  auto-derives `GlobalTransform`, silencing the `B0004` hierarchy
+  warning the PROMPT 1076 `AUDIT-1076-14` evidence cited on every
+  `InSession` entry (run-7 client-a:94, client-b:116).
+- **Registry-level verification** — `bevy_ui-0.18.1::Node`'s
+  `#[require(...)]` set is `(ComputedNode, ComputedUiTargetCamera,
+  ComputedUiRenderTargetInfo, UiTransform, BackgroundColor, BorderColor,
+  FocusPolicy, ScrollPosition, Visibility, ZIndex)` — `Node` does NOT
+  require `Transform`/`GlobalTransform`, so the explicit insert is
+  the minimal repair. `bevy_transform-0.18.1::Transform`'s
+  `#[require(GlobalTransform, TransformTreeChanged)]` confirms the
+  single-component-insert is sufficient.
+- **No fan-layout / drag-state / placement / staging behaviour
+  change** — repair touches only the `HandBar` spawn tuple. Fan
+  layout numbers, drag-state visuals, placement staging, the Sprint
+  12 story 019 `closed-with-conditions / cannot-reproduce`
+  disposition (`TQ-S12-C2`), and the PROMPT 1112 AC3 hand
+  reserve-strip carry are preserved unchanged.
+
+**Tests delivered + adjusted**:
+`tests/integration/hand-ui/hand_fan_root_b0004_hierarchy_test.rs`
+(NEW; AC4) 1/1 PASS at integration tip; asserts `HandFanRoot` has
+`GlobalTransform`, its `ChildOf` parent matches the `HandBar` marker
+(locking the audit's exact edge), and the parent carries both
+`Transform` and `GlobalTransform`. Adjacent hand UI regression sweep
+at integration tip (PROMPT 1118): `hand_ui_fan_layout_formula_test`
+5/5, `hand_ui_chrome_composition_test` 1/1,
+`hand_ui_slot_onscreen_test` 3/3, `hand_ui_viewport_sync_test` 2/2,
+`hand_ui_drag_state_visuals_test` 11/11,
+`hand_ui_phase_state_machine_test` 4/4,
+`hand_ui_plugin_scaffold_test` 3/3,
+`hand_ui_reserve_mana_strip_test` 3/3 (PROMPT 1112 AC3 surface),
+`card_display_art_chrome_preservation_test` 8/8,
+`card_display_art_helper_test` 6/6.
+
+**AC outcomes**: AC1..AC11 PASS via PROMPT 1115 worker + PROMPT 1118
+integration verification. AC1 cross-machine smoke evidence remains
+later-prompt scope; binding gate for AC1 is the AC4 in-test
+invariant (PASS).
+
+**Cargo resource policy (AC11)**: PROMPT 1115 worker + PROMPT 1118
+integration both applied all 5 Cargo resource policy env vars
+(`CARGO_TARGET_DIR=D:\_DEV\cargo-target\ccgs-msvc` +
+`CARGO_PROFILE_DEV_DEBUG=0` + `CARGO_PROFILE_TEST_DEBUG=0` +
+`CARGO_INCREMENTAL=0` +
+`RUSTFLAGS='-C debuginfo=0 -C link-arg=/DEBUG:NONE'`) before every
+cargo invocation via PowerShell launcher scripts; both build lines
+printed `Finished \`dev\` profile [optimized]` /
+`Finished \`test\` profile [optimized]` (no `+ debuginfo`),
+confirming the policy was applied. D: free 774 GB at PROMPT 1118
+integration start (well above the 50 GB preflight threshold). PROMPT
+1120 itself does NOT invoke Cargo (paperwork-only closure).
+
+**Sprint 17 progress after PROMPT 1120**: 4 of 9 active rows DONE
+(S17-SERVER-START-OF-TURN-DEBUG-001 by PROMPT 1108 +
+S17-UI-CARD-SLOT-INSET-WIRING-001 by PROMPT 1110 +
+S17-UI-CARD-DISPLAY-ART-HELPER-001 by PROMPT 1117 +
+S17-UI-HAND-B0004-CLEANUP-001 by PROMPT 1120) + 1 of 9 active rows
+PARTIAL / IN_PROGRESS (S17-UI-HUD-OPP-MANA-CLEANUP-001 carried via
+PROMPT 1112; AC3 carried) + 4 rows preserved as `ready`. Must Have
+1/2 done + Should Have 1 done + 1 partial / 4 + Nice to Have 2/3
+done. Rows preserved as ready / not closed or partial by PROMPT
+1120: `S11-HUD-TIMER-EYEBALL-VISUAL-001` (Must Have
+human-operator-blocked Sprint 13 -> 14 -> 15 -> 16 -> 17 carry; no
+LLM `/story-done` authorised per 2026-05-17 orchestrator decision);
+`S17-UI-QA-SNAPSHOT-MARKER-SPLIT-001`,
+`S17-UI-BID-BUTTON-PHASE-RACE-001` (2 of remaining 3 Should Have);
+`S17-OPS-VULKAN-VALIDATION-GATING-001` (1 of remaining 1 Nice to
+Have).
+
+**AUDIT-1076-14 discharged on origin/main by PROMPT 1118
+integration**. Other `AUDIT-1076-*` findings preserved as open /
+report-only outside AUDIT-1076-15 (discharged PROMPT 1107/1108) and
+AUDIT-1076-10 + AUDIT-1076-16 (discharged PROMPT 1111; AUDIT-1076-17
+remains OPEN carried with AC3 of `S17-UI-HUD-OPP-MANA-CLEANUP-001`).
+PROMPT 1112 AC3 hand reserve-strip carry (AUDIT-1076-17 floating
+`Reserve N + / Current N` microbadge in `client/src/ui/hand/mod.rs`
+reserve strip) preserved OPEN; PROMPT 1120 does NOT close it
+(semantically distinct surface vs HandBar/FanRoot ECS hierarchy).
+SOURCE-1077-01 + SOURCE-1077-02 + SOURCE-1077-03 + SOURCE-1077-04
+remain discharged by PROMPT 1114 integration via PROMPT 1117
+closure; other SOURCE-1077-* findings preserved per the prior PROMPT
+1117 banner.
+
+**Files changed by PROMPT 1120**:
+- `production/epics/hand-ui/story-021-hand-fan-root-b0004-hierarchy.md`
+  (Status banner Draft -> Done; AC1..AC11 flipped to `[x]`;
+  Completion Notes section added with PROMPT 1115 worker + PROMPT
+  1118 integration outcome + Test evidence + Cargo resource policy
+  (AC11) + Per-AC outcome + Closure trail (commits) numbered list;
+  Closure Trail section replaced; final status line DRAFT -> DONE)
+- `production/sprint-status.yaml` (S17-UI-HAND-B0004-CLEANUP-001
+  row flipped `status: ready -> done` with `completed: 2026-05-18`
+  + worker/integration/integrated_commit/story_done_prompt/evidence
+  metadata + closure notes; PROMPT 1120 `sprint_17_story_done:`
+  entry appended after PROMPT 1117 entry and before
+  `sprint_17_partial_disposition:` block following the multi-prompt
+  pattern, with stories_closed entry covering AC1..AC11 outcomes,
+  rows_not_closed_by_prompt_1120 enumerating the other 8 Sprint 17
+  active rows, conditions_carried_forward_unchanged +
+  explicitly_not_claimed + files_changed_by_prompt_1120 +
+  forbidden_changes_observed sections)
+- `production/session-state/active.md` (this banner prepended above
+  PROMPT 1117 banner)
+- `production/session-state/codex-orchestrator-state.md` (PROMPT
+  1120 paragraph prepended above PROMPT 1117 paragraph)
+- `reports/PROMPT-1120-s17-hand-b0004-cleanup-story-done.md`
+  (mandatory final report; reports/ gitignored; not staged or
+  committed)
+
+**Files explicitly NOT touched by PROMPT 1120**: `client/`,
+`server/`, `shared/`, `tests/`, `Cargo.toml`, `Cargo.lock`,
+`.cargo/`, `.github/`, `Trunk.toml`, `production/stage.txt`
+(remains `Polish`), `production/sprints/**` (sprint-17 plan body
+NOT rewritten), `production/qa/qa-plan-sprint-17.md`,
+`production/qa/smoke-*.md`, `production/qa/team-qa-*.md`,
+`production/qa/evidence/*`
+(sprint-17-hand-fan-root-b0004/ preserved verbatim on origin/main
+via PROMPT 1118 integration), `production/gate-checks/**` (PROMPT
+761 Polish->Release FAIL preserved with NO retry),
+`docs/architecture/adr-*.md`, all 8 other Sprint 17 active row
+story files under `production/epics/` (S11-HUD-TIMER-EYEBALL-VISUAL-001
+story 014 untouched; S17-UI-HUD-OPP-MANA-CLEANUP-001 story 018
+PROMPT 1112 PARTIAL disposition preserved verbatim;
+S17-UI-CARD-DISPLAY-ART-HELPER-001 story 017 PROMPT 1117 closure
+preserved verbatim), all prior `sprint_N_*` blocks in
+`production/sprint-status.yaml` (including the PROMPT 1108 + PROMPT
+1110 + PROMPT 1117 `sprint_17_story_done` entries and the PROMPT
+1112 `sprint_17_partial_disposition` entry which are preserved
+verbatim above and below this new PROMPT 1120 entry), `.octogent/`,
+`.claude/settings.json`, `.claude/scheduled_tasks.lock`. No cargo /
+trunk build or test run by PROMPT 1120; no `/smoke-check`,
+`/team-qa`, `/gate-check`, `/release-check`, `/qa-plan`,
+`/story-readiness`, `/dev-story` invoked.
+
+PROMPT 1120 final status line: `1120: S17-HAND-B0004-CLEANUP-STORY-DONE: PASS`.
+
+---
+
+# PROMPT 1117 State Banner -- Sprint 17 S17-UI-CARD-DISPLAY-ART-HELPER-001 Story-Done
+
+Updated 2026-05-18 by PROMPT 1117. Source-of-truth at closure:
+`origin/main@30c9e0f6d7b867d25d3f8ba5d273c2f1890b02a7` (PROMPT 1114
+integration tip `integrate(s17): merge PROMPT 1113 card-display
+art-helper into main (PROMPT 1114)` merging PROMPT 1113 worker
+`4f577d68610e5231a94385634d828edd913a1f4e`
+`dev-story(s17-card-display-art-helper): lift helper to single owner
++ remove leak + chrome preservation + existence-check probe (PROMPT
+1113)` onto `origin/main` via no-ff merge; strict fast-forward
+descendant of `origin/main@f2ba917` PROMPT 1112 paperwork-only
+PARTIAL DISPOSITION tip, of `origin/main@4bd4f56` PROMPT 1111
+PARTIAL integration tip, of `origin/main@9a9b1dc` PROMPT 1110
+card-slot inset wiring story-done tip, of `origin/main@30f166f`
+PROMPT 1106 card-slot inset wiring integration tip, of
+`origin/main@72d56bc` PROMPT 1108 server start-of-turn-debug
+story-done tip, and of `origin/main@dc8adb6` PROMPT 1107 server
+warn->debug integration tip). Branch:
+`story-done/s17-card-display-art-helper-1117` from base
+`origin/main@30c9e0f`; in-place edits on the primary checkout.
+
+PROMPT 1117 is a paperwork-only Sprint 17 `/story-done` closure for
+`S17-UI-CARD-DISPLAY-ART-HELPER-001` (Must Have, story 017 in
+`production/epics/ui-clean-pass/`; PROMPT 1077 P0/P1 bundle
+absorbing SOURCE-1077-01 + SOURCE-1077-02 + SOURCE-1077-03 +
+SOURCE-1077-04). Closure paperwork records the PROMPT 1113 worker +
+PROMPT 1114 integration result on the story file, in
+`production/sprint-status.yaml`, in `production/session-state/*`,
+and authors the mandatory final report under `reports/` (gitignored).
+
+**Result delivered on origin/main@30c9e0f by PROMPT 1114:**
+- **SOURCE-1077-02 dedup**: `apply_card_display_art` +
+  `clear_card_display_art` lifted to `client/src/asset_wiring.rs`
+  as `pub fn` (verified post-merge: apply at line 594, clear at
+  line 627; resolver at line 562). Verbatim copies in
+  `client/src/ui/shop_auction/mod.rs` and
+  `client/src/ui/hand/mod.rs` deleted; both modules now
+  `use crate::asset_wiring::{apply_card_display_art,
+  clear_card_display_art, ...}`.
+- **SOURCE-1077-01 chrome preservation**: apply Err branch + clear
+  no longer remove `ImageNode`; spawn-time chrome (e.g. shop
+  slot's `SHOP_SLOT_WELL_IDLE_ASSET` well) survives missing card
+  art. Strategy: "do-not-touch-`ImageNode`-on-Err/Clear" per
+  evidence.md §Chrome-preservation strategy.
+- **SOURCE-1077-03 leak fix**: `resolve_card_display_art` returns
+  `Result<String, ...>`; `Box::leak` removed.
+  `CardDisplayArtAsset.path: String` (was `&'static str`).
+  Post-merge verification: zero functional `Box::leak` matches
+  under `client/src/` outside the historical doc-comment at
+  `asset_wiring.rs:553` describing the prior bug.
+- **SOURCE-1077-04 existence check**: new
+  `probe_card_display_art_paths` system on
+  `OnEnter(ClientState::InSession)` warns with `art_id` + `path`
+  per missing file; `MissingCardArtWarnings` resource counts
+  warnings for test observability; documented `"missing"` sentinel
+  routes through placeholder without warn (AC7).
+
+**Tests delivered + adjusted**: 6/6 new unit tests in
+`tests/unit/asset_wiring/card_display_art_helper_test.rs`; 8/8 new
+integration tests in
+`tests/integration/presentation/card_display_art_chrome_preservation_test.rs`;
+4 existing test files adjusted for `&'static str` -> `String`
+signature change (shop_panel_test 10/10, auction_activation_test
+8/8, draft_initial_grid_test 6/6, draft_shop_hand_bridge_test 5/5);
+regression sweep at integration tip: asset_wiring_foundation_test
+9/9, hand_ui_asset_wiring_test 10/10,
+shop_auction_asset_wiring_test 5/5,
+shop_auction_ui_card_cost_combat_stat_rendering_test 8/8,
+ui_clean_pass_card_slot_primitive_test 27/27. Total 102 test cases
+PASS across 11 binaries.
+
+**AC outcomes**: AC1..AC15 PASS; AC16 PASS-WORKER +
+ADVISORY-INTEGRATION (advisory non-BLOCKING per Logic + Integration
+mixed row classification in `.claude/docs/coding-standards.md` Test
+Evidence by Story Type matrix -- BLOCKING gates are automated unit
++ integration tests, all PASS 102/102 at integration tip).
+
+**Cargo resource policy advisory (AC16)**: PROMPT 1113 worker
+applied all 5 Cargo resource policy env vars before every cargo
+invocation per evidence.md AC16 row (D: free 800.5 GB at preflight
+- well above 50 GB minimum). PROMPT 1114 integration encountered a
+PowerShell/Bash env-var propagation gap: the `$env:CARGO_TARGET_DIR=...`
++ `CARGO_PROFILE_DEV_DEBUG=0` + `CARGO_PROFILE_TEST_DEBUG=0` +
+`CARGO_INCREMENTAL=0` + `RUSTFLAGS='-C debuginfo=0 -C link-arg=/DEBUG:NONE'`
+block issued through the Bash tool did not propagate on the first
+call; the first cargo test invocation built into the integration
+worktree-local `target/` rather than
+`D:\_DEV\cargo-target\ccgs-msvc`. Resource impact: a few GB local
+to the worktree; D: drive remained ~744 GB free; no cleanup
+required; no stale child dirs touched. Build correctness gate the
+integration prompt required is **unaffected** -- all 11 targeted
+test bins PASS 102/102 sub-tests total + 2 cargo check invocations
+PASS against the merged tree (cargo check -p client ~58s clean dev
+build + cargo check -p client --tests ~9s clean test build); `git
+diff --check origin/main...HEAD` clean. Recorded explicitly as a
+process / policy advisory note in story-017 Completion Notes,
+`production/sprint-status.yaml` `sprint_17_story_done:` PROMPT
+1117 `batch_note` + `cargo_resource_policy_advisory` block + row
+notes, this banner, and the codex-orchestrator-state.md PROMPT
+1117 paragraph. **NOT hidden as a product failure.** PROMPT 1117
+itself does NOT invoke Cargo (paperwork-only closure).
+
+**Sprint 17 progress after PROMPT 1117**: 3 of 9 active rows DONE
+(S17-SERVER-START-OF-TURN-DEBUG-001 by PROMPT 1108 +
+S17-UI-CARD-SLOT-INSET-WIRING-001 by PROMPT 1110 +
+S17-UI-CARD-DISPLAY-ART-HELPER-001 by PROMPT 1117) + 1 of 9 active
+rows PARTIAL / IN_PROGRESS (S17-UI-HUD-OPP-MANA-CLEANUP-001 carried
+via PROMPT 1112; AC3 carried) + 5 rows preserved as `ready`. Must
+Have 1/2 done + Should Have 1 done + 1 partial / 4 + Nice to Have
+1/3 done. Rows preserved as ready / not closed or partial by
+PROMPT 1117: `S11-HUD-TIMER-EYEBALL-VISUAL-001` (Must Have
+human-operator-blocked Sprint 13 -> 14 -> 15 -> 16 -> 17 carry; no
+LLM `/story-done` authorised per 2026-05-17 orchestrator decision);
+`S17-UI-QA-SNAPSHOT-MARKER-SPLIT-001`,
+`S17-UI-BID-BUTTON-PHASE-RACE-001` (2 of remaining 3 Should Have);
+`S17-OPS-VULKAN-VALIDATION-GATING-001`,
+`S17-UI-HAND-B0004-CLEANUP-001` (2 of remaining 2 Nice to Have).
+
+**SOURCE-1077-01 + SOURCE-1077-02 + SOURCE-1077-03 + SOURCE-1077-04
+all discharged on origin/main by PROMPT 1114 integration**. Other
+PROMPT 1077 findings preserved as open / report-only outside the
+Sprint 17 active row absorption set (SOURCE-1077-06 discharged by
+PROMPT 1106/1110; SOURCE-1077-08/09/16 bundled into
+`S17-UI-QA-SNAPSHOT-MARKER-SPLIT-001` Should Have; SOURCE-1077-10
+owned by `S17-UI-BID-BUTTON-PHASE-RACE-001` Should Have;
+SOURCE-1077-05/07/11/12/13/14/15 deferred to Sprint 18+). All
+AUDIT-1076-* findings preserved as open / report-only outside
+AUDIT-1076-15 (discharged PROMPT 1107/1108) and AUDIT-1076-10 +
+AUDIT-1076-16 (discharged PROMPT 1111; AUDIT-1076-17 remains OPEN
+carried with AC3 of `S17-UI-HUD-OPP-MANA-CLEANUP-001`).
+
+**Files changed by PROMPT 1117**:
+- `production/epics/ui-clean-pass/story-017-card-display-art-helper-bundle.md`
+  (Status banner Draft -> Done; AC1..AC16 flipped to `[x]`;
+  Completion Notes section added with PROMPT 1113 worker +
+  PROMPT 1114 integration + Cargo resource policy advisory
+  sub-section + per-AC outcome list + closure trail (commits)
+  numbered list; Closure Trail section replaced; final status line
+  DRAFT -> DONE)
+- `production/sprint-status.yaml` (S17-UI-CARD-DISPLAY-ART-HELPER-001
+  row flipped `status: ready -> done` with `completed: 2026-05-18`
+  + worker/integration/integrated_commit/story_done_prompt/evidence
+  metadata + closure notes + Cargo resource policy advisory note;
+  PROMPT 1117 `sprint_17_story_done:` entry appended after PROMPT
+  1110 entry and before `sprint_17_partial_disposition:` block
+  following the multi-prompt pattern, with stories_closed entry
+  covering AC1..AC16 outcomes, rows_not_closed_by_prompt_1117
+  enumerating the other 8 Sprint 17 active rows,
+  cargo_resource_policy_advisory block,
+  conditions_carried_forward_unchanged + explicitly_not_claimed +
+  files_changed_by_prompt_1117 + forbidden_changes_observed
+  sections)
+- `production/session-state/active.md` (this banner prepended
+  above PROMPT 1112 banner)
+- `production/session-state/codex-orchestrator-state.md` (PROMPT
+  1117 paragraph prepended above PROMPT 1112 paragraph)
+- `reports/PROMPT-1117-s17-card-display-art-helper-story-done.md`
+  (mandatory final report; reports/ gitignored; not staged or
+  committed)
+
+**Files explicitly NOT touched by PROMPT 1117**: `client/`,
+`server/`, `shared/`, `tests/`, `Cargo.toml`, `Cargo.lock`,
+`.cargo/`, `.github/`, `Trunk.toml`, `production/stage.txt`
+(remains `Polish`), `production/sprints/**` (sprint-17 plan body
+NOT rewritten), `production/qa/qa-plan-sprint-17.md`,
+`production/qa/smoke-*.md`, `production/qa/team-qa-*.md`,
+`production/qa/evidence/*`
+(sprint-17-card-display-art-helper/ preserved verbatim on
+origin/main via PROMPT 1114 integration),
+`production/gate-checks/**` (PROMPT 761 Polish->Release FAIL
+preserved with NO retry), `docs/architecture/adr-*.md`, all 8
+other Sprint 17 active row story files under `production/epics/`
+(`S11-HUD-TIMER-EYEBALL-VISUAL-001` story 014 untouched;
+`S17-UI-HUD-OPP-MANA-CLEANUP-001` story 018 PROMPT 1112 PARTIAL
+disposition preserved verbatim), all prior `sprint_N_*` blocks in
+`production/sprint-status.yaml` (including the PROMPT 1108 + PROMPT
+1110 `sprint_17_story_done` entries and the PROMPT 1112
+`sprint_17_partial_disposition` entry which are preserved verbatim
+above and below this new PROMPT 1117 entry), `.octogent/`,
+`.claude/settings.json`, `.claude/scheduled_tasks.lock`. No cargo
+/ trunk / CI command invoked. Cargo policy: N/A for PROMPT 1117
+paperwork-only closure.
+
+**Non-claims preserved verbatim by PROMPT 1117**: no Sprint 17
+close-out; no closure of any other Sprint 17 active row; no
+closure of `S11-HUD-TIMER-EYEBALL-VISUAL-001` (human-operator-
+blocked carry); no closure of `S17-UI-HUD-OPP-MANA-CLEANUP-001`
+(PROMPT 1112 PARTIAL disposition with AC3 carried preserved
+verbatim; row remains OPEN); no per-surface card-slot primitive
+migration of any consumer surface (HAND / DRAFT-GRID /
+AUCTION-FEATURED / BOARD-GHOST remain Sprint 17+ Backlog under
+`S17-UI-CARD-SLOT-MIGRATION-*`); no real-art production for any of
+the 16 production card art files (`PAW-TD-*-a` placeholder-art
+accept-risk preserved; `PAW-TD-004-a` card art placeholder
+preserved); no public release readiness; no RC readiness; no full
+game completion; no broad / Standard-tier accessibility completion
+(`QA-COND-0005` preserved); no playtest validation
+(`QA-COND-0006` preserved); no full manual QA; no two-client
+`GAME_OVER` closure (`S8-QA-001-W1` OPEN); no final-art
+completion; no Polish->Release retry (PROMPT 761 FAIL preserved);
+no stage advance (`production/stage.txt` reads `Polish`
+unchanged); no `TQ-S12-C7` closure; no closure of any AUDIT-1076-*
+finding by PROMPT 1117; no closure of any SOURCE-1077-* finding
+outside the four bundled here (SOURCE-1077-01/02/03/04 discharged
+by PROMPT 1114); no closure of any of the 24 PROMPT 1022 QA
+snapshot audit findings; no Sprint 16 / 15 / 14 / 13 / 12 / 11 /
+10 row reopen.
+
+**Next launchable prompts**: per-row `/story-readiness` reruns
+against PROMPT 1117 closure HEAD for the 5 remaining `ready`
+Sprint 17 active rows + AC3 carry-forward decision on
+`S17-UI-HUD-OPP-MANA-CLEANUP-001` (producer decides Sprint 17 pull
+vs Sprint 18 deferral before final `/story-done` closure of that
+row); per-row `/dev-story` + integration + `/story-done` paperwork
+for the remaining `ready` rows; Sprint 17 smoke harness prompt
+with two-client session.
+
+**Branch / push**: PROMPT 1117 commits
+`story-done(s17): close S17-UI-CARD-DISPLAY-ART-HELPER-001 (PROMPT
+1117)` on branch `story-done/s17-card-display-art-helper-1117`
+from base `origin/main@30c9e0f`; pushes to `origin/main` if policy
+allows; if direct `main` push is blocked, the commit is pushed on
+the worker branch and the exact commit/branch reported, never
+force-pushed.
+
+`1117: S17-CARD-DISPLAY-ART-HELPER-STORY-DONE: DONE`
+
+---
+
+# PROMPT 1112 State Banner -- Sprint 17 S17-UI-HUD-OPP-MANA-CLEANUP-001 Partial Disposition
+
+Updated 2026-05-18 by PROMPT 1112. Source-of-truth at disposition:
+`origin/main@4bd4f569bf0f8e54a18b6f1a9c95336aefff34d9` (PROMPT 1111
+integration tip `integrate(s17): merge PROMPT 1105 HUD class-reveal
+projection (PARTIAL, AC3 carried) into main (PROMPT 1111)` merging
+PROMPT 1105 worker `c6b7d70a2733c1fa3b0af271c8e309397cf592a6`
+`dev-story(s17-hud-opp-mana-cleanup): HUD class-reveal projection
+for opp figurine + OPP label (PROMPT 1105)` onto `origin/main` via
+no-ff merge; strict fast-forward descendant of `origin/main@30f166f`
+PROMPT 1106 card-slot inset wiring integration tip, of
+`origin/main@9a9b1dc` PROMPT 1110 card-slot inset wiring story-done
+tip, of `origin/main@72d56bc` PROMPT 1108 server start-of-turn-debug
+story-done tip, and of `origin/main@dc8adb6` PROMPT 1107 server
+warn->debug integration tip). Worktree: in-place edits on the
+primary checkout. Branch:
+`paperwork/s17-hud-opp-mana-partial-disposition-1112` from base
+`origin/main@4bd4f56`.
+
+PROMPT 1112 is a paperwork-only Sprint 17 PARTIAL DISPOSITION for
+`S17-UI-HUD-OPP-MANA-CLEANUP-001` (Should Have, story 018 in
+`production/epics/hud/`; AUDIT-1076-10 + AUDIT-1076-16 + AUDIT-1076-17
+bundle). **This is NOT a `/story-done` closure.** PROMPT 1112 records
+the PROMPT 1105 worker + PROMPT 1111 integration partial result on
+the story file, in `production/sprint-status.yaml`, in
+`production/session-state/*`, and surfaces a follow-up candidate
+slug for the carried AC. The row remains OPEN / Partial /
+In Progress; `/story-done` is deferred per the AC3 carry gating.
+
+**Partial result delivered on origin/main@4bd4f56 by PROMPT 1111:**
+AC1 + AC2 + AC4..AC15 DELIVERED. HUD class-reveal projection landed
+in `client/src/ui/hud/mod.rs`: new resource `HudClassReveal { local:
+Option<ClassId>, opponent: Option<ClassId> }`; three new systems
+(`sync_class_reveal_from_lobby_view_system` MessageDrain that reads
+`Res<LobbyViewState>.revealed_classes` + `Res<ClientSessionIdentity>`
+and skips while `HudMode::Frozen` so incremental lobby reveals
+cannot overwrite during GAME_OVER; `sync_class_reveal_from_snapshot_system`
+MessageDrain after `handle_game_snapshot_system` that reads
+`MessageReader<PresentationGameSnapshotMessage>` and always runs so
+`S2CGameSnapshot` reconnect rebuilds remain authoritative even at
+GAME_OVER per ADR-011 binding; `sync_class_reveal_hud_system`
+StateSync after `sync_gold_text_system` and `sync_figurine_image_system`
+that applies `HudClassReveal` to the opponent figurine `ImageNode`
+via `hud_figurine_asset(opp_class)` and to the `opponent_gold_prefix`
+`Text` via `format_opp_class_display(opp_class)` returning
+`"OPP {ClassId:?}"`). Worker chose the prefix entity (not the value
+entity) for the OPP label re-skin so the existing opponent-gold
+readout contract guarded by `reconnect_snapshot_rebuild_test.rs`
+remains intact. 8 new integration tests in
+`tests/integration/hud/opp_figurine_label_mana_repaint_test.rs`
+cover AC1 / AC2 / AC4 / AC5 / AC6 / AC7 / AC8 + opponent figurine
+marker singleton guard; PROMPT 1111 integration `cargo test`
+PASS 8/8 + 27/27 sub-tests across 6 sibling HUD test bins +
+`cargo check -p client` OK 8.78s 0 errors 0 warnings.
+
+**AC3 (mana microbadge removal, AUDIT-1076-17) EXPLICITLY NOT
+DELIVERED -- carried.** The floating `Reserve N + / Current N`
+microbadge spawn site lives in `client/src/ui/hand/mod.rs` reserve
+strip (`spawn_reserve_strip` ~L3505, per-card `Reserve N Current N`
+text ~L3530, updater ~L4108-L4110). This is semantically distinct
+from the HUD canonical `MANA n / N` strip, which is preserved
+unchanged. The reserve strip is a hand-ui per-card overlay, not a
+HUD-owned widget. `client/src/ui/hand/` is on the story's
+"Forbidden files" list for the HUD-owned worker, so PROMPT 1105
+correctly invoked the worker-contract pause-and-escalate branch.
+PROMPT 1111 integration explicitly did NOT touch
+`client/src/ui/hand/mod.rs` and recorded AC3 carried in the no-ff
+merge commit message.
+
+**Follow-up candidate slug**: `S18-UI-HAND-RESERVE-STRIP-CLEANUP-001`
+(preferred per PROMPT 1111 recommendation; Sprint 17 is in Polish
+and AC3 is a hand-ui cleanup decision rather than a hot defect).
+Alternative `S17-UI-HAND-RESERVE-STRIP-CLEANUP-001` only if a
+producer explicitly authorises and Sprint 17 has remaining capacity.
+PROMPT 1112 records the slug as a candidate only -- the story file
+is NOT authored or activated by PROMPT 1112.
+
+**AC16 (HUD epic story count refresh)** is deferred to future
+`/story-done` paperwork (gated on AC3 landing on origin/main OR
+producer explicit accept-into-Sprint-18 of AC3 carry-forward).
+
+Sprint 17 progress after PROMPT 1112: 2 of 9 active rows DONE
+(S17-SERVER-START-OF-TURN-DEBUG-001 by PROMPT 1108 +
+S17-UI-CARD-SLOT-INSET-WIRING-001 by PROMPT 1110) + 1 of 9 active
+rows PARTIAL / IN_PROGRESS (S17-UI-HUD-OPP-MANA-CLEANUP-001 here)
++ 6 rows preserved as ready / not closed; Must Have 0/2 done +
+Should Have 1 done + 1 partial / 4 + Nice to Have 1/3 done. Rows
+preserved as ready and NOT closed or marked partial by PROMPT 1112:
+`S11-HUD-TIMER-EYEBALL-VISUAL-001` (Must Have human-operator-blocked
+Sprint 13 -> 14 -> 15 -> 16 -> 17 carry; no LLM `/story-done`
+authorised), `S17-UI-CARD-DISPLAY-ART-HELPER-001` (Must Have),
+`S17-UI-QA-SNAPSHOT-MARKER-SPLIT-001`, `S17-UI-BID-BUTTON-PHASE-RACE-001`
+(2 of remaining 3 Should Have), `S17-OPS-VULKAN-VALIDATION-GATING-001`,
+`S17-UI-HAND-B0004-CLEANUP-001` (2 of remaining 2 Nice to Have).
+
+All non-claims preserved verbatim: `S8-QA-001-W1` OPEN, `QA-COND-0005`
+and `QA-COND-0006` accepted-risk, `PAW-TD-*-a` preserved (specifically
+`PAW-TD-004-a` opp figurine placeholder), `TQ-S12-C1..C7` preserved
+(`TQ-S12-C7` explicitly NOT closed), PROMPT 683-era runtime
+divergence preserved, PROMPT 761 `Polish->Release` FAIL preserved
+with NO retry, PROMPT 1054 P1 UI snapshot retest BLOCKED-HUMAN
+preserved, 24 PROMPT 1022 QA snapshot audit findings preserved, no
+LLM closure of `S11-HUD-TIMER-EYEBALL-VISUAL-001`. AUDIT-1076-10 +
+AUDIT-1076-16 functionally discharged on origin/main by PROMPT 1111
+integration; AUDIT-1076-17 remains OPEN / explicitly carried with
+AC3 (mana microbadge removal). All other AUDIT-1076-* preserved as
+open / report-only outside AUDIT-1076-15 (discharged PROMPT 1107 /
+1108) and AUDIT-1076-10 / 16 (discharged PROMPT 1111). All
+SOURCE-1077-* preserved as open / report-only outside SOURCE-1077-06
+(discharged PROMPT 1106 / 1110). Stage `Polish` UNCHANGED;
+`production/stage.txt` NOT modified.
+
+Files changed by PROMPT 1112:
+
+- `production/epics/hud/story-018-opp-figurine-mana-cleanup.md`
+  (Status banner Draft -> Partial / In Progress; AC1 + AC2 +
+  AC4..AC15 flipped to `[x]` with per-AC delivery evidence
+  annotations; AC3 flipped to `[~]` with explicit `NOT DELIVERED --
+  EXPLICITLY CARRIED` rationale + follow-up candidate slugs; AC16
+  left `[ ]` with deferred-to-/story-done rationale; new Partial
+  Integration Notes section added before Closure Trail covering
+  disposition + AC status table + AC3 carry classification +
+  follow-up candidate + files changed + forbidden changes observed;
+  Closure Trail section updated to reference PROMPT 1112; final
+  status line flipped DRAFT -> PARTIAL).
+- `production/sprint-status.yaml` (S17-UI-HUD-OPP-MANA-CLEANUP-001
+  row in stories: block flipped `status: ready -> in_progress`
+  with `partial_disposition` note + worker / integration /
+  `integrated_commit` / `partial_disposition_prompt` metadata + 6
+  notes describing PARTIAL disposition + AC3 carry classification +
+  follow-up candidate + integration gates + non-claims;
+  `sprint_17_partial_disposition:` block appended at EOF following
+  the `sprint_17_story_done:` precedent pattern with `stories_partial`
+  entry covering AC1..AC16 outcomes, `ac3_carry_classification`
+  block, `rows_not_closed_or_partial_by_prompt_1112` enumerating the
+  other 8 Sprint 17 active rows, `follow_up_candidate_for_ac3`
+  block, `conditions_carried_forward_unchanged` +
+  `explicitly_not_claimed` + `files_changed_by_prompt_1112` +
+  `forbidden_changes_observed` sections).
+- `production/session-state/active.md` (this PROMPT 1112 banner
+  prepended above PROMPT 1110 banner).
+- `production/session-state/codex-orchestrator-state.md` (PROMPT 1112
+  paragraph prepended above PROMPT 1110 paragraph).
+- `reports/PROMPT-1112-s17-hud-opp-mana-partial-disposition.md`
+  (mandatory final report; reports/ is gitignored; not staged or
+  committed).
+
+Forbidden changes observed by PROMPT 1112: `client/`, `server/`,
+`shared/`, `tests/` NOT modified (zero code changes; paperwork-only);
+`Cargo.toml`, `Cargo.lock`, `.cargo/`, `Trunk.toml`, `.github/` NOT
+modified; `production/stage.txt` NOT modified (remains `Polish`);
+`production/sprints/sprint-17.md` NOT modified;
+`production/qa/qa-plan-sprint-17.md` NOT modified;
+`production/qa/smoke-*.md` / `team-qa-*.md` / `evidence/*` NOT
+modified (`sprint-17-hud-opp-mana-cleanup/evidence.md` preserved
+verbatim on origin/main via PROMPT 1111 integration);
+`production/gate-checks/*` NOT modified (PROMPT 761 FAIL preserved);
+`docs/architecture/adr-*.md` NOT modified; no Sprint 17 story file
+under `production/epics/` other than this one modified;
+`S11-HUD-TIMER-EYEBALL-VISUAL-001` story 014 NOT modified
+(human-operator-blocked carry preserved verbatim); existing
+`sprint_17_activation:` / `sprint_17_story_done:` PROMPT 1108 +
+PROMPT 1110 entries / `sprint_16_*` / `sprint_15_*` / `sprint_14_*`
+/ `sprint_13_*` blocks in `production/sprint-status.yaml` NOT
+modified (preserved verbatim above the new
+`sprint_17_partial_disposition:` block); no `/story-done`,
+`/smoke-check`, `/team-qa`, `/gate-check`, `/release-check`,
+`/qa-plan`, `/story-readiness`, `/dev-story` run by PROMPT 1112; no
+cargo / trunk / CI command run; no Polish->Release retry; no
+candidate story file authored for the follow-up slugs.
+
+Final status line: `1112: S17-HUD-OPP-MANA-PARTIAL-DISPOSITION: RECORDED_PARTIAL`.
+
+---
+
+# PROMPT 1110 State Banner -- Sprint 17 S17-UI-CARD-SLOT-INSET-WIRING-001 Story-Done
+
+Updated 2026-05-18 by PROMPT 1110. Source-of-truth at closure:
+`origin/main@30f166fb9b718bdb5a6a904da0d66cdcc9685f15` (PROMPT 1106
+integration tip `integrate(s17): merge PROMPT 1102 card-slot inset
+wiring into main (PROMPT 1106)` merging PROMPT 1102 worker
+`55c0dab11ab7572e0cb88827c3ed5f3b241c0fe8` `dev-story(s17): wire
+card-slot image/text inset + GlobalZIndex (PROMPT 1102
+S17-UI-CARD-SLOT-INSET-WIRING-001)` onto `origin/main` via no-ff
+merge; strict fast-forward descendant of `origin/main@dc8adb6`
+PROMPT 1107 server warn->debug integration tip and of
+`origin/main@72d56bc` PROMPT 1108 S17-SERVER-START-OF-TURN-DEBUG-001
+story-done closure tip). Worktree: in-place edits on the primary
+checkout. Branch: `story-done/s17-card-slot-inset-wiring-1110` from
+base `origin/main@72d56bc`.
+
+PROMPT 1110 is a paperwork-only Sprint 17 `/story-done` closure for
+`S17-UI-CARD-SLOT-INSET-WIRING-001` (Should Have, story 018 in
+`production/epics/ui-clean-pass/`). Single-row closure on the basis
+of: PROMPT 1102 worker (two net-additive sibling builders extending
+the Sprint 16 PROMPT 1074 card-slot primitive --
+`card_slot_image_inset_node(kind) -> (Node, GlobalZIndex)` at
+`client/src/ui/design_tokens/card_slot.rs:687` +
+`card_slot_text_inset_node(kind) -> (Node, GlobalZIndex)` at line
+728; both emit `PositionType::Absolute` `Node`s whose
+`left/right/top/bottom` read verbatim from
+`card_slot_geometry(kind).{image_inset_px,text_inset_px}` and a
+`GlobalZIndex` from `card_slot_geometry(kind).z_layer` --
+`UI_BASE (300)` for `HandFan`/`DraftGrid`/`ShopSlot`/`AuctionFeatured`
+and `UI_OVERLAY (400)` for `BoardStagedGhost`; `card_slot_node` body
+and `card_slot_geometry` constants UNCHANGED; no consumer-surface
+migration; 8 new `s17_*` integration tests +  3 new `s17_*` inline
+tests; cargo gate pass under Sprint 15+ Cargo resource policy);
+PROMPT 1106 integration (no-ff merge onto `origin/main`;
+`git diff --name-only origin/main..HEAD` returns exactly 3 paths
+-- the new builders + tests + new evidence.md; cargo check + cargo
+test 27/27 + cargo test 9/9 PASS at integration tip). AC1..AC13
+PASS; AC14 PASS-WORKER + ADVISORY-INTEGRATION.
+
+**Cargo resource policy advisory at PROMPT 1106 first cargo
+invocation** preserved explicitly: PROMPT 1106 integration's first
+`cargo test` invocation built into the integration worktree-local
+`target/` because the bash-tool-issued `$env:CARGO_TARGET_DIR=...`
+PowerShell-syntax env-var block was not interpreted on the first
+call; subsequent calls correctly routed to
+`D:\_DEV\cargo-target\ccgs-msvc`. The build correctness gate this
+integration row required is **unaffected** -- all 27/27 integration
+tests + 9/9 inline tests PASS against the merged tree. Recorded
+explicitly as a process / policy advisory note, NOT a product
+failure. PROMPT 1102 worker applied the policy correctly. PROMPT
+1110 itself does NOT invoke Cargo.
+
+**PROMPT 1106 evidence-file trailing-whitespace advisory** preserved
+explicitly: `production/qa/evidence/sprint-17-card-slot-inset-wiring/
+evidence.md` inherits two pre-existing trailing-whitespace lines
+(lines 92 and 107, both inside a Markdown bullet list). PROMPT 1106
+integration `git diff --check origin/main...HEAD` flagged both lines.
+The condition is inside a documentation artifact, not code; PROMPT
+1106 did not rewrite the evidence file to preserve worker-authored
+provenance. PROMPT 1110 preserves this verbatim and does NOT rewrite
+or strip the trailing whitespace (evidence.md is already on
+`origin/main` via PROMPT 1106 integration; PROMPT 1110 does not
+modify files already on origin/main via integration). Surfaced
+explicitly in this banner, in the story-018 Completion Notes section
+sub-heading 'PROMPT 1106 evidence-file trailing-whitespace advisory',
+in the `production/sprint-status.yaml` `sprint_17_story_done:`
+PROMPT 1110 `documentation_artifact_advisory:` block + row notes,
+in the `production/session-state/codex-orchestrator-state.md` PROMPT
+1110 paragraph, and in the PROMPT 1110 final report -- NOT hidden.
+
+Sprint 17 progress after PROMPT 1110: 2 of 9 active rows done (Must
+Have 0/2 + Should Have 1/4 + Nice to Have 1/3). Rows preserved as
+ready and **NOT** closed by PROMPT 1110: `S11-HUD-TIMER-EYEBALL-
+VISUAL-001` (Must Have human-operator-blocked Sprint 13 -> 14 -> 15
+-> 16 -> 17 carry; no LLM `/story-done` authorised);
+`S17-UI-CARD-DISPLAY-ART-HELPER-001` (Must Have);
+`S17-UI-HUD-OPP-MANA-CLEANUP-001`,
+`S17-UI-QA-SNAPSHOT-MARKER-SPLIT-001`,
+`S17-UI-BID-BUTTON-PHASE-RACE-001` (3 of 4 Should Have);
+`S17-OPS-VULKAN-VALIDATION-GATING-001`,
+`S17-UI-HAND-B0004-CLEANUP-001` (2 of 3 Nice to Have). All non-claims
+preserved verbatim: `S8-QA-001-W1` OPEN, `QA-COND-0005` /
+`QA-COND-0006` accepted-risk, `PAW-TD-*-a` preserved, `TQ-S12-C1..C7`
+preserved (`TQ-S12-C7` explicitly NOT closed), PROMPT 683-era
+runtime divergence preserved, PROMPT 761 `Polish->Release` FAIL
+preserved with NO retry, PROMPT 1054 P1 UI snapshot retest
+BLOCKED-HUMAN preserved, 24 PROMPT 1022 QA snapshot audit findings
+preserved, long-tail AUDIT-1076-05 / 08 / 11 + SOURCE-1077-05 / 07
+/ 11 / 12 / 13 / 14 / 15 deferred to Sprint 18+, all five dropped
+conditional Must Have rows preserved on `origin/main`, no LLM
+closure of `S11-HUD-TIMER-EYEBALL-VISUAL-001`. Per-surface migration
+of HAND / DRAFT-GRID / AUCTION-FEATURED / BOARD-GHOST remains Sprint
+17+ Backlog under the `S17-UI-CARD-SLOT-MIGRATION-*` family;
+PROMPT 1110 ratifies the primitive only and does NOT migrate any
+consumer surface. Stage `Polish` UNCHANGED; `production/stage.txt`
+NOT modified.
+
+Files changed by PROMPT 1110:
+
+- `production/epics/ui-clean-pass/story-018-card-slot-inset-wiring.md`
+  (Status banner Draft -> Done; AC1..AC13 [x]; AC14 [x] PASS-WORKER +
+  ADVISORY-INTEGRATION; Completion Notes section added with PROMPT
+  1102 worker + PROMPT 1106 integration + PROMPT 1106 evidence-file
+  trailing-whitespace advisory sub-section + Test Evidence section;
+  Closure Trail table populated with PROMPT 1095 / 1097 / 1099 /
+  1100 / 1102 / 1106 / 1110 entries; final status line flipped
+  DRAFT -> DONE).
+- `production/sprint-status.yaml` (S17-UI-CARD-SLOT-INSET-WIRING-001
+  row in `stories:` block flipped `status: ready -> done` with
+  `completed: 2026-05-18` + worker / integration / evidence metadata
+  + closure note + PROMPT 1106 trailing-whitespace advisory note;
+  `sprint_17_story_done:` block appended after PROMPT 1108 entry
+  with full PROMPT 1110 disposition block including AC1..AC14
+  outcomes, `rows_not_closed_by_prompt_1110` enumerating 7 remaining
+  Sprint 17 active rows, `documentation_artifact_advisory` block,
+  conditions_carried_forward_unchanged + explicitly_not_claimed +
+  files_changed_by_prompt_1110 + forbidden_changes_observed
+  sections).
+- `production/session-state/active.md` (this PROMPT 1110 banner
+  prepended above PROMPT 1108 banner).
+- `production/session-state/codex-orchestrator-state.md` (PROMPT
+  1110 paragraph prepended above PROMPT 1108 paragraph).
+- `reports/PROMPT-1110-s17-card-slot-inset-wiring-story-done.md`
+  (mandatory final report file; `reports/` is gitignored; not staged
+  or committed).
+
+Files explicitly NOT touched by PROMPT 1110: `client/`, `server/`,
+`shared/`, `tests/`, `Cargo.toml`, `Cargo.lock`, `.cargo/`,
+`.github/`, `Trunk.toml`, `production/stage.txt`,
+`production/sprints/**` (sprint-17 plan body NOT rewritten),
+`production/qa/qa-plan-sprint-17.md`, `production/qa/smoke-*.md`,
+`production/qa/team-qa-*.md`, `production/qa/evidence/*`
+(sprint-17-card-slot-inset-wiring/ preserved verbatim on `origin/main`
+via PROMPT 1106 integration including the two pre-existing
+trailing-whitespace lines), `production/gate-checks/**`,
+`docs/architecture/adr-*.md`, any Sprint 17 story file under
+`production/epics/` other than `story-018-card-slot-inset-wiring.md`
+(the 8 other Sprint 17 active row story files preserved verbatim;
+`S11-HUD-TIMER-EYEBALL-VISUAL-001` story 014 untouched), all prior
+`sprint_N_*` blocks in `production/sprint-status.yaml` (including
+PROMPT 1108 sprint_17_story_done entry which is preserved verbatim
+above the new PROMPT 1110 entry), `.octogent/`,
+`.claude/settings.json`, `.claude/scheduled_tasks.lock`. No cargo /
+trunk / CI command invoked. **Cargo policy: N/A** for this
+paperwork-only closure.
+
+Branch / push: PROMPT 1110 commits the story-done paperwork on
+branch `story-done/s17-card-slot-inset-wiring-1110` from base
+`origin/main@72d56bc`. Push target per prompt policy: push to `main`
+if allowed; if `main` push is blocked, push the worker branch and
+report exact commit/branch. No `/dev-story`, `/smoke-check`,
+`/team-qa`, `/gate-check`, `/release-check`, `/qa-plan`, or
+`/story-readiness` invoked by PROMPT 1110.
+
+---
+
+# PROMPT 1108 State Banner -- Sprint 17 S17-SERVER-START-OF-TURN-DEBUG-001 Story-Done
+
+Updated 2026-05-18 by PROMPT 1108. Source-of-truth at closure:
+`origin/main@dc8adb6a2c67a975fb241639f2b242000e7db926` (PROMPT 1107
+integration tip `integrate(s17): merge PROMPT 1104 server
+start_of_turn_dispatch_system warn->debug into main (PROMPT 1107)`
+merging PROMPT 1104 worker `b26beab18f3a707f66713bae1198378d4d15d09f`
+`tech-debt(server): downgrade start_of_turn_dispatch_system warn ->
+debug (S17-SERVER-START-OF-TURN-DEBUG-001, PROMPT 1104)` onto
+`origin/main` via no-ff merge; strict fast-forward descendant of
+`origin/main@ff47075` PROMPT 1100 Sprint 17 QA plan tip and of
+`origin/main@cb62a9e` PROMPT 1099 Sprint 17 activation tip and of
+`origin/main@bc3db29` PROMPT 1097 net-new Sprint 17 story authoring
+batch integration tip). Worktree: in-place edits on the primary
+checkout. Branch: `story-done/s17-server-start-of-turn-debug-1108`
+from base `origin/main@dc8adb6`.
+
+PROMPT 1108 is a paperwork-only Sprint 17 `/story-done` closure for
+`S17-SERVER-START-OF-TURN-DEBUG-001` (Nice to Have, story 003 in
+`production/epics/server/`). Single-row closure on the basis of:
+PROMPT 1104 worker (single-line `tracing::warn!` -> `tracing::debug!`
+substitution at `server/src/feature/keyword/observers.rs:66` inside
+`start_of_turn_dispatch_system`; message text, `target` field, and
+system body unchanged; `cargo check -p server` passed under Sprint
+15+ Cargo resource policy via `.ps1` wrappers); PROMPT 1107
+integration (no-ff merge onto `origin/main`; `git diff --name-only
+origin/main...HEAD` returns 2 paths only -- the 1-line `.rs` edit
+plus new `production/qa/evidence/sprint-17-start-of-turn-debug/
+evidence.md`; `cargo check -p server` passed exit 0 2m07s). AC1 +
+AC4..AC9 PASS; AC2 + AC3 PARTIAL (advisory; non-BLOCKING for Config
+/ Data row classification per `.claude/docs/coding-standards.md`
+"Test Evidence by Story Type" matrix; binding two-client smoke gate
+remains Sprint 17 smoke prompt scope); AC10 PASS-WORKER +
+ADVISORY-DEVIATION-INTEGRATION.
+
+**Cargo resource policy advisory deviation (PROMPT 1107)** preserved
+explicitly: the PROMPT 1107 integration prompt's PowerShell-syntax
+env-var block (`$env:CARGO_TARGET_DIR=...` etc.) was issued through
+the Bash tool, which does not interpret `$env:` assignments. Bash
+emitted "command not found" for each line; the 5 Sprint 15+ Cargo
+resource policy env vars were **NOT** exported during the integration
+`cargo check -p server` invocation, which then ran with the default
+`dev` profile into the integration worktree's local `target/` rather
+than `D:\_DEV\cargo-target\ccgs-msvc`. The build correctness gate
+this integration row required is **unaffected** -- `cargo check -p
+server` still passed against the merged tree. Recorded explicitly as
+a process / policy advisory note, NOT a product failure. PROMPT 1104
+worker applied the policy correctly. PROMPT 1108 itself does NOT
+invoke Cargo.
+
+Sprint 17 progress after PROMPT 1108: 1 of 9 active rows done (Must
+Have 0/2 + Should Have 0/4 + Nice to Have 1/3). Rows preserved as
+ready and **NOT** closed by PROMPT 1108: `S11-HUD-TIMER-EYEBALL-
+VISUAL-001` (Must Have human-operator-blocked Sprint 13 -> 14 -> 15
+-> 16 -> 17 carry; no LLM `/story-done` authorised);
+`S17-UI-CARD-DISPLAY-ART-HELPER-001` (Must Have);
+`S17-UI-HUD-OPP-MANA-CLEANUP-001`, `S17-UI-CARD-SLOT-INSET-WIRING-001`,
+`S17-UI-QA-SNAPSHOT-MARKER-SPLIT-001`, `S17-UI-BID-BUTTON-PHASE-RACE-001`
+(all 4 Should Have); `S17-OPS-VULKAN-VALIDATION-GATING-001`,
+`S17-UI-HAND-B0004-CLEANUP-001` (2 of 3 Nice to Have). All non-claims
+preserved verbatim: `S8-QA-001-W1` OPEN, `QA-COND-0005` /
+`QA-COND-0006` accepted-risk, `PAW-TD-*-a` preserved, `TQ-S12-C1..C7`
+preserved (`TQ-S12-C7` explicitly NOT closed), PROMPT 683-era runtime
+divergence preserved, PROMPT 761 `Polish->Release` FAIL preserved
+with NO retry, PROMPT 1054 P1 UI snapshot retest BLOCKED-HUMAN
+preserved, 24 PROMPT 1022 QA snapshot audit findings preserved,
+long-tail AUDIT-1076-05 / 08 / 11 + SOURCE-1077-05 / 07 / 11 / 12 /
+13 / 14 / 15 deferred to Sprint 18+, all five dropped conditional
+Must Have rows preserved on `origin/main`, no LLM closure of
+`S11-HUD-TIMER-EYEBALL-VISUAL-001`. `start_of_turn_dispatch_system`
+implementation remains **deferred** -- this row only changed the log
+macro; the system body, registration, schedule, and per-`DraftStarted`
+trigger are unchanged. The pre-existing `tracing_subscriber` wiring
+gap (`server/src/main.rs:50-52` builder init without
+`.with_env_filter(EnvFilter::from_default_env())`) is preserved as a
+candidate Sprint 18+ ops-hardening row, NOT closed by PROMPT 1108.
+Stage `Polish` UNCHANGED; `production/stage.txt` NOT modified.
+
+Files changed by PROMPT 1108:
+
+- `production/epics/server/story-003-start-of-turn-debug-downgrade.md`
+  (Status banner Draft -> Done; AC1 + AC4..AC9 [x]; AC2 + AC3 [~]
+  PARTIAL advisory; AC10 [~] PASS-WORKER + ADVISORY-DEVIATION-
+  INTEGRATION; Completion Notes section added; Cargo resource policy
+  advisory deviation note recorded explicitly; Closure Trail table
+  populated with PROMPT 1095 / 1097 / 1099 / 1100 / 1104 / 1107 /
+  1108 entries; final status line flipped DRAFT -> DONE).
+- `production/sprint-status.yaml` (S17-SERVER-START-OF-TURN-DEBUG-001
+  row in `stories:` block flipped `status: ready -> done` with
+  `completed: 2026-05-18` + worker / integration / evidence
+  metadata + closure note + Cargo resource policy advisory rationale;
+  `sprint_17_story_done:` block appended at EOF following
+  `sprint_16_story_done:` precedent with full PROMPT 1108 disposition
+  block).
+- `production/session-state/active.md` (this PROMPT 1108 banner
+  prepended above PROMPT 1100 banner).
+- `production/session-state/codex-orchestrator-state.md` (PROMPT
+  1108 paragraph prepended above PROMPT 1100 paragraph).
+- `reports/PROMPT-1108-s17-server-start-of-turn-debug-story-done.md`
+  (mandatory final report file; `reports/` is gitignored; not staged
+  or committed).
+
+Files explicitly NOT touched by PROMPT 1108: `client/`, `server/`,
+`shared/`, `tests/`, `Cargo.toml`, `Cargo.lock`, `.cargo/`,
+`.github/`, `Trunk.toml`, `production/stage.txt`,
+`production/sprints/**` (sprint-17 plan body NOT rewritten),
+`production/qa/qa-plan-sprint-17.md`, `production/qa/smoke-*.md`,
+`production/qa/team-qa-*.md`, `production/qa/evidence/*`
+(sprint-17-start-of-turn-debug/ preserved verbatim on `origin/main`
+via PROMPT 1107 integration), `production/gate-checks/**`,
+`docs/architecture/adr-*.md`, any Sprint 17 story file under
+`production/epics/` other than `story-003-start-of-turn-debug-
+downgrade.md` (the other 8 Sprint 17 active row story files preserved
+verbatim; S11-HUD-TIMER-EYEBALL-VISUAL-001 story 014 untouched), all
+prior `sprint_N_*` blocks in `production/sprint-status.yaml`,
+`.octogent/`, `.claude/settings.json`, `.claude/scheduled_tasks.lock`.
+No cargo / trunk / CI command invoked. **Cargo policy: N/A** for
+this paperwork-only closure.
+
+Branch / push: PROMPT 1108 commits the story-done paperwork on
+branch `story-done/s17-server-start-of-turn-debug-1108` from base
+`origin/main@dc8adb6`. Push target per prompt policy: push to `main`
+if allowed; if `main` push is blocked, push the worker branch and
+report exact commit/branch. No `/dev-story`, `/smoke-check`,
+`/team-qa`, `/gate-check`, `/release-check`, `/qa-plan`, or
+`/story-readiness` invoked by PROMPT 1108.
+
+---
+
 # PROMPT 1100 State Banner -- Sprint 17 QA Plan Authored
 
 Updated 2026-05-18 by PROMPT 1100. Source-of-truth at authoring:

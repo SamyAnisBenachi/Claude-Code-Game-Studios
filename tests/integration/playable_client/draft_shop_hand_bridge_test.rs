@@ -222,7 +222,7 @@ fn test_cards_json_art_ids_resolve_to_display_assets() {
 
         match resolve_card_display_art(Some(card)) {
             Ok(path) if path == expected_path => {
-                let asset_path = repo_root.join("assets").join(path);
+                let asset_path = repo_root.join("assets").join(&path);
                 if !asset_path.is_file() {
                     unresolved.push(format!("{} -> {path} missing file", card.art_id));
                 }

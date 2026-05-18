@@ -2,7 +2,7 @@
 
 > **Epic**: Hand UI
 > **Story ID**: S17-UI-HAND-B0004-CLEANUP-001
-> **Status**: Draft -- Sprint 17 Nice to Have candidate (AUDIT-1076-14); NOT activated by this authoring run
+> **Status**: Done -- closed by PROMPT 1120 /story-done paperwork on 2026-05-18 (origin/main@29ad4c6 PROMPT 1118 integration tip)
 > **Layer**: Hand UI / Presentation (ECS hierarchy structural fix)
 > **Type**: Tech Debt -- structural ECS warning cleanup
 > **Sprint**: Sprint 17 Nice to Have row per `production/sprints/sprint-17.md` §"Nice to Have". Activation is a separate explicit prompt (PROMPT 1093 pattern).
@@ -272,7 +272,7 @@ This is **NOT** a:
 
 All criteria are independently checkable.
 
-- [ ] **AC1 -- B0004 warning is gone (default build)**: GIVEN
+- [x] **AC1 -- B0004 warning is gone (default build)**: GIVEN
   the post-implementation client built with default features
   (`cargo build -p client` OR `trunk build`), WHEN launched and
   stderr/stdout is inspected through `InSession` entry, THEN
@@ -281,7 +281,7 @@ All criteria are independently checkable.
   the cross-machine evidence; this AC is satisfied by the
   integration test (AC4 below) AND confirmed by the smoke.
 
-- [ ] **AC2 -- Hierarchy invariant holds (Strategy A or B)**:
+- [x] **AC2 -- Hierarchy invariant holds (Strategy A or B)**:
   GIVEN the post-implementation hand UI ECS world, WHEN
   inspected via the integration test (AC4), THEN EITHER:
   (a) FanRoot's parent (HandBar) carries `GlobalTransform` (and
@@ -290,7 +290,7 @@ All criteria are independently checkable.
   carries `GlobalTransform`.
   The chosen strategy is documented in the commit message.
 
-- [ ] **AC3 -- Existing hand UI tests continue to PASS**: GIVEN
+- [x] **AC3 -- Existing hand UI tests continue to PASS**: GIVEN
   the existing test bins under `tests/integration/hand-ui/`
   (or `tests/integration/hand_ui/` — re-verify; per Hand UI
   epic EPIC.md Stories table the existing bins cover fan
@@ -300,7 +300,7 @@ All criteria are independently checkable.
   fan layout, drag-state, placement, or staging assertion is
   regressed.
 
-- [ ] **AC4 -- Integration test asserts hierarchy invariant**:
+- [x] **AC4 -- Integration test asserts hierarchy invariant**:
   GIVEN `tests/integration/hand-ui/hand_fan_root_globaltransform_test.rs`
   (NEW; or new assertions in an existing hand UI test bin —
   worker's choice, justified in commit), WHEN run, THEN it
@@ -314,7 +314,7 @@ All criteria are independently checkable.
   precisely — "child with GlobalTransform must have parent
   with GlobalTransform".
 
-- [ ] **AC5 -- Sprint 12 story 019 disposition preserved**:
+- [x] **AC5 -- Sprint 12 story 019 disposition preserved**:
   GIVEN the commit message and any evidence document, WHEN
   inspected, THEN they explicitly do NOT claim the underlying
   drag-runtime bug from Sprint 12 story 019 is fixed. The
@@ -323,18 +323,18 @@ All criteria are independently checkable.
   `closed-with-conditions / cannot-reproduce` disposition is
   preserved verbatim per `TQ-S12-C2`.
 
-- [ ] **AC6 -- No protocol or server change**: GIVEN
+- [x] **AC6 -- No protocol or server change**: GIVEN
   `git diff <activation HEAD>..HEAD`, WHEN inspected, THEN
   there are zero changes under `server/`, `shared/`, or
   `tests/integration/server/`. The implementation is client-side
   only.
 
-- [ ] **AC7 -- ADR-021 schedule preserved**: GIVEN `cargo build
+- [x] **AC7 -- ADR-021 schedule preserved**: GIVEN `cargo build
   -p client` under the Cargo resource policy, WHEN run, THEN no
   new system-set or schedule wiring is introduced. The hand UI
   systems remain in their existing `PresentationSet` slots.
 
-- [ ] **AC8 -- No accept-risk closure claimed**: GIVEN the
+- [x] **AC8 -- No accept-risk closure claimed**: GIVEN the
   commit message and any evidence document, WHEN inspected,
   THEN they explicitly do NOT claim closure of `S8-QA-001-W1`,
   `QA-COND-0005`, `QA-COND-0006`, `PAW-TD-*-a`, or any other
@@ -344,7 +344,7 @@ All criteria are independently checkable.
   story 019 / Sprint 11 story 018 retest closure are
   explicitly out of scope.
 
-- [ ] **AC9 -- Sprint 17 disposition preserved**: GIVEN the
+- [x] **AC9 -- Sprint 17 disposition preserved**: GIVEN the
   implementation commit(s), WHEN
   `production/sprint-status.yaml`, `production/sprints/sprint-17.md`,
   `production/stage.txt`, `production/session-state/*`,
@@ -352,7 +352,7 @@ All criteria are independently checkable.
   `docs/architecture/adr-*.md` are diffed, THEN none are modified
   by this story's `/dev-story` worker.
 
-- [ ] **AC10 -- Worker branch scope contained**: GIVEN the
+- [x] **AC10 -- Worker branch scope contained**: GIVEN the
   worker branch (slug recommendation:
   `work/s17-hand-fan-root-b0004-hierarchy`), WHEN inspected,
   THEN it pushes only the worker branch — never `main`. Files
@@ -363,7 +363,7 @@ All criteria are independently checkable.
   new / extended hand UI test bin under
   `tests/integration/hand-ui/` (or `tests/integration/hand_ui/`).
 
-- [ ] **AC11 -- Cargo resource policy applied for every Cargo
+- [x] **AC11 -- Cargo resource policy applied for every Cargo
   command**: future implementation MUST set the Cargo resource
   policy env vars (`CARGO_TARGET_DIR=
   D:\_DEV\cargo-target\ccgs-msvc`, `CARGO_PROFILE_DEV_DEBUG=0`,
@@ -508,20 +508,177 @@ where `N` is the prompt number that ran `/dev-story`.
 
 ---
 
-## Closure Trail
+## Completion Notes
 
-Closure trail is appended by future `/story-readiness`,
-`/dev-story`, and `/story-done` prompts. No closure trail is
-authored by PROMPT 1095.
+Closed by PROMPT 1120 /story-done paperwork on 2026-05-18 against
+source-of-truth `origin/main@29ad4c6` (PROMPT 1118 integration tip
+`integrate(s17): merge PROMPT 1115 hand-fan-root B0004 cleanup into
+main (PROMPT 1118)` merging PROMPT 1115 worker
+`535450d dev-story(s17-hand-fan-root-b0004): Strategy A — Transform
+on HandBar (PROMPT 1115)` onto `origin/main` via no-ff merge).
 
-### Conditions carried forward unchanged
+### PROMPT 1115 worker + PROMPT 1118 integration outcome
 
-- Sprint 16 disposition `closed-with-conditions` (UNCHANGED).
-- Sprint 17 stage `Polish` (UNCHANGED).
-- PROMPT 761 Polish->Release gate-check `FAIL` preserved.
+- **Strategy A applied** -- `Transform::default()` inserted on the
+  `HandBar` strip entity at `client/src/ui/hand/mod.rs:3122` inside
+  `spawn_hand_ui`. The Bevy 0.18 Required Components API
+  (`Transform` `#[require(GlobalTransform, TransformTreeChanged)]`)
+  auto-derives `GlobalTransform`, silencing the `B0004` hierarchy
+  warning the PROMPT 1076 `AUDIT-1076-14` evidence cited on every
+  `InSession` entry (run-7 client-a:94, client-b:116).
+- **Registry-level verification (worker)** --
+  `bevy_ui-0.18.1::Node` `#[require(...)]` set is
+  `(ComputedNode, ComputedUiTargetCamera, ComputedUiRenderTargetInfo,
+  UiTransform, BackgroundColor, BorderColor, FocusPolicy,
+  ScrollPosition, Visibility, ZIndex)` — `Node` does NOT require
+  `Transform`/`GlobalTransform`, so the explicit insert is the
+  minimal repair. `bevy_transform-0.18.1::Transform`
+  `#[require(GlobalTransform, TransformTreeChanged)]` confirms the
+  single-component-insert is sufficient.
+- **No fan-layout / drag-state / placement / staging behaviour
+  change** -- the repair touches only the `HandBar` spawn tuple.
+  Fan layout numbers, drag-state visuals, placement staging, the
+  Sprint 12 story 019 `closed-with-conditions / cannot-reproduce`
+  disposition (`TQ-S12-C2`), and the PROMPT 1112 AC3 hand
+  reserve-strip carry are preserved unchanged.
+
+### Test evidence
+
+- `tests/integration/hand-ui/hand_fan_root_b0004_hierarchy_test.rs`
+  (NEW; AC4) -- 1/1 pass at integration tip. Asserts `HandFanRoot`
+  carries `GlobalTransform`, its `ChildOf` parent matches the
+  `HandBar` marker (locking the audit's exact edge), and the
+  parent carries both `Transform` and `GlobalTransform`.
+- Adjacent hand UI regression sweep at integration tip (PROMPT
+  1115 worker + PROMPT 1118 integration): `hand_ui_fan_layout_formula_test`
+  5/5, `hand_ui_chrome_composition_test` 1/1, `hand_ui_slot_onscreen_test`
+  3/3, `hand_ui_viewport_sync_test` 2/2,
+  `hand_ui_drag_state_visuals_test` 11/11,
+  `hand_ui_phase_state_machine_test` 4/4,
+  `hand_ui_plugin_scaffold_test` 3/3,
+  `hand_ui_reserve_mana_strip_test` 3/3 (PROMPT 1112 AC3 surface),
+  `card_display_art_chrome_preservation_test` 8/8,
+  `card_display_art_helper_test` 6/6.
+- Evidence file:
+  `production/qa/evidence/sprint-17-hand-fan-root-b0004/evidence.md`.
+
+### Cargo resource policy (AC11)
+
+PROMPT 1115 worker + PROMPT 1118 integration both applied the 5
+Cargo resource policy env vars
+(`CARGO_TARGET_DIR=D:\_DEV\cargo-target\ccgs-msvc` +
+`CARGO_PROFILE_DEV_DEBUG=0` + `CARGO_PROFILE_TEST_DEBUG=0` +
+`CARGO_INCREMENTAL=0` +
+`RUSTFLAGS='-C debuginfo=0 -C link-arg=/DEBUG:NONE'`) before every
+cargo invocation, via PowerShell launcher scripts. Both build lines
+printed `Finished \`dev\` profile [optimized]` /
+`Finished \`test\` profile [optimized]` (no `+ debuginfo`),
+confirming the policy was applied. D: free 774 GB at PROMPT 1118
+integration start (well above the 50 GB preflight threshold). PROMPT
+1120 itself does NOT invoke Cargo (paperwork-only closure).
+
+### Per-AC outcome
+
+- AC1 B0004 warning gone (default build) -- PASS. Covered by the
+  AC4 in-test invariant (`HandFanRoot` parent carries
+  `GlobalTransform`); cross-machine smoke evidence is later prompts'
+  scope and is NOT claimed by this row.
+- AC2 hierarchy invariant holds (Strategy A) -- PASS. `HandBar`
+  carries `Transform::default()` → Required Components inserts
+  `GlobalTransform`; asserted in-test by
+  `hand_fan_root_parent_carries_global_transform`.
+- AC3 existing hand UI tests PASS -- PASS. PROMPT 1115 worker ran
+  24 adjacent hand UI bins green; PROMPT 1118 integration re-ran
+  10 of those + the new test bin against the merged tree, all
+  PASS.
+- AC4 integration test asserts hierarchy invariant -- PASS.
+  `tests/integration/hand-ui/hand_fan_root_b0004_hierarchy_test.rs`
+  (NEW); 1/1 pass.
+- AC5 Sprint 12 story 019 disposition preserved -- PASS. PROMPT
+  1115 worker commit + evidence.md + PROMPT 1118 integration merge
+  commit all explicitly preserve the
+  `closed-with-conditions / cannot-reproduce` disposition per
+  `TQ-S12-C2`. The audit's "no functional bug evident yet" note is
+  honoured: this row is ECS hygiene, not a drag-runtime repair.
+- AC6 no protocol or server change -- PASS. PROMPT 1118 integration
+  `git diff --name-only origin/main..HEAD` returns exactly 4 paths
+  (`client/Cargo.toml` test-registration-only,
+  `client/src/ui/hand/mod.rs`, the new test bin, the evidence file);
+  zero changes under `server/`, `shared/`, `tests/integration/server/`,
+  `tests/unit/server/`.
+- AC7 ADR-021 schedule preserved -- PASS. No new `SystemSet`, no
+  schedule wiring change. `cargo check -p client` PASS at
+  integration tip in 10.43s with `Finished \`dev\` profile [optimized]`.
+- AC8 no accept-risk closure -- PASS. PROMPT 1115 worker commit +
+  evidence.md + PROMPT 1118 integration merge commit + this PROMPT
+  1120 paperwork all explicitly preserve `S8-QA-001-W1`,
+  `QA-COND-0005`, `QA-COND-0006`, `PAW-TD-*-a`, `TQ-S12-C1..C7`,
+  PROMPT 761 `Polish->Release` FAIL, `S11-HUD-TIMER-EYEBALL-VISUAL-001`
+  carry, all `AUDIT-1076-*` findings outside `AUDIT-1076-14`, all
+  `SOURCE-1077-*`, all 24 PROMPT 1022 findings, the PROMPT 1112 AC3
+  hand reserve-strip carry (preserved OPEN; this row does NOT
+  close it).
+- AC9 Sprint 17 disposition preserved by worker + integration --
+  PASS. PROMPT 1115 worker + PROMPT 1118 integration diffs touched
+  zero files under `production/sprint-status.yaml`,
+  `production/sprints/sprint-17.md`, `production/stage.txt`,
+  `production/session-state/*`, `production/qa/qa-plan-sprint-17.md`,
+  `production/qa/smoke-*.md`, `production/qa/team-qa-*.md`,
+  `production/gate-checks/*`, `docs/architecture/adr-*.md`. PROMPT
+  1120 is the first authorised modifier of
+  `production/sprint-status.yaml` + `production/session-state/*`
+  for this row.
+- AC10 worker branch scope contained -- PASS. PROMPT 1115 worker
+  pushed `work/s17-hand-fan-root-b0004-cleanup` (`535450d`) only;
+  never `main`. Files changed at worker time:
+  `client/src/ui/hand/mod.rs` (one-line `Transform::default()`
+  insert + explanatory comment block), `client/Cargo.toml`
+  (single additive `[[test]]` block; no profile / feature /
+  dependency edits), the new test bin under
+  `tests/integration/hand-ui/`, and the evidence document.
+  Integration into `origin/main` performed separately by PROMPT
+  1118 via `integrate/s17-hand-b0004-cleanup-1118` -> `29ad4c6`.
+- AC11 Cargo resource policy applied -- PASS. PROMPT 1115 worker +
+  PROMPT 1118 integration both applied all 5 env vars before every
+  cargo invocation via PowerShell launcher scripts; build lines
+  printed `[optimized]` with no `+ debuginfo`. PROMPT 1120 itself
+  does NOT invoke Cargo.
+
+### Closure trail (commits)
+
+1. **PROMPT 1095** -- net-new Sprint 17 story authoring batch
+   (story 021 drafted).
+2. **PROMPT 1097** -- paperwork-only main integration of the
+   Sprint 17 story authoring batch (`bc3db29`).
+3. **PROMPT 1099** -- Sprint 17 activation (`cb62a9e`).
+4. **PROMPT 1100** -- `/qa-plan sprint-17` authoring (`ff47075`).
+5. **PROMPT 1115** -- `/dev-story` worker
+   (`535450ddev-story(s17-hand-fan-root-b0004): Strategy A —
+   Transform on HandBar (PROMPT 1115)`) on branch
+   `work/s17-hand-fan-root-b0004-cleanup`.
+6. **PROMPT 1118** -- integration of PROMPT 1115 onto `origin/main`
+   via no-ff merge (`29ad4c6 integrate(s17): merge PROMPT 1115
+   hand-fan-root B0004 cleanup into main (PROMPT 1118)`) on branch
+   `integrate/s17-hand-b0004-cleanup-1118`.
+7. **PROMPT 1120** -- this `/story-done` paperwork (flips ACs to
+   `[x]`; appends Completion Notes; records closure tip; updates
+   `production/sprint-status.yaml`,
+   `production/session-state/active.md`,
+   `production/session-state/codex-orchestrator-state.md`).
+
+### Conditions carried forward unchanged (preserved by every prompt above)
+
+- Sprint 16 disposition `closed-with-conditions` per PROMPT 1082 +
+  PROMPT 1088 (UNCHANGED).
+- Sprint 17 stage `Polish` (UNCHANGED; `production/stage.txt` NOT
+  modified by any prompt in the sequence).
+- PROMPT 761 `Polish->Release` gate-check `FAIL` preserved; **NO
+  retry** in Sprint 17.
 - `S8-QA-001-W1` OPEN preserved.
-- `QA-COND-0005` + `QA-COND-0006` accepted-risk preserved.
-- `PAW-TD-*-a` placeholder-art accept-risk preserved.
+- `QA-COND-0005` (friend-game scope) + `QA-COND-0006` (playtest
+  deferred) accepted-risk preserved.
+- `PAW-TD-*-a` placeholder-art accept-risk preserved across PAW-002
+  .. PAW-006.
 - `TQ-S12-C1..C7` preserved verbatim (including `TQ-S12-C2`
   "no third same-scope drag-runtime retest").
 - Sprint 11 story 018 (`S11-DRAG-RUNTIME-RETEST-001`)
@@ -530,25 +687,38 @@ authored by PROMPT 1095.
   `closed-with-conditions / cannot-reproduce` preserved.
 - Sprint 15 / 14 / 13 / 12 / 11 / 10 dispositions preserved
   unchanged.
-- HUD timer row `S11-HUD-TIMER-EYEBALL-VISUAL-001` human-
-  operator-blocked carry preserved; NOT closed by this row.
-- 24 PROMPT 1022 audit findings preserved as report-only; NOT
-  closed by this row.
+- HUD timer row `S11-HUD-TIMER-EYEBALL-VISUAL-001` human-operator-
+  blocked carry preserved; NOT closed by this row.
+- 24 PROMPT 1022 audit findings preserved as report-only; NOT closed
+  by this row.
+- PROMPT 1108 (S17-SERVER-START-OF-TURN-DEBUG-001 closure), PROMPT
+  1110 (S17-UI-CARD-SLOT-INSET-WIRING-001 closure), PROMPT 1112
+  (S17-UI-HUD-OPP-MANA-CLEANUP-001 PARTIAL disposition with AC3
+  carried), and PROMPT 1117 (S17-UI-CARD-DISPLAY-ART-HELPER-001
+  closure) all preserved verbatim above this PROMPT 1120 entry.
+- PROMPT 1112 AC3 hand reserve-strip carry remains OPEN; this row
+  does NOT close it.
 
 ### Explicitly NOT claimed by this story or its `/dev-story` worker
 
-- Closure of any AUDIT-1076-* finding outside AUDIT-1076-14.
-- Closure of any SOURCE-1077-* finding.
+- Sprint 17 close-out.
+- Closure of `S11-HUD-TIMER-EYEBALL-VISUAL-001` (human-operator-
+  blocked Must Have carry).
+- Closure of `S17-UI-HUD-OPP-MANA-CLEANUP-001` (PROMPT 1112 PARTIAL
+  disposition preserved; AC3 reserve-strip carry remains OPEN; this
+  row is hierarchy hygiene, NOT reserve-strip cleanup).
+- Closure of any `AUDIT-1076-*` finding outside `AUDIT-1076-14`.
+- Closure of any `SOURCE-1077-*` finding.
 - Closure of any of the 24 PROMPT 1022 audit findings.
 - Closure of Sprint 11 story 018 or Sprint 12 story 019 retest
   questions. The drag-runtime question remains
   `closed-with-conditions / cannot-reproduce` per `TQ-S12-C2`.
-- Sprint 17 close-out.
-- Public release readiness; release-candidate readiness; full
-  game completion.
+- Public release readiness; release-candidate readiness; full game
+  completion.
 - Broad / Standard-tier accessibility completion; playtest /
   fun-hypothesis validation; full playable-client manual QA;
-  two-client GAME_OVER closure; final-art completion;
-  Polish->Release gate-check retry; stage advance.
+  two-client GAME_OVER closure; final-art / asset-production
+  completion; Polish->Release gate-check retry; stage advance.
+- Sprint 17 smoke / team-QA / gate-check / release-check execution.
 
-`021: S17-UI-HAND-B0004-CLEANUP-001: DRAFT`
+`021: S17-UI-HAND-B0004-CLEANUP-001: DONE`

@@ -2,7 +2,7 @@
 
 > **Epic**: HUD
 > **Story ID**: S17-UI-HUD-OPP-MANA-CLEANUP-001
-> **Status**: Draft -- Sprint 17 Should Have candidate (AUDIT-1076-10 + AUDIT-1076-16 + AUDIT-1076-17 bundle); NOT activated by this authoring run
+> **Status**: Partial / In Progress -- Sprint 17 Should Have row activated by PROMPT 1099; PROMPT 1105 `/dev-story` worker delivered AC1 + AC2 + AC4..AC15 (HUD class-reveal projection + reconnect rebuild + FROZEN + ADR-001 invariant); PROMPT 1111 paperwork-only integration merged worker delta onto `origin/main@4bd4f56` via no-ff merge (PARTIAL disposition explicit in merge commit message); **AC3 (mana microbadge removal) explicitly NOT DELIVERED** -- escalated per the worker-contract pause-and-escalate branch because the spawn site lives in `client/src/ui/hand/mod.rs` reserve strip (out of scope for `client/src/ui/hud/`-owned worker). AC16 (HUD epic story count refresh) deferred to future `/story-done` paperwork. Row remains open / not closed; PROMPT 1112 records this partial disposition paperwork-only and does NOT run `/story-done`. Follow-up candidate slug: `S18-UI-HAND-RESERVE-STRIP-CLEANUP-001` (preferred per PROMPT 1111 recommendation) or `S17-UI-HAND-RESERVE-STRIP-CLEANUP-001` if Sprint 17 capacity allows pulling AC3 forward as a separate single-row story before close-out.
 > **Layer**: HUD / Presentation (state reducer + UI reactor; no protocol change)
 > **Type**: Tech Debt -- UI reactivity repair + duplicate-display cleanup
 > **Sprint**: Sprint 17 Should Have row per `production/sprints/sprint-17.md` §"Should Have". Activation is a separate explicit prompt (PROMPT 1093 pattern).
@@ -310,8 +310,8 @@ This is **NOT** a:
 
 All criteria are independently checkable.
 
-- [ ] **AC1 -- Opponent figurine re-skins on `S2CClassesRevealed`
-  (AUDIT-1076-10)**: GIVEN the post-implementation client running
+- [x] **AC1 -- Opponent figurine re-skins on `S2CClassesRevealed`
+  (AUDIT-1076-10)** -- DELIVERED by PROMPT 1105 worker (`c6b7d70`), integrated to `origin/main@4bd4f56` by PROMPT 1111. `sync_class_reveal_hud_system` at `client/src/ui/hud/mod.rs` applies `HudClassReveal.opponent` to the opponent figurine `ImageNode` via `hud_figurine_asset(opp_class)`. Integration test `ac1_opponent_figurine_reskins_on_classes_revealed` (`tests/integration/hud/opp_figurine_label_mana_repaint_test.rs`) PASS.: GIVEN the post-implementation client running
   through `Lobby -> Handshaking -> InSession`, WHEN
   `S2CClassesRevealed` arrives with `map_len=2`, THEN the existing
   opponent figurine entity (Sprint 14 story 017 `OpponentFigurineMarker`
@@ -321,8 +321,8 @@ All criteria are independently checkable.
   ECS world results in the opponent figurine entity's `ImageNode`
   set to the expected resolved asset path for the opponent class.
 
-- [ ] **AC2 -- OPP text label re-skins on `S2CClassesRevealed`
-  (AUDIT-1076-16)**: GIVEN the same flow, WHEN
+- [x] **AC2 -- OPP text label re-skins on `S2CClassesRevealed`
+  (AUDIT-1076-16)** -- DELIVERED by PROMPT 1105 worker, integrated by PROMPT 1111. `sync_class_reveal_hud_system` applies `HudClassReveal.opponent` to the `opponent_gold_prefix` `Text` via `format_opp_class_display(opp_class)` returning `"OPP {ClassId:?}"`. Worker explicitly wrote class identity to the prefix entity (not the value entity) to preserve the existing opponent-gold readout contract guarded by `reconnect_snapshot_rebuild_test.rs`. Integration test `ac2_opp_text_label_reskins_on_classes_revealed` PASS.: GIVEN the same flow, WHEN
   `S2CClassesRevealed` arrives, THEN the HUD OPP text label
   (currently `"OPP ?"` per AUDIT-1076-16) re-skins to a display
   string carrying the opponent's class identity. Concrete display
@@ -332,7 +332,7 @@ All criteria are independently checkable.
   test asserts: post-`S2CClassesRevealed` drain, the OPP label
   `Text` component contains the expected per-class display string.
 
-- [ ] **AC3 -- Mana microbadge removed (AUDIT-1076-17)**: GIVEN
+- [~] **AC3 -- Mana microbadge removed (AUDIT-1076-17)** -- **NOT DELIVERED -- EXPLICITLY CARRIED**. PROMPT 1105 worker invoked the story's worker-contract pause-and-escalate branch upon locating the floating "Reserve N + / Current N" microbadge spawn site at `client/src/ui/hand/mod.rs` (`spawn_reserve_strip` around L3505, per-card `Reserve N Current N` text on L3530, updater around L4108-L4110), which is scope-forbidden for a `client/src/ui/hud/`-owned worker per the story's "Forbidden files" list. PROMPT 1111 integration explicitly did NOT touch `client/src/ui/hand/mod.rs` and recorded AC3 as carried forward in the no-ff merge commit message and report. Follow-up candidate slug: **`S18-UI-HAND-RESERVE-STRIP-CLEANUP-001`** (preferred per PROMPT 1111 recommendation) -- a hand-ui cleanup row owned by `client/src/ui/hand/` rather than `client/src/ui/hud/`. Producer may instead activate `S17-UI-HAND-RESERVE-STRIP-CLEANUP-001` if Sprint 17 has remaining capacity and the AC3 work is wanted before Sprint 17 close-out. AC3 closure remains gated on that follow-up row landing on `origin/main`; no `/story-done` for this row is authorised until AC3 lands or until the AC3 carry-forward is explicitly accepted-into-Sprint-18 by the producer.: GIVEN
   the post-implementation client running through `Placement` phase
   (the phase that produced snapshot 000020 in the audit), WHEN
   inspected via ECS query OR via a fresh QA snapshot, THEN there
@@ -343,7 +343,7 @@ All criteria are independently checkable.
   (worker re-verifies; the audit says it does not), the worker
   pauses and escalates; otherwise the microbadge is removed.
 
-- [ ] **AC4 -- Re-skin happens in StateSync (instantaneous)**:
+- [x] **AC4 -- Re-skin happens in StateSync (instantaneous)** -- DELIVERED. `sync_class_reveal_hud_system` is scheduled in `PresentationSet::StateSync` after `sync_gold_text_system` and `sync_figurine_image_system`; no `Animator` / tween. Integration test asserts the system completes the re-skin in a single frame.:
   GIVEN the new subscriber (or modified reducer), WHEN inspected,
   THEN the re-skin system runs in `PresentationSet::StateSync`
   (no `Animator`, no tween — matches TR-HUD-008 / Sprint 14
@@ -351,16 +351,16 @@ All criteria are independently checkable.
   is scheduled in the expected set OR asserts the re-skin
   completes in a single frame.
 
-- [ ] **AC5 -- Reconnect rebuild covers OPP figurine + label
-  (ADR-011 binding preserved)**: GIVEN an `S2CGameSnapshot` arrives
+- [x] **AC5 -- Reconnect rebuild covers OPP figurine + label
+  (ADR-011 binding preserved)** -- DELIVERED. `sync_class_reveal_from_snapshot_system` (MessageDrain, after `handle_game_snapshot_system`) reads `MessageReader<PresentationGameSnapshotMessage>` and writes `HudClassReveal`. Always runs so `S2CGameSnapshot` reconnect rebuilds remain authoritative even at GAME_OVER. Integration test covers fixture `S2CGameSnapshot` drain populating both the figurine and the OPP label.: GIVEN an `S2CGameSnapshot` arrives
   mid-session containing the opponent's `ClassId`, WHEN the HUD
   rebuilds, THEN both the opponent figurine ImageNode AND the OPP
   text label are part of the rebuild with the snapshot-correct
   class. Integration test asserts: a fixture `S2CGameSnapshot`
   drain populates both the figurine and the OPP label.
 
-- [ ] **AC6 -- FROZEN-on-GAME_OVER preserved
-  (TR-HUD-009 / Sprint 14 story 017 AC6 binding)**: GIVEN `phase
+- [x] **AC6 -- FROZEN-on-GAME_OVER preserved
+  (TR-HUD-009 / Sprint 14 story 017 AC6 binding)** -- DELIVERED. `sync_class_reveal_from_lobby_view_system` skips while `HudMode::Frozen` so incremental lobby reveals cannot overwrite during GAME_OVER. `sync_class_reveal_from_snapshot_system` always runs so an `S2CGameSnapshot` reconnect can still overwrite. Integration test covers both branches.: GIVEN `phase
   == GAME_OVER`, WHEN a hypothetical incremental
   `S2CClassesRevealed` arrives (e.g. via a malformed test
   fixture), THEN neither the opponent figurine nor the OPP label
@@ -369,8 +369,8 @@ All criteria are independently checkable.
   Sprint 14 story 017 figurine path and extends it to cover the
   OPP label re-skin.
 
-- [ ] **AC7 -- No client-side opponent-class inference added
-  (ADR-002 + ADR-012 + Sprint 14 story 017 AC8 binding)**: GIVEN
+- [x] **AC7 -- No client-side opponent-class inference added
+  (ADR-002 + ADR-012 + Sprint 14 story 017 AC8 binding)** -- DELIVERED. The re-skin path reads from `Res<LobbyViewState>.revealed_classes` + `Res<ClientSessionIdentity>` (both populated by the existing `apply_classes_revealed` reducer that drains `S2CClassesRevealed`) and from the `S2CGameSnapshot` drain. No spawned-unit / lane-state / observation-derived inference introduced.: GIVEN
   `git diff <activation HEAD>..HEAD` for the worker's commit,
   WHEN inspected, THEN no system derives opponent class from
   spawned units, lane state, or any other client-side
@@ -378,33 +378,33 @@ All criteria are independently checkable.
   `S2CClassesRevealed` / `S2CGameSnapshot`-derived local state
   ONLY.
 
-- [ ] **AC8 -- ADR-001 invariant preserved**: GIVEN the post-
+- [x] **AC8 -- ADR-001 invariant preserved** -- DELIVERED. `HudClassReveal { local: Option<ClassId>, opponent: Option<ClassId> }` carries class identity only; no objective identity / `was_fake` data flows to the OPP label or opponent figurine. Defence-in-depth grep recorded in the PROMPT 1105 evidence document.: GIVEN the post-
   refactor build, WHEN any path that surfaces the OPP label or
   opponent figurine is inspected, THEN no objective identity or
   `was_fake` data flows to either. The OPP label / figurine carry
   class identity only, NOT objective identity. Defence-in-depth
   grep + code review recorded in the evidence document.
 
-- [ ] **AC9 -- Integration test bin authored**: GIVEN
+- [x] **AC9 -- Integration test bin authored** -- DELIVERED. `tests/integration/hud/opp_figurine_label_mana_repaint_test.rs` (NEW, 8 tests covering AC1 / AC2 / AC4 / AC5 / AC6 / AC7 / AC8 + opponent figurine marker singleton guard). PROMPT 1111 integration `cargo test -p client --test hud_opp_figurine_label_mana_repaint_test` PASS 8/8 plus 27/27 sub-tests across 6 sibling HUD test bins. AC3 microbadge-removal coverage explicitly NOT included in the new test bin and carries forward with AC3.: GIVEN
   `tests/integration/hud/opp_figurine_label_mana_repaint_test.rs`
   (NEW; or split into per-defect bins under
   `tests/integration/hud/`), WHEN run, THEN it asserts AC1, AC2,
   AC3, AC4, AC5, AC6, AC7, AC8 against a real Bevy 0.18 `App`
   per the `tests/integration/hud/` pattern.
 
-- [ ] **AC10 -- No protocol or server change**: GIVEN
+- [x] **AC10 -- No protocol or server change** -- DELIVERED. PROMPT 1111 integration `git diff --name-only origin/main...HEAD` returns exactly 4 paths: `client/Cargo.toml` + `client/src/ui/hud/mod.rs` + `production/qa/evidence/sprint-17-hud-opp-mana-cleanup/evidence.md` + `tests/integration/hud/opp_figurine_label_mana_repaint_test.rs`. Zero changes under `server/`, `shared/`, or `tests/integration/server/`.: GIVEN
   `git diff <activation HEAD>..HEAD`, WHEN inspected, THEN there
   are zero changes under `server/`, `shared/`, or
   `tests/integration/server/`. The implementation is client-side
   only.
 
-- [ ] **AC11 -- ADR-021 schedule preserved**: GIVEN `cargo build
+- [x] **AC11 -- ADR-021 schedule preserved** -- DELIVERED. New systems slot into existing `PresentationSet::MessageDrain` (`sync_class_reveal_from_lobby_view_system`, `sync_class_reveal_from_snapshot_system`) and `PresentationSet::StateSync` (`sync_class_reveal_hud_system`) per ADR-021 + Sprint 14 story 017 precedent. No new schedule wiring introduced; PROMPT 1111 integration `cargo check -p client` PASS in 8.78s with zero warnings.: GIVEN `cargo build
   -p client` under the Cargo resource policy, WHEN run, THEN no
   new system-set or schedule wiring is introduced. The new
   subscriber slots into `PresentationSet::StateSync` (or the
   existing reducer system) per ADR-021.
 
-- [ ] **AC12 -- No accept-risk closure claimed**: GIVEN the
+- [x] **AC12 -- No accept-risk closure claimed** -- DELIVERED. PROMPT 1105 worker commit message + PROMPT 1111 integration merge commit + PROMPT 1112 partial-disposition paperwork all explicitly preserve `S8-QA-001-W1`, `QA-COND-0005`, `QA-COND-0006`, `PAW-TD-*-a` (specifically `PAW-TD-004-a` opponent figurine placeholder), `TQ-S12-C1..C7`, PROMPT 761 `Polish->Release` FAIL, `S11-HUD-TIMER-EYEBALL-VISUAL-001` carry, all AUDIT-1076-* findings outside the three bundled (-10 / -16 / -17 with AC3 explicitly carried), all SOURCE-1077-*, all 24 PROMPT 1022 findings. Final-art replacement of the opponent figurine remains out of scope; Standard-tier hit-target conformance on the OPP label NOT pursued; playtest validation NOT pursued.: GIVEN the
   commit message and any evidence document, WHEN inspected, THEN
   they explicitly do NOT claim closure of `S8-QA-001-W1`,
   `QA-COND-0005`, `QA-COND-0006`, `PAW-TD-*-a` (specifically
@@ -414,7 +414,7 @@ All criteria are independently checkable.
   conformance on the OPP label is NOT pursued. Playtest
   validation is NOT pursued.
 
-- [ ] **AC13 -- Sprint 17 disposition preserved**: GIVEN the
+- [x] **AC13 -- Sprint 17 disposition preserved** -- DELIVERED at worker + integration time. PROMPT 1105 worker + PROMPT 1111 integration diffs touched zero files under `production/sprint-status.yaml`, `production/sprints/sprint-17.md`, `production/stage.txt`, `production/session-state/*`, `production/qa/qa-plan-sprint-17.md`, `production/qa/smoke-*.md`, `production/qa/team-qa-*.md`, `production/gate-checks/*`, `docs/architecture/adr-*.md`. PROMPT 1112 is the first authorised modifier of `production/sprint-status.yaml` + `production/session-state/*` for this row, and applies paperwork-only partial-disposition edits (no `/story-done` close).: GIVEN the
   implementation commit(s), WHEN
   `production/sprint-status.yaml`, `production/sprints/sprint-17.md`,
   `production/stage.txt`, `production/session-state/*`,
@@ -422,7 +422,7 @@ All criteria are independently checkable.
   `docs/architecture/adr-*.md` are diffed, THEN none are modified
   by this story's `/dev-story` worker.
 
-- [ ] **AC14 -- Worker branch scope contained**: GIVEN the worker
+- [x] **AC14 -- Worker branch scope contained** -- DELIVERED. PROMPT 1105 worker pushed `work/s17-hud-opp-mana-cleanup` (`c6b7d70`) only -- never `main`. Files changed at worker time: `client/src/ui/hud/mod.rs`, `client/Cargo.toml` (dev-dependency wiring for new test bin), `tests/integration/hud/opp_figurine_label_mana_repaint_test.rs` (NEW), `production/qa/evidence/sprint-17-hud-opp-mana-cleanup/evidence.md` (NEW). `client/src/state/mod.rs` `apply_classes_revealed` reducer NOT modified (worker chose to read via `Res<LobbyViewState>` instead of extending the reducer).: GIVEN the worker
   branch (slug recommendation:
   `work/s17-hud-opp-mana-cleanup`), WHEN inspected, THEN it
   pushes only the worker branch — never `main`. Files changed at
@@ -432,8 +432,8 @@ All criteria are independently checkable.
   `apply_classes_revealed` reducer), and the new test bin under
   `tests/integration/hud/`.
 
-- [ ] **AC15 -- Cargo resource policy applied for every Cargo
-  command**: future implementation MUST set the Cargo resource
+- [x] **AC15 -- Cargo resource policy applied for every Cargo
+  command** -- DELIVERED at worker + integration. PROMPT 1105 worker + PROMPT 1111 integration both applied the 5 Cargo resource policy env vars (`CARGO_TARGET_DIR=D:\_DEV\cargo-target\ccgs-msvc`, `CARGO_PROFILE_DEV_DEBUG=0`, `CARGO_PROFILE_TEST_DEBUG=0`, `CARGO_INCREMENTAL=0`, `RUSTFLAGS='-C debuginfo=0 -C link-arg=/DEBUG:NONE'`) before every cargo invocation. PROMPT 1111 integration cargo gates: `cargo check -p client` OK 8.78s 0 errors 0 warnings; 7 targeted test bins PASS 35/35 sub-tests; D: free ~745 GB at start. PROMPT 1112 itself does NOT invoke cargo (paperwork-only).: future implementation MUST set the Cargo resource
   policy env vars (`CARGO_TARGET_DIR=
   D:\_DEV\cargo-target\ccgs-msvc`, `CARGO_PROFILE_DEV_DEBUG=0`,
   `CARGO_PROFILE_TEST_DEBUG=0`, `CARGO_INCREMENTAL=0`,
@@ -441,7 +441,7 @@ All criteria are independently checkable.
   every `cargo check` / `cargo test` invocation on Windows /
   MSVC. Story authoring (PROMPT 1095) does NOT invoke Cargo.
 
-- [ ] **AC16 -- HUD epic story count refreshed**: GIVEN the
+- [ ] **AC16 -- HUD epic story count refreshed** -- DEFERRED to future `/story-done` paperwork (gated on AC3 closure or AC3-carry-accept disposition). PROMPT 1112 partial-disposition paperwork does NOT modify `production/epics/hud/EPIC.md`; this row's HUD epic story count refresh happens at proper `/story-done` time once AC3 lands or is explicitly accepted-into-Sprint-18.: GIVEN the
   `production/epics/hud/EPIC.md` Stories table, WHEN inspected
   after `/story-done` paperwork closure (post-`/dev-story`), THEN
   it reflects this new story (`018: ...`) and any consequent
@@ -588,11 +588,106 @@ where `N` is the prompt number that ran `/dev-story`.
 
 ---
 
+## Partial Integration Notes (PROMPT 1112)
+
+Updated 2026-05-18 by PROMPT 1112 paperwork-only partial disposition.
+Source-of-truth at this disposition: `origin/main@4bd4f569bf0f8e54a18b6f1a9c95336aefff34d9`
+(PROMPT 1111 integration tip `integrate(s17): merge PROMPT 1105 HUD
+class-reveal projection (PARTIAL, AC3 carried) into main (PROMPT 1111)`
+merging PROMPT 1105 worker `c6b7d70a2733c1fa3b0af271c8e309397cf592a6`
+`dev-story(s17-hud-opp-mana-cleanup): HUD class-reveal projection for
+opp figurine + OPP label (PROMPT 1105)` onto `origin/main` via no-ff
+merge; strict fast-forward descendant of `origin/main@30f166f` PROMPT
+1106 card-slot inset wiring integration tip, of `origin/main@9a9b1dc`
+PROMPT 1110 card-slot inset wiring story-done tip, of `origin/main@72d56bc`
+PROMPT 1108 server start-of-turn-debug story-done tip, and of
+`origin/main@dc8adb6` PROMPT 1107 server warn->debug integration tip).
+
+### Disposition
+
+**Partial / In Progress -- AC3 explicitly carried; row remains open;
+NOT closed by `/story-done`.**
+
+### AC status table
+
+| AC | Delivered? | Worker / integration evidence |
+|---|---|---|
+| AC1 opponent figurine re-skin | DELIVERED | PROMPT 1105 worker `c6b7d70` + PROMPT 1111 integration `4bd4f56`; test `ac1_opponent_figurine_reskins_on_classes_revealed` PASS |
+| AC2 OPP label re-skin | DELIVERED | Same; test `ac2_opp_text_label_reskins_on_classes_revealed` PASS |
+| AC3 mana microbadge removal | **NOT DELIVERED -- EXPLICITLY CARRIED** | Spawn site at `client/src/ui/hand/mod.rs` reserve strip (L3505 / L3530 / L4108-L4110) is out of scope for `client/src/ui/hud/`-owned worker per the story's "Forbidden files" list; worker invoked the pause-and-escalate branch; PROMPT 1111 integration explicitly did NOT touch `client/src/ui/hand/mod.rs` and recorded AC3 as carried in the merge commit message |
+| AC4 re-skin in StateSync | DELIVERED | `sync_class_reveal_hud_system` scheduled in `PresentationSet::StateSync` |
+| AC5 reconnect rebuild covers OPP figurine + label | DELIVERED | `sync_class_reveal_from_snapshot_system` (MessageDrain after `handle_game_snapshot_system`); integration test PASS |
+| AC6 FROZEN-on-GAME_OVER preserved | DELIVERED | Lobby reveal path skips while `HudMode::Frozen`; snapshot reconnect path always runs |
+| AC7 no client-side opponent-class inference | DELIVERED | Reads from `Res<LobbyViewState>.revealed_classes` + `Res<ClientSessionIdentity>` only |
+| AC8 ADR-001 invariant preserved | DELIVERED | `HudClassReveal` carries only `ClassId`, never objective identity / `was_fake` |
+| AC9 integration test bin authored | DELIVERED | `tests/integration/hud/opp_figurine_label_mana_repaint_test.rs` (NEW, 8 tests covering AC1 / AC2 / AC4 / AC5 / AC6 / AC7 / AC8 + marker singleton guard) |
+| AC10 no protocol or server change | DELIVERED | Integration diff: 4 paths total, zero under `server/` / `shared/` / `tests/integration/server/` |
+| AC11 ADR-021 schedule preserved | DELIVERED | New systems slot into existing `PresentationSet::MessageDrain` + `PresentationSet::StateSync` |
+| AC12 no accept-risk closure claimed | DELIVERED | Worker + integration + this partial disposition preserve `S8-QA-001-W1`, `QA-COND-0005`, `QA-COND-0006`, `PAW-TD-*-a`, `TQ-S12-C1..C7`, PROMPT 761 FAIL, S11-HUD-TIMER carry, all AUDIT-1076-*, all SOURCE-1077-*, 24 PROMPT 1022 findings |
+| AC13 Sprint 17 disposition preserved by worker + integration | DELIVERED | Worker + integration touched zero files under `production/sprint-status.yaml`, `production/sprints/sprint-17.md`, `production/stage.txt`, `production/session-state/*`, `production/qa/qa-plan-sprint-17.md`, `production/qa/smoke-*.md`, `production/qa/team-qa-*.md`, `production/gate-checks/*`, `docs/architecture/adr-*.md`; PROMPT 1112 is the first authorised modifier of sprint-status + session-state for this row and applies paperwork-only partial edits |
+| AC14 worker branch scope contained | DELIVERED | PROMPT 1105 worker pushed `work/s17-hud-opp-mana-cleanup` (`c6b7d70`) only -- never `main`; 4 files in scope; `client/src/state/mod.rs` reducer NOT modified |
+| AC15 Cargo resource policy applied | DELIVERED | Worker + integration both applied all 5 env vars; integration `cargo check -p client` OK 8.78s 0/0; 7 targeted test bins PASS 35/35 sub-tests |
+| AC16 HUD epic story count refresh | DEFERRED | Gated on `/story-done` paperwork once AC3 lands or AC3 carry-forward is explicitly accepted-into-Sprint-18 by producer |
+
+### AC3 carry-forward classification and follow-up candidate
+
+- **Location of remaining work**: `client/src/ui/hand/mod.rs` reserve strip
+  (`spawn_reserve_strip` around L3505, per-card `Reserve N Current N`
+  text on L3530, updater around L4108-L4110). Semantically distinct
+  from HUD canonical current/cap mana strip (`MANA n / N`) which is
+  preserved unchanged.
+- **Suggested follow-up story slug**: **`S18-UI-HAND-RESERVE-STRIP-CLEANUP-001`**
+  (preferred per PROMPT 1111 recommendation -- Sprint 17 is in Polish
+  and AC3 is a hand-ui cleanup decision rather than a hot defect).
+  Alternative slug `S17-UI-HAND-RESERVE-STRIP-CLEANUP-001` only if a
+  producer explicitly authorises pulling AC3 forward as a separate
+  single-row Sprint 17 story before close-out and Sprint 17 has
+  remaining capacity. Either slug is a candidate only; PROMPT 1112
+  does NOT author or activate the row.
+- **/story-done deferral**: Closure of `S17-UI-HUD-OPP-MANA-CLEANUP-001`
+  is gated on either (a) AC3 landing on `origin/main` via a future
+  hand-ui worker + integration, OR (b) the producer explicitly
+  accepting the AC3 carry-forward into Sprint 18 (in which case
+  `/story-done` may close the row as Done-with-AC3-carried-to-S18
+  with the explicit producer decision recorded). PROMPT 1112 chooses
+  neither path and records partial disposition only.
+
+### Files changed by PROMPT 1112
+
+- `production/epics/hud/story-018-opp-figurine-mana-cleanup.md` (Status banner updated; AC1 + AC2 + AC4..AC15 flipped to `[x]` with delivery evidence; AC3 flipped to `[~]` with explicit carry note; AC16 left `[ ]` with deferred-to-/story-done rationale; this Partial Integration Notes section appended; final status line flipped DRAFT -> PARTIAL).
+- `production/sprint-status.yaml` (S17-UI-HUD-OPP-MANA-CLEANUP-001 row in stories: block flipped status: `ready` -> `in_progress` with `worker_prompt: "1105"`, `worker_branch`, `worker_commit`, `worker_report`, `integration_prompt: "1111"`, `integration_branch`, `integration_commit`, `integrated_commit: 4bd4f56`, `partial_disposition` note explaining AC3 carry; `sprint_17_partial_disposition:` block appended at EOF following the existing `sprint_17_story_done:` precedent pattern with full AC table, AC3 carry classification, follow-up candidate slugs, conditions carried forward, explicitly not claimed, files changed, forbidden changes observed sections).
+- `production/session-state/active.md` (PROMPT 1112 banner prepended above PROMPT 1110 banner).
+- `production/session-state/codex-orchestrator-state.md` (PROMPT 1112 paragraph prepended above PROMPT 1110 paragraph).
+- `reports/PROMPT-1112-s17-hud-opp-mana-partial-disposition.md` (mandatory final report; gitignored).
+
+### Forbidden changes observed by PROMPT 1112
+
+- `client/**`, `server/**`, `shared/**`, `tests/**` NOT modified (paperwork-only; zero code changes).
+- `Cargo.toml`, `Cargo.lock`, `.cargo/`, `Trunk.toml`, `.github/` NOT modified.
+- `production/stage.txt` NOT modified (remains `Polish`).
+- `production/sprints/sprint-17.md` NOT modified.
+- `production/qa/qa-plan-sprint-17.md` NOT modified.
+- `production/qa/smoke-*.md`, `production/qa/team-qa-*.md`, `production/qa/evidence/*` NOT modified.
+- `production/gate-checks/*` NOT modified (PROMPT 761 `Polish->Release` FAIL preserved; NO retry).
+- `docs/architecture/adr-*.md` NOT modified.
+- No Sprint 17 story file under `production/epics/` other than this one modified.
+- `S11-HUD-TIMER-EYEBALL-VISUAL-001` story 014 NOT modified (human-operator-blocked carry preserved verbatim).
+- Existing `sprint_17_activation:` / `sprint_17_story_done:` PROMPT 1108 + PROMPT 1110 entries / `sprint_16_*` / `sprint_15_*` / `sprint_14_*` / `sprint_13_*` blocks in `production/sprint-status.yaml` NOT modified (preserved verbatim above the new `sprint_17_partial_disposition:` block).
+- No `/story-done`, `/smoke-check`, `/team-qa`, `/gate-check`, `/release-check`, `/qa-plan`, `/story-readiness` run by PROMPT 1112.
+- No cargo / trunk / CI command run by PROMPT 1112.
+- No Polish->Release retry.
+- `S17-UI-HUD-OPP-MANA-CLEANUP-001` explicitly NOT closed as Done.
+
+---
+
 ## Closure Trail
 
 Closure trail is appended by future `/story-readiness`,
-`/dev-story`, and `/story-done` prompts. No closure trail is
-authored by PROMPT 1095.
+`/dev-story`, `/story-done`, and partial-disposition prompts.
+PROMPT 1112 (this revision) records the partial disposition above;
+final `/story-done` closure is deferred per the AC3 carry-forward
+gating described in §"AC3 carry-forward classification and follow-up
+candidate".
 
 ### Conditions carried forward unchanged
 
@@ -627,4 +722,4 @@ authored by PROMPT 1095.
   two-client GAME_OVER closure; final-art completion;
   Polish->Release gate-check retry; stage advance.
 
-`018: S17-UI-HUD-OPP-MANA-CLEANUP-001: DRAFT`
+`018: S17-UI-HUD-OPP-MANA-CLEANUP-001: PARTIAL`

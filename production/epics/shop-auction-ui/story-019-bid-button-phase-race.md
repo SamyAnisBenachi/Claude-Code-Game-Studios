@@ -2,7 +2,7 @@
 
 > **Epic**: Shop / Auction UI
 > **Story ID**: S17-UI-BID-BUTTON-PHASE-RACE-001
-> **Status**: Draft -- Sprint 17 Should Have candidate (SOURCE-1077-10); NOT activated by this authoring run
+> **Status**: Done -- closed by PROMPT 1121 /story-done paperwork on 2026-05-18 (origin/main@d35d24d PROMPT 1119 integration tip)
 > **Layer**: Shop / Auction UI -- bid-button spawn / chrome / text race repair
 > **Type**: Tech Debt -- UI race cleanup (single-surface, single-module)
 > **Sprint**: Sprint 17 Should Have row per `production/sprints/sprint-17.md` §"Should Have". Activation is a separate explicit prompt (PROMPT 1093 pattern).
@@ -345,7 +345,7 @@ so the bid-button spawn site is in its post-repair shape.
 
 All criteria are independently checkable.
 
-- [ ] **AC1 -- Bid-button spawn-state text is non-empty and
+- [x] **AC1 -- Bid-button spawn-state text is non-empty and
   meaningful**: GIVEN the post-implementation client running
   through `Lobby -> Handshaking -> InSession -> DraftAuction`,
   WHEN the bid-button entities are spawned at phase entry, WHEN
@@ -356,7 +356,7 @@ All criteria are independently checkable.
   used consistently across all three bid buttons (low / mid /
   high or equivalent offsets).
 
-- [ ] **AC2 -- Bid-button text updates to numeric bid amounts on
+- [x] **AC2 -- Bid-button text updates to numeric bid amounts on
   `S2CAuctionCard` arrival**: GIVEN the same flow, WHEN
   `S2CAuctionCard` arrives, THEN the bid-button text is updated
   to the numeric bid amounts per the existing TR-SAU-002 formula
@@ -364,7 +364,7 @@ All criteria are independently checkable.
   the sequence: spawn-state pending text -> `S2CAuctionCard`
   drain -> numeric text.
 
-- [ ] **AC3 -- `HiddenLeading` chrome / visibility override
+- [x] **AC3 -- `HiddenLeading` chrome / visibility override
   (SOURCE-1077-10 audit minimal repair)**: GIVEN
   `AuctionBidButtonState::HiddenLeading` is the current bid-
   button state for the local player, WHEN inspected via ECS
@@ -375,7 +375,7 @@ All criteria are independently checkable.
   non-rendering. Concrete strategy TBD by implementing worker;
   justified in the commit message.
 
-- [ ] **AC4 -- Visible `?` glyph does not surface during
+- [x] **AC4 -- Visible `?` glyph does not surface during
   phase-entry race**: GIVEN the integration test fixture that
   spawns the bid buttons in `DraftAuction` phase BEFORE draining
   `S2CAuctionCard`, WHEN any captured snapshot or ECS query is
@@ -389,32 +389,32 @@ All criteria are independently checkable.
   spawn unless the bid is intentionally disabled and the auction
   card is known).
 
-- [ ] **AC5 -- Visible `?` glyph does not surface during
+- [x] **AC5 -- Visible `?` glyph does not surface during
   `HiddenLeading`**: GIVEN the integration test fixture that
   drives the bid-button state machine into `HiddenLeading`, WHEN
   inspected, THEN per AC3 the bid row is either hidden or the
   chrome is transparent. The `?` glyph is not visible.
 
-- [ ] **AC6 -- Existing PROMPT 1042 Pass affordance preserved**:
+- [x] **AC6 -- Existing PROMPT 1042 Pass affordance preserved**:
   GIVEN the post-refactor build, WHEN the Pass affordance is
   exercised by the existing `auction_bid_buttons_test.rs`
   fixtures (PROMPT 1042 closure assertions), THEN every existing
   PASS continues to PASS. This row is additive over PROMPT 1042;
   it does not regress the Pass affordance.
 
-- [ ] **AC7 -- `auction_bid_chrome_state` mapper preserved for
+- [x] **AC7 -- `auction_bid_chrome_state` mapper preserved for
   `Normal` and `Disabled`**: GIVEN
   `client/src/ui/shop_auction/.../auction_bid_chrome_state`
   (post-refactor), WHEN inspected, THEN the `Normal` (Enabled)
   and `Disabled` (default) mappings are unchanged. The
   `HiddenLeading` branch is the only new code path.
 
-- [ ] **AC8 -- `ui_bid_button_disabled.png` not modified**:
+- [x] **AC8 -- `ui_bid_button_disabled.png` not modified**:
   GIVEN `git diff <activation HEAD>..HEAD`, WHEN inspected, THEN
   `assets/ui/ui_bid_button_disabled.png` is unchanged.
   `PAW-TD-*-a` accept-risk preserved.
 
-- [ ] **AC9 -- Integration test bin authored**: GIVEN a new test
+- [x] **AC9 -- Integration test bin authored**: GIVEN a new test
   or extended assertions in
   `tests/integration/shop_auction_ui/auction_bid_buttons_test.rs`
   (or a NEW
@@ -423,19 +423,19 @@ All criteria are independently checkable.
   a real Bevy 0.18 `App` per the existing
   `tests/integration/shop_auction_ui/` pattern.
 
-- [ ] **AC10 -- No protocol or server change**: GIVEN
+- [x] **AC10 -- No protocol or server change**: GIVEN
   `git diff <activation HEAD>..HEAD`, WHEN inspected, THEN there
   are zero changes under `server/`, `shared/`, or
   `tests/integration/server/`. The implementation is client-side
   only.
 
-- [ ] **AC11 -- ADR-021 schedule preserved**: GIVEN `cargo build
+- [x] **AC11 -- ADR-021 schedule preserved**: GIVEN `cargo build
   -p client` under the Cargo resource policy, WHEN run, THEN no
   new system-set or schedule wiring is introduced. The bid-
   button systems remain in their existing `PresentationSet`
   slots.
 
-- [ ] **AC12 -- No accept-risk closure claimed**: GIVEN the
+- [x] **AC12 -- No accept-risk closure claimed**: GIVEN the
   commit message and any evidence document, WHEN inspected, THEN
   they explicitly do NOT claim closure of `S8-QA-001-W1`,
   `QA-COND-0005`, `QA-COND-0006`, `PAW-TD-*-a`, or any other
@@ -445,7 +445,7 @@ All criteria are independently checkable.
   of scope. Standard-tier hit-target conformance is NOT
   pursued. Playtest validation is NOT pursued.
 
-- [ ] **AC13 -- Sprint 17 disposition preserved**: GIVEN the
+- [x] **AC13 -- Sprint 17 disposition preserved**: GIVEN the
   implementation commit(s), WHEN
   `production/sprint-status.yaml`, `production/sprints/sprint-17.md`,
   `production/stage.txt`, `production/session-state/*`,
@@ -453,7 +453,7 @@ All criteria are independently checkable.
   `docs/architecture/adr-*.md` are diffed, THEN none are modified
   by this story's `/dev-story` worker.
 
-- [ ] **AC14 -- Worker branch scope contained**: GIVEN the worker
+- [x] **AC14 -- Worker branch scope contained**: GIVEN the worker
   branch (slug recommendation:
   `work/s17-bid-button-phase-race`), WHEN inspected, THEN it
   pushes only the worker branch — never `main`. Files changed
@@ -464,7 +464,7 @@ All criteria are independently checkable.
   fallback constant IF chosen), and the new / extended test
   bin under `tests/integration/shop_auction_ui/`.
 
-- [ ] **AC15 -- Cargo resource policy applied for every Cargo
+- [x] **AC15 -- Cargo resource policy applied for every Cargo
   command**: future implementation MUST set the Cargo resource
   policy env vars (`CARGO_TARGET_DIR=
   D:\_DEV\cargo-target\ccgs-msvc`, `CARGO_PROFILE_DEV_DEBUG=0`,
@@ -601,21 +601,242 @@ where `N` is the prompt number that ran `/dev-story`.
 
 ---
 
-## Closure Trail
+## Completion Notes
 
-Closure trail is appended by future `/story-readiness`,
-`/dev-story`, and `/story-done` prompts. No closure trail is
-authored by PROMPT 1095.
+Closed by PROMPT 1121 /story-done paperwork on 2026-05-18 against
+source-of-truth `origin/main@d35d24d` (PROMPT 1119 integration tip
+`integrate(s17): merge PROMPT 1116 bid-button phase-race into main
+(PROMPT 1119)` merging PROMPT 1116 worker
+`6f8f5ae dev-story(s17-bid-button-phase-race): spawn-state Loading…
++ HiddenLeading chrome override (PROMPT 1116)` onto `origin/main`
+via no-ff merge), a strict fast-forward descendant of the PROMPT
+1118 integration tip `origin/main@29ad4c6` (the tip immediately
+preceding this row's integration).
+
+### PROMPT 1116 worker + PROMPT 1119 integration outcome
+
+- **Source-side remediation for SOURCE-1077-10 applied** -- three
+  concrete edits inside `client/src/ui/shop_auction/mod.rs`:
+  1. New `pub const AUCTION_BID_BUTTON_LOADING_LABEL: &str =
+     "Loading…"` at module scope (`mod.rs:40`).
+  2. Spawn-state `Text::new("")` → `Text::new(
+     AUCTION_BID_BUTTON_LOADING_LABEL)` at the bid-button spawn
+     site (`mod.rs:4883`).
+  3. `sync_auction_panel_system` text branch surfaces the
+     pending label when `auction_state.card_id.is_none()`
+     (`mod.rs:3831`); chrome apply site reads
+     `auction_bid_chrome_state` as
+     `Option<BidButtonChromeState>` and falls back to
+     `Handle<Image>::default()` when the mapper returns `None`
+     (`mod.rs:3783`).
+  4. `auction_bid_chrome_state` (`mod.rs:5890`) now returns
+     `Option<BidButtonChromeState>` with the new
+     `HiddenLeading => None` branch; `Normal` (Enabled) and
+     `Disabled` (every other non-`HiddenLeading` variant)
+     mappings preserved verbatim.
+- **AC3 strategy chosen and justified by worker**: both (a)
+  `Visibility::Hidden` AND (b) `Handle::<Image>::default()`
+  chrome simultaneously. (a) was already in place; (b) is added
+  defensively so a future refactor of the visibility logic cannot
+  reintroduce the baked-`?` glyph on the entity-rendered chrome.
+  `Handle::<Image>::default()` is the AC3 (b) "no-image asset"
+  branch -- no new `BID_BUTTON_HIDDEN_LEADING_ASSET` constant
+  added; `client/src/asset_wiring.rs` NOT modified.
+- **PAW-TD-*-a preserved verbatim**:
+  `assets/art/ui/auction/ui_bid_button_disabled.png` (baked-`?`
+  PNG) NOT modified. Placeholder-art accept-risk preserved.
+- **Chrome override narrowed to `HiddenLeading` only**: the
+  worker explicitly did NOT broaden the override to every
+  `card_id.is_none()` case. InSession-idle state is
+  `GenericDisabled` with `card_id == None`, which the mapper
+  sends to `Some(Disabled)`, so the existing Disabled handle
+  continues to be applied -- the `chrome_wiring_test` test bin
+  invariant (InSession-idle bid buttons carry a non-default
+  `ImageNode.image`) holds.
+- **PROMPT 1042 Pass affordance preserved**: the existing
+  `auction_bid_buttons_test.rs` Pass-affordance assertions PASS
+  (9/9) at the integration tip; this row is additive over
+  PROMPT 1042 and does not regress the Pass affordance.
+
+### Test evidence
+
+- `tests/integration/shop_auction_ui/auction_bid_buttons_phase_race_test.rs`
+  (NEW; AC9) -- **5/5 PASS** at the integration tip:
+  - `s17_phase_race_ac1_spawn_state_text_is_loading_label`
+  - `s17_phase_race_ac2_text_updates_to_numeric_on_auction_card_arrival`
+  - `s17_phase_race_ac3_ac5_hidden_leading_clears_chrome_and_hides_row`
+  - `s17_phase_race_ac4_draft_auction_without_card_keeps_loading_or_hidden`
+  - `s17_phase_race_ac7_chrome_mapping_preserved_for_enabled_and_disabled_states`
+- Adjacent bid-button regression sweep at integration tip
+  (PROMPT 1119), **42/42 PASS**: `auction_activation_test 8/8`,
+  `auction_bid_buttons_test 9/9`,
+  `auction_bid_target_focus_test 4/4`,
+  `auction_feedback_test 6/6`,
+  `auction_lead_loss_state_test 4/4`,
+  `auction_settlement_test 7/7`, `chrome_wiring_test 4/4`.
+- `cargo check -p client` -- PASS in 7.04s at the rebased
+  integration tip `d35d24d`.
+- `git diff --check origin/main...HEAD` -- clean.
+- Evidence file:
+  `production/qa/evidence/sprint-17-bid-button-phase-race/evidence.md`.
+
+### Cargo resource policy (AC15)
+
+PROMPT 1116 worker applied all 5 Cargo resource policy env vars
+(`CARGO_TARGET_DIR=D:\_DEV\cargo-target\ccgs-msvc` +
+`CARGO_PROFILE_DEV_DEBUG=0` + `CARGO_PROFILE_TEST_DEBUG=0` +
+`CARGO_INCREMENTAL=0` +
+`RUSTFLAGS='-C debuginfo=0 -C link-arg=/DEBUG:NONE'`) before every
+cargo invocation; build line printed `Finished \`dev\` profile
+[optimized]` confirming the policy was applied. D: free ≈ 774 GB at
+worker session start -- well above the 50 GB preflight threshold.
+
+PROMPT 1119 integration encountered a PowerShell/Bash env-var
+propagation gap on the first `cargo check -p client` invocation:
+the `$env:CARGO_TARGET_DIR=...` block issued through the Bash tool
+did not propagate, so that one call used the worktree-local
+`target/` rather than the shared `D:\_DEV\cargo-target\ccgs-msvc`
+cache. All subsequent invocations (the final `cargo check` + every
+targeted `cargo test` run, both pre-rebase and post-rebase) used
+bash inline env-var syntax that exported the variables
+successfully. D: free space remained > 770 GB throughout; build
+correctness gate unaffected (all 47/47 targeted sub-tests + 2
+cargo check invocations PASS at integration tip). Recorded
+explicitly as a process / policy advisory note in PROMPT 1119's
+integration report and in this Completion Notes section -- NOT
+hidden as a product failure. PROMPT 1121 itself does NOT invoke
+Cargo (paperwork-only closure).
+
+### Per-AC outcome
+
+- AC1 spawn-state text is `"Loading…"` -- **PASS**. Asserted by
+  `s17_phase_race_ac1_spawn_state_text_is_loading_label` and by
+  the new module constant
+  `AUCTION_BID_BUTTON_LOADING_LABEL = "Loading…"`.
+- AC2 text updates to numeric bid amounts on `S2CAuctionCard`
+  arrival -- **PASS**. Asserted by
+  `s17_phase_race_ac2_text_updates_to_numeric_on_auction_card_arrival`;
+  `sync_auction_panel_system` keeps the Loading label only while
+  `card_id.is_none()` and the existing numeric formula
+  (TR-SAU-002) drives the text after drain.
+- AC3 `HiddenLeading` chrome / visibility override -- **PASS**.
+  Asserted by
+  `s17_phase_race_ac3_ac5_hidden_leading_clears_chrome_and_hides_row`;
+  strategy = both (a) `Visibility::Hidden` AND (b)
+  `Handle::<Image>::default()`. `auction_bid_chrome_state` now
+  returns `Option<BidButtonChromeState>` with `HiddenLeading
+  => None`; chrome apply site falls back to
+  `Handle::<Image>::default()` when the mapper returns `None`.
+- AC4 visible `?` does not surface during phase-entry race --
+  **PASS**. Asserted by
+  `s17_phase_race_ac4_draft_auction_without_card_keeps_loading_or_hidden`;
+  bid buttons carry the Loading label while `card_id.is_none()`
+  and the chrome is not forced to `Disabled` at spawn.
+- AC5 visible `?` does not surface during `HiddenLeading` --
+  **PASS**. Covered by the same
+  `s17_phase_race_ac3_ac5_hidden_leading_clears_chrome_and_hides_row`
+  test; the row is hidden (Visibility) and the chrome handle is
+  `default()` so the baked-`?` PNG is not on the entity.
+- AC6 existing PROMPT 1042 Pass affordance preserved -- **PASS**.
+  `shop_auction_ui_auction_bid_buttons_test 9/9` at the
+  integration tip; PROMPT 1042 closure assertions all green.
+- AC7 `auction_bid_chrome_state` `Normal`/`Disabled` mappings
+  preserved -- **PASS**. Asserted by
+  `s17_phase_race_ac7_chrome_mapping_preserved_for_enabled_and_disabled_states`;
+  only the `HiddenLeading => None` branch is new.
+- AC8 `ui_bid_button_disabled.png` not modified -- **PASS**.
+  `git diff origin/main..HEAD` at the integration tip touches
+  zero `.png` files; PAW-TD-*-a preserved.
+- AC9 integration test bin authored -- **PASS**.
+  `tests/integration/shop_auction_ui/auction_bid_buttons_phase_race_test.rs`
+  NEW; 5/5 pass at integration tip; covers AC1, AC2, AC3, AC4,
+  AC5, AC7 against a real Bevy 0.18 `App`.
+- AC10 no protocol or server change -- **PASS**. PROMPT 1119
+  integration `git diff --name-only origin/main..HEAD` returns
+  exactly 4 paths (`client/Cargo.toml` test-registration-only,
+  `client/src/ui/shop_auction/mod.rs`, the new test bin, the
+  evidence file); zero changes under `server/`, `shared/`,
+  `tests/integration/server/`, `tests/unit/server/`.
+- AC11 ADR-021 schedule preserved -- **PASS**. No new
+  `SystemSet`, no schedule wiring change. `cargo check -p client`
+  at integration tip PASS in 7.04s.
+- AC12 no accept-risk closure -- **PASS**. PROMPT 1116 worker
+  commit + evidence.md + PROMPT 1119 integration merge commit +
+  this PROMPT 1121 paperwork all explicitly preserve
+  `S8-QA-001-W1`, `QA-COND-0005`, `QA-COND-0006`, `PAW-TD-*-a`,
+  `TQ-S12-C1..C7`, PROMPT 761 `Polish->Release` FAIL,
+  `S11-HUD-TIMER-EYEBALL-VISUAL-001` carry, all `AUDIT-1076-*`
+  findings, all `SOURCE-1077-*` findings outside SOURCE-1077-10,
+  all 24 PROMPT 1022 findings, and the PROMPT 1112 AC3 hand
+  reserve-strip carry (preserved OPEN; this row does NOT close
+  it). `A11Y-ST-12` NOT advanced; final-art replacement of the
+  baked-`?` PNG NOT pursued; Standard-tier hit-target conformance
+  NOT pursued; playtest validation NOT pursued.
+- AC13 Sprint 17 disposition preserved by worker + integration
+  -- **PASS**. PROMPT 1116 worker + PROMPT 1119 integration diffs
+  touched zero files under `production/sprint-status.yaml`,
+  `production/sprints/sprint-17.md`, `production/stage.txt`,
+  `production/session-state/*`, `production/qa/qa-plan-sprint-17.md`,
+  `production/qa/smoke-*.md`, `production/qa/team-qa-*.md`,
+  `production/gate-checks/*`, `docs/architecture/adr-*.md`.
+  PROMPT 1121 is the first authorised modifier of
+  `production/sprint-status.yaml` + `production/session-state/*`
+  for this row.
+- AC14 worker branch scope contained -- **PASS**. PROMPT 1116
+  worker pushed `work/s17-bid-button-phase-race` (`6f8f5ae`)
+  only -- never `main`. Files changed at worker time:
+  `client/src/ui/shop_auction/mod.rs`, `client/Cargo.toml`
+  (single additive `[[test]]` block at line ~513; no profile /
+  feature / dependency edits), the new test bin under
+  `tests/integration/shop_auction_ui/`, and the evidence
+  document. Integration into `origin/main` performed separately
+  by PROMPT 1119 via `integrate/s17-bid-button-phase-race-1119`
+  -> `d35d24d`.
+- AC15 Cargo resource policy applied -- **PASS-WORKER +
+  ADVISORY-INTEGRATION**. PROMPT 1116 worker applied all 5 env
+  vars before every cargo invocation; build line printed
+  `[optimized]` with no `+ debuginfo`. PROMPT 1119 integration
+  encountered a one-call env-var propagation gap on the first
+  `cargo check`; recorded explicitly above and in PROMPT 1119's
+  integration report. PROMPT 1121 itself does NOT invoke Cargo.
+
+### Closure trail (commits)
+
+1. **PROMPT 1095** -- net-new Sprint 17 story authoring batch
+   (story 019 drafted).
+2. **PROMPT 1097** -- paperwork-only main integration of the
+   Sprint 17 story authoring batch (`bc3db29`).
+3. **PROMPT 1099** -- Sprint 17 activation (`cb62a9e`).
+4. **PROMPT 1100** -- `/qa-plan sprint-17` authoring (`ff47075`).
+5. **PROMPT 1116** -- `/dev-story` worker
+   (`6f8f5ae dev-story(s17-bid-button-phase-race): spawn-state
+   Loading… + HiddenLeading chrome override (PROMPT 1116)`) on
+   branch `work/s17-bid-button-phase-race`.
+6. **PROMPT 1119** -- integration of PROMPT 1116 onto
+   `origin/main` via no-ff merge
+   (`d35d24d integrate(s17): merge PROMPT 1116 bid-button
+   phase-race into main (PROMPT 1119)`) on branch
+   `integrate/s17-bid-button-phase-race-1119`; rebased mid-run
+   onto `origin/main@29ad4c6` (PROMPT 1118 hand-fan-root B0004
+   integration tip) when concurrent integration landed.
+7. **PROMPT 1121** -- this `/story-done` paperwork (flips AC1
+   .. AC15 to `[x]`; appends Completion Notes; records closure
+   tip; updates `production/sprint-status.yaml`,
+   `production/session-state/active.md`,
+   `production/session-state/codex-orchestrator-state.md`).
 
 ### Conditions carried forward unchanged
 
 - Sprint 16 disposition `closed-with-conditions` (UNCHANGED).
-- Sprint 17 stage `Polish` (UNCHANGED).
-- PROMPT 761 Polish->Release gate-check `FAIL` preserved.
+- Sprint 17 stage `Polish` (UNCHANGED; `production/stage.txt`
+  NOT modified).
+- PROMPT 761 Polish->Release gate-check `FAIL` preserved; **NO
+  retry** in Sprint 17.
 - `S8-QA-001-W1` OPEN preserved.
 - `QA-COND-0005` + `QA-COND-0006` accepted-risk preserved.
-- `PAW-TD-*-a` placeholder-art accept-risk preserved (specifically
-  the baked-`?` PNG `ui_bid_button_disabled.png`).
+- `PAW-TD-*-a` placeholder-art accept-risk preserved
+  (specifically the baked-`?` PNG
+  `assets/art/ui/auction/ui_bid_button_disabled.png`).
 - `TQ-S12-C1..C7` preserved verbatim.
 - Sprint 15 / 14 / 13 / 12 / 11 / 10 dispositions preserved
   unchanged.
@@ -624,13 +845,34 @@ authored by PROMPT 1095.
 - 24 PROMPT 1022 audit findings preserved as report-only; NOT
   closed by this row.
 - PROMPT 1042 Pass affordance preserved.
+- PROMPT 1108 (S17-SERVER-START-OF-TURN-DEBUG-001), PROMPT 1110
+  (S17-UI-CARD-SLOT-INSET-WIRING-001), PROMPT 1112
+  (S17-UI-HUD-OPP-MANA-CLEANUP-001 PARTIAL disposition with AC3
+  carried), PROMPT 1117 (S17-UI-CARD-DISPLAY-ART-HELPER-001),
+  and PROMPT 1120 (S17-UI-HAND-B0004-CLEANUP-001) closures all
+  preserved verbatim above this PROMPT 1121 entry.
+- SOURCE-1077-10 discharged on `origin/main` by PROMPT 1119
+  integration; the seven remaining un-bundled SOURCE-1077-*
+  findings (05 / 07 / 11 / 12 / 13 / 14 / 15) remain deferred
+  to Sprint 18+. SOURCE-1077-01/02/03/04 discharged by PROMPT
+  1114/1117; SOURCE-1077-06 by PROMPT 1106/1110;
+  SOURCE-1077-08/09/16 reserved for
+  `S17-UI-QA-SNAPSHOT-MARKER-SPLIT-001`.
+- All AUDIT-1076-* findings preserved as open / report-only
+  outside AUDIT-1076-14 (discharged PROMPT 1118/1120),
+  AUDIT-1076-15 (discharged PROMPT 1107/1108), and
+  AUDIT-1076-10 + AUDIT-1076-16 (discharged PROMPT 1111;
+  AUDIT-1076-17 remains OPEN carried with AC3 of
+  `S17-UI-HUD-OPP-MANA-CLEANUP-001`).
+- PROMPT 1112 AC3 hand reserve-strip carry remains OPEN; this
+  row does NOT close it.
 
 ### Explicitly NOT claimed by this story or its `/dev-story` worker
 
 - Closure of `A11Y-ST-12` (Sprint 8 / Sprint 11 bid-button
   focus + target size accessibility). The existing Shop / Auction
   UI epic stories 005 and 011 own that.
-- Closure of any AUDIT-1076-* finding.
+- Closure of any AUDIT-1076-* finding by this row.
 - Closure of any SOURCE-1077-* finding outside SOURCE-1077-10.
 - Closure of any of the 24 PROMPT 1022 audit findings.
 - Sprint 17 close-out.
@@ -641,5 +883,9 @@ authored by PROMPT 1095.
   fun-hypothesis validation; full playable-client manual QA;
   two-client GAME_OVER closure; final-art completion;
   Polish->Release gate-check retry; stage advance.
+- Discharge of PROMPT 1112 AC3 hand reserve-strip carry /
+  AUDIT-1076-17 (semantically distinct surface).
+- Sprint 17 smoke / team-QA / gate-check / release-check
+  execution.
 
-`019: S17-UI-BID-BUTTON-PHASE-RACE-001: DRAFT`
+`019: S17-UI-BID-BUTTON-PHASE-RACE-001: DONE`

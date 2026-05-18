@@ -81,7 +81,7 @@ fn hu_asset_loop_draft_and_fan_slots_resolve_card_display_art_or_fallback() {
     assert_eq!(
         app.world().get::<CardDisplayArtAsset>(known_art_slot),
         Some(&CardDisplayArtAsset {
-            path: "art/cards/display/card_iop_knight_001_art_display.png"
+            path: "art/cards/display/card_iop_knight_001_art_display.png".to_string()
         })
     );
 
@@ -93,7 +93,7 @@ fn hu_asset_loop_draft_and_fan_slots_resolve_card_display_art_or_fallback() {
     assert_eq!(
         app.world().get::<CardDisplayArtAsset>(known_fan_slot),
         Some(&CardDisplayArtAsset {
-            path: "art/cards/display/card_iop_knight_001_art_display.png"
+            path: "art/cards/display/card_iop_knight_001_art_display.png".to_string()
         })
     );
 

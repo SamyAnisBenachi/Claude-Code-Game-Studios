@@ -9,9 +9,8 @@ use shared::protocol::{
 use shared::session::PlayerId;
 
 use crate::asset_wiring::{
-    bid_button_asset, default_client_card_catalog, resolve_card_display_art, BidButtonChromeState,
-    CardDisplayArtAsset, CardDisplayArtFallback, SHOP_PANEL_CHROME_ASSET,
-    SHOP_SLOT_WELL_IDLE_ASSET,
+    apply_card_display_art, bid_button_asset, clear_card_display_art, default_client_card_catalog,
+    BidButtonChromeState, SHOP_PANEL_CHROME_ASSET, SHOP_SLOT_WELL_IDLE_ASSET,
 };
 use crate::card_animations::{
     AuctionPanelTransitionRequested, CardAcquiredAnimReady, SettlementOverlayRequested,
@@ -32,6 +31,13 @@ pub const AUCTION_TOAST_FADE_IN_MS: u32 = 120;
 pub const AUCTION_TOAST_HOLD_MS: u32 = 2_000;
 pub const AUCTION_TOAST_FADE_OUT_MS: u32 = 120;
 pub const AUCTION_SETTLEMENT_TRANSITION_MS: u32 = 350;
+// PROMPT 1116 — pending-state label rendered on the three bid buttons
+// between `DraftAuction` phase entry and `S2CAuctionCard` arrival. Before
+// this, the buttons spawned with `Text::new("")` and tracked a chrome
+// handle that carried the baked-`?` `ui_bid_button_disabled.png` glyph
+// — `SOURCE-1077-10`. Keeping it as a single const documents the spawn-
+// state contract and lets every per-button update site share the string.
+pub const AUCTION_BID_BUTTON_LOADING_LABEL: &str = "Loading…";
 pub const DRAFT_INITIAL_OBJECTIVE_COPY: &str = "Select up to 9 cards to keep. You have 45 seconds.";
 pub const DRAFT_INITIAL_MODAL_WIDTH_PERCENT: f32 = 88.0;
 pub const DRAFT_INITIAL_MODAL_MAX_WIDTH_PX: f32 = 860.0;
@@ -3761,9 +3767,23 @@ pub fn sync_auction_panel_system(
                 footer_visible && next_state != AuctionBidButtonState::HiddenLeading,
             );
             *state = next_state;
+            // PROMPT 1116 — `card_id.is_none()` is the canonical signal
+            // for "we haven't drained `S2CAuctionCard` yet". The
+            // entity-level text is reset to the pending label so the
+            // row never advertises the misleading numeric
+            // `BidButtonLabel` ("0g\n(+1)") during the phase-entry race
+            // window even though `Visibility::Hidden` keeps the row
+            // off-screen for normal flow. The chrome image override is
+            // intentionally narrower: `auction_bid_chrome_state` only
+            // returns `None` for `HiddenLeading` so we don't strip the
+            // existing chrome handle from every InSession-idle bid
+            // button — `chrome_wiring_test` exercises that wiring.
+            let card_not_ready = auction_state.card_id.is_none();
             if let Some(ref server) = asset_server {
-                image_node.image =
-                    server.load(bid_button_asset(auction_bid_chrome_state(next_state)));
+                image_node.image = match auction_bid_chrome_state(next_state) {
+                    Some(chrome) => server.load(bid_button_asset(chrome)),
+                    None => Handle::default(),
+                };
             }
             node.width = Val::Px(AUCTION_BID_TARGET_WIDTH_PX);
             node.height = Val::Px(AUCTION_BID_TARGET_HEIGHT_PX);
@@ -3800,6 +3820,15 @@ pub fn sync_auction_panel_system(
             text.0.clear();
             if next_state == AuctionBidButtonState::InFlight {
                 text.0.push_str("BIDDING...");
+            } else if card_not_ready {
+                // PROMPT 1116 — before `S2CAuctionCard` arrives the
+                // numeric `BidButtonLabel` ("0g\n(+1)") is meaningless
+                // because the auction starting price has not yet been
+                // sent by the server. Surface the spawn-state pending
+                // label instead so the entity contract is "Loading…"
+                // until `card_id.is_some()`. AC2 then asserts the swap
+                // to numeric on `S2CAuctionCard` drain.
+                text.0.push_str(AUCTION_BID_BUTTON_LOADING_LABEL);
             } else {
                 text.0.push_str(
                     &BidButtonLabel {
@@ -4843,7 +4872,15 @@ fn spawn_auction_contents(
                 },
                 AuctionBidFocusState::inactive((index + 1) as u8),
                 Interaction::None,
-                Text::new(""),
+                // PROMPT 1116 — spawn-state pending text. The bid-button
+                // text was empty until `S2CAuctionCard` arrived, leaving
+                // a zero-content `Text` component on the entity during
+                // the phase-entry race window even though the row was
+                // `Visibility::Hidden`. Spawning with `Loading…` makes
+                // the entity-level contract non-empty from frame zero so
+                // any inspector / regression assertion sees a meaningful
+                // pending string before the auction card resolves.
+                Text::new(AUCTION_BID_BUTTON_LOADING_LABEL),
                 shop_auction_text_font(typography::H3),
                 TextColor(Color::srgb(0.98, 0.93, 0.72)),
                 BackgroundColor(auction_bid_background_color(
@@ -5836,12 +5873,25 @@ fn next_focusable_bid_button(
     None
 }
 
-/// Maps an [`AuctionBidButtonState`] to the corresponding [`BidButtonChromeState`]
-/// for asset selection. Only `Enabled` maps to `Normal`; all other states use `Disabled`.
-fn auction_bid_chrome_state(state: AuctionBidButtonState) -> BidButtonChromeState {
+/// Maps an [`AuctionBidButtonState`] to the corresponding
+/// [`BidButtonChromeState`] for asset selection. `Enabled` maps to
+/// `Normal`; `HiddenLeading` maps to `None` (no chrome image — the row
+/// is `Visibility::Hidden` while the local player leads, so the baked-
+/// `?` `Disabled` PNG must not be loaded onto the entity); every other
+/// state maps to `Disabled`.
+///
+/// PROMPT 1116 — added the `HiddenLeading => None` branch so the
+/// `ui_bid_button_disabled.png` chrome (which carries a baked-`?`
+/// glyph per `PAW-TD-*-a` accept-risk) is no longer kept on the
+/// entity's `ImageNode` during the local-leading window. Callers fall
+/// back to `Handle<Image>::default()` when this returns `None`. The
+/// `Normal` and `Disabled` mappings for every other variant are
+/// unchanged.
+fn auction_bid_chrome_state(state: AuctionBidButtonState) -> Option<BidButtonChromeState> {
     match state {
-        AuctionBidButtonState::Enabled => BidButtonChromeState::Normal,
-        _ => BidButtonChromeState::Disabled,
+        AuctionBidButtonState::HiddenLeading => None,
+        AuctionBidButtonState::Enabled => Some(BidButtonChromeState::Normal),
+        _ => Some(BidButtonChromeState::Disabled),
     }
 }
 
@@ -6083,35 +6133,6 @@ fn apply_shop_footer_slot(
         .entity(entity)
         .insert((ShopFooterSlotCard(card_id), ShopFooterSlotState::Locked));
     apply_card_display_art(commands, entity, card, asset_server);
-}
-
-fn apply_card_display_art(
-    commands: &mut Commands,
-    entity: Entity,
-    card: Option<&shared::card::CardData>,
-    asset_server: Option<&AssetServer>,
-) {
-    match resolve_card_display_art(card) {
-        Ok(path) => {
-            let mut entity_commands = commands.entity(entity);
-            entity_commands.insert(CardDisplayArtAsset { path });
-            entity_commands.remove::<CardDisplayArtFallback>();
-            if let Some(asset_server) = asset_server {
-                entity_commands.insert(ImageNode::new(asset_server.load(path)));
-            }
-        }
-        Err(reason) => {
-            let mut entity_commands = commands.entity(entity);
-            entity_commands.insert(CardDisplayArtFallback { reason });
-            entity_commands.remove::<(CardDisplayArtAsset, ImageNode)>();
-        }
-    }
-}
-
-fn clear_card_display_art(commands: &mut Commands, entity: Entity) {
-    commands
-        .entity(entity)
-        .remove::<(CardDisplayArtAsset, CardDisplayArtFallback, ImageNode)>();
 }
 
 fn mark_confirmed_purchase(

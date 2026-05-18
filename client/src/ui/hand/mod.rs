@@ -16,8 +16,8 @@ use shared::protocol::{
 use shared::session::PlayerId;
 
 use crate::asset_wiring::{
-    default_client_card_catalog, insert_placeholder_assets, resolve_card_display_art,
-    CardDisplayArtAsset, CardDisplayArtFallback, PlaceholderAssets,
+    apply_card_display_art, clear_card_display_art, default_client_card_catalog,
+    insert_placeholder_assets, CardDisplayArtFallback, PlaceholderAssets,
 };
 use crate::card_animations::{
     cancel_tween_anim_in_place, make_tween_anim, replace_tweenable, HandCard, HandDragSprite,
@@ -3099,12 +3099,27 @@ pub fn spawn_hand_ui(
     // on the strip parent (set by `strips::hand_bar_node()`). See
     // `docs/ux/global-ui-design-spec.md` §9 "HandBar vs.
     // HAND_FAN_STRIP_HEIGHT_PX reconciliation".
+    // S17-UI-HAND-B0004-CLEANUP-001 Strategy A: HandBar carries `Transform`
+    // so the Bevy 0.18 Required Components API derives `GlobalTransform`
+    // on the parent. `bevy_ui` `Node` requires `UiTransform` but NOT
+    // `Transform`/`GlobalTransform` (verified against bevy_ui-0.18.1
+    // `src/ui_node.rs` Node `#[require(...)]` set), so without this
+    // insert the `HandFanRoot` child — which explicitly carries
+    // `GlobalTransform` for fan-layout queries — would emit the engine
+    // `B0004` hierarchy warning every `InSession` entry. `Transform`
+    // auto-requires `GlobalTransform` (bevy_transform-0.18.1) so no
+    // explicit `GlobalTransform` insert is needed on `HandBar`. Fan
+    // layout, drag-state visuals, placement staging, and the Sprint 15
+    // story 020 `closed-with-conditions / cannot-reproduce` disposition
+    // are all preserved verbatim — this row is ECS hierarchy hygiene
+    // only.
     let hand_bar = commands
         .spawn((
             Name::new("Hand UI HandBar"),
             HandUiEntity,
             strips::HandBar,
             strips::hand_bar_node(),
+            Transform::default(),
             Visibility::Inherited,
             z_layers::UI_BASE,
         ))
@@ -4567,35 +4582,6 @@ fn clear_grid_slot(commands: &mut Commands, entity: Entity) {
         PendingPurchaseTimer,
     )>();
     clear_card_display_art(commands, entity);
-}
-
-fn apply_card_display_art(
-    commands: &mut Commands,
-    entity: Entity,
-    card: Option<&shared::card::CardData>,
-    asset_server: Option<&AssetServer>,
-) {
-    match resolve_card_display_art(card) {
-        Ok(path) => {
-            let mut entity_commands = commands.entity(entity);
-            entity_commands.insert(CardDisplayArtAsset { path });
-            entity_commands.remove::<CardDisplayArtFallback>();
-            if let Some(asset_server) = asset_server {
-                entity_commands.insert(ImageNode::new(asset_server.load(path)));
-            }
-        }
-        Err(reason) => {
-            let mut entity_commands = commands.entity(entity);
-            entity_commands.insert(CardDisplayArtFallback { reason });
-            entity_commands.remove::<(CardDisplayArtAsset, ImageNode)>();
-        }
-    }
-}
-
-fn clear_card_display_art(commands: &mut Commands, entity: Entity) {
-    commands
-        .entity(entity)
-        .remove::<(CardDisplayArtAsset, CardDisplayArtFallback, ImageNode)>();
 }
 
 fn hide_acquired_grid_slot(
