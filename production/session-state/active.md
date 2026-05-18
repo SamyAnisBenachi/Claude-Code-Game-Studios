@@ -1,3 +1,34 @@
+# Orchestrator Runtime Update -- Launcher Sidecar Follow-up
+
+Updated 2026-05-18 by orchestrator after PROMPT 1170 report and the user's
+live EXE test. Source-of-truth at refresh:
+`origin/main@95504f3791ee53898fa9fd4ce4ff760cc3279a24` (PROMPT 1172
+session-state refresh). Stage remains `Polish`; Sprint 17 remains `active`;
+no Sprint 17 close-out, Sprint 18 activation, gate-check retry, release claim,
+or stage advance is performed by this update.
+
+PROMPT 1170 `WINDOWS-LAUNCHER-REPO-ROOT-RESOLUTION-REPAIR` is complete on
+`origin/work/windows-launcher-repo-root-sidecar-1170` at
+`7c6a73cf0f01a64585a73fdc24b66be979598b48`; the worker window was cleared.
+The branch is not on `origin/main` yet. PROMPT 1173
+`WINDOWS-LAUNCHER-REPO-ROOT-RESOLUTION-INTEGRATION` was officially launched
+to refresh/integrate 1170 on latest main and push an integration branch only.
+
+Runtime follow-up discovered before main-land: launching
+`D:\_DEV\cargo-target\ccgs-msvc\debug\ccgs-dev-launcher.exe` now fails because
+the generated sidecar starts with a `U+FEFF` BOM before a comment line. The
+app parser treats `# ccgs-dev-launcher.repo-root.txt` as the repo-root path
+instead of skipping it as a comment. A `REPONDRE PROMPT-1173` relay was sent
+requiring the integration to fix BOM/comment sidecar parsing, add a unit test,
+and verify the generated sidecar before PASS.
+
+Current next action: wait for PROMPT 1173. If it reports an integration branch
+with the BOM/comment parser fix and checks passing, launch the serialized
+main-land prompt next. Do not main-land the original 1170 branch directly.
+Immediate local workaround remains:
+`$env:CCGS_REPO_ROOT='D:\_DEV\Work\Claude-Code-Game-Studios'` before launching
+the EXE.
+
 # PROMPT 1172 State Banner -- Orchestrator Current-State Refresh
 
 Updated 2026-05-18 by PROMPT 1172. Source-of-truth at refresh:
