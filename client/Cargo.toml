@@ -861,3 +861,15 @@ path = "../tests/integration/ui_viewport_invariants_test.rs"
 [[test]]
 name = "ui_viewport_live_test"
 path = "../tests/integration/ui_viewport_live_test.rs"
+
+# PROMPT 1246 / S18-PROTOCOL-RECEIVER-DRAIN-SMOKE-TESTS-001 -- closes the
+# false-confidence gap from PROMPT 1203 R17 / B-1203-X-01. Every existing
+# shop/auction/hand UI test bypasses the real
+# `MessageReceiver<S2CFoo>` -> drain -> internal-UI-event path by writing
+# the internal UI events directly. These smoke tests use a live two-app
+# WebSocket loopback so the production drain function (the one wired by
+# the production plugin) is what turns received bytes into internal UI
+# events.
+[[test]]
+name = "playable_client_protocol_receiver_drain_test"
+path = "../tests/integration/playable_client/protocol_receiver_drain_test.rs"
