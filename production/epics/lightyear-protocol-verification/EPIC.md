@@ -4,7 +4,7 @@
 > **GDD**: design/gdd/network-protocol.md
 > **Architecture Module**: `shared/src/protocol.rs` + `server/src/network/` + `client/src/network/`
 > **Status**: Ready
-> **Stories**: 6 foundation stories + 2 Sprint 13 candidate hardening stories (S13-PROTO-INVARIANT-001, S13-PROTO-ORPHAN-DRAIN-001) authored as Sprint 13 candidates per PROMPT 803/804; NOT activated
+> **Stories**: 6 foundation stories + 2 Sprint 13 candidate hardening stories (S13-PROTO-INVARIANT-001, S13-PROTO-ORPHAN-DRAIN-001) authored as Sprint 13 candidates per PROMPT 803/804 (NOT activated) + 1 Sprint 18 candidate protocol-only register story (S18-PROTOCOL-S2CACTIVATIONREJECTED-REGISTER-001 per PROMPT 1303; NOT activated)
 > **Priority**: ⭐ SPRINT 1 STORY 1.0 — Highest-risk de-risking item (TD sign-off 2026-04-29)
 
 ## Overview
@@ -103,8 +103,9 @@ All C2S* and S2C* message types from `design/gdd/network-protocol.md` Table A, d
 | 006 | [Spawn Range Live Update Contract](story-006-spawn-range-live-update-contract.md) | Config/Data | Ready | ADR-003, ADR-008, ADR-011, ADR-020 |
 | 007 | [Protocol Completeness Invariant Test](story-007-protocol-completeness-invariant.md) | Logic (workspace invariant test) | Draft -- Sprint 13 candidate (S13-PROTO-INVARIANT-001 per PROMPT 803/804), NOT activated | ADR-003, ADR-008 |
 | 008 | [Drain or Delete 8 S2C + 1 C2S Protocol Orphans](story-008-protocol-orphan-drain.md) | Composite -- decision-first per orphan + Integration | Draft -- Sprint 13 candidate (S13-PROTO-ORPHAN-DRAIN-001 per PROMPT 803/804), NOT activated | ADR-002, ADR-003, ADR-008, ADR-011, ADR-012 |
+| 009 | [Register `S2CActivationRejected` + `ActivationRejectedReason` in Shared Protocol](story-009-s2c-activation-rejected-protocol-register.md) | Config/Data | Draft -- Sprint 18 candidate (S18-PROTOCOL-S2CACTIVATIONREJECTED-REGISTER-001 per PROMPT 1303), NOT activated | ADR-003, ADR-008 |
 
-> Story sequence: 001 → 002 → 003 → 004; Story 005 is a follow-up protocol repair required before BLS-011 and HAND-UI-010. Story 006 is the first step in the spawn range prerequisite chain and unlocks BLS-012. Stories 007 and 008 are Sprint 13 candidate hardening stories sourced from `reports/PROMPT-803-MULTIPLAYER-RUNTIME-HARDENING-AUDIT-ROADMAP.md` §4 Lane A + §5 Must rows 1+2; both are authored as Sprint 13 candidates by PROMPT 804 and are NOT activated. Story 008 flips Story 007's invariant test to PASS; the two are intended to land together in the same Sprint 13 wave (or Story 007 lands with the test `#[ignore]`-gated then Story 008 removes the gate).
+> Story sequence: 001 → 002 → 003 → 004; Story 005 is a follow-up protocol repair required before BLS-011 and HAND-UI-010. Story 006 is the first step in the spawn range prerequisite chain and unlocks BLS-012. Stories 007 and 008 are Sprint 13 candidate hardening stories sourced from `reports/PROMPT-803-MULTIPLAYER-RUNTIME-HARDENING-AUDIT-ROADMAP.md` §4 Lane A + §5 Must rows 1+2; both are authored as Sprint 13 candidates by PROMPT 804 and are NOT activated. Story 008 flips Story 007's invariant test to PASS; the two are intended to land together in the same Sprint 13 wave (or Story 007 lands with the test `#[ignore]`-gated then Story 008 removes the gate). Story 009 is a Sprint 18 candidate authored by PROMPT 1303 from the PROMPT 1297 `C2SActivateCard` disposition audit; it registers the previously-missing `S2CActivationRejected` rejection message + `ActivationRejectedReason` enum in `shared/src/protocol.rs` so the rejection wire path exists ahead of the future server card-activation dispatcher epic. Story 009 is parallel-safe with Sprint 18 hand/fan/board lanes (touches `shared/src/protocol.rs` only) and does NOT close the broader `C2SActivateCard` half-wired gap on its own.
 > **Story 001 is a hard gate** — no other story in this epic or any Core/Feature networking epic may start until it is Done.
 
 ## Next Step
