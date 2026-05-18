@@ -67,6 +67,12 @@ pub const RESERVE_STRIP_ENTITY_COUNT: usize = 4;
 //      `PendingPlacements.staged_count()`.
 // All four are tagged with `HandUiEntity` so they are despawned with
 // the hand-UI tree on session exit (ADR-021 Impl Guideline 5 preserved).
+//
+// PROMPT 1239 (S18-UI-HAND-IDLE-PLAYABLE-AFFORDANCE-001): the trailing
+// `+ HAND_FAN_SLOT_COUNT * 2` accounts for the two new per-slot idle
+// playable-affordance overlay children (Playable + Unaffordable, mutually
+// exclusive visibility). Both are children of pre-pooled `FanSlotIndex`
+// entities — no new top-level pre-pool entries (ADR-021 Impl Guideline 5).
 pub const HAND_UI_ENTITY_COUNT: usize = HAND_FAN_SLOT_COUNT
     + DRAFT_INITIAL_GRID_SLOT_COUNT
     + 8
@@ -74,7 +80,8 @@ pub const HAND_UI_ENTITY_COUNT: usize = HAND_FAN_SLOT_COUNT
     + 1
     + HAND_FAN_SLOT_COUNT * 2
     + 1
-    + 4;
+    + 4
+    + HAND_FAN_SLOT_COUNT * 2;
 const HAND_CARD_DISPLAY_WIDTH_PX: f32 = 96.0;
 const HAND_CARD_DISPLAY_HEIGHT_PX: f32 = 136.0;
 const HAND_DRAFT_GRID_CARD_WIDTH_PX: f32 = 120.0;
@@ -932,6 +939,54 @@ pub struct HandRarityIcon;
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct HandTypeIcon;
 
+// ── PROMPT 1239 — Idle hand playable-affordance overlays ─────────────────────
+//
+// Sibling pathway to the Sprint 15 Story 020 drag-state overlays in
+// `drag_state_visuals.rs`. While the hand is idle (no drag in flight) and the
+// PLACEMENT phase / interactive HandUiMode preconditions hold, every
+// populated local fan slot receives one of two mutually-exclusive
+// visibility states surfaced via per-slot child overlays:
+//
+//   - `FanSlotPlayableAffordanceOverlay`         — `BorderColor` ACCENT;
+//     paints when `current_mana + reserve_mana >= card.cost` (Minion) or
+//     for non-Minion cards (mana-free).
+//   - `FanSlotPlayableAffordanceUnaffordableOverlay` — `BackgroundColor`
+//     at `OVERLAY_DIM_ALPHA`; paints when the affordability check fails.
+//
+// The overlays are CHILDREN of pre-pooled `FanSlotIndex` entities — no new
+// top-level pre-pool entries (ADR-021 Impl Guideline 5 preserved). They do
+// NOT carry the `drag_state_visuals::DragStateOverlay` marker, so Story 020
+// AC2's `Query<&FanSlotIndex, Without<DragStateOverlay>>` semantics are
+// preserved by construction (per story-023 "Story 020 AC2 Reconciliation").
+//
+// The sync system reads `Res<CurrentClientPhase>`, `Res<HandUiMode>`,
+// `Res<ActivePlacementDrag>`, `Res<PendingPlacements>`,
+// `Res<PlayerEconomyView>`, `Res<HandCardCatalog>` read-only. ADR-002 +
+// ADR-012 + ADR-021 binding preserved; no Lightyear message; no
+// server-authoritative state.
+
+/// Marker on the per-slot idle playable-affordance overlay child node.
+/// Visible when the slot's card is affordable AND the hand is idle in
+/// `Phase::Placement` with `HandUiMode ∈ { Passive, Staging }`.
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct FanSlotPlayableAffordanceOverlay;
+
+/// Marker on the per-slot idle unaffordable-affordance overlay child node.
+/// Visible when the slot's card is NOT affordable under the same idle
+/// preconditions as [`FanSlotPlayableAffordanceOverlay`].
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct FanSlotPlayableAffordanceUnaffordableOverlay;
+
+/// Per-slot active state for the idle affordance treatment. Inserted onto
+/// the `FanSlotIndex` entity when the slot carries a card and the idle
+/// preconditions hold; removed otherwise. Mutually exclusive with itself
+/// (never both variants on the same slot in the same frame).
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FanSlotPlayableAffordanceActive {
+    Playable,
+    Unaffordable,
+}
+
 #[derive(SystemSet, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum HandUiSystemSet {
     PhaseTransition,
@@ -1103,6 +1158,14 @@ impl Plugin for HandUiPlugin {
                         // per-slot dim / hover overlays + the fan-plate
                         // drop-target overlay. ADR-002 + ADR-012 preserved.
                         drag_state_visuals::sync_hand_drag_state_visuals_system,
+                        // PROMPT 1239 (S18-UI-HAND-IDLE-PLAYABLE-AFFORDANCE-001):
+                        // read-only over `CurrentClientPhase`, `HandUiMode`,
+                        // `ActivePlacementDrag`, `PendingPlacements`,
+                        // `PlayerEconomyView`, `HandCardCatalog`. Surfaces the
+                        // idle Playable / Unaffordable hint per local fan slot
+                        // when no drag is in flight. Distinct marker pathway
+                        // from Story 020 (no `DragStateOverlay` carry).
+                        sync_hand_idle_playable_affordance_system,
                     )
                         .chain()
                         .in_set(HandUiSystemSet::StateSync),
@@ -3602,6 +3665,13 @@ pub fn spawn_hand_ui(
         // flips them Visible per the resolved drag state.
         drag_state_visuals::spawn_fan_slot_drag_state_overlays(&mut commands, slot, index as u8);
 
+        // PROMPT 1239 — idle playable-affordance overlays. Sibling pathway
+        // to Story 020: a Playable border + an Unaffordable dim cover. Both
+        // start Hidden and are flipped by `sync_hand_idle_playable_affordance_system`.
+        // Distinct marker set from `DragStateOverlay` so Story 020 AC2 query
+        // semantics are preserved by construction.
+        spawn_fan_slot_playable_affordance_overlays(&mut commands, slot, index as u8);
+
         slot
     });
 
@@ -3900,6 +3970,184 @@ fn spawn_reserve_strip_button(
             ChildOf(parent),
         ))
         .id()
+}
+
+// ── PROMPT 1239 — Idle playable-affordance overlay spawn + sync ──────────────
+
+fn playable_affordance_overlay_node() -> Node {
+    Node {
+        position_type: PositionType::Absolute,
+        left: Val::Percent(0.0),
+        top: Val::Percent(0.0),
+        width: Val::Percent(100.0),
+        height: Val::Percent(100.0),
+        border: UiRect::all(Val::Px(2.0)),
+        ..default()
+    }
+}
+
+fn unaffordable_affordance_overlay_node() -> Node {
+    Node {
+        position_type: PositionType::Absolute,
+        left: Val::Percent(0.0),
+        top: Val::Percent(0.0),
+        width: Val::Percent(100.0),
+        height: Val::Percent(100.0),
+        ..default()
+    }
+}
+
+/// Spawn the two idle-affordance overlay child nodes for a single pre-pooled
+/// fan slot. Both overlays start `Visibility::Hidden`; the sync system flips
+/// them per the resolved affordance state. The Playable overlay reuses §7
+/// `ACCENT` via `drag_state_visuals::accent_color()` as a border; the
+/// Unaffordable overlay reuses the existing `OVERLAY_DIM_ALPHA` dim color
+/// from `drag_state_visuals::dim_overlay_color()`. No new design tokens are
+/// authored.
+fn spawn_fan_slot_playable_affordance_overlays(
+    commands: &mut Commands,
+    slot: Entity,
+    slot_index: u8,
+) {
+    commands.spawn((
+        Name::new(format!(
+            "Fan Slot {slot_index} Idle Playable Affordance Overlay"
+        )),
+        #[allow(deprecated)]
+        HandUiEntity,
+        FanSlotPlayableAffordanceOverlay,
+        playable_affordance_overlay_node(),
+        BorderColor::all(drag_state_visuals::accent_color()),
+        Visibility::Hidden,
+        ChildOf(slot),
+    ));
+
+    commands.spawn((
+        Name::new(format!(
+            "Fan Slot {slot_index} Idle Unaffordable Affordance Overlay"
+        )),
+        #[allow(deprecated)]
+        HandUiEntity,
+        FanSlotPlayableAffordanceUnaffordableOverlay,
+        unaffordable_affordance_overlay_node(),
+        BackgroundColor(drag_state_visuals::dim_overlay_color()),
+        Visibility::Hidden,
+        ChildOf(slot),
+    ));
+}
+
+/// Returns true iff the player's `current + reserve` mana suffices for the
+/// card's mana cost. Mirrors the conservative behaviour of
+/// `drag_state_visuals::slot_is_affordable`: cards missing from the catalog
+/// default to affordable, and non-Minion card types bypass the mana cost
+/// check (matching the current pool, where only Minions cost mana).
+fn slot_card_is_affordable(
+    card_id: CardId,
+    catalog: &HandCardCatalog,
+    economy: &PlayerEconomyView,
+) -> bool {
+    let Some(card) = catalog.cards.get(&card_id) else {
+        return true;
+    };
+    if card.card_type != CardType::Minion {
+        return true;
+    }
+    let available = economy.current_mana.saturating_add(economy.reserve_mana);
+    available >= card.cost
+}
+
+/// Sync the idle playable-affordance overlays. Read-only over
+/// [`CurrentClientPhase`], [`HandUiMode`], [`ActivePlacementDrag`],
+/// [`PendingPlacements`], [`PlayerEconomyView`], [`HandCardCatalog`].
+/// ADR-002 + ADR-012 binding preserved.
+pub fn sync_hand_idle_playable_affordance_system(
+    phase: Res<CurrentClientPhase>,
+    mode: Res<HandUiMode>,
+    active_drag: Res<ActivePlacementDrag>,
+    pending_placements: Res<PendingPlacements>,
+    economy: Res<PlayerEconomyView>,
+    catalog: Res<HandCardCatalog>,
+    slots: Query<(Entity, &FanSlotIndex, Option<&HandSlotCard>)>,
+    mut playable_overlays: Query<
+        (&ChildOf, &mut Visibility),
+        With<FanSlotPlayableAffordanceOverlay>,
+    >,
+    mut unaffordable_overlays: Query<
+        (&ChildOf, &mut Visibility),
+        (
+            With<FanSlotPlayableAffordanceUnaffordableOverlay>,
+            Without<FanSlotPlayableAffordanceOverlay>,
+        ),
+    >,
+    mut commands: Commands,
+) {
+    let phase_ok = phase.phase == RoundPhase::Placement;
+    let mode_ok = matches!(*mode, HandUiMode::Passive | HandUiMode::Staging);
+    let drag_inactive = !active_drag.is_active();
+    let idle_active = phase_ok && mode_ok && drag_inactive;
+
+    let staged_ids: Vec<CardId> = pending_placements
+        .placements
+        .iter()
+        .map(|p| p.card_id)
+        .collect();
+
+    let mut slot_states: std::collections::HashMap<Entity, FanSlotPlayableAffordanceActive> =
+        std::collections::HashMap::new();
+
+    if idle_active {
+        for (slot_entity, _slot_index, slot_card) in slots.iter() {
+            let Some(card) = slot_card else {
+                continue;
+            };
+            if staged_ids.contains(&card.0) {
+                continue;
+            }
+            let state = if slot_card_is_affordable(card.0, &catalog, &economy) {
+                FanSlotPlayableAffordanceActive::Playable
+            } else {
+                FanSlotPlayableAffordanceActive::Unaffordable
+            };
+            slot_states.insert(slot_entity, state);
+        }
+    }
+
+    for (child_of, mut visibility) in &mut playable_overlays {
+        let parent = child_of.parent();
+        *visibility = if matches!(
+            slot_states.get(&parent),
+            Some(FanSlotPlayableAffordanceActive::Playable),
+        ) {
+            Visibility::Visible
+        } else {
+            Visibility::Hidden
+        };
+    }
+
+    for (child_of, mut visibility) in &mut unaffordable_overlays {
+        let parent = child_of.parent();
+        *visibility = if matches!(
+            slot_states.get(&parent),
+            Some(FanSlotPlayableAffordanceActive::Unaffordable),
+        ) {
+            Visibility::Visible
+        } else {
+            Visibility::Hidden
+        };
+    }
+
+    for (slot_entity, _, _) in slots.iter() {
+        match slot_states.get(&slot_entity) {
+            Some(state) => {
+                commands.entity(slot_entity).insert(*state);
+            }
+            None => {
+                commands
+                    .entity(slot_entity)
+                    .remove::<FanSlotPlayableAffordanceActive>();
+            }
+        }
+    }
 }
 
 fn despawn_hand_ui(mut commands: Commands, entities: Option<Res<HandUiEntities>>) {
