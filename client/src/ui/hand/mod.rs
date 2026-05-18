@@ -16,8 +16,8 @@ use shared::protocol::{
 use shared::session::PlayerId;
 
 use crate::asset_wiring::{
-    default_client_card_catalog, insert_placeholder_assets, resolve_card_display_art,
-    CardDisplayArtAsset, CardDisplayArtFallback, PlaceholderAssets,
+    apply_card_display_art, clear_card_display_art, default_client_card_catalog,
+    insert_placeholder_assets, CardDisplayArtFallback, PlaceholderAssets,
 };
 use crate::card_animations::{
     cancel_tween_anim_in_place, make_tween_anim, replace_tweenable, HandCard, HandDragSprite,
@@ -4567,35 +4567,6 @@ fn clear_grid_slot(commands: &mut Commands, entity: Entity) {
         PendingPurchaseTimer,
     )>();
     clear_card_display_art(commands, entity);
-}
-
-fn apply_card_display_art(
-    commands: &mut Commands,
-    entity: Entity,
-    card: Option<&shared::card::CardData>,
-    asset_server: Option<&AssetServer>,
-) {
-    match resolve_card_display_art(card) {
-        Ok(path) => {
-            let mut entity_commands = commands.entity(entity);
-            entity_commands.insert(CardDisplayArtAsset { path });
-            entity_commands.remove::<CardDisplayArtFallback>();
-            if let Some(asset_server) = asset_server {
-                entity_commands.insert(ImageNode::new(asset_server.load(path)));
-            }
-        }
-        Err(reason) => {
-            let mut entity_commands = commands.entity(entity);
-            entity_commands.insert(CardDisplayArtFallback { reason });
-            entity_commands.remove::<(CardDisplayArtAsset, ImageNode)>();
-        }
-    }
-}
-
-fn clear_card_display_art(commands: &mut Commands, entity: Entity) {
-    commands
-        .entity(entity)
-        .remove::<(CardDisplayArtAsset, CardDisplayArtFallback, ImageNode)>();
 }
 
 fn hide_acquired_grid_slot(

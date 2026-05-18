@@ -169,7 +169,7 @@ fn sau_asset_loop_shop_slots_resolve_display_art_or_text_fallback() {
     assert_eq!(
         app.world().get::<CardDisplayArtAsset>(slots[0]),
         Some(&CardDisplayArtAsset {
-            path: "art/cards/display/card_iop_knight_001_art_display.png"
+            path: "art/cards/display/card_iop_knight_001_art_display.png".to_string()
         })
     );
     assert_eq!(

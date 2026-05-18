@@ -9,9 +9,8 @@ use shared::protocol::{
 use shared::session::PlayerId;
 
 use crate::asset_wiring::{
-    bid_button_asset, default_client_card_catalog, resolve_card_display_art, BidButtonChromeState,
-    CardDisplayArtAsset, CardDisplayArtFallback, SHOP_PANEL_CHROME_ASSET,
-    SHOP_SLOT_WELL_IDLE_ASSET,
+    apply_card_display_art, bid_button_asset, clear_card_display_art, default_client_card_catalog,
+    BidButtonChromeState, SHOP_PANEL_CHROME_ASSET, SHOP_SLOT_WELL_IDLE_ASSET,
 };
 use crate::card_animations::{
     AuctionPanelTransitionRequested, CardAcquiredAnimReady, SettlementOverlayRequested,
@@ -6083,35 +6082,6 @@ fn apply_shop_footer_slot(
         .entity(entity)
         .insert((ShopFooterSlotCard(card_id), ShopFooterSlotState::Locked));
     apply_card_display_art(commands, entity, card, asset_server);
-}
-
-fn apply_card_display_art(
-    commands: &mut Commands,
-    entity: Entity,
-    card: Option<&shared::card::CardData>,
-    asset_server: Option<&AssetServer>,
-) {
-    match resolve_card_display_art(card) {
-        Ok(path) => {
-            let mut entity_commands = commands.entity(entity);
-            entity_commands.insert(CardDisplayArtAsset { path });
-            entity_commands.remove::<CardDisplayArtFallback>();
-            if let Some(asset_server) = asset_server {
-                entity_commands.insert(ImageNode::new(asset_server.load(path)));
-            }
-        }
-        Err(reason) => {
-            let mut entity_commands = commands.entity(entity);
-            entity_commands.insert(CardDisplayArtFallback { reason });
-            entity_commands.remove::<(CardDisplayArtAsset, ImageNode)>();
-        }
-    }
-}
-
-fn clear_card_display_art(commands: &mut Commands, entity: Entity) {
-    commands
-        .entity(entity)
-        .remove::<(CardDisplayArtAsset, CardDisplayArtFallback, ImageNode)>();
 }
 
 fn mark_confirmed_purchase(
