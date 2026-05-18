@@ -389,6 +389,7 @@ fn test_duplicate_submission_keeps_first_final_batch() {
         &mut app,
         PlacementSubmissionReceived {
             player: player(1),
+            peer_id: None,
             placements: vec![first.clone()],
         },
     );
@@ -398,6 +399,7 @@ fn test_duplicate_submission_keeps_first_final_batch() {
         &mut app,
         PlacementSubmissionReceived {
             player: player(1),
+            peer_id: None,
             placements: vec![second],
         },
     );

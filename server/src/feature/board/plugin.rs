@@ -5,9 +5,10 @@ use crate::core::rsm::advance_phase;
 use crate::core::session::SessionConfig;
 use crate::feature::board::{
     apply_attract_displacements, apply_change_lane_displacements, apply_repel_displacements,
-    close_placement_phase, handle_placement_submission, placement_buffer_open, update_spawn_range,
-    AttractDisplacement, BoardConfig, BoardGrid, BoardOccupancy, ChangeLaneDisplacement,
-    FakeObjectiveDestroyed, PendingPlacements, PlacementCommitTrace, PlacementCommitted,
+    close_placement_phase, handle_placement_submission, placement_buffer_open,
+    send_placement_rejection_dispatches, update_spawn_range, AttractDisplacement, BoardConfig,
+    BoardGrid, BoardOccupancy, ChangeLaneDisplacement, FakeObjectiveDestroyed, PendingPlacements,
+    PlacementCommitTrace, PlacementCommitted, PlacementRejectionDispatch,
     PlacementSubmissionReceived, PrismState, RepelDisplacement, SpawnRangeState, TrapTrigger,
     UnitAtObjective,
 };
@@ -35,6 +36,7 @@ impl Plugin for BoardPlugin {
             .init_resource::<PlacementCommitTrace>()
             .insert_resource(BoardConfig::default())
             .add_message::<PlacementSubmissionReceived>()
+            .add_message::<PlacementRejectionDispatch>()
             .add_message::<PlacementCommitted>()
             .add_message::<FakeObjectiveDestroyed>()
             .add_message::<RepelDisplacement>()
@@ -62,6 +64,16 @@ impl Plugin for BoardPlugin {
             .add_systems(
                 Update,
                 handle_placement_submission.in_set(BoardSystemSet::PlacementSubmission),
+            )
+            // PROMPT 1244 — every rejection logged by handle_placement_submission
+            // must also produce a unicast S2CPlacementRejected back to the
+            // submitter. Runs in the same set so the dispatch lands on the same
+            // tick as the rejection log.
+            .add_systems(
+                Update,
+                send_placement_rejection_dispatches
+                    .after(handle_placement_submission)
+                    .in_set(BoardSystemSet::PlacementSubmission),
             )
             .add_systems(
                 Update,

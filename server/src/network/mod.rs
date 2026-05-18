@@ -225,6 +225,7 @@ pub fn resolve_submit_placement_sender(
         .copied()
         .map(|player| PlacementSubmissionReceived {
             player,
+            peer_id: Some(peer_id),
             placements: msg.placements,
         })
 }
