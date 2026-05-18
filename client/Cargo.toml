@@ -512,6 +512,15 @@ path = "../tests/integration/playable_client/lobby_confirm_button_reachable_test
 name = "playable_client_lobby_confirm_button_stateful_style_test"
 path = "../tests/integration/playable_client/lobby_confirm_button_stateful_style_test.rs"
 
+# PROMPT 1138 — S18-UI-LOBBY-CLASS-PORTRAIT-CONFIRM-REPAIR. Regression
+# guards for the four AUDIT-1129 lobby repairs: class-distinct emblem
+# overlay on every picker cell (UI-1129-07), slot-panel inline text
+# labels (UI-1129-08), locked-class confirmed-green palette (AC3), and
+# the pipe-free grouped status banner (UI-1129-13).
+[[test]]
+name = "playable_client_lobby_class_portrait_confirm_repair_test"
+path = "../tests/integration/playable_client/lobby_class_portrait_confirm_repair_test.rs"
+
 [[test]]
 name = "playable_client_phase_changed_idempotency_test"
 path = "../tests/integration/playable_client/phase_changed_idempotency_test.rs"
