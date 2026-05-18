@@ -212,6 +212,18 @@ path = "../tests/integration/hand-ui/hand_fan_root_b0004_hierarchy_test.rs"
 name = "hand_ui_placement_perspective_snapshot_test"
 path = "../tests/integration/hand-ui/placement_perspective_snapshot_test.rs"
 
+# PROMPT 1149 — Client placement critical repair (NEW-1130-01 + latent
+# NEW-1130-02). Pins `apply_placement_board_view_from_team_map_system`
+# and `apply_placement_board_view_spawn_range_system` so the click-to-stage
+# default tracks the local player's perspective even when no
+# `S2CGameSnapshot` is ever sent (the friend-game normal-flow case
+# captured in 2026-05-18 run-1 user-test logs), and so a local-player
+# spawn-range expansion (after a fake objective destruction) reaches
+# `PlacementBoardView.spawn_range_cells`.
+[[test]]
+name = "hand_ui_placement_board_view_team_map_bootstrap_test"
+path = "../tests/integration/hand-ui/placement_board_view_team_map_bootstrap_test.rs"
+
 [[test]]
 name = "hud_phase_label_round_counter_test"
 path = "../tests/unit/hud/phase_label_round_counter_test.rs"
