@@ -768,6 +768,10 @@ name = "board_rendering_resolution_anim_queue_test"
 path = "../tests/integration/board_rendering/resolution_anim_queue_test.rs"
 
 [[test]]
+name = "board_rendering_resolution_combat_feedback_test"
+path = "../tests/integration/board_rendering/resolution_combat_feedback_test.rs"
+
+[[test]]
 name = "asset_wiring_foundation_test"
 path = "../tests/integration/presentation/asset_wiring_foundation_test.rs"
 

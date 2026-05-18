@@ -2,6 +2,7 @@ use std::{collections::HashMap, time::Duration};
 
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
+use bevy::text::LineHeight;
 use bevy_tweening::TweenAnim;
 use lightyear::prelude::{MessageReceiver, MessageSender};
 use shared::card::{CardId, ClassId};
@@ -16,9 +17,10 @@ use shared::session::PlayerId;
 use super::PresentationSet;
 use crate::asset_wiring::{PlaceholderAssets, BOARD_CHROME_ASSET};
 use crate::card_animations::{
-    cancel_tween_anim_in_place, AnimGroup, AnimQueue, AnimQueueEvent, AnimationTimingConfig,
-    BoardRebuildRequested, PendingObjectiveDestroyedEvents, PendingPhaseChange,
-    PlacementRevealAnimReady, PlacementRevealEntry, StagedObjectiveRevealQueue,
+    cancel_tween_anim_in_place, damage_number_jitter, AnimGroup, AnimQueue, AnimQueueEvent,
+    AnimationTimingConfig, BoardRebuildRequested, DamageNumberSpawnRequested,
+    PendingObjectiveDestroyedEvents, PendingPhaseChange, PlacementRevealAnimReady,
+    PlacementRevealEntry, StagedObjectiveRevealQueue,
 };
 use crate::state::{
     ClientGameSnapshotMessage, ClientIdempotencyState, ClientSessionIdentity, ClientState,
@@ -136,6 +138,24 @@ pub struct BoardSnapshotEntity;
 pub struct BoardUnit {
     pub unit_id: EntityId,
 }
+
+// PROMPT 1231: minimal kill/removal feedback marker. Spawned by
+// `emit_resolution_combat_feedback` when a `UnitDied` / `UnitRemoved`
+// resolution event is consumed, and despawned either by TTL
+// (`despawn_resolution_kill_markers_system`) or by a board rebuild
+// (`clear_resolution_kill_markers_on_rebuild_system`) so the marker never
+// outlives the Resolution phase.
+#[derive(Component, Debug)]
+pub struct ResolutionKillMarker {
+    pub timer: Timer,
+}
+
+pub const RESOLUTION_KILL_MARKER_TTL_MS: u64 = 600;
+const RESOLUTION_KILL_MARKER_GLYPH: &str = "X";
+const RESOLUTION_KILL_MARKER_FONT_SIZE: f32 = 28.0;
+const RESOLUTION_KILL_MARKER_LINE_HEIGHT: f32 = 1.0;
+const RESOLUTION_KILL_MARKER_COLOR: Color = Color::srgba(1.0, 0.95, 0.35, 1.0);
+const RESOLUTION_KILL_MARKER_Z_OFFSET: f32 = 0.5;
 
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct BoardUnitOwner(pub PlayerId);
@@ -948,6 +968,18 @@ impl Plugin for BoardRenderingPlugin {
                         .chain()
                         .in_set(BoardRenderSet::ScheduleTweens)
                         .before(crate::card_animations::resolution_executing_system),
+                    // PROMPT 1231 — minimal resolution combat feedback.
+                    // `clear_resolution_kill_markers_on_rebuild_system`
+                    // runs in ReadMessages so it observes
+                    // `BoardRebuildRequested` produced by the same set
+                    // (snapshot rebuild). `despawn_*` runs in
+                    // ScheduleTweens so TTL ticks each frame.
+                    clear_resolution_kill_markers_on_rebuild_system
+                        .in_set(BoardRenderSet::ReadMessages)
+                        .after(rebuild_board_from_snapshot_system),
+                    despawn_resolution_kill_markers_system
+                        .in_set(BoardRenderSet::ScheduleTweens)
+                        .after(consume_pending_resolution_script_system),
                     update_hp_bars_system.in_set(BoardRenderSet::UpdateHpBars),
                     update_status_icons_system.in_set(BoardRenderSet::UpdateHpBars),
                 ),
@@ -1230,6 +1262,7 @@ pub fn drain_resolution_event_system(
 
 #[allow(clippy::too_many_arguments)]
 pub fn consume_pending_resolution_script_system(
+    mut commands: Commands,
     mut pending_script: ResMut<PendingResolutionScript>,
     collect_state: Res<PlacementRevealCollectState>,
     mut reveal_wait: ResMut<ResolutionRevealWait>,
@@ -1239,8 +1272,10 @@ pub fn consume_pending_resolution_script_system(
     local_player: Res<BoardLocalPlayer>,
     player_team_map: Res<PlayerTeamMap>,
     mut board_cells: Query<(&LaneCell, &mut SpawnHighlightState, &mut Sprite), With<BoardCellNode>>,
+    board_units: Query<(Entity, &BoardUnit, &Transform), Without<BoardCellNode>>,
     mut recovery_writer: MessageWriter<SnapshotRecoveryRequested>,
     mut local_spawn_range_writer: MessageWriter<LocalPlayerSpawnRangeChanged>,
+    mut damage_writer: MessageWriter<DamageNumberSpawnRequested>,
 ) {
     if !pending_resolution_script_ready_for_playback(
         &pending_script,
@@ -1277,6 +1312,17 @@ pub fn consume_pending_resolution_script_system(
                 local_player.player_id,
                 &mut local_spawn_range_writer,
             );
+            // PROMPT 1231 — minimal combat-resolution feedback: emit
+            // damage numbers and spawn kill markers from the script's
+            // CombatDamage / UnitDied / UnitRemoved events. Scoped to
+            // Resolution because the script only enters playback here
+            // and the markers self-despawn (TTL + BoardRebuildRequested).
+            emit_resolution_combat_feedback(
+                &script,
+                &board_units,
+                &mut commands,
+                &mut damage_writer,
+            );
             anim_queue.load_groups(groups);
             reveal_wait.clear();
             *render_state = BoardRenderState::ResolutionExecuting;
@@ -1289,6 +1335,124 @@ pub fn consume_pending_resolution_script_system(
                 &mut recovery_writer,
             );
         }
+    }
+}
+
+/// PROMPT 1231 — Walk the consumed resolution script and emit minimal
+/// visible feedback for damage / kill outcomes. CombatDamage events fire
+/// `DamageNumberSpawnRequested` (consumed by the existing
+/// `spawn_damage_numbers` system); UnitDied / UnitRemoved events spawn a
+/// transient `ResolutionKillMarker` text entity at the unit's last known
+/// world position. Markers self-clean via TTL or board rebuild so the
+/// feedback never persists into later phases.
+pub fn emit_resolution_combat_feedback(
+    script: &S2CResolutionEvent,
+    board_units: &Query<(Entity, &BoardUnit, &Transform), Without<BoardCellNode>>,
+    commands: &mut Commands,
+    damage_writer: &mut MessageWriter<DamageNumberSpawnRequested>,
+) {
+    for tagged in &script.events {
+        match &tagged.event {
+            ResolutionEvent::CombatDamage {
+                defender_id,
+                damage_amount,
+                ..
+            } => {
+                if *damage_amount == 0 {
+                    continue;
+                }
+                let Some((target_entity, _, _)) =
+                    find_board_unit_by_id(*defender_id, board_units)
+                else {
+                    continue;
+                };
+                damage_writer.write(DamageNumberSpawnRequested {
+                    target: target_entity,
+                    damage_value: u32::from(*damage_amount),
+                    event_id: tagged.trigger_index,
+                });
+            }
+            ResolutionEvent::UnitDied { unit_id, .. }
+            | ResolutionEvent::UnitRemoved { unit_id, .. } => {
+                let Some((_, _, transform)) = find_board_unit_by_id(*unit_id, board_units) else {
+                    continue;
+                };
+                spawn_resolution_kill_marker(
+                    commands,
+                    transform.translation,
+                    tagged.trigger_index,
+                );
+            }
+            _ => {}
+        }
+    }
+}
+
+fn find_board_unit_by_id<'a>(
+    unit_id: EntityId,
+    board_units: &'a Query<(Entity, &BoardUnit, &Transform), Without<BoardCellNode>>,
+) -> Option<(Entity, &'a BoardUnit, &'a Transform)> {
+    board_units
+        .iter()
+        .find(|(_, unit, _)| unit.unit_id == unit_id)
+}
+
+fn spawn_resolution_kill_marker(commands: &mut Commands, position: Vec3, event_id: u32) {
+    let jitter = damage_number_jitter(event_id);
+    let origin = Vec3::new(
+        position.x + jitter.x,
+        position.y + jitter.y,
+        position.z + RESOLUTION_KILL_MARKER_Z_OFFSET,
+    );
+
+    commands.spawn((
+        BoardRenderingEntity,
+        ResolutionKillMarker {
+            timer: Timer::new(
+                Duration::from_millis(RESOLUTION_KILL_MARKER_TTL_MS),
+                TimerMode::Once,
+            ),
+        },
+        Text2d::new(RESOLUTION_KILL_MARKER_GLYPH),
+        TextFont {
+            font_size: RESOLUTION_KILL_MARKER_FONT_SIZE,
+            ..default()
+        },
+        TextColor(RESOLUTION_KILL_MARKER_COLOR),
+        LineHeight::RelativeToFont(RESOLUTION_KILL_MARKER_LINE_HEIGHT),
+        Transform::from_translation(origin),
+    ));
+}
+
+/// PROMPT 1231 — Tick kill-marker TTLs and despawn expired markers so
+/// they never bleed into a later phase.
+pub fn despawn_resolution_kill_markers_system(
+    mut commands: Commands,
+    time: Res<Time<Virtual>>,
+    mut markers: Query<(Entity, &mut ResolutionKillMarker)>,
+) {
+    let delta = time.delta();
+    for (entity, mut marker) in &mut markers {
+        marker.timer.tick(delta);
+        if marker.timer.is_finished() {
+            commands.entity(entity).despawn();
+        }
+    }
+}
+
+/// PROMPT 1231 — Authoritative-snapshot rebuilds emit
+/// `BoardRebuildRequested`; clear any in-flight kill markers so the
+/// feedback layer is consistent with the rebuilt board.
+pub fn clear_resolution_kill_markers_on_rebuild_system(
+    mut commands: Commands,
+    mut rebuilds: MessageReader<BoardRebuildRequested>,
+    markers: Query<Entity, With<ResolutionKillMarker>>,
+) {
+    if rebuilds.read().next().is_none() {
+        return;
+    }
+    for entity in &markers {
+        commands.entity(entity).despawn();
     }
 }
 
