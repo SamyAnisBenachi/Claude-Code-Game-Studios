@@ -6,7 +6,7 @@ use shared::protocol::{
 };
 
 use crate::state::{CurrentClientPhase, SessionSettingsView};
-use crate::ui::design_tokens::{typography, z_layers};
+use crate::ui::design_tokens::{spacing, typography, z_layers};
 
 pub const ACCESSIBILITY_PREFERENCES_STORAGE_KEY: &str =
     "lanes_and_lies.accessibility_preferences.v1";
@@ -579,18 +579,40 @@ pub fn spawn_settings_shell(
         ))
         .id();
 
+    let header_row = commands
+        .spawn((
+            Name::new("Settings Header Row"),
+            settings_header_row_node(),
+            ChildOf(panel),
+        ))
+        .id();
     let back_close_button = spawn_text_control(
         &mut commands,
-        panel,
+        header_row,
         "Settings Back Close",
         "Back / Close",
         SettingsBackCloseButton,
         SettingsControlAction::Close,
         back_close_node(),
     );
+
+    let body_row = commands
+        .spawn((
+            Name::new("Settings Body Row"),
+            settings_body_row_node(),
+            ChildOf(panel),
+        ))
+        .id();
+    let category_column = commands
+        .spawn((
+            Name::new("Settings Category Column"),
+            settings_category_column_node(),
+            ChildOf(body_row),
+        ))
+        .id();
     let category_accessibility = spawn_text_control(
         &mut commands,
-        panel,
+        category_column,
         "Settings Accessibility Category",
         "Accessibility",
         SettingsCategoryNav,
@@ -606,7 +628,7 @@ pub fn spawn_settings_shell(
             BackgroundColor(Color::srgb(0.105, 0.115, 0.135)),
             BorderColor::all(Color::srgb(0.28, 0.32, 0.38)),
             Visibility::Hidden,
-            ChildOf(panel),
+            ChildOf(body_row),
         ))
         .id();
 
@@ -617,7 +639,7 @@ pub fn spawn_settings_shell(
         "",
         SettingsColorblindSelector,
         SettingsControlAction::CycleColorblindMode,
-        control_node(0),
+        control_node(),
     );
     let reduced_motion_toggle = spawn_text_control(
         &mut commands,
@@ -626,18 +648,25 @@ pub fn spawn_settings_shell(
         "",
         SettingsReducedMotionToggle,
         SettingsControlAction::ToggleReducedMotion,
-        control_node(1),
+        control_node(),
     );
+    let timer_options_row = commands
+        .spawn((
+            Name::new("Settings Timer Options Row"),
+            settings_timer_options_row_node(),
+            ChildOf(content_pane),
+        ))
+        .id();
     let timer_options = std::array::from_fn(|index| {
         let multiplier = PlacementTimerMultiplier::MULTIPLAYER_STANDARD_VALUES[index];
         let entity = spawn_text_control(
             &mut commands,
-            content_pane,
+            timer_options_row,
             "Settings Placement Timer Option",
             placement_timer_label(multiplier),
             SettingsTimerSelector,
             SettingsControlAction::SelectPlacementTimer(multiplier),
-            timer_option_node(index),
+            timer_option_node(),
         );
         commands
             .entity(entity)
@@ -665,7 +694,7 @@ pub fn spawn_settings_shell(
         "",
         SettingsMenuUiScaleControl,
         SettingsControlAction::CycleMenuUiScale,
-        control_node(2),
+        control_node(),
     );
     let hud_scale_control = spawn_text_control(
         &mut commands,
@@ -674,8 +703,16 @@ pub fn spawn_settings_shell(
         "",
         SettingsHudUiScaleControl,
         SettingsControlAction::CycleHudUiScale,
-        control_node(3),
+        control_node(),
     );
+
+    let footer_row = commands
+        .spawn((
+            Name::new("Settings Footer Row"),
+            settings_footer_row_node(),
+            ChildOf(panel),
+        ))
+        .id();
     let status_footer = commands
         .spawn((
             Name::new("Settings Status Footer"),
@@ -685,18 +722,21 @@ pub fn spawn_settings_shell(
             TextColor(Color::srgb(0.80, 0.86, 0.92)),
             status_footer_node(),
             Visibility::Hidden,
-            ChildOf(panel),
+            ChildOf(footer_row),
         ))
         .id();
     let footer_close_button = spawn_text_control(
         &mut commands,
-        panel,
+        footer_row,
         "Settings Footer Close",
         "Close",
         SettingsFooterAction,
         SettingsControlAction::Close,
         footer_close_node(),
     );
+    // Silence unused-variable warning for the category column wrapper;
+    // it exists only as a flex layout parent and has no marker query.
+    let _ = category_column;
 
     commands.insert_resource(SettingsEntities {
         root,
@@ -916,8 +956,17 @@ pub fn sync_settings_shell_visibility_system(
 
     if let Ok((mut node, mut applied)) = panels.get_mut(entities.panel) {
         let factor = menu_ui_scale_factor(preferences.menu_ui_scale_percent);
+        // Width scales with UI-scale; max_width clamp keeps the panel inside
+        // the viewport at 150% on narrow displays. Height is content-driven
+        // inside max_height: Percent(92), and the panel scrolls vertically
+        // (Overflow::scroll_y) so 1280x720 / 1366x768 never clip controls
+        // nor leave dead zones at 75% scale.
         node.width = Val::Px(SETTINGS_PANEL_BASE_WIDTH_PX * factor);
-        node.height = Val::Px(SETTINGS_PANEL_BASE_HEIGHT_PX * factor);
+        node.min_width = Val::Px(SETTINGS_PANEL_MIN_WIDTH_PX);
+        node.max_width = Val::Percent(92.0);
+        node.height = Val::Auto;
+        node.min_height = Val::Auto;
+        node.max_height = Val::Percent(92.0);
         applied.percent = preferences.menu_ui_scale_percent;
         applied.factor = factor;
     }
@@ -1155,118 +1204,189 @@ fn settings_text_font(font_size: f32) -> TextFont {
     }
 }
 
+// Floor on panel width so 75% UI scale still has room for the
+// category column (170 px) + content pane minimum + side padding.
+pub const SETTINGS_PANEL_MIN_WIDTH_PX: f32 = 540.0;
+
 fn settings_panel_node(menu_scale_percent: u8) -> Node {
     let factor = menu_ui_scale_factor(menu_scale_percent);
     Node {
+        display: Display::Flex,
+        flex_direction: FlexDirection::Column,
         width: Val::Px(SETTINGS_PANEL_BASE_WIDTH_PX * factor),
-        height: Val::Px(SETTINGS_PANEL_BASE_HEIGHT_PX * factor),
-        min_width: Val::Px(SETTINGS_PANEL_BASE_WIDTH_PX * factor),
-        min_height: Val::Px(SETTINGS_PANEL_BASE_HEIGHT_PX * factor),
+        min_width: Val::Px(SETTINGS_PANEL_MIN_WIDTH_PX),
+        max_width: Val::Percent(92.0),
+        max_height: Val::Percent(92.0),
+        padding: UiRect::all(Val::Px(spacing::SPACING_LG)),
+        row_gap: Val::Px(spacing::SPACING_MD),
+        overflow: Overflow::scroll_y(),
         border: UiRect::all(Val::Px(2.0)),
+        ..default()
+    }
+}
+
+fn settings_header_row_node() -> Node {
+    Node {
+        display: Display::Flex,
+        flex_direction: FlexDirection::Row,
+        align_items: AlignItems::Center,
+        justify_content: JustifyContent::FlexStart,
+        width: Val::Percent(100.0),
+        column_gap: Val::Px(spacing::SPACING_MD),
+        flex_shrink: 0.0,
+        ..default()
+    }
+}
+
+fn settings_body_row_node() -> Node {
+    Node {
+        display: Display::Flex,
+        flex_direction: FlexDirection::Row,
+        align_items: AlignItems::Stretch,
+        width: Val::Percent(100.0),
+        column_gap: Val::Px(spacing::SPACING_MD),
+        flex_grow: 1.0,
+        min_height: Val::Px(0.0),
+        ..default()
+    }
+}
+
+fn settings_category_column_node() -> Node {
+    Node {
+        display: Display::Flex,
+        flex_direction: FlexDirection::Column,
+        align_items: AlignItems::Stretch,
+        width: Val::Px(170.0),
+        flex_shrink: 0.0,
+        row_gap: Val::Px(spacing::SPACING_SM),
+        ..default()
+    }
+}
+
+fn settings_timer_options_row_node() -> Node {
+    Node {
+        display: Display::Flex,
+        flex_direction: FlexDirection::Row,
+        flex_wrap: FlexWrap::Wrap,
+        width: Val::Percent(100.0),
+        column_gap: Val::Px(spacing::SPACING_SM),
+        row_gap: Val::Px(spacing::SPACING_SM),
+        flex_shrink: 0.0,
+        ..default()
+    }
+}
+
+fn settings_footer_row_node() -> Node {
+    Node {
+        display: Display::Flex,
+        flex_direction: FlexDirection::Row,
+        align_items: AlignItems::Center,
+        justify_content: JustifyContent::SpaceBetween,
+        width: Val::Percent(100.0),
+        column_gap: Val::Px(spacing::SPACING_MD),
+        flex_shrink: 0.0,
         ..default()
     }
 }
 
 fn back_close_node() -> Node {
     Node {
-        position_type: PositionType::Absolute,
-        left: Val::Px(24.0),
-        top: Val::Px(18.0),
+        display: Display::Flex,
         width: Val::Px(136.0),
         height: Val::Px(36.0),
         border: UiRect::all(Val::Px(1.0)),
         align_items: AlignItems::Center,
         justify_content: JustifyContent::Center,
+        flex_shrink: 0.0,
         ..default()
     }
 }
 
 fn category_node() -> Node {
     Node {
-        position_type: PositionType::Absolute,
-        left: Val::Px(24.0),
-        top: Val::Px(86.0),
-        width: Val::Px(170.0),
+        display: Display::Flex,
+        width: Val::Percent(100.0),
         height: Val::Px(40.0),
         border: UiRect::all(Val::Px(1.0)),
         align_items: AlignItems::Center,
         justify_content: JustifyContent::Center,
+        flex_shrink: 0.0,
         ..default()
     }
 }
 
 fn content_pane_node() -> Node {
     Node {
-        position_type: PositionType::Absolute,
-        left: Val::Px(220.0),
-        right: Val::Px(24.0),
-        top: Val::Px(76.0),
-        bottom: Val::Px(74.0),
+        display: Display::Flex,
+        flex_direction: FlexDirection::Column,
+        flex_grow: 1.0,
+        align_items: AlignItems::Stretch,
+        min_width: Val::Px(0.0),
+        min_height: Val::Px(0.0),
+        padding: UiRect::all(Val::Px(spacing::SPACING_MD)),
+        row_gap: Val::Px(spacing::SPACING_SM),
+        overflow: Overflow::scroll_y(),
         border: UiRect::all(Val::Px(1.0)),
         ..default()
     }
 }
 
-fn control_node(index: usize) -> Node {
+fn control_node() -> Node {
     Node {
-        position_type: PositionType::Absolute,
-        left: Val::Px(24.0),
-        right: Val::Px(24.0),
-        top: Val::Px(24.0 + index as f32 * 58.0),
+        display: Display::Flex,
+        width: Val::Percent(100.0),
         height: Val::Px(38.0),
         border: UiRect::all(Val::Px(1.0)),
         align_items: AlignItems::Center,
         justify_content: JustifyContent::Center,
+        flex_shrink: 0.0,
         ..default()
     }
 }
 
-fn timer_option_node(index: usize) -> Node {
+fn timer_option_node() -> Node {
     Node {
-        position_type: PositionType::Absolute,
-        left: Val::Px(24.0 + index as f32 * 86.0),
-        top: Val::Px(138.0),
+        display: Display::Flex,
         width: Val::Px(72.0),
         height: Val::Px(34.0),
         border: UiRect::all(Val::Px(1.0)),
         align_items: AlignItems::Center,
         justify_content: JustifyContent::Center,
+        flex_shrink: 0.0,
         ..default()
     }
 }
 
 fn effective_timer_node() -> Node {
     Node {
-        position_type: PositionType::Absolute,
-        left: Val::Px(380.0),
-        right: Val::Px(24.0),
-        top: Val::Px(142.0),
+        display: Display::Flex,
+        width: Val::Percent(100.0),
         height: Val::Px(28.0),
+        align_items: AlignItems::Center,
+        flex_shrink: 0.0,
         ..default()
     }
 }
 
 fn status_footer_node() -> Node {
     Node {
-        position_type: PositionType::Absolute,
-        left: Val::Px(24.0),
-        right: Val::Px(180.0),
-        bottom: Val::Px(20.0),
-        height: Val::Px(30.0),
+        display: Display::Flex,
+        flex_grow: 1.0,
+        min_width: Val::Px(0.0),
+        align_items: AlignItems::Center,
         ..default()
     }
 }
 
 fn footer_close_node() -> Node {
     Node {
-        position_type: PositionType::Absolute,
-        right: Val::Px(24.0),
-        bottom: Val::Px(18.0),
+        display: Display::Flex,
         width: Val::Px(124.0),
         height: Val::Px(36.0),
         border: UiRect::all(Val::Px(1.0)),
         align_items: AlignItems::Center,
         justify_content: JustifyContent::Center,
+        flex_shrink: 0.0,
         ..default()
     }
 }
