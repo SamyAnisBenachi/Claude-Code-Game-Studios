@@ -296,6 +296,107 @@ fn prompt_1051_modal_footer_band_sits_strictly_below_keep_grid() {
     );
 }
 
+/// PROMPT 1080 AUDIT-1076-01: the keep-9 modal's internal entities
+/// (`draft_initial_modal_panel`, `draft_initial_modal_footer`, and the
+/// grid container) must spawn with `Visibility::Inherited` — never
+/// `Visibility::Visible` — so that when the `draft_offering_panel`
+/// parent is `Visibility::Hidden` (every non-DraftInitial phase), the
+/// modal body actually hides.
+///
+/// Run-7 of the May 17 friend-game captured a full-bleed ~850×340 px
+/// black slab covering the board in Placement / DraftShop /
+/// DraftAuction / Resolution. Root cause: Bevy 0.18's visibility
+/// propagation (`bevy_camera::visibility::propagate_recursive`)
+/// treats `Visibility::Visible` as unconditional — it overrides any
+/// ancestor `Hidden`. The modal panel had been spawned with
+/// `Visibility::Visible`, so it kept painting after DraftInitial
+/// closed.
+#[test]
+fn prompt_1080_draft_initial_modal_children_inherit_visibility() {
+    test_helpers::init_test_tracing();
+    let app = active_draft_app();
+    let entities = *app.world().resource::<ShopAuctionUiEntities>();
+
+    // The three entities that previously force-painted the modal must
+    // now defer to their parent's visibility. Keep this list aligned
+    // with `spawn_draft_initial_modal_panel`,
+    // `spawn_draft_initial_modal_footer`, and
+    // `spawn_draft_initial_grid_container`.
+    let modal_children = [
+        (
+            "draft_initial_modal_panel",
+            entities.draft_initial_modal_panel,
+        ),
+        (
+            "draft_initial_modal_footer",
+            entities.draft_initial_modal_footer,
+        ),
+        ("draft_initial_grid", entities.draft_initial_grid),
+    ];
+    for (name, entity) in modal_children {
+        assert_eq!(
+            app.world().get::<Visibility>(entity),
+            Some(&Visibility::Inherited),
+            "{name} must spawn with Visibility::Inherited so the modal \
+             hides with `draft_offering_panel`; Visibility::Visible would \
+             override the ancestor Hidden and paint a black slab into \
+             every non-DraftInitial phase (AUDIT-1076-01 / run-7 \
+             screenshots 000007, 000017, 000023, 000028, 000029)",
+        );
+    }
+}
+
+/// PROMPT 1080 AUDIT-1076-01: walk the full InSession phase sequence
+/// the friend-game exercised (DraftInitial → DraftShop → Placement →
+/// DraftAuction → Resolution → DraftInitial) and assert that, outside
+/// DraftInitial, the `draft_offering_panel` scrim root is `Hidden`.
+/// Combined with `prompt_1080_draft_initial_modal_children_inherit_visibility`,
+/// this proves the modal body cannot paint outside DraftInitial: the
+/// parent is Hidden and the children defer to the parent, so the
+/// effective rendered visibility is Hidden everywhere.
+#[test]
+fn prompt_1080_draft_offering_panel_hidden_outside_draft_initial() {
+    test_helpers::init_test_tracing();
+    let mut app = active_draft_app();
+    let entities = *app.world().resource::<ShopAuctionUiEntities>();
+
+    assert_eq!(
+        app.world().get::<Visibility>(entities.draft_offering_panel),
+        Some(&Visibility::Visible),
+        "draft_offering_panel must be Visible during DraftInitial so the \
+         keep-9 modal paints",
+    );
+
+    // Each subsequent phase the audit exercised must leave the
+    // draft_offering_panel scrim Hidden. The board must be visible
+    // beneath, so a forced-Visible scrim child would obscure gameplay.
+    let phases = [
+        RoundPhase::DraftShop,
+        RoundPhase::Placement,
+        RoundPhase::DraftAuction,
+        RoundPhase::Resolution,
+    ];
+    for phase in phases {
+        set_phase(&mut app, phase);
+        assert_eq!(
+            app.world().get::<Visibility>(entities.draft_offering_panel),
+            Some(&Visibility::Hidden),
+            "draft_offering_panel must be Hidden in {phase:?}; the modal \
+             scrim cannot persist across InSession phases",
+        );
+    }
+
+    // Returning to DraftInitial must show the modal again so a second
+    // draft round (rematch / new session) keeps working.
+    set_phase(&mut app, RoundPhase::DraftInitial);
+    send_offering(&mut app, card_ids(10, 9));
+    assert_eq!(
+        app.world().get::<Visibility>(entities.draft_offering_panel),
+        Some(&Visibility::Visible),
+        "draft_offering_panel must repaint on re-entering DraftInitial",
+    );
+}
+
 /// PROMPT 1051 AC: the modal must remain visible and usable at
 /// 1280×720 without introducing viewport overflow. Asserts the modal
 /// height + 2×padding fits inside the 720px viewport and inside the
