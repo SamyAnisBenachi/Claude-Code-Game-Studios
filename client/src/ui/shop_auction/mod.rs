@@ -679,11 +679,29 @@ impl ShopAuctionUiEntities {
 }
 
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+#[deprecated(
+    since = "S17-UI-QA-SNAPSHOT-MARKER-SPLIT-001",
+    note = "Universal shop/auction marker is too coarse for QA snapshot counts \
+            (SOURCE-1077-08: snapshots showed shop_auction_entities = 78 across \
+            every phase). Use per-sub-surface root markers via the existing \
+            ShopAuctionPanelRoot enum (DraftOffering / Shop / Auction / ShopFooter / \
+            Toast / SettlementOverlay) for visibility-aware counting. The deprecated \
+            marker stays on existing entities for one Sprint cycle so historical \
+            PROMPT 1022 / 1034 / 1036 snapshot comparisons still resolve."
+)]
 pub struct ShopAuctionUiEntity;
 
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ShopAuctionUiRoot;
 
+/// Per-sub-surface root marker for the shop/auction UI panels. Each variant
+/// is applied to exactly one panel-root entity by [`spawn_panel_root`].
+///
+/// S17-UI-QA-SNAPSHOT-MARKER-SPLIT-001 — this enum is the canonical
+/// per-sub-surface marker consumed by
+/// [`crate::presentation::qa_snapshot::UiCountQueries`] for visibility-aware
+/// counting (replaces the deprecated [`ShopAuctionUiEntity`] universal
+/// marker for that purpose).
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ShopAuctionPanelRoot {
     DraftOffering,

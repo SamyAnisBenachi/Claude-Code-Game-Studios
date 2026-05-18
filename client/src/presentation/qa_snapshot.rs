@@ -311,9 +311,23 @@ impl QASnapshotFeedbackState {
 }
 
 fn short_id(snapshot_id: &str) -> &str {
-    // ID format is `{counter:06}-{unix_millis}`; the counter prefix is
-    // the operator-relevant chunk.
-    snapshot_id.split('-').next().unwrap_or(snapshot_id)
+    // S17-UI-QA-SNAPSHOT-MARKER-SPLIT-001: format is now either
+    // `{session_id}-{counter:06}-{unix_millis}` (post-handshake) or
+    // `pre-session-{counter:06}-{unix_millis}`. The counter chunk is the
+    // operator-relevant disambiguator (the session_id / pre-session
+    // prefix only varies between clients, not between captures inside one
+    // client), so we surface the counter token rather than the leading
+    // prefix. Falls back to the full id when the format is unexpected.
+    let mut parts = snapshot_id.split('-');
+    if snapshot_id.starts_with(QA_SNAPSHOT_PRE_SESSION_PREFIX) {
+        // `pre-session-<counter>-<ms>` → skip the two literal-prefix tokens.
+        let _ = parts.next();
+        let _ = parts.next();
+    } else {
+        // `<session_id>-<counter>-<ms>` → skip the session_id token.
+        let _ = parts.next();
+    }
+    parts.next().unwrap_or(snapshot_id)
 }
 
 /// Serialised JSON shape written to disk on each snapshot. Public so tests
@@ -382,54 +396,321 @@ pub struct WindowInfo {
 }
 
 /// Counts of bevy_ui entities matching each named UI surface marker.
+///
 /// `None` means the corresponding plugin / resource was not present at
 /// snapshot time (a recorded warning, not a panic).
+///
+/// **S17-UI-QA-SNAPSHOT-MARKER-SPLIT-001** (SOURCE-1077-08 + SOURCE-1077-09):
+/// the legacy `hud_entities` / `hand_ui_entities` / `shop_auction_entities`
+/// / `*_overlay_roots` fields measure the *spawned-tree size* (universal
+/// markers, no visibility filter), which left every PROMPT 1022 / 1034 /
+/// 1036 capture reporting the same constants regardless of phase or
+/// overlay state. The new per-sub-surface `*_visible` fields measure the
+/// *currently-visible* sub-surface count (per-sub-surface marker + own
+/// `Visibility != Hidden` filter). Legacy fields are preserved as
+/// `#[deprecated]` so historical snapshot comparisons (PROMPT 1022 / 1034
+/// / 1036) still resolve for one Sprint cycle; future audits should
+/// consume the new `*_visible` fields. The
+/// `qa_snapshot_overlay_roots` field is intentionally not deprecated —
+/// the QA snapshot overlay itself is not a per-phase UI surface; it
+/// behaves like a singleton dev affordance and its count remains stable
+/// at 1.
 #[derive(Debug, Clone, Default, Serialize)]
+#[allow(deprecated)]
 pub struct UiCounts {
+    // ── Legacy universal-marker spawned-tree counts (deprecated) ─────────
+    /// Spawned-tree count of [`crate::ui::hud::HudEntity`] tagged entities.
+    /// Deprecated: see struct doc.
+    #[deprecated(
+        since = "S17-UI-QA-SNAPSHOT-MARKER-SPLIT-001",
+        note = "Use the per-sub-surface visible counts: hud_root_visible, \
+                hud_top_strip_visible, hud_bottom_strip_visible, \
+                hud_scoreboard_dot_visible, hud_dim_overlay_visible."
+    )]
     pub hud_entities: usize,
     pub hud_timer_bars: usize,
+    /// Spawned-tree count of [`crate::ui::hand::HandUiEntity`] tagged entities.
+    /// Deprecated: see struct doc.
+    #[deprecated(
+        since = "S17-UI-QA-SNAPSHOT-MARKER-SPLIT-001",
+        note = "Use hand_bar_visible, hand_fan_visible, hand_draft_grid_slot_visible, \
+                placement_action_panel_visible."
+    )]
     pub hand_ui_entities: usize,
+    /// Spawned-tree count of [`crate::ui::shop_auction::ShopAuctionUiEntity`] tagged entities.
+    /// Deprecated: see struct doc.
+    #[deprecated(
+        since = "S17-UI-QA-SNAPSHOT-MARKER-SPLIT-001",
+        note = "Use shop_draft_offering_visible, shop_panel_visible, \
+                auction_panel_visible, shop_footer_visible, auction_toast_visible, \
+                settlement_overlay_visible."
+    )]
     pub shop_auction_entities: usize,
     pub lobby_root_entities: usize,
+    /// Spawned-marker count of `ResultScreenRoot` (no visibility filter).
+    /// Deprecated: see struct doc and use `result_screen_visible` instead.
+    #[deprecated(
+        since = "S17-UI-QA-SNAPSHOT-MARKER-SPLIT-001",
+        note = "Use result_screen_visible (honours Visibility) instead."
+    )]
     pub result_screen_roots: usize,
+    /// Spawned-marker count of `ConnectionLostOverlayRoot` (no visibility filter).
+    /// Deprecated: see struct doc and use `connection_lost_overlay_visible` instead.
+    #[deprecated(
+        since = "S17-UI-QA-SNAPSHOT-MARKER-SPLIT-001",
+        note = "Use connection_lost_overlay_visible (honours Visibility) instead."
+    )]
     pub connection_lost_overlay_roots: usize,
     pub qa_snapshot_overlay_roots: usize,
+
+    // ── S17-UI-QA-SNAPSHOT-MARKER-SPLIT-001 per-sub-surface visible counts ─
+    /// Visible (own `Visibility != Hidden`) count of [`crate::ui::hud::HudRoot`].
+    pub hud_root_visible: usize,
+    /// Visible count of [`crate::ui::hud::HudTopStripRoot`].
+    pub hud_top_strip_visible: usize,
+    /// Visible count of [`crate::ui::hud::HudBottomStripRoot`].
+    pub hud_bottom_strip_visible: usize,
+    /// Visible count of [`crate::ui::hud::HudScoreboardDotRoot`].
+    pub hud_scoreboard_dot_visible: usize,
+    /// Visible count of [`crate::ui::hud::HudDimOverlayRoot`].
+    pub hud_dim_overlay_visible: usize,
+    /// Visible count of [`crate::ui::hand::HandBarRoot`].
+    pub hand_bar_visible: usize,
+    /// Visible count of [`crate::ui::hand::HandFanRoot`].
+    pub hand_fan_visible: usize,
+    /// Visible count of [`crate::ui::hand::HandDraftGridSlotRoot`].
+    pub hand_draft_grid_slot_visible: usize,
+    /// Visible count of [`crate::ui::hand::PlacementActionPanelRoot`].
+    pub placement_action_panel_visible: usize,
+    /// Visible count of [`crate::ui::shop_auction::ShopAuctionPanelRoot::DraftOffering`].
+    pub shop_draft_offering_visible: usize,
+    /// Visible count of [`crate::ui::shop_auction::ShopAuctionPanelRoot::Shop`].
+    pub shop_panel_visible: usize,
+    /// Visible count of [`crate::ui::shop_auction::ShopAuctionPanelRoot::Auction`].
+    pub auction_panel_visible: usize,
+    /// Visible count of [`crate::ui::shop_auction::ShopAuctionPanelRoot::ShopFooter`].
+    pub shop_footer_visible: usize,
+    /// Visible count of [`crate::ui::shop_auction::ShopAuctionPanelRoot::Toast`].
+    pub auction_toast_visible: usize,
+    /// Visible count of [`crate::ui::shop_auction::ShopAuctionPanelRoot::SettlementOverlay`].
+    pub settlement_overlay_visible: usize,
+    /// Visible count of [`crate::presentation::connection_lost_overlay::ConnectionLostOverlayRoot`].
+    /// Honours `Visibility != Hidden`; replaces the constant-1
+    /// `connection_lost_overlay_roots` reading flagged by SOURCE-1077-09.
+    pub connection_lost_overlay_visible: usize,
+    /// Visible count of [`crate::presentation::result_screen::ResultScreenRoot`].
+    /// Honours `Visibility != Hidden`; replaces the constant-1
+    /// `result_screen_roots` reading flagged by SOURCE-1077-09.
+    pub result_screen_visible: usize,
 }
 
 /// Bundles the per-surface entity-count queries into a single
 /// [`SystemParam`] so [`write_qa_snapshot_system`] stays under Bevy's
 /// 16-param ceiling without losing any of the counts surfaced in
 /// [`UiCounts`].
+///
+/// **S17-UI-QA-SNAPSHOT-MARKER-SPLIT-001**: each query for a per-sub-surface
+/// root marker reads `&Visibility` so the snapshot reports the number of
+/// entities whose own `Visibility` is *not* `Visibility::Hidden`. The
+/// legacy universal queries (`hud_entities` / `hand_ui_entities` /
+/// `shop_auction_entities`) keep the original no-filter semantic so
+/// historical snapshot comparisons (PROMPT 1022 / 1034 / 1036) continue
+/// to resolve.
 #[derive(SystemParam)]
+#[allow(deprecated)]
 pub struct UiCountQueries<'w, 's> {
+    // Legacy universal queries — no visibility filter, preserved for backwards
+    // compatibility with PROMPT 1022 / 1034 / 1036 captures.
     pub hud_entities: Query<'w, 's, (), With<crate::ui::hud::HudEntity>>,
     pub hud_timer_bars: Query<'w, 's, (), With<crate::ui::hud::HudTimerBar>>,
     pub hand_ui_entities: Query<'w, 's, (), With<crate::ui::hand::HandUiEntity>>,
     pub shop_auction_entities:
         Query<'w, 's, (), With<crate::ui::shop_auction::ShopAuctionUiEntity>>,
     pub lobby_roots: Query<'w, 's, (), With<crate::ui::lobby::LobbyRoot>>,
-    pub result_screen_roots:
-        Query<'w, 's, (), With<crate::presentation::result_screen::ResultScreenRoot>>,
-    pub connection_lost_overlay_roots: Query<
+    pub qa_snapshot_overlay_roots: Query<'w, 's, (), With<QASnapshotOverlayRoot>>,
+    // Per-sub-surface root queries — read `&Visibility` so `snapshot()` can
+    // apply the "own Visibility != Hidden" filter (AC3).
+    pub hud_root_visibility: Query<'w, 's, &'static Visibility, With<crate::ui::hud::HudRoot>>,
+    pub hud_top_strip_visibility:
+        Query<'w, 's, &'static Visibility, With<crate::ui::hud::HudTopStripRoot>>,
+    pub hud_bottom_strip_visibility:
+        Query<'w, 's, &'static Visibility, With<crate::ui::hud::HudBottomStripRoot>>,
+    pub hud_scoreboard_dot_visibility:
+        Query<'w, 's, &'static Visibility, With<crate::ui::hud::HudScoreboardDotRoot>>,
+    pub hud_dim_overlay_visibility:
+        Query<'w, 's, &'static Visibility, With<crate::ui::hud::HudDimOverlayRoot>>,
+    pub hand_visibility: HandVisibilityQueries<'w, 's>,
+    pub shop_auction_visibility: ShopAuctionVisibilityQueries<'w, 's>,
+    pub connection_lost_overlay_visibility: Query<
         'w,
         's,
-        (),
+        &'static Visibility,
         With<crate::presentation::connection_lost_overlay::ConnectionLostOverlayRoot>,
     >,
-    pub qa_snapshot_overlay_roots: Query<'w, 's, (), With<QASnapshotOverlayRoot>>,
+    pub result_screen_visibility: Query<
+        'w,
+        's,
+        &'static Visibility,
+        With<crate::presentation::result_screen::ResultScreenRoot>,
+    >,
+}
+
+/// Per-sub-surface hand-UI visibility queries, grouped so the parent
+/// [`UiCountQueries`] stays under Bevy's 16-field [`SystemParam`] ceiling.
+#[derive(SystemParam)]
+pub struct HandVisibilityQueries<'w, 's> {
+    pub hand_bar: Query<'w, 's, &'static Visibility, With<crate::ui::hand::HandBarRoot>>,
+    pub hand_fan: Query<'w, 's, &'static Visibility, With<crate::ui::hand::HandFanRoot>>,
+    pub hand_draft_grid_slot:
+        Query<'w, 's, &'static Visibility, With<crate::ui::hand::HandDraftGridSlotRoot>>,
+    pub placement_action_panel:
+        Query<'w, 's, &'static Visibility, With<crate::ui::hand::PlacementActionPanelRoot>>,
+}
+
+/// Per-sub-surface shop/auction visibility queries, grouped so the parent
+/// [`UiCountQueries`] stays under Bevy's 16-field [`SystemParam`] ceiling.
+/// `ShopAuctionPanelRoot` is an enum carried on every panel-root entity;
+/// we read it alongside `&Visibility` and discriminate by variant in
+/// [`UiCountQueries::snapshot`].
+#[derive(SystemParam)]
+pub struct ShopAuctionVisibilityQueries<'w, 's> {
+    pub panel_roots: Query<
+        'w,
+        's,
+        (
+            &'static Visibility,
+            &'static crate::ui::shop_auction::ShopAuctionPanelRoot,
+        ),
+    >,
+}
+
+/// True when the entity's own [`Visibility`] is not [`Visibility::Hidden`].
+/// Matches the semantic surfaced by `UiCounts::*_visible` fields under
+/// S17-UI-QA-SNAPSHOT-MARKER-SPLIT-001 AC3. The check is intentionally
+/// scoped to the marker entity's *own* `Visibility` component (rather than
+/// the propagated `InheritedVisibility`) so the filter is observable from
+/// a `MinimalPlugins` test world that does not register the
+/// `VisibilityPlugin` propagation system.
+#[inline]
+fn is_visibility_visible(visibility: &Visibility) -> bool {
+    !matches!(visibility, Visibility::Hidden)
 }
 
 impl<'w, 's> UiCountQueries<'w, 's> {
+    #[allow(deprecated)]
     pub fn snapshot(&self) -> UiCounts {
+        let hud_root_visible = self
+            .hud_root_visibility
+            .iter()
+            .filter(|v| is_visibility_visible(v))
+            .count();
+        let hud_top_strip_visible = self
+            .hud_top_strip_visibility
+            .iter()
+            .filter(|v| is_visibility_visible(v))
+            .count();
+        let hud_bottom_strip_visible = self
+            .hud_bottom_strip_visibility
+            .iter()
+            .filter(|v| is_visibility_visible(v))
+            .count();
+        let hud_scoreboard_dot_visible = self
+            .hud_scoreboard_dot_visibility
+            .iter()
+            .filter(|v| is_visibility_visible(v))
+            .count();
+        let hud_dim_overlay_visible = self
+            .hud_dim_overlay_visibility
+            .iter()
+            .filter(|v| is_visibility_visible(v))
+            .count();
+        let hand_bar_visible = self
+            .hand_visibility
+            .hand_bar
+            .iter()
+            .filter(|v| is_visibility_visible(v))
+            .count();
+        let hand_fan_visible = self
+            .hand_visibility
+            .hand_fan
+            .iter()
+            .filter(|v| is_visibility_visible(v))
+            .count();
+        let hand_draft_grid_slot_visible = self
+            .hand_visibility
+            .hand_draft_grid_slot
+            .iter()
+            .filter(|v| is_visibility_visible(v))
+            .count();
+        let placement_action_panel_visible = self
+            .hand_visibility
+            .placement_action_panel
+            .iter()
+            .filter(|v| is_visibility_visible(v))
+            .count();
+
+        use crate::ui::shop_auction::ShopAuctionPanelRoot;
+        let mut shop_draft_offering_visible = 0usize;
+        let mut shop_panel_visible = 0usize;
+        let mut auction_panel_visible = 0usize;
+        let mut shop_footer_visible = 0usize;
+        let mut auction_toast_visible = 0usize;
+        let mut settlement_overlay_visible = 0usize;
+        for (visibility, variant) in &self.shop_auction_visibility.panel_roots {
+            if !is_visibility_visible(visibility) {
+                continue;
+            }
+            match variant {
+                ShopAuctionPanelRoot::DraftOffering => shop_draft_offering_visible += 1,
+                ShopAuctionPanelRoot::Shop => shop_panel_visible += 1,
+                ShopAuctionPanelRoot::Auction => auction_panel_visible += 1,
+                ShopAuctionPanelRoot::ShopFooter => shop_footer_visible += 1,
+                ShopAuctionPanelRoot::Toast => auction_toast_visible += 1,
+                ShopAuctionPanelRoot::SettlementOverlay => settlement_overlay_visible += 1,
+            }
+        }
+
+        let connection_lost_overlay_visible = self
+            .connection_lost_overlay_visibility
+            .iter()
+            .filter(|v| is_visibility_visible(v))
+            .count();
+        let result_screen_visible = self
+            .result_screen_visibility
+            .iter()
+            .filter(|v| is_visibility_visible(v))
+            .count();
+
         UiCounts {
             hud_entities: self.hud_entities.iter().count(),
             hud_timer_bars: self.hud_timer_bars.iter().count(),
             hand_ui_entities: self.hand_ui_entities.iter().count(),
             shop_auction_entities: self.shop_auction_entities.iter().count(),
             lobby_root_entities: self.lobby_roots.iter().count(),
-            result_screen_roots: self.result_screen_roots.iter().count(),
-            connection_lost_overlay_roots: self.connection_lost_overlay_roots.iter().count(),
+            // Legacy marker counts: report the spawned-tree size of each
+            // overlay marker so PROMPT 1022 / 1034 / 1036 historical
+            // comparisons still resolve. The visibility-aware reading is
+            // exposed via the `*_visible` fields below.
+            result_screen_roots: self.result_screen_visibility.iter().count(),
+            connection_lost_overlay_roots: self.connection_lost_overlay_visibility.iter().count(),
             qa_snapshot_overlay_roots: self.qa_snapshot_overlay_roots.iter().count(),
+            hud_root_visible,
+            hud_top_strip_visible,
+            hud_bottom_strip_visible,
+            hud_scoreboard_dot_visible,
+            hud_dim_overlay_visible,
+            hand_bar_visible,
+            hand_fan_visible,
+            hand_draft_grid_slot_visible,
+            placement_action_panel_visible,
+            shop_draft_offering_visible,
+            shop_panel_visible,
+            auction_panel_visible,
+            shop_footer_visible,
+            auction_toast_visible,
+            settlement_overlay_visible,
+            connection_lost_overlay_visible,
+            result_screen_visible,
         }
     }
 }
@@ -621,7 +902,12 @@ pub fn write_qa_snapshot_system(
         let window = windows.iter().next();
         let counter_value = counter.next();
         let requested_at_ms = current_unix_millis();
-        let snapshot_id = format_snapshot_id(counter_value, requested_at_ms);
+        let identity_snapshot = identity.as_deref().copied();
+        let snapshot_id = format_snapshot_id(
+            counter_value,
+            requested_at_ms,
+            identity_snapshot.and_then(|id| id.session_id),
+        );
         let snapshot_dir = config.output_dir.join(&snapshot_id);
         let png_path = snapshot_dir.join(QA_SCREENSHOT_FILENAME);
         let absolute_png_path = absolute_path(&png_path);
@@ -911,7 +1197,7 @@ pub fn build_snapshot(
         }
     };
 
-    let snapshot_id = format_snapshot_id(counter, unix_millis);
+    let snapshot_id = format_snapshot_id(counter, unix_millis, identity.and_then(|i| i.session_id));
 
     QASnapshotData {
         snapshot_id,
@@ -1007,8 +1293,29 @@ fn current_unix_millis() -> u128 {
         .unwrap_or(0)
 }
 
-fn format_snapshot_id(counter: u64, unix_millis: u128) -> String {
-    format!("{counter:06}-{unix_millis}")
+/// Prefix applied to snapshot ids captured before the handshake assigns a
+/// [`ClientSessionIdentity::session_id`]. See
+/// [`format_snapshot_id`].
+pub const QA_SNAPSHOT_PRE_SESSION_PREFIX: &str = "pre-session";
+
+/// Build the per-snapshot directory id.
+///
+/// **S17-UI-QA-SNAPSHOT-MARKER-SPLIT-001 (SOURCE-1077-16)**: the previous
+/// `{counter:06}-{unix_millis}` format aliased across concurrent clients
+/// — two clients running in parallel produced colliding `000000-*`
+/// prefixes that differed only by millisecond-precision wall clock. The
+/// new format inserts the handshake-assigned `session_id` as the leading
+/// component so concurrent-client captures sort by client first:
+///
+/// - `{session_id}-{counter:06}-{unix_millis}` when the handshake has
+///   landed.
+/// - `pre-session-{counter:06}-{unix_millis}` when no `session_id` is
+///   yet known (lobby / pre-handshake captures).
+fn format_snapshot_id(counter: u64, unix_millis: u128, session_id: Option<u64>) -> String {
+    match session_id {
+        Some(id) => format!("{id}-{counter:06}-{unix_millis}"),
+        None => format!("{QA_SNAPSHOT_PRE_SESSION_PREFIX}-{counter:06}-{unix_millis}"),
+    }
 }
 
 fn absolute_path(path: &Path) -> PathBuf {
