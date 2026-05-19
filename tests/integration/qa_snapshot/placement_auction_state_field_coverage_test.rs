@@ -165,9 +165,14 @@ fn test_current_phase_timer_remaining_ms_lifted_from_extras_phase_timer() {
     let extras = ExtrasSnapshot {
         timers: TimersSnapshot {
             phase_timer: Some(PhaseTimerSnapshot {
+                phase_started_elapsed_ms: Some(2_000),
+                phase_duration_ms: 30_000,
                 duration_ms: 30_000,
                 elapsed_ms: 12_500,
+                computed_remaining_ms: 17_500,
                 remaining_ms: 17_500,
+                display_text: "18s".to_string(),
+                timer_source: "hud_phase_timer_state".to_string(),
                 active: true,
             }),
             placement_timer: None,
@@ -195,6 +200,18 @@ fn test_current_phase_timer_remaining_ms_lifted_from_extras_phase_timer() {
         Some(17_500),
         "current_phase.timer_remaining_ms must be lifted from extras.timers.phase_timer.remaining_ms"
     );
+
+    let phase_timer = snapshot
+        .extras
+        .timers
+        .phase_timer
+        .expect("phase timer snapshot must stay populated");
+    assert_eq!(phase_timer.phase_duration_ms, 30_000);
+    assert_eq!(phase_timer.computed_remaining_ms, 17_500);
+    assert_eq!(phase_timer.duration_ms, 30_000);
+    assert_eq!(phase_timer.remaining_ms, 17_500);
+    assert_eq!(phase_timer.display_text, "18s");
+    assert_eq!(phase_timer.timer_source, "hud_phase_timer_state");
 }
 
 // ─────────────────────────────────────────────────────────────────────────

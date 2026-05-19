@@ -1054,9 +1054,14 @@ fn build_snapshot_with_extras_embeds_extras_field() {
         },
         timers: TimersSnapshot {
             phase_timer: Some(PhaseTimerSnapshot {
+                phase_started_elapsed_ms: Some(1_000),
+                phase_duration_ms: 30_000,
                 duration_ms: 30_000,
                 elapsed_ms: 5_000,
+                computed_remaining_ms: 25_000,
                 remaining_ms: 25_000,
+                display_text: "25s".to_string(),
+                timer_source: "hud_phase_timer_state".to_string(),
                 active: true,
             }),
             placement_timer: None,
@@ -1188,6 +1193,42 @@ fn extras_inputs_snapshot_with_warnings_records_missing_economy() {
     // Suppress unused import warning for In in build configurations that
     // omit it.
     let _ = std::any::TypeId::of::<In<()>>();
+}
+
+#[test]
+fn extras_inputs_phase_timer_distinguishes_duration_from_remaining() {
+    use bevy::ecs::system::RunSystemOnce;
+    use client::presentation::qa_snapshot::{ExtrasInputs, ExtrasSnapshot};
+    use client::ui::hud::PhaseTimerState;
+
+    test_helpers::init_test_tracing();
+    let mut app = App::new();
+    app.add_plugins(MinimalPlugins);
+    app.insert_resource(PhaseTimerState {
+        phase_started_elapsed_ms: Some(1_234),
+        duration_ms: 30_000,
+        elapsed_ms: 12_500,
+        active: true,
+        ..PhaseTimerState::default()
+    });
+
+    let extras: ExtrasSnapshot = app
+        .world_mut()
+        .run_system_once(|inputs: ExtrasInputs| inputs.snapshot_with_warnings(&mut Vec::new()))
+        .expect("run_system_once must succeed");
+
+    let phase_timer = extras
+        .timers
+        .phase_timer
+        .expect("PhaseTimerState resource must populate extras.timers.phase_timer");
+    assert_eq!(phase_timer.phase_started_elapsed_ms, Some(1_234));
+    assert_eq!(phase_timer.phase_duration_ms, 30_000);
+    assert_eq!(phase_timer.duration_ms, 30_000);
+    assert_eq!(phase_timer.elapsed_ms, 12_500);
+    assert_eq!(phase_timer.computed_remaining_ms, 17_500);
+    assert_eq!(phase_timer.remaining_ms, 17_500);
+    assert_eq!(phase_timer.display_text, "18s");
+    assert_eq!(phase_timer.timer_source, "hud_phase_timer_state");
 }
 
 // ─────────────────────────────────────────────────────────────────────────

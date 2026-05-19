@@ -80,6 +80,35 @@ fn countdown_ticks_down_each_frame() {
 }
 
 #[test]
+fn countdown_does_not_reset_when_same_phase_view_is_marked_changed() {
+    test_helpers::init_test_tracing();
+    let mut app = app_with_hud_in_session();
+    let entities = hud_entities(&app);
+
+    set_phase_view(&mut app, 30_000);
+    app.update();
+
+    advance_time(&mut app, Duration::from_millis(5_000));
+    app.update();
+    assert_eq!(text(&app, entities.timer_countdown), "25s");
+
+    advance_time(&mut app, Duration::ZERO);
+    set_phase_view(&mut app, 30_000);
+    app.update();
+
+    let timer = app.world().resource::<PhaseTimerState>();
+    assert_eq!(
+        timer.elapsed_ms, 5_000,
+        "same phase/round/duration writes must not reset elapsed_ms"
+    );
+    assert_eq!(
+        text(&app, entities.timer_countdown),
+        "25s",
+        "countdown must stay elapsed-aware when ClientPhaseView is re-marked changed"
+    );
+}
+
+#[test]
 fn countdown_is_hidden_for_resolution_or_lobby_with_zero_duration() {
     test_helpers::init_test_tracing();
     let mut app = app_with_hud_in_session();

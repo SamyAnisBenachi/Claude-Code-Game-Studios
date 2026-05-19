@@ -222,6 +222,10 @@ pub fn phase_sink_system(
         next_state.set(ClientState::InSession);
     }
 
+    if messages.is_empty() {
+        return;
+    }
+
     apply_phase_changed_messages_with_resolution_gate(
         messages,
         &mut current,

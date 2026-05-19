@@ -1141,9 +1141,14 @@ pub struct TimersSnapshot {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct PhaseTimerSnapshot {
+    pub phase_started_elapsed_ms: Option<u64>,
+    pub phase_duration_ms: u32,
     pub duration_ms: u32,
     pub elapsed_ms: u32,
+    pub computed_remaining_ms: u32,
     pub remaining_ms: u32,
+    pub display_text: String,
+    pub timer_source: String,
     pub active: bool,
 }
 
@@ -1777,11 +1782,16 @@ fn build_player_ids_snapshot(
 
 fn build_timers_snapshot(inputs: &ExtrasTimerInputs<'_>) -> TimersSnapshot {
     let phase_timer = inputs.phase_timer.as_deref().map(|t| {
-        let remaining_ms = t.duration_ms.saturating_sub(t.elapsed_ms);
+        let remaining_ms = t.remaining_ms();
         PhaseTimerSnapshot {
+            phase_started_elapsed_ms: t.phase_started_elapsed_ms,
+            phase_duration_ms: t.duration_ms,
             duration_ms: t.duration_ms,
             elapsed_ms: t.elapsed_ms,
+            computed_remaining_ms: remaining_ms,
             remaining_ms,
+            display_text: t.display_text(),
+            timer_source: "hud_phase_timer_state".to_string(),
             active: t.active,
         }
     });

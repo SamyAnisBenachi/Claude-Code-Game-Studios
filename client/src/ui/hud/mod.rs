@@ -454,9 +454,25 @@ pub struct HudTimerCountdown;
 /// `sync_hud_timer_bar_system`.
 #[derive(Resource, Default, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PhaseTimerState {
+    pub phase: RoundPhase,
+    pub round_number: u32,
+    pub phase_started_elapsed_ms: Option<u64>,
     pub elapsed_ms: u32,
     pub duration_ms: u32,
     pub active: bool,
+}
+
+impl PhaseTimerState {
+    pub fn remaining_ms(&self) -> u32 {
+        self.duration_ms.saturating_sub(self.elapsed_ms)
+    }
+
+    pub fn display_text(&self) -> String {
+        if !self.active || self.duration_ms == 0 {
+            return String::new();
+        }
+        format!("{}s", self.remaining_ms().div_ceil(1_000))
+    }
 }
 
 /// Marker for the HUD RESOLUTION-phase dim/freeze overlay root entity.
@@ -2621,11 +2637,21 @@ fn clamped_reserved_gold(message: &S2CGoldBroadcast) -> f32 {
 /// sufficient — covers both per-phase transitions and snapshot rebuilds.
 pub fn reset_phase_timer_system(
     phase_view: Res<ClientPhaseView>,
+    time: Res<Time>,
     mut timer: ResMut<PhaseTimerState>,
 ) {
     if !phase_view.is_changed() {
         return;
     }
+    let same_phase_timer = timer.phase == phase_view.phase
+        && timer.round_number == phase_view.round_number
+        && timer.duration_ms == phase_view.timer_duration_ms;
+    if same_phase_timer {
+        return;
+    }
+    timer.phase = phase_view.phase;
+    timer.round_number = phase_view.round_number;
+    timer.phase_started_elapsed_ms = Some(time.elapsed().as_millis() as u64);
     timer.elapsed_ms = 0;
     timer.duration_ms = phase_view.timer_duration_ms;
     timer.active = phase_view.timer_duration_ms > 0;
@@ -2652,7 +2678,7 @@ pub fn sync_hud_timer_bar_system(
         return;
     }
     let (target_width_px, target_visibility) = if timer.active && timer.duration_ms > 0 {
-        let remaining = timer.duration_ms.saturating_sub(timer.elapsed_ms) as f32;
+        let remaining = timer.remaining_ms() as f32;
         let pct = (remaining / timer.duration_ms as f32).clamp(0.0, 1.0);
         (HUD_PHASE_TIMER_BAR_MAX_WIDTH_PX * pct, Visibility::Visible)
     } else {
@@ -2686,11 +2712,7 @@ pub fn sync_hud_timer_countdown_text_system(
         return;
     }
     let (target_text, target_visibility) = if timer.active && timer.duration_ms > 0 {
-        let remaining_ms = timer.duration_ms.saturating_sub(timer.elapsed_ms);
-        // Round-up so the user never sees `0s` while time is still
-        // remaining; the bar continues to drain smoothly underneath.
-        let remaining_s = remaining_ms.div_ceil(1_000);
-        (format!("{remaining_s}s"), Visibility::Visible)
+        (timer.display_text(), Visibility::Visible)
     } else {
         (String::new(), Visibility::Hidden)
     };
