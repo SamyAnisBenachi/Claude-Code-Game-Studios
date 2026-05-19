@@ -4517,7 +4517,7 @@ fn spawn_draft_initial_grid(
                 DraftInitialSlotIndex(index as u8),
                 Button,
                 Interaction::None,
-                draft_initial_slot_node(index),
+                draft_initial_slot_node(),
                 BackgroundColor(Color::srgba(0.08, 0.12, 0.16, 0.9)),
                 Visibility::Hidden,
                 ChildOf(parent),
@@ -5297,14 +5297,26 @@ fn draft_initial_centering_root_node() -> Node {
     }
 }
 
-fn draft_initial_modal_panel_node() -> Node {
+/// PROMPT 1349 (Sprint 18 story 026 / Lane J) — draft-initial modal
+/// panel node. The pre-1349 layout declared `height: 360 px` *and*
+/// `max_height: 92 %`, a fixed-px-plus-percent conflict (PROMPT 1180
+/// §1.4 S-08) that pinned the modal to 360 px at every resolution.
+///
+/// Story 026 §5 C-5 requires every in-scope modal to declare
+/// `max_height: 92 %` + `Overflow::scroll_y()` and forbids the literal
+/// `height: 360 px`. The literal is now expressed as `min_height` so
+/// the panel keeps the visual floor at small viewports while the
+/// `max_height: 92 %` ceiling scales with the viewport up to
+/// ~1987 px at 3840×2160 (AC7).
+pub fn draft_initial_modal_panel_node() -> Node {
     Node {
         display: Display::Flex,
         position_type: PositionType::Relative,
         width: Val::Percent(DRAFT_INITIAL_MODAL_WIDTH_PERCENT),
         max_width: Val::Px(DRAFT_INITIAL_MODAL_MAX_WIDTH_PX),
-        height: Val::Px(DRAFT_INITIAL_MODAL_HEIGHT_PX),
+        min_height: Val::Px(DRAFT_INITIAL_MODAL_HEIGHT_PX),
         max_height: Val::Percent(DRAFT_INITIAL_MODAL_MAX_HEIGHT_PERCENT),
+        overflow: Overflow::scroll_y(),
         border: UiRect::all(Val::Px(spacing::SPACING_XS / 2.0)),
         border_radius: BorderRadius::all(Val::Px(spacing::SPACING_SM)),
         padding: UiRect::all(Val::Px(DRAFT_INITIAL_MODAL_PADDING_PX)),
@@ -5312,28 +5324,39 @@ fn draft_initial_modal_panel_node() -> Node {
     }
 }
 
-fn draft_initial_grid_node() -> Node {
+/// PROMPT 1349 (Sprint 18 story 026 / Lane J) — draft-initial card-grid
+/// container. The pre-1349 layout placed each of the nine slots
+/// absolutely via per-index `left = column * (width + gap)` / `top = row *
+/// (height + gap)` offsets (PROMPT 1180 §1.4 S-09). Story 026 §5 C-5
+/// requires `Display::Grid` (or `FlexWrap::Wrap`) with absolute offsets
+/// removed. The grid container itself keeps its `position_type:
+/// Absolute` anchor inside the modal panel so the surrounding
+/// absolutely-positioned overlays (objective banner, countdown, footer)
+/// retain their existing positions; only slot placement is migrated
+/// from manual offsets to Bevy 0.18 grid auto-placement.
+pub fn draft_initial_grid_node() -> Node {
     Node {
         position_type: PositionType::Absolute,
         left: Val::Px(DRAFT_INITIAL_GRID_LEFT_PX),
         top: Val::Px(DRAFT_INITIAL_GRID_TOP_PX),
         width: Val::Px(DRAFT_INITIAL_GRID_WIDTH_PX),
         height: Val::Px(DRAFT_INITIAL_GRID_HEIGHT_PX),
+        display: Display::Grid,
+        grid_template_columns: RepeatedGridTrack::px(3, DRAFT_INITIAL_GRID_COLUMN_WIDTH_PX),
+        grid_template_rows: RepeatedGridTrack::px(3, DRAFT_INITIAL_GRID_ROW_HEIGHT_PX),
+        column_gap: Val::Px(DRAFT_INITIAL_GRID_COLUMN_GAP_PX),
+        row_gap: Val::Px(DRAFT_INITIAL_GRID_ROW_GAP_PX),
         ..default()
     }
 }
 
-fn draft_initial_slot_node(index: usize) -> Node {
-    let column = index % 3;
-    let row = index / 3;
+/// PROMPT 1349 — draft-initial card slot. Migrated off the pre-1349
+/// per-index absolute offset (`position_type: Absolute`, `left = col *
+/// (width + gap)`, `top = row * (height + gap)`) — story 026 §5 C-5
+/// "absolute offsets removed". The slot is now placed by the grid
+/// container's `Display::Grid` auto-placement.
+pub fn draft_initial_slot_node() -> Node {
     Node {
-        position_type: PositionType::Absolute,
-        left: Val::Px(
-            column as f32 * (DRAFT_INITIAL_GRID_COLUMN_WIDTH_PX + DRAFT_INITIAL_GRID_COLUMN_GAP_PX),
-        ),
-        top: Val::Px(
-            row as f32 * (DRAFT_INITIAL_GRID_ROW_HEIGHT_PX + DRAFT_INITIAL_GRID_ROW_GAP_PX),
-        ),
         width: Val::Px(DRAFT_INITIAL_GRID_COLUMN_WIDTH_PX),
         height: Val::Px(DRAFT_INITIAL_GRID_ROW_HEIGHT_PX),
         border: UiRect::all(Val::Px(1.0)),
