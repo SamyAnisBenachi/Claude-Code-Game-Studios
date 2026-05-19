@@ -2,10 +2,23 @@ pub const Z_BOARD_BACKGROUND: f32 = -0.5;
 pub const Z_FIELD_WASH: f32 = 0.0;
 pub const Z_CELL_NODES: f32 = 1.0;
 pub const Z_BOARD_CHROME: f32 = 1.5;
+// PROMPT 1390 (S19-BR-PLAYAREA-HIERARCHY-TARGETING-FEEDBACK-001):
+// Targeting overlay surfaces sit between the board chrome and the
+// traps/structures layer so the dim wash darkens cell-node + chrome art
+// while leaving objectives, units, HP bars, and ghosts visually on top.
+// ADR-021 z-order is preserved: every targeting overlay stays below
+// Z_TRAPS_STRUCTURES and therefore below objectives / units / hover cards.
+pub const Z_TARGETING_DIM_WASH: f32 = 1.55;
+pub const Z_TARGETING_VALID_RING: f32 = 1.6;
+pub const Z_TARGETING_ENDPOINT_RING: f32 = 1.7;
+pub const Z_TARGETING_INVALID_MARKER: f32 = 1.7;
 pub const Z_TRAPS_STRUCTURES: f32 = 2.0;
 pub const Z_OBJECTIVES: f32 = 2.5;
 pub const Z_UNITS: f32 = 3.0;
 pub const Z_HEALTH_BARS: f32 = 3.1;
+// PROMPT 1390 — the source-card link sits above units but below ghosts
+// so a placement ghost preview never gets occluded by the link.
+pub const Z_SOURCE_CARD_LINK: f32 = 3.3;
 pub const Z_GHOST_UNIT: f32 = 3.5;
 
 pub const Z_BOARD_CAMERA: f32 = 999.0;

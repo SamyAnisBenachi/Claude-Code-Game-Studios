@@ -98,8 +98,10 @@ use bevy::window::PrimaryWindow;
 use serde::Serialize;
 
 use crate::presentation::board_rendering::{
-    BoardLocalPlayer, BoardRenderState, BoardUnit, BoardUnitCard, BoardUnitOwner, BoardUnitStats,
-    ObjectiveArtKind, StandingObjective, StandingObjectiveArt, StandingObjectiveHp,
+    BoardEnvelope, BoardLocalPlayer, BoardRenderState, BoardUnit, BoardUnitCard, BoardUnitOwner,
+    BoardUnitStats, ObjectiveArtKind, SourceCardLink, StandingObjective, StandingObjectiveArt,
+    StandingObjectiveHp, TargetingDimWash, TargetingEndpointRing, TargetingInvalidMarker,
+    TargetingOverlayState, TargetingValidRing,
 };
 use crate::presentation::shared::economy_view::{PlayerEconomyView, PlayerEconomyViewUpdateSource};
 use crate::state::{
@@ -424,6 +426,16 @@ pub struct QASnapshotData {
     /// across phases: `available = false` + nested `null`s outside the
     /// auction phase. See [`AuctionStateSnapshot`].
     pub auction_state: AuctionStateSnapshot,
+    /// PROMPT 1390 (S19-BR-PLAYAREA-HIERARCHY-TARGETING-FEEDBACK-001) —
+    /// top-level board / targeting state lift. Captures the cached
+    /// [`crate::presentation::board_rendering::BoardEnvelope`] world-space
+    /// rectangle, the active targeting intent (if any), and the live
+    /// overlay-entity counts (valid rings, invalid markers, path
+    /// segments, endpoint rings) plus overlap booleans against the hand
+    /// bar and primary CTA edge regions. Schema is stable across phases:
+    /// `available = false` + nested `null`s when the board is not yet
+    /// in-session. See [`BoardTargetingSnapshot`].
+    pub board_targeting: BoardTargetingSnapshot,
     pub warnings: Vec<String>,
 }
 
@@ -576,6 +588,101 @@ pub struct AuctionStateSnapshot {
     /// absent — the inner [`AuctionLocalGoldSnapshot`] carries the
     /// per-field nulls.
     pub local_gold: Option<AuctionLocalGoldSnapshot>,
+}
+
+/// PROMPT 1390 (S19-BR-PLAYAREA-HIERARCHY-TARGETING-FEEDBACK-001).
+/// Top-level board / targeting state lift. Captures (a) the cached
+/// [`crate::presentation::board_rendering::BoardEnvelope`] world-space
+/// rectangle so audits can prove the board is the dominant central
+/// surface across canonical viewports (AC1/AC2), (b) the active
+/// targeting intent surfaced by the
+/// [`crate::presentation::board_rendering::TargetingOverlayState`]
+/// resource (AC3), (c) the live count of valid-target rings, invalid
+/// markers, path segments, and endpoint rings (AC4 / AC5 / AC9), and
+/// (d) overlap booleans against the hand-bar / placement-action-panel
+/// edge regions so AC2 ("edge regions do not compete") and AC6
+/// ("source-card link does not block primary CTA") have concrete
+/// regression handles. Pure read-only projection; never mutates the
+/// targeting overlay state.
+#[derive(Debug, Clone, Default, Serialize)]
+pub struct BoardTargetingSnapshot {
+    /// `true` when [`BoardEnvelope`] is present in the world (i.e. the
+    /// session resources have been inserted). `false` outside `InSession`.
+    pub available: bool,
+    /// Cached board envelope in world units (centre + cell-size + lane /
+    /// cell counts). `None` when the envelope resource is absent.
+    pub envelope: Option<BoardEnvelopeSnapshot>,
+    /// Active targeting / placement intent, projected from
+    /// [`crate::presentation::board_rendering::TargetingOverlayState::active`].
+    /// `None` when no card is targeting.
+    pub active_targeting: Option<ActiveTargetingSnapshot>,
+    /// Live count of [`crate::presentation::board_rendering::TargetingValidRing`]
+    /// entities (one per valid spawn-range cell while targeting a
+    /// `BoardCell` target). `0` when no targeting is active.
+    pub valid_target_count: usize,
+    /// Live count of [`crate::presentation::board_rendering::TargetingInvalidMarker`]
+    /// entities. Bounded at 0 or 1 (only the active target cell can be
+    /// invalid at a time).
+    pub invalid_target_count: usize,
+    /// Live count of [`crate::presentation::board_rendering::SourceCardLink`]
+    /// entities — the directional line linking the source card position
+    /// to the active target cell.
+    pub path_segment_count: usize,
+    /// Live count of [`crate::presentation::board_rendering::TargetingEndpointRing`]
+    /// entities. Bounded at 0 or 1.
+    pub endpoint_ring_count: usize,
+    /// Live count of [`crate::presentation::board_rendering::TargetingDimWash`]
+    /// entities — exists exactly when targeting is active.
+    pub dim_wash_count: usize,
+    /// `true` when active targeting + the source-card link endpoint
+    /// extends below the board envelope's bottom edge. Mirrors the
+    /// hand-bar collision intent without needing screen-space math
+    /// (hand_bar is the only bevy_ui surface anchored below the board
+    /// envelope per ADR-021).
+    pub overlaps_hand_bar: bool,
+    /// `true` when active targeting + the source-card link endpoint
+    /// extends above the board envelope's top edge. Mirrors the
+    /// HUD / event rail collision intent.
+    pub overlaps_top_chrome: bool,
+    /// `true` when no overlay (dim / valid / endpoint / invalid / link)
+    /// is currently spawned (the targeting overlay is idle).
+    pub overlay_idle: bool,
+    /// `true` when the placement_action_panel surface in `layout` is
+    /// visible AND its bounds intersect any other visible surface — the
+    /// same condition the `LayoutCollisionsSnapshot.placement_action_panel_overlaps`
+    /// list captures. Surfaced here for AC6's "source-card link does
+    /// not block primary CTA" regression handle.
+    pub placement_action_panel_overlaps_any: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct BoardEnvelopeSnapshot {
+    pub world_center: [f32; 2],
+    pub world_width: f32,
+    pub world_height: f32,
+    pub cell_width: f32,
+    pub lane_height: f32,
+    pub lane_count: u8,
+    pub cell_count: u8,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ActiveTargetingSnapshot {
+    pub card_id: u32,
+    /// Stable token for the active [`shared::protocol::PlayTarget`]
+    /// variant: `board_cell` / `target_unit` / `target_obj` /
+    /// `lane_wide` / `instant`.
+    pub target_kind: String,
+    /// `(lane, cell)` of the active `BoardCell` target. `None` for
+    /// non-board-cell targets.
+    pub endpoint_cell: Option<[u8; 2]>,
+    /// `true` when the active board cell falls outside the local
+    /// `PlacementBoardView` spawn range.
+    pub endpoint_invalid: bool,
+    /// Number of valid spawn-range cells mirrored from
+    /// `PlacementBoardView.spawn_range_cells`. `0` when the placement
+    /// board view is absent.
+    pub valid_cell_count: usize,
 }
 
 /// Per-snapshot projection of the local player's gold state at auction
@@ -1326,6 +1433,140 @@ pub struct ExtrasSessionInputs<'w> {
     pub session_settings: Option<Res<'w, SessionSettingsView>>,
     pub opponent_connection: Option<Res<'w, OpponentConnectionView>>,
     pub session_lifecycle: Option<Res<'w, SessionLifecycleView>>,
+}
+
+/// PROMPT 1390 — read-only projection of the targeting overlay state and
+/// live overlay-entity counts into [`BoardTargetingSnapshot`]. Lives in
+/// its own `SystemParam` so the host system stays under Bevy's 16-field
+/// ceiling.
+#[derive(SystemParam)]
+pub struct BoardTargetingInputs<'w, 's> {
+    pub envelope: Option<Res<'w, BoardEnvelope>>,
+    pub state: Option<Res<'w, TargetingOverlayState>>,
+    pub placement_board_view: Option<Res<'w, PlacementBoardView>>,
+    pub dim_wash: Query<'w, 's, (), With<TargetingDimWash>>,
+    pub valid_rings: Query<'w, 's, (), With<TargetingValidRing>>,
+    pub endpoint_rings: Query<'w, 's, (), With<TargetingEndpointRing>>,
+    pub invalid_markers: Query<'w, 's, (), With<TargetingInvalidMarker>>,
+    pub source_links: Query<'w, 's, (), With<SourceCardLink>>,
+}
+
+impl<'w, 's> BoardTargetingInputs<'w, 's> {
+    pub fn snapshot(&self, layout: &LayoutSnapshot) -> BoardTargetingSnapshot {
+        let dim_wash_count = self.dim_wash.iter().count();
+        let valid_target_count = self.valid_rings.iter().count();
+        let endpoint_ring_count = self.endpoint_rings.iter().count();
+        let invalid_target_count = self.invalid_markers.iter().count();
+        let path_segment_count = self.source_links.iter().count();
+        let overlay_idle = dim_wash_count == 0
+            && valid_target_count == 0
+            && endpoint_ring_count == 0
+            && invalid_target_count == 0
+            && path_segment_count == 0;
+
+        let envelope_snapshot = self.envelope.as_deref().map(|env| BoardEnvelopeSnapshot {
+            world_center: [env.world_center.x, env.world_center.y],
+            world_width: env.world_width(),
+            world_height: env.world_height(),
+            cell_width: env.cell_size.x,
+            lane_height: env.cell_size.y,
+            lane_count: env.lane_count,
+            cell_count: env.cell_count,
+        });
+
+        let placement_view = self.placement_board_view.as_deref();
+        let active_targeting =
+            self.state
+                .as_deref()
+                .and_then(|s| s.active.as_ref())
+                .map(|active| {
+                    let target_kind = play_target_kind_token(&active.target).to_string();
+                    let endpoint_cell = active
+                        .endpoint_cell
+                        .map(|c| [c.lane, c.cell]);
+                    let endpoint_invalid = active.invalid_target_cell.is_some();
+                    let valid_cell_count = placement_view
+                        .map(|view| {
+                            (1..=crate::ui::shared::BOARD_LANE_COUNT)
+                                .flat_map(|lane| {
+                                    (1..=crate::ui::shared::BOARD_CELL_COUNT)
+                                        .map(move |cell| (lane, cell))
+                                })
+                                .filter(|(lane, cell)| {
+                                    crate::presentation::board_rendering::targeting_overlay::placement_view_contains_cell(
+                                        view, *lane, *cell,
+                                    )
+                                })
+                                .count()
+                        })
+                        .unwrap_or(0);
+                    ActiveTargetingSnapshot {
+                        card_id: active.card_id.0,
+                        target_kind,
+                        endpoint_cell,
+                        endpoint_invalid,
+                        valid_cell_count,
+                    }
+                });
+
+        // Edge-region overlap heuristic: when there is an active endpoint
+        // cell, derive its world-space position and compare against the
+        // envelope's min/max Y so the overlap matches the world-space
+        // direction even before screen-space layout is known to the
+        // snapshot consumer.
+        let (overlaps_hand_bar, overlaps_top_chrome) = match (
+            self.envelope.as_deref(),
+            self.state.as_deref().and_then(|s| s.active.as_ref()),
+        ) {
+            (Some(env), Some(active)) => match active.endpoint_cell {
+                Some(cell) => {
+                    let world = Vec2::new(
+                        env.world_origin.x + (f32::from(cell.cell) - 1.0) * env.cell_size.x,
+                        env.world_origin.y - (f32::from(cell.lane) - 1.0) * env.cell_size.y,
+                    );
+                    let min = env.world_min();
+                    let max = env.world_max();
+                    (world.y < min.y, world.y > max.y)
+                }
+                None => (false, false),
+            },
+            _ => (false, false),
+        };
+
+        let placement_panel_overlaps_any = layout
+            .collisions
+            .placement_action_panel_overlaps
+            .iter()
+            .any(|name| !name.is_empty());
+
+        BoardTargetingSnapshot {
+            available: self.envelope.is_some(),
+            envelope: envelope_snapshot,
+            active_targeting,
+            valid_target_count,
+            invalid_target_count,
+            path_segment_count,
+            endpoint_ring_count,
+            dim_wash_count,
+            overlaps_hand_bar,
+            overlaps_top_chrome,
+            overlay_idle,
+            placement_action_panel_overlaps_any: placement_panel_overlaps_any,
+        }
+    }
+}
+
+/// Stable string token for a [`shared::protocol::PlayTarget`] variant.
+/// Mirrors the existing `target_kind_name` helper but lives next to the
+/// targeting projection so we never have to drift the two apart.
+fn play_target_kind_token(target: &shared::protocol::PlayTarget) -> &'static str {
+    match target {
+        shared::protocol::PlayTarget::BoardCell { .. } => "board_cell",
+        shared::protocol::PlayTarget::TargetUnit { .. } => "target_unit",
+        shared::protocol::PlayTarget::TargetObj { .. } => "target_obj",
+        shared::protocol::PlayTarget::LaneWide { .. } => "lane_wide",
+        shared::protocol::PlayTarget::Instant => "instant",
+    }
 }
 
 impl<'w, 's> ExtrasInputs<'w, 's> {
@@ -2599,6 +2840,7 @@ pub fn write_qa_snapshot_system(
     ui_count_queries: UiCountQueries,
     extras_inputs: ExtrasInputs,
     layout_inputs: LayoutInputs,
+    board_targeting_inputs: BoardTargetingInputs,
 ) {
     if requests.is_empty() {
         return;
@@ -2641,6 +2883,13 @@ pub fn write_qa_snapshot_system(
         // `spawned: false` so the JSON shape is phase-stable.
         let layout = layout_inputs.snapshot(window);
 
+        // PROMPT 1390 (S19-BR-PLAYAREA-HIERARCHY-TARGETING-FEEDBACK-001) —
+        // capture the board envelope, active targeting intent, and live
+        // overlay-entity counts. Projection depends on `layout` for the
+        // placement-panel collision boolean so we collect it after the
+        // layout snapshot has been built.
+        let board_targeting = board_targeting_inputs.snapshot(&layout);
+
         let mut snapshot = build_snapshot_with_extras_and_layout(
             counter_value,
             requested_at_ms,
@@ -2661,6 +2910,7 @@ pub fn write_qa_snapshot_system(
             ui_counts,
             extras,
             layout,
+            board_targeting,
         );
         snapshot.warnings.extend(extras_warnings);
 
@@ -2949,12 +3199,15 @@ pub fn build_snapshot_with_extras(
         ui_counts,
         extras,
         LayoutSnapshot::default(),
+        BoardTargetingSnapshot::default(),
     )
 }
 
 /// Same as [`build_snapshot_with_extras`] but also accepts a fully-populated
-/// [`LayoutSnapshot`] (PROMPT 1186). The host system pre-collects layout
-/// data through [`LayoutInputs::snapshot`].
+/// [`LayoutSnapshot`] (PROMPT 1186) and a fully-populated
+/// [`BoardTargetingSnapshot`] (PROMPT 1390). The host system pre-collects
+/// layout data through [`LayoutInputs::snapshot`] and targeting data
+/// through [`BoardTargetingInputs::snapshot`].
 #[allow(clippy::too_many_arguments)]
 pub fn build_snapshot_with_extras_and_layout(
     counter: u64,
@@ -2968,6 +3221,7 @@ pub fn build_snapshot_with_extras_and_layout(
     ui_counts: UiCounts,
     extras: ExtrasSnapshot,
     layout: LayoutSnapshot,
+    board_targeting: BoardTargetingSnapshot,
 ) -> QASnapshotData {
     let mut warnings: Vec<String> = Vec::new();
 
@@ -3074,6 +3328,7 @@ pub fn build_snapshot_with_extras_and_layout(
         layout,
         placement_state,
         auction_state,
+        board_targeting,
         warnings,
     }
 }

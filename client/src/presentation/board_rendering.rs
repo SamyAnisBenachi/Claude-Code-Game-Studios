@@ -35,6 +35,15 @@ use crate::ui::shared::{BoardLayout, LaneCell, BOARD_CELL_COUNT, BOARD_LANE_COUN
 
 pub mod perf_harness;
 pub mod rendering_constants;
+pub mod targeting_overlay;
+
+pub use targeting_overlay::{
+    apply_targeting_overlay_state_system, sync_targeting_overlays_system, ActiveTargeting,
+    BoardEnvelope, SourceCardLink, TargetingDimWash, TargetingEndpointRing, TargetingInvalidMarker,
+    TargetingOverlayState, TargetingValidRing, SOURCE_CARD_LINK_COLOR, SOURCE_CARD_LINK_WIDTH,
+    TARGETING_DIM_COLOR, TARGETING_ENDPOINT_RING_COLOR, TARGETING_INVALID_COLOR,
+    TARGETING_VALID_RING_COLOR,
+};
 
 pub const UNIT_PLACEHOLDER_FRAME_INDEX: usize = 0;
 pub const HP_BAR_WHITE_PIXEL_FRAME_INDEX: usize = 1;
@@ -902,6 +911,12 @@ impl Plugin for BoardRenderingPlugin {
             .init_resource::<PlacementRevealCollectState>()
             .init_resource::<PendingResolutionScript>()
             .init_resource::<ResolutionRevealWait>()
+            // PROMPT 1390 (S19-BR-PLAYAREA-HIERARCHY-TARGETING-FEEDBACK-001):
+            // targeting overlay state lives at the BoardRendering plugin
+            // boundary; the resource is always present so the QA snapshot
+            // projection can read a stable shape (`active = None`) outside
+            // active targeting.
+            .init_resource::<TargetingOverlayState>()
             // S13-LATE-MSG-DEDUPE-001: ensure the dedupe ring exists even when
             // tests load this plugin in isolation.
             .init_resource::<ClientIdempotencyState>()
@@ -1018,6 +1033,24 @@ impl Plugin for BoardRenderingPlugin {
                 )
                     .chain()
                     .in_set(PresentationSet::MessageDrain)
+                    .run_if(in_state(ClientState::InSession)),
+            )
+            // PROMPT 1390 — Targeting overlay state lifts
+            // `GhostPlacementChanged` + `PlacementBoardView` into a single
+            // [`TargetingOverlayState`] resource; the sync system spawns
+            // the dim wash, valid/endpoint rings, invalid marker, and
+            // source-card link to match. Registered in MessageDrain so
+            // overlay state lands before any StateSync consumer reads it
+            // for the same frame.
+            .add_systems(
+                Update,
+                (
+                    apply_targeting_overlay_state_system,
+                    sync_targeting_overlays_system,
+                )
+                    .chain()
+                    .in_set(PresentationSet::MessageDrain)
+                    .after(apply_ghost_placement_changed_system)
                     .run_if(in_state(ClientState::InSession)),
             );
     }
@@ -1740,6 +1773,10 @@ fn insert_board_rendering_session_resources(
     let runtime_assets = asset_server.as_deref().map(BoardRuntimeAssets::load);
 
     commands.insert_resource(board_layout);
+    // PROMPT 1390 — BoardEnvelope is derived from BoardLayout and
+    // inserted in lockstep so the QA snapshot projection always observes
+    // a consistent pair.
+    commands.insert_resource(BoardEnvelope::from_layout(&board_layout));
     commands.insert_resource(CardAtlas::default());
     spawn_board_camera(&mut commands, &board_layout);
     if let Some(runtime_assets) = runtime_assets {
@@ -1756,13 +1793,16 @@ fn remove_board_rendering_session_resources(
     mut commands: Commands,
     board_entities: Query<Entity, With<BoardRenderingEntity>>,
     mut player_team_map: ResMut<PlayerTeamMap>,
+    mut targeting_state: ResMut<TargetingOverlayState>,
 ) {
     for entity in &board_entities {
         commands.entity(entity).despawn();
     }
 
     player_team_map.clear();
+    *targeting_state = TargetingOverlayState::default();
     commands.remove_resource::<BoardLayout>();
+    commands.remove_resource::<BoardEnvelope>();
     commands.remove_resource::<CardAtlas>();
     commands.remove_resource::<BoardRuntimeAssets>();
 }
