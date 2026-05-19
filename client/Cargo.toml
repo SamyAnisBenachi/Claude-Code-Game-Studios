@@ -503,6 +503,16 @@ path = "../tests/integration/ui_clean_pass/typography_test.rs"
 name = "ui_clean_pass_strips_test"
 path = "../tests/integration/ui_clean_pass/strips_test.rs"
 
+# Sprint 18 story 020 (S18-UI-PLAY-AREA-CONTAINER-001): PlayArea flex
+# container + strip-budget contract (PROMPT 1180 §6 Lane A). Asserts
+# AC1 PlayArea Node shape, AC2..AC6 consumer migrations (shop bottom,
+# auction, shop footer, shop toast, placement action panel), AC7
+# budget edges + consumer containment at 1280×720 / 1366×768 /
+# 1920×1080, and AC8 strip primitives unchanged.
+[[test]]
+name = "play_area_budget_test"
+path = "../tests/integration/ui_clean_pass/play_area_budget_test.rs"
+
 # S11-UX-HUD-TOP-STRIP-LAYOUT (Sprint 14 story 015): HUD top-strip
 # HeaderBar composition, entity preservation, schedule stability,
 # font-size grep guard, and UI_BASE z-layer usage (AC1, AC2, AC3,

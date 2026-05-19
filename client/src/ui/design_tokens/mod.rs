@@ -20,6 +20,11 @@
 //!   (`HeaderBar` / `LaneBar` / `HandBar` / `FooterBar`) with
 //!   deterministic pixel heights and documented flex axes
 //!   (Sprint 14 story 004 / S11-TD-UI-FLEX-STRIPS).
+//! - [`play_area`] — flex-container parent for the in-session middle
+//!   band (`viewport − HeaderBar − FooterBar − HandBar`). Every
+//!   shop / auction / footer / toast / placement-action panel parents
+//!   into `PlayArea`; the strip primitives stay viewport-edge-anchored
+//!   siblings (Sprint 18 story 020 / S18-UI-PLAY-AREA-CONTAINER-001).
 //! - [`overlays`] — named overlay alpha tokens (Dim / Scrim / Toast)
 //!   for translucent UI overlays (Sprint 14 story 006 /
 //!   S12-TD-UI-OVERLAY-ALPHA-TOKEN-001).
@@ -69,6 +74,7 @@ pub mod cta_row;
 pub mod interaction_states;
 pub mod modal_panel;
 pub mod overlays;
+pub mod play_area;
 pub mod scroll_region;
 pub mod spacing;
 pub mod status_chip;
