@@ -491,6 +491,20 @@ path = "../tests/unit/qa_snapshot/auction_won_pending_test.rs"
 name = "shop_auction_ui_auction_won_card_disposition_test"
 path = "../tests/integration/shop_auction_ui/auction_won_card_disposition_test.rs"
 
+# PROMPT 1397 / S18-AUCTION-LEADER-RESET-ON-CARD-001 (AUDIT-1392-P03) —
+# Closes the auction-leader-stickiness defect surfaced by the 2026-05-18
+# capture audit. Asserts that the `ShopAuctionAuctionCardReceived` drain
+# resets every audit-flagged field of `ShopAuctionAuctionState`
+# (current_leader → None, current_price → starting_price, timer fields,
+# in-flight-bid + opponent-bid-gate flags) and that the derived
+# `AuctionFeaturedCardLeadLossState` marker repaints to Neutral before
+# `sync_auction_panel_system` reads the resource. Covers both the active-
+# entry path (DraftAuction phase) and the Preparing buffer path
+# (transitional phase, Surface C from PROMPT 684).
+[[test]]
+name = "shop_auction_ui_auction_leader_reset_on_card_test"
+path = "../tests/integration/shop_auction_ui/auction_leader_reset_on_card_test.rs"
+
 # S17-UI-QA-SNAPSHOT-MARKER-SPLIT-001 — per-sub-surface marker split,
 # visibility-aware UI counts, and session-id-prefixed snapshot directory
 # names (SOURCE-1077-08 + SOURCE-1077-09 + SOURCE-1077-16). Covers ACs
