@@ -67,6 +67,18 @@ fn test_build_snapshot_emits_top_level_placement_and_auction_state_keys() {
         "placement_state top-level key must be present"
     );
     assert!(
+        json.get("snapshot_utc_iso").is_some(),
+        "snapshot_utc_iso top-level key must be present"
+    );
+    assert!(
+        json.get("evidence_layers").is_some(),
+        "evidence_layers top-level key must be present"
+    );
+    assert!(
+        json.get("ui_text_markers").is_some(),
+        "ui_text_markers top-level key must be present"
+    );
+    assert!(
         json.get("auction_state").is_some(),
         "auction_state top-level key must be present"
     );
@@ -91,6 +103,10 @@ fn test_build_snapshot_emits_top_level_placement_and_auction_state_keys() {
         "drag_card_id",
         "drag_target_kind",
         "disclosure_step",
+        "submit_disabled_reason",
+        "invalid_pending_indices",
+        "pending_placement_source",
+        "last_rejection_state",
     ] {
         assert!(
             placement.get(key).is_some(),
@@ -111,6 +127,11 @@ fn test_build_snapshot_emits_top_level_placement_and_auction_state_keys() {
         "timer_remaining_ms",
         "local_in_flight_bid_amount",
         "local_gold",
+        "local_player_id",
+        "leader_is_local",
+        "leader_label_text",
+        "price_label_text",
+        "timer_label_text",
     ] {
         assert!(
             auction.get(key).is_some(),
@@ -141,6 +162,10 @@ fn test_default_snapshot_marks_placement_and_auction_state_unavailable() {
     assert!(snapshot.placement_state.drag_card_id.is_none());
     assert!(snapshot.placement_state.drag_target_kind.is_none());
     assert!(snapshot.placement_state.disclosure_step.is_none());
+    assert!(snapshot.placement_state.submit_disabled_reason.is_none());
+    assert!(snapshot.placement_state.invalid_pending_indices.is_empty());
+    assert!(snapshot.placement_state.pending_placement_source.is_none());
+    assert!(snapshot.placement_state.last_rejection_state.is_none());
 
     assert_eq!(snapshot.auction_state.available, false);
     assert!(snapshot.auction_state.panel_state.is_none());
@@ -152,6 +177,11 @@ fn test_default_snapshot_marks_placement_and_auction_state_unavailable() {
     assert!(snapshot.auction_state.timer_remaining_ms.is_none());
     assert!(snapshot.auction_state.local_in_flight_bid_amount.is_none());
     assert!(snapshot.auction_state.local_gold.is_none());
+    assert!(snapshot.auction_state.local_player_id.is_none());
+    assert!(snapshot.auction_state.leader_is_local.is_none());
+    assert!(snapshot.auction_state.leader_label_text.is_none());
+    assert!(snapshot.auction_state.price_label_text.is_none());
+    assert!(snapshot.auction_state.timer_label_text.is_none());
 
     assert!(snapshot.current_phase.timer_remaining_ms.is_none());
 }
@@ -164,6 +194,8 @@ fn test_default_snapshot_marks_placement_and_auction_state_unavailable() {
 fn test_current_phase_timer_remaining_ms_lifted_from_extras_phase_timer() {
     let extras = ExtrasSnapshot {
         timers: TimersSnapshot {
+            sampled_at_unix_ms: None,
+            sampled_at_utc_iso: None,
             phase_timer: Some(PhaseTimerSnapshot {
                 phase_started_elapsed_ms: Some(2_000),
                 phase_duration_ms: 30_000,
@@ -259,6 +291,11 @@ fn test_placement_state_lifts_staged_count_submitted_and_can_submit() {
     assert_eq!(state.drag_card_id, Some(57));
     assert_eq!(state.drag_target_kind.as_deref(), Some("Minion"));
     assert_eq!(state.disclosure_step.as_deref(), Some("StagedCard"));
+    assert_eq!(state.submit_disabled_reason, None);
+    assert_eq!(
+        state.pending_placement_source.as_deref(),
+        Some("cursor_drop")
+    );
 }
 
 #[test]
@@ -290,6 +327,10 @@ fn test_placement_state_can_submit_false_when_already_submitted() {
     assert_eq!(state.submitted, Some(true));
     // 1 staged + already submitted -> cannot submit.
     assert_eq!(state.can_submit, Some(false));
+    assert_eq!(
+        state.submit_disabled_reason.as_deref(),
+        Some("already_submitted")
+    );
 }
 
 #[test]
@@ -313,6 +354,10 @@ fn test_placement_state_can_submit_false_when_zero_staged() {
     assert!(state.available);
     assert_eq!(state.staged_count, Some(0));
     assert_eq!(state.can_submit, Some(false));
+    assert_eq!(
+        state.submit_disabled_reason.as_deref(),
+        Some("no_staged_placements")
+    );
 }
 
 #[test]
@@ -326,6 +371,8 @@ fn test_placement_state_defaults_when_no_hand_or_timer() {
     assert!(state.drag_active.is_none());
     assert!(state.drag_target_kind.is_none());
     assert!(state.disclosure_step.is_none());
+    assert!(state.submit_disabled_reason.is_none());
+    assert!(state.invalid_pending_indices.is_empty());
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -464,6 +511,9 @@ fn test_default_auction_state_serialises_to_stable_null_shape() {
     assert!(json["timer_remaining_ms"].is_null());
     assert!(json["local_in_flight_bid_amount"].is_null());
     assert!(json["local_gold"].is_null());
+    assert!(json["local_player_id"].is_null());
+    assert!(json["leader_is_local"].is_null());
+    assert!(json["leader_label_text"].is_null());
 }
 
 // ─────────────────────────────────────────────────────────────────────────

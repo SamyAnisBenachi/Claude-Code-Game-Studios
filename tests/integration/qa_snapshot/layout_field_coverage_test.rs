@@ -122,6 +122,7 @@ fn make_layout_with_bounds(
         viewport: ViewportLayoutSnapshot::default(),
         surfaces,
         button_affordances: Vec::new(),
+        ui_text_markers: Vec::new(),
         collisions,
         limitations: Vec::new(),
     }
@@ -510,6 +511,7 @@ fn test_snapshot_json_round_trip_preserves_layout_block_keys_after_write_to_dir(
             name: Some("Confirm".to_string()),
             interaction: "pressed".to_string(),
         }],
+        ui_text_markers: Vec::new(),
         collisions: LayoutCollisionsSnapshot {
             placement_action_panel_overlaps: vec!["hand_bar".to_string()],
             shop_panel_bottom_edge_y: Some(310.0),
@@ -523,6 +525,8 @@ fn test_snapshot_json_round_trip_preserves_layout_block_keys_after_write_to_dir(
         snapshot_id: "test-layout".to_string(),
         counter: 1,
         unix_millis: 0,
+        snapshot_utc_iso: "1970-01-01T00:00:00.000Z".to_string(),
+        evidence_layers: client::presentation::qa_snapshot::EvidenceLayersSnapshot::default(),
         screenshot: placeholder_screenshot(0),
         client_state: "Lobby".to_string(),
         current_phase: client::presentation::qa_snapshot::PhaseInfo {
@@ -547,6 +551,7 @@ fn test_snapshot_json_round_trip_preserves_layout_block_keys_after_write_to_dir(
         },
         ui_counts: UiCounts::default(),
         extras: ExtrasSnapshot::default(),
+        ui_text_markers: Vec::new(),
         layout,
         placement_state: client::presentation::qa_snapshot::PlacementStateSnapshot::default(),
         auction_state: client::presentation::qa_snapshot::AuctionStateSnapshot::default(),

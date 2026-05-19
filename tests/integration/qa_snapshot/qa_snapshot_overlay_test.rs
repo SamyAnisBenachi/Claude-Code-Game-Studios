@@ -28,14 +28,14 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use bevy::input::InputPlugin;
 use bevy::prelude::*;
 use client::presentation::qa_snapshot::{
-    apply_qa_snapshot_capture_completed_system, build_snapshot, BoardTargetingSnapshot,
+    apply_qa_snapshot_capture_completed_system, build_snapshot,
     revert_qa_snapshot_feedback_state_system, update_snapshot_json_status, write_snapshot_to_dir,
-    QASnapshotButton, QASnapshotCaptureCompleted, QASnapshotConfig, QASnapshotCounter,
-    QASnapshotData, QASnapshotFeedbackState, QASnapshotOverlayEntities, QASnapshotOverlayRoot,
-    QASnapshotPlugin, QASnapshotRequested, ScreenshotInfo, UiCounts, DEFAULT_QA_SNAPSHOT_DIR,
-    QA_CAPTURE_TIMEOUT_SECS, QA_FEEDBACK_REVERT_SECS, QA_SCREENSHOT_FILENAME, QA_SCREENSHOT_FORMAT,
-    QA_SNAPSHOT_SHORTCUT_KEY, SCREENSHOT_STATUS_CAPTURED, SCREENSHOT_STATUS_FAILED,
-    SCREENSHOT_STATUS_PENDING,
+    BoardTargetingSnapshot, QASnapshotButton, QASnapshotCaptureCompleted, QASnapshotConfig,
+    QASnapshotCounter, QASnapshotData, QASnapshotFeedbackState, QASnapshotOverlayEntities,
+    QASnapshotOverlayRoot, QASnapshotPlugin, QASnapshotRequested, ScreenshotInfo, UiCounts,
+    DEFAULT_QA_SNAPSHOT_DIR, QA_CAPTURE_TIMEOUT_SECS, QA_FEEDBACK_REVERT_SECS,
+    QA_SCREENSHOT_FILENAME, QA_SCREENSHOT_FORMAT, QA_SNAPSHOT_SHORTCUT_KEY,
+    SCREENSHOT_STATUS_CAPTURED, SCREENSHOT_STATUS_FAILED, SCREENSHOT_STATUS_PENDING,
 };
 use client::state::{ClientPhaseView, ClientSessionIdentity, ClientState, CurrentClientPhase};
 use client::ui::design_tokens::z_layers;
@@ -82,6 +82,8 @@ fn make_test_qa_snapshot_data(
         snapshot_id: snapshot_id.to_string(),
         counter,
         unix_millis,
+        snapshot_utc_iso: "1970-01-01T00:00:00.000Z".to_string(),
+        evidence_layers: client::presentation::qa_snapshot::EvidenceLayersSnapshot::default(),
         screenshot: placeholder_screenshot(unix_millis),
         client_state: "Lobby".to_string(),
         current_phase: client::presentation::qa_snapshot::PhaseInfo {
@@ -107,6 +109,7 @@ fn make_test_qa_snapshot_data(
         ui_counts: UiCounts::default(),
         extras: client::presentation::qa_snapshot::ExtrasSnapshot::default(),
         layout: client::presentation::qa_snapshot::LayoutSnapshot::default(),
+        ui_text_markers: Vec::new(),
         placement_state: client::presentation::qa_snapshot::PlacementStateSnapshot::default(),
         auction_state: client::presentation::qa_snapshot::AuctionStateSnapshot::default(),
         auction_won_pending: None,
@@ -1053,6 +1056,8 @@ fn build_snapshot_with_extras_embeds_extras_field() {
             opponent_source: Some("placement_board_view".to_string()),
         },
         timers: TimersSnapshot {
+            sampled_at_unix_ms: None,
+            sampled_at_utc_iso: None,
             phase_timer: Some(PhaseTimerSnapshot {
                 phase_started_elapsed_ms: Some(1_000),
                 phase_duration_ms: 30_000,

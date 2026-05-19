@@ -115,12 +115,14 @@ use crate::ui::hand::{
     PlacementTargetKind, PlacementTimer,
 };
 use crate::ui::hud::{HudClassReveal, HudMode, HudPlayerIds, PhaseTimerState};
+use crate::ui::shared::LaneCell;
 use crate::ui::shop_auction::{
     AuctionBidKeyboardFocus, AuctionLocallyPassed, AuctionWonPending, ShopAuctionAuctionPanelState,
-    ShopAuctionAuctionState, ShopAuctionDraftInitialState, ShopAuctionLocalGoldView,
-    ShopAuctionSettlementOutcome, ShopAuctionSettlementState, ShopAuctionShopState,
-    ShopAuctionShopTimerState, ShopAuctionToastState, ShopAuctionUiMode,
-    ShopAuctionUiOutboundMessages,
+    ShopAuctionAuctionState, ShopAuctionCardCatalog, ShopAuctionDraftInitialState,
+    ShopAuctionLocalGoldView, ShopAuctionSettlementOutcome, ShopAuctionSettlementState,
+    ShopAuctionShopState, ShopAuctionShopTimerState, ShopAuctionToastState, ShopAuctionUiMode,
+    ShopAuctionUiOutboundMessages, ShopSlotCard, ShopSlotCardName, ShopSlotGoldCost, ShopSlotIndex,
+    ShopSlotState,
 };
 
 /// Environment variable that, when set to `1`, enables the QA snapshot
@@ -176,6 +178,7 @@ pub const QA_FEEDBACK_REVERT_SECS: f32 = 1.5;
 /// usually delivers `ScreenshotCaptured` within one frame; the generous
 /// budget here covers headless test environments and stutters.
 pub const QA_CAPTURE_TIMEOUT_SECS: f32 = 3.0;
+const MAX_UI_TEXT_MARKERS: usize = 200;
 
 /// Plugin entry point. Always-safe to register; does nothing observable
 /// when [`QASnapshotConfig::enabled`] is `false`.
@@ -386,6 +389,14 @@ pub struct QASnapshotData {
     pub snapshot_id: String,
     pub counter: u64,
     pub unix_millis: u128,
+    /// Self-contained UTC timestamp for audit tools that ingest
+    /// `snapshot.json` without its folder name. This is derived from
+    /// `unix_millis`; it is capture metadata, not server time.
+    pub snapshot_utc_iso: String,
+    /// Trust-boundary map for forensic consumers. QA snapshots are a local
+    /// client projection and must be correlated with screenshot pixels,
+    /// logs, and expected game rules before being treated as truth.
+    pub evidence_layers: EvidenceLayersSnapshot,
     /// New: structured screenshot metadata. See [`ScreenshotInfo`].
     pub screenshot: ScreenshotInfo,
     pub client_state: String,
@@ -408,6 +419,11 @@ pub struct QASnapshotData {
     /// computable from current ECS data — see
     /// [`LayoutSnapshot::limitations`] for the documented gaps.
     pub layout: LayoutSnapshot,
+    /// Rendered UI text marker diagnostics collected from Bevy UI `Text`
+    /// entities. Bounds/overflow are populated only when the text entity has
+    /// computed UI layout data; absent bounds mean "not computable", not
+    /// "not visible".
+    pub ui_text_markers: Vec<UiTextMarkerSnapshot>,
     /// PROMPT 1229 (S18-QA-SNAPSHOT-PLACEMENT-AUCTION-STATE-001 /
     /// B-1203-X-03) — top-level placement-phase state lift, projected
     /// from the same `extras.hand` / `extras.drag` / `extras.timers`
@@ -449,6 +465,27 @@ pub struct QASnapshotData {
     /// in-session. See [`BoardTargetingSnapshot`].
     pub board_targeting: BoardTargetingSnapshot,
     pub warnings: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct EvidenceLayersSnapshot {
+    pub actual_rendered_pixels: String,
+    pub instrumented_local_client_projection: String,
+    pub server_client_log_truth: String,
+    pub expected_theoretical_game_ui_state: String,
+}
+
+impl Default for EvidenceLayersSnapshot {
+    fn default() -> Self {
+        Self {
+            actual_rendered_pixels: "screenshot.png".to_string(),
+            instrumented_local_client_projection: "snapshot.json".to_string(),
+            server_client_log_truth: "external logs; not embedded in snapshot.json".to_string(),
+            expected_theoretical_game_ui_state:
+                "game rules and Krosmaga-style UI contract; not embedded in snapshot.json"
+                    .to_string(),
+        }
+    }
 }
 
 /// PROMPT 1347 / AC11 — AC11 snapshot block shape. Emitted at the top of
@@ -575,6 +612,10 @@ pub struct PlacementStateSnapshot {
     /// `TargetSelection(<kind>)` / `StagedCard` / `Correction(<err>)` /
     /// `Submitted`. `None` when the resource is absent.
     pub disclosure_step: Option<String>,
+    pub submit_disabled_reason: Option<String>,
+    pub invalid_pending_indices: Vec<usize>,
+    pub pending_placement_source: Option<String>,
+    pub last_rejection_state: Option<String>,
 }
 
 /// PROMPT 1229 (S18-QA-SNAPSHOT-PLACEMENT-AUCTION-STATE-001 /
@@ -625,6 +666,11 @@ pub struct AuctionStateSnapshot {
     /// absent — the inner [`AuctionLocalGoldSnapshot`] carries the
     /// per-field nulls.
     pub local_gold: Option<AuctionLocalGoldSnapshot>,
+    pub local_player_id: Option<String>,
+    pub leader_is_local: Option<bool>,
+    pub leader_label_text: Option<String>,
+    pub price_label_text: Option<String>,
+    pub timer_label_text: Option<String>,
 }
 
 /// PROMPT 1390 (S19-BR-PLAYAREA-HIERARCHY-TARGETING-FEEDBACK-001).
@@ -1113,6 +1159,8 @@ pub struct ExtrasSnapshot {
     /// Pending outbound message buffer sizes — never the message bodies, so
     /// the payload stays compact regardless of churn.
     pub outbound_intents: OutboundIntentsSnapshot,
+    pub input: InputDiagnosticsSnapshot,
+    pub connection_lost: ConnectionLostDiagnosticsSnapshot,
 }
 
 /// Maximum number of board entities of one kind (units OR objectives)
@@ -1133,6 +1181,8 @@ pub struct PlayerIdsSnapshot {
 
 #[derive(Debug, Clone, Default, Serialize)]
 pub struct TimersSnapshot {
+    pub sampled_at_unix_ms: Option<u128>,
+    pub sampled_at_utc_iso: Option<String>,
     pub phase_timer: Option<PhaseTimerSnapshot>,
     pub placement_timer: Option<PlacementTimerSnapshot>,
     pub auction_timer: Option<AuctionTimerSnapshot>,
@@ -1218,6 +1268,9 @@ pub struct PendingPlacementSnapshot {
     pub target: String,
     pub current_mana_spend: u32,
     pub reserve_mana_spend: u32,
+    pub source: Option<String>,
+    pub server_ack_state: Option<String>,
+    pub last_rejection_reason: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, Serialize)]
@@ -1280,6 +1333,23 @@ pub struct ShopPanelSnapshot {
     pub footer_slots_loaded: bool,
     /// `None` represents an empty footer slot.
     pub footer_slots: Vec<Option<u32>>,
+    pub placeholder_visible: bool,
+    pub slots: Vec<ShopSlotDiagnosticSnapshot>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ShopSlotDiagnosticSnapshot {
+    pub slot_index: u8,
+    pub entity: String,
+    pub card_id: Option<u32>,
+    pub name: Option<String>,
+    pub cost: Option<u32>,
+    pub atk: Option<u8>,
+    pub hp: Option<u8>,
+    pub state: String,
+    pub button_state: String,
+    pub placeholder_visible: bool,
+    pub visible: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -1337,6 +1407,8 @@ pub struct BoardSnapshot {
     pub local_player_id: Option<String>,
     pub units: Vec<BoardUnitSnapshot>,
     pub units_truncated: bool,
+    pub rendered_unit_count: usize,
+    pub visible_rendered_unit_count: usize,
     pub objectives: Vec<BoardObjectiveSnapshot>,
     pub objectives_truncated: bool,
 }
@@ -1346,7 +1418,12 @@ pub struct BoardUnitSnapshot {
     pub entity: String,
     pub unit_id: u64,
     pub owner_id: String,
+    pub lane: Option<u8>,
+    pub cell: Option<u8>,
     pub card_id: Option<u32>,
+    pub visible: Option<bool>,
+    pub world_position: Option<[f32; 3]>,
+    pub source: String,
     pub frame_index: Option<usize>,
     pub used_missing_art_fallback: Option<bool>,
     pub hp_current: Option<u8>,
@@ -1384,6 +1461,39 @@ pub struct OpponentConnectionSnapshot {
     pub grace_remaining_ms: Option<u32>,
 }
 
+#[derive(Debug, Clone, Default, Serialize)]
+pub struct ConnectionLostDiagnosticsSnapshot {
+    pub visible: bool,
+    pub disconnected_player_id: Option<String>,
+    pub local_is_disconnected: Option<bool>,
+    pub grace_remaining_ms: Option<u32>,
+    pub blocking_input: bool,
+    pub reason: Option<String>,
+}
+
+#[derive(Debug, Clone, Default, Serialize)]
+pub struct InputDiagnosticsSnapshot {
+    pub last_pointer_screen: Option<[f32; 2]>,
+    pub last_pointer_world: Option<[f32; 2]>,
+    pub hovered_entity: Option<String>,
+    pub pressed_entity: Option<String>,
+    pub active_drag_state: Option<String>,
+    pub target_cell: Option<[u8; 2]>,
+    pub reject_reason: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct UiTextMarkerSnapshot {
+    pub entity: String,
+    pub marker: Option<String>,
+    pub text: String,
+    pub bounds: Option<SurfaceBoundsRect>,
+    pub font_px: Option<f32>,
+    pub clipped: Option<bool>,
+    pub overflow_px: Option<f32>,
+    pub visible: Option<bool>,
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub struct SessionLifecycleSnapshot {
     pub cancellation_reason: Option<String>,
@@ -1411,7 +1521,7 @@ pub struct ExtrasInputs<'w, 's> {
     pub identity: Option<Res<'w, ClientSessionIdentity>>,
     pub timers: ExtrasTimerInputs<'w>,
     pub hand: ExtrasHandInputs<'w>,
-    pub shop_auction: ExtrasShopAuctionInputs<'w>,
+    pub shop_auction: ExtrasShopAuctionInputs<'w, 's>,
     pub hud: ExtrasHudInputs<'w>,
     pub board: ExtrasBoardInputs<'w, 's>,
     pub session: ExtrasSessionInputs<'w>,
@@ -1443,7 +1553,7 @@ pub struct ExtrasHandInputs<'w> {
 }
 
 #[derive(SystemParam)]
-pub struct ExtrasShopAuctionInputs<'w> {
+pub struct ExtrasShopAuctionInputs<'w, 's> {
     pub ui_mode: Option<Res<'w, ShopAuctionUiMode>>,
     pub draft_initial: Option<Res<'w, ShopAuctionDraftInitialState>>,
     pub shop: Option<Res<'w, ShopAuctionShopState>>,
@@ -1457,6 +1567,20 @@ pub struct ExtrasShopAuctionInputs<'w> {
     /// as the `auction_won_pending` block. Present only on the winner
     /// client during the auction-followup PLACEMENT window.
     pub auction_won_pending: Option<Res<'w, AuctionWonPending>>,
+    pub catalog: Option<Res<'w, ShopAuctionCardCatalog>>,
+    pub shop_slots: Query<
+        'w,
+        's,
+        (
+            Entity,
+            &'static ShopSlotIndex,
+            Option<&'static ShopSlotCard>,
+            Option<&'static ShopSlotCardName>,
+            Option<&'static ShopSlotGoldCost>,
+            Option<&'static ShopSlotState>,
+            Option<&'static Visibility>,
+        ),
+    >,
 }
 
 #[derive(SystemParam)]
@@ -1478,6 +1602,9 @@ pub struct ExtrasBoardInputs<'w, 's> {
             &'static BoardUnitOwner,
             Option<&'static BoardUnitCard>,
             Option<&'static BoardUnitStats>,
+            Option<&'static LaneCell>,
+            Option<&'static Visibility>,
+            Option<&'static Transform>,
         ),
     >,
     pub objectives: Query<
@@ -1728,6 +1855,12 @@ impl<'w, 's> ExtrasInputs<'w, 's> {
             self.hand_outbound.as_deref(),
             self.shop_outbound.as_deref(),
         );
+        let input = build_input_diagnostics_snapshot(&drag, &hand, None);
+        let connection_lost = build_connection_lost_diagnostics_snapshot(
+            false,
+            opponent_connection.as_ref(),
+            session_lifecycle.as_ref(),
+        );
 
         ExtrasSnapshot {
             frame_count,
@@ -1745,6 +1878,8 @@ impl<'w, 's> ExtrasInputs<'w, 's> {
             opponent_connection,
             session_lifecycle,
             outbound_intents,
+            input,
+            connection_lost,
         }
     }
 }
@@ -1822,6 +1957,8 @@ fn build_timers_snapshot(inputs: &ExtrasTimerInputs<'_>) -> TimersSnapshot {
         deferred: s.deferred,
     });
     TimersSnapshot {
+        sampled_at_unix_ms: None,
+        sampled_at_utc_iso: None,
         phase_timer,
         placement_timer,
         auction_timer,
@@ -1885,6 +2022,10 @@ fn build_hand_snapshot(inputs: &ExtrasHandInputs<'_>) -> Option<HandSnapshot> {
                     target: format!("{:?}", placement.target),
                     current_mana_spend: placement.current_mana_spend,
                     reserve_mana_spend: placement.reserve_mana_spend,
+                    source: None,
+                    server_ack_state: None,
+                    last_rejection_reason: disclosure
+                        .and_then(|d| correction_reason_from_step(d.step)),
                 })
                 .collect::<Vec<_>>()
         })
@@ -1912,6 +2053,13 @@ fn disclosure_step_name(step: PlacementDisclosureStep) -> String {
         PlacementDisclosureStep::StagedCard => "StagedCard".to_string(),
         PlacementDisclosureStep::Correction { error } => format!("Correction({:?})", error),
         PlacementDisclosureStep::Submitted => "Submitted".to_string(),
+    }
+}
+
+fn correction_reason_from_step(step: PlacementDisclosureStep) -> Option<String> {
+    match step {
+        PlacementDisclosureStep::Correction { error } => Some(format!("{:?}", error)),
+        _ => None,
     }
 }
 
@@ -1964,7 +2112,7 @@ fn auction_panel_state_name(state: ShopAuctionAuctionPanelState) -> &'static str
 }
 
 fn build_shop_auction_snapshot(
-    inputs: &ExtrasShopAuctionInputs<'_>,
+    inputs: &ExtrasShopAuctionInputs<'_, '_>,
 ) -> Option<ShopAuctionExtrasSnapshot> {
     let ui_mode = inputs.ui_mode.as_deref().copied();
     let draft_initial_res = inputs.draft_initial.as_deref();
@@ -1978,18 +2126,14 @@ fn build_shop_auction_snapshot(
     // the top-level snapshot projection. Absent resource → None;
     // resource present but `Idle` (`state == None`) → also None so the
     // top-level block is correctly absent.
-    let auction_won_pending_state =
-        inputs
-            .auction_won_pending
-            .as_deref()
-            .and_then(|pending| {
-                pending.state.map(|s| AuctionWonPendingExtrasSnapshot {
-                    card_id: s.card_id.0,
-                    settle_round: s.settle_round,
-                    staged_yet: s.staged_yet,
-                    submitted_yet: s.submitted_yet,
-                })
-            });
+    let auction_won_pending_state = inputs.auction_won_pending.as_deref().and_then(|pending| {
+        pending.state.map(|s| AuctionWonPendingExtrasSnapshot {
+            card_id: s.card_id.0,
+            settle_round: s.settle_round,
+            staged_yet: s.staged_yet,
+            submitted_yet: s.submitted_yet,
+        })
+    });
 
     if ui_mode.is_none()
         && draft_initial_res.is_none()
@@ -2026,6 +2170,8 @@ fn build_shop_auction_snapshot(
             refresh_in_flight: s.refresh_in_flight,
             footer_slots_loaded: s.footer_slots_loaded,
             footer_slots,
+            placeholder_visible: !s.slots_loaded,
+            slots: build_shop_slot_diagnostics(inputs, !s.slots_loaded),
         }
     });
 
@@ -2081,6 +2227,58 @@ fn build_shop_auction_snapshot(
     })
 }
 
+fn build_shop_slot_diagnostics(
+    inputs: &ExtrasShopAuctionInputs<'_, '_>,
+    placeholder_visible: bool,
+) -> Vec<ShopSlotDiagnosticSnapshot> {
+    let catalog = inputs.catalog.as_deref();
+    let mut slots = inputs
+        .shop_slots
+        .iter()
+        .map(|(entity, index, card, name, cost, state, visibility)| {
+            let card_id = card.map(|c| c.0);
+            let catalog_card = catalog.and_then(|c| card_id.and_then(|id| c.cards.get(&id)));
+            let state_token = state
+                .map(|s| format!("{:?}", s))
+                .unwrap_or_else(|| "unknown".to_string());
+            ShopSlotDiagnosticSnapshot {
+                slot_index: index.0,
+                entity: format!("{:?}", entity),
+                card_id: card_id.map(|id| id.0),
+                name: name
+                    .map(|n| n.0.clone())
+                    .or_else(|| catalog_card.map(|card| card.name_en.clone())),
+                cost: cost
+                    .map(|c| c.0)
+                    .or_else(|| catalog_card.map(|card| card.cost)),
+                atk: catalog_card.map(|card| card.atk),
+                hp: catalog_card.map(|card| card.hp),
+                button_state: shop_slot_button_state(state.copied(), card_id),
+                state: state_token,
+                placeholder_visible,
+                visible: visibility.map(is_visibility_visible),
+            }
+        })
+        .collect::<Vec<_>>();
+    slots.sort_by_key(|slot| slot.slot_index);
+    slots
+}
+
+fn shop_slot_button_state(
+    state: Option<ShopSlotState>,
+    card_id: Option<shared::card::CardId>,
+) -> String {
+    match state {
+        Some(ShopSlotState::Available) if card_id.is_some() => "buy_available".to_string(),
+        Some(ShopSlotState::Available) => "empty_available".to_string(),
+        Some(ShopSlotState::PendingPurchase) => "pending_purchase".to_string(),
+        Some(ShopSlotState::HandFullLocked) => "locked_hand_full".to_string(),
+        Some(ShopSlotState::Refreshing) => "refreshing".to_string(),
+        Some(ShopSlotState::Empty) => "empty".to_string(),
+        None => "unknown".to_string(),
+    }
+}
+
 fn settlement_outcome_name(outcome: ShopAuctionSettlementOutcome) -> &'static str {
     match outcome {
         ShopAuctionSettlementOutcome::LocalWinner => "LocalWinner",
@@ -2126,16 +2324,28 @@ fn build_board_snapshot(inputs: &ExtrasBoardInputs<'_, '_>) -> BoardSnapshot {
 
     let mut units = Vec::new();
     let mut units_truncated = false;
-    for (entity, board_unit, owner, card, stats) in inputs.units.iter() {
+    let mut visible_rendered_unit_count = 0usize;
+    for (entity, board_unit, owner, card, stats, lane_cell, visibility, transform) in
+        inputs.units.iter()
+    {
         if units.len() >= MAX_BOARD_ENTITIES_PER_KIND {
             units_truncated = true;
             break;
+        }
+        let visible = visibility.map(is_visibility_visible);
+        if visible.unwrap_or(true) {
+            visible_rendered_unit_count += 1;
         }
         units.push(BoardUnitSnapshot {
             entity: format!("{:?}", entity),
             unit_id: board_unit.unit_id,
             owner_id: format!("{:?}", owner.0),
+            lane: lane_cell.map(|c| c.lane),
+            cell: lane_cell.map(|c| c.cell),
             card_id: card.and_then(|c| c.card_id).map(|c| c.0),
+            visible,
+            world_position: transform.map(|t| [t.translation.x, t.translation.y, t.translation.z]),
+            source: "rendered_board_unit_entity".to_string(),
             frame_index: card.map(|c| c.frame_index),
             used_missing_art_fallback: card.map(|c| c.used_missing_art_fallback),
             hp_current: stats.map(|s| s.hp_current),
@@ -2166,6 +2376,8 @@ fn build_board_snapshot(inputs: &ExtrasBoardInputs<'_, '_>) -> BoardSnapshot {
 
     BoardSnapshot {
         local_player_id,
+        rendered_unit_count: units.len(),
+        visible_rendered_unit_count,
         units,
         units_truncated,
         objectives,
@@ -2191,6 +2403,56 @@ fn build_outbound_intents_snapshot(
         out.shop_gold_counter_flash_requests = s.gold_counter_flash_requests;
     }
     out
+}
+
+fn build_input_diagnostics_snapshot(
+    drag: &DragSnapshot,
+    hand: &Option<HandSnapshot>,
+    active_targeting: Option<&ActiveTargetingSnapshot>,
+) -> InputDiagnosticsSnapshot {
+    let active_drag_state = if drag.placement_drag_active {
+        Some("placement_drag".to_string())
+    } else if drag.ghost_unstage_active {
+        Some("ghost_unstage_drag".to_string())
+    } else {
+        None
+    };
+    InputDiagnosticsSnapshot {
+        last_pointer_screen: drag.ghost_unstage_cursor_screen,
+        last_pointer_world: drag.placement_drag_cursor_world,
+        hovered_entity: None,
+        pressed_entity: drag.placement_drag_card_entity.clone(),
+        active_drag_state,
+        target_cell: active_targeting.and_then(|t| t.endpoint_cell),
+        reject_reason: hand
+            .as_ref()
+            .and_then(|h| h.disclosure_step.as_deref())
+            .and_then(correction_reason_from_disclosure_name),
+    }
+}
+
+fn build_connection_lost_diagnostics_snapshot(
+    visible: bool,
+    opponent_connection: Option<&OpponentConnectionSnapshot>,
+    lifecycle: Option<&SessionLifecycleSnapshot>,
+) -> ConnectionLostDiagnosticsSnapshot {
+    ConnectionLostDiagnosticsSnapshot {
+        visible,
+        disconnected_player_id: opponent_connection
+            .and_then(|connection| connection.disconnected_player_id.clone()),
+        local_is_disconnected: None,
+        grace_remaining_ms: opponent_connection
+            .and_then(|connection| connection.grace_remaining_ms),
+        blocking_input: visible,
+        reason: lifecycle.and_then(|lifecycle| lifecycle.cancellation_reason.clone()),
+    }
+}
+
+fn correction_reason_from_disclosure_name(disclosure: &str) -> Option<String> {
+    disclosure
+        .strip_prefix("Correction(")
+        .and_then(|rest| rest.strip_suffix(')'))
+        .map(str::to_string)
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -2224,6 +2486,7 @@ pub struct LayoutSnapshot {
     /// (`default` / `hover` / `pressed`). The `Name` component is surfaced
     /// when present so the probe can be correlated with spawn sites.
     pub button_affordances: Vec<ButtonAffordanceSnapshot>,
+    pub ui_text_markers: Vec<UiTextMarkerSnapshot>,
     /// Explicit collision helpers (Q-09, Q-10). `placement_action_panel`
     /// overlaps and the `shop_panel` bottom vs `hand_bar` top edge diff,
     /// computed in logical px from the same surface bounds reported above.
@@ -2372,6 +2635,19 @@ pub struct LayoutInputs<'w, 's> {
         's,
         (Entity, &'static Interaction, Option<&'static Name>),
         With<bevy::ui::widget::Button>,
+    >,
+    pub text_markers: Query<
+        'w,
+        's,
+        (
+            Entity,
+            Option<&'static Name>,
+            &'static Text,
+            Option<&'static TextFont>,
+            Option<&'static ComputedNode>,
+            Option<&'static UiGlobalTransform>,
+            Option<&'static Visibility>,
+        ),
     >,
 }
 
@@ -2653,6 +2929,7 @@ impl<'w, 's> LayoutInputs<'w, 's> {
             })
             .collect();
         button_affordances.sort_by(|a, b| a.entity.cmp(&b.entity));
+        let ui_text_markers = build_ui_text_marker_snapshots(&self.text_markers);
 
         // Q-09, Q-10 — explicit collision helpers computed from the bounds
         // collected above.
@@ -2660,9 +2937,10 @@ impl<'w, 's> LayoutInputs<'w, 's> {
 
         // Documented limitations (Q-05 / Q-06 / Q-07 disabled).
         let limitations = vec![
-            "Q-05 text.<marker>.fits / clipped_chars: not computable without \
-             per-text-marker components; adding markers requires touching \
-             client/src/ui/* (forbidden write scope for this story)."
+            "Q-05 text marker diagnostics are best-effort: text, Name, \
+             bounds, font_px, clipped, and overflow_px are emitted when \
+             Bevy UI layout data exists; per-glyph clipping and semantic \
+             marker names require dedicated UI markers."
                 .to_string(),
             "Q-06 image.<marker>.aspect_ratio_src / aspect_ratio_rendered: \
              not computable without per-image-marker components and an \
@@ -2679,10 +2957,52 @@ impl<'w, 's> LayoutInputs<'w, 's> {
             viewport,
             surfaces,
             button_affordances,
+            ui_text_markers,
             collisions,
             limitations,
         }
     }
+}
+
+fn build_ui_text_marker_snapshots(
+    query: &Query<(
+        Entity,
+        Option<&Name>,
+        &Text,
+        Option<&TextFont>,
+        Option<&ComputedNode>,
+        Option<&UiGlobalTransform>,
+        Option<&Visibility>,
+    )>,
+) -> Vec<UiTextMarkerSnapshot> {
+    let mut markers = query
+        .iter()
+        .take(MAX_UI_TEXT_MARKERS)
+        .map(
+            |(entity, name, text, font, computed, transform, visibility)| {
+                let bounds = computed
+                    .zip(transform)
+                    .map(|(computed, transform)| surface_bounds_logical(computed, transform));
+                let overflow_px = computed.map(|computed| {
+                    let x = (computed.content_size.x - computed.size.x).max(0.0);
+                    let y = (computed.content_size.y - computed.size.y).max(0.0);
+                    x.max(y)
+                });
+                UiTextMarkerSnapshot {
+                    entity: format!("{:?}", entity),
+                    marker: name.map(|n| n.as_str().to_string()),
+                    text: text.0.clone(),
+                    bounds,
+                    font_px: font.map(|f| f.font_size),
+                    clipped: computed.map(surface_overflows_content),
+                    overflow_px,
+                    visible: visibility.map(is_visibility_visible),
+                }
+            },
+        )
+        .collect::<Vec<_>>();
+    markers.sort_by(|a, b| a.entity.cmp(&b.entity));
+    markers
 }
 
 fn shop_auction_variant_name(
@@ -3306,11 +3626,24 @@ pub fn build_snapshot_with_extras_and_layout(
     identity: Option<ClientSessionIdentity>,
     window: Option<&Window>,
     ui_counts: UiCounts,
-    extras: ExtrasSnapshot,
+    mut extras: ExtrasSnapshot,
     layout: LayoutSnapshot,
     board_targeting: BoardTargetingSnapshot,
 ) -> QASnapshotData {
     let mut warnings: Vec<String> = Vec::new();
+    let snapshot_utc_iso = unix_millis_to_utc_iso(unix_millis);
+    extras.timers.sampled_at_unix_ms = Some(unix_millis);
+    extras.timers.sampled_at_utc_iso = Some(snapshot_utc_iso.clone());
+    extras.input = build_input_diagnostics_snapshot(
+        &extras.drag,
+        &extras.hand,
+        board_targeting.active_targeting.as_ref(),
+    );
+    extras.connection_lost = build_connection_lost_diagnostics_snapshot(
+        ui_counts.connection_lost_overlay_visible > 0,
+        extras.opponent_connection.as_ref(),
+        extras.session_lifecycle.as_ref(),
+    );
 
     let client_state = match state {
         Some(s) => format!("{:?}", s),
@@ -3404,13 +3737,14 @@ pub fn build_snapshot_with_extras_and_layout(
     // scoped to the auction-followup PLACEMENT window) AND a pending
     // disposition is armed. Absent otherwise (see
     // [`AuctionWonPendingSnapshot`]).
-    let auction_won_pending =
-        build_auction_won_pending_snapshot(&extras, &current_phase_info);
+    let auction_won_pending = build_auction_won_pending_snapshot(&extras, &current_phase_info);
 
     QASnapshotData {
         snapshot_id,
         counter,
         unix_millis,
+        snapshot_utc_iso,
+        evidence_layers: EvidenceLayersSnapshot::default(),
         screenshot,
         client_state,
         current_phase: current_phase_info,
@@ -3419,6 +3753,7 @@ pub fn build_snapshot_with_extras_and_layout(
         window: window_info,
         ui_counts,
         extras,
+        ui_text_markers: layout.ui_text_markers.clone(),
         layout,
         placement_state,
         auction_state,
@@ -3451,6 +3786,23 @@ pub fn build_placement_state_snapshot(extras: &ExtrasSnapshot) -> PlacementState
         (Some(n), Some(s)) => Some(n > 0 && !s),
         _ => None,
     };
+    let submit_disabled_reason = match (staged_count, submitted) {
+        (Some(0), _) => Some("no_staged_placements".to_string()),
+        (_, Some(true)) => Some("already_submitted".to_string()),
+        (Some(_), Some(false)) => None,
+        _ => Some("source_missing".to_string()),
+    };
+    let invalid_pending_indices = hand
+        .map(|h| duplicate_pending_target_indices(&h.pending_placements))
+        .unwrap_or_default();
+    let last_rejection_state = hand
+        .and_then(|h| h.disclosure_step.as_deref())
+        .and_then(correction_reason_from_disclosure_name);
+    let pending_placement_source = match (drag.placement_drag_active, staged_count.unwrap_or(0)) {
+        (true, n) if n > 0 => Some("cursor_drop".to_string()),
+        (false, n) if n > 0 => Some("default_click_stage".to_string()),
+        _ => None,
+    };
 
     PlacementStateSnapshot {
         available,
@@ -3461,7 +3813,25 @@ pub fn build_placement_state_snapshot(extras: &ExtrasSnapshot) -> PlacementState
         drag_card_id: drag.placement_drag_card_id,
         drag_target_kind: drag.placement_drag_target_kind.clone(),
         disclosure_step: hand.and_then(|h| h.disclosure_step.clone()),
+        submit_disabled_reason,
+        invalid_pending_indices,
+        pending_placement_source,
+        last_rejection_state,
     }
+}
+
+fn duplicate_pending_target_indices(pending: &[PendingPlacementSnapshot]) -> Vec<usize> {
+    let mut invalid = Vec::new();
+    for (index, placement) in pending.iter().enumerate() {
+        let duplicate = pending
+            .iter()
+            .enumerate()
+            .any(|(other_index, other)| other_index != index && other.target == placement.target);
+        if duplicate {
+            invalid.push(index);
+        }
+    }
+    invalid
 }
 
 /// PROMPT 1347 / AC11 / AC16 — build the top-level `auction_won_pending`
@@ -3528,6 +3898,17 @@ pub fn build_auction_state_snapshot(extras: &ExtrasSnapshot) -> AuctionStateSnap
             free_gold: g.free_gold,
             view_initialized: g.initialized,
         });
+    let local_player_id = extras.players.local_player_id.clone();
+    let leader_is_local = match (&a.current_leader, &local_player_id) {
+        (Some(leader), Some(local)) => Some(leader == local),
+        (Some(_), None) => None,
+        (None, _) => Some(false),
+    };
+    let leader_label_text = match leader_is_local {
+        Some(true) => Some("YOU LEADING".to_string()),
+        Some(false) if a.current_leader.is_some() => Some("OPPONENT LEADING".to_string()),
+        _ => None,
+    };
 
     AuctionStateSnapshot {
         available: true,
@@ -3540,6 +3921,11 @@ pub fn build_auction_state_snapshot(extras: &ExtrasSnapshot) -> AuctionStateSnap
         timer_remaining_ms: Some(a.timer_remaining_ms),
         local_in_flight_bid_amount: a.in_flight_bid_amount,
         local_gold,
+        local_player_id,
+        leader_is_local,
+        leader_label_text,
+        price_label_text: Some(format!("{}g", a.current_price)),
+        timer_label_text: Some(format!("{}s", a.timer_remaining_ms.div_ceil(1_000))),
     }
 }
 
@@ -3620,6 +4006,32 @@ fn current_unix_millis() -> u128 {
         .duration_since(UNIX_EPOCH)
         .map(|d| d.as_millis())
         .unwrap_or(0)
+}
+
+fn unix_millis_to_utc_iso(unix_millis: u128) -> String {
+    let total_seconds = (unix_millis / 1_000) as i64;
+    let millis = (unix_millis % 1_000) as u32;
+    let days = total_seconds.div_euclid(86_400);
+    let seconds_of_day = total_seconds.rem_euclid(86_400);
+    let (year, month, day) = civil_from_days(days);
+    let hour = seconds_of_day / 3_600;
+    let minute = (seconds_of_day % 3_600) / 60;
+    let second = seconds_of_day % 60;
+    format!("{year:04}-{month:02}-{day:02}T{hour:02}:{minute:02}:{second:02}.{millis:03}Z")
+}
+
+fn civil_from_days(days_since_unix_epoch: i64) -> (i32, u32, u32) {
+    let z = days_since_unix_epoch + 719_468;
+    let era = if z >= 0 { z } else { z - 146_096 } / 146_097;
+    let doe = z - era * 146_097;
+    let yoe = (doe - doe / 1_460 + doe / 36_524 - doe / 146_096) / 365;
+    let y = yoe + era * 400;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let day = doy - (153 * mp + 2) / 5 + 1;
+    let month = mp + if mp < 10 { 3 } else { -9 };
+    let year = y + if month <= 2 { 1 } else { 0 };
+    (year as i32, month as u32, day as u32)
 }
 
 /// Prefix applied to snapshot ids captured before the handshake assigns a
