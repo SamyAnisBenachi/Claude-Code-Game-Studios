@@ -1,0 +1,14 @@
+{
+  "manifest_version": 1,
+  "description": "FAIL fixture: row has source_class=studio_original and release_class=release_allowed but workflow_status is still 'in_progress'. Validator must hard-fail (rule_4).",
+  "logical_assets": [
+    {
+      "logical_id": "lid_card_frame_rare",
+      "workflow_status": "in_progress",
+      "source_class": "studio_original",
+      "release_class": "release_allowed",
+      "approval_evidence": null,
+      "path": "art/ui/card/ui_card_frame_rare_hand.png"
+    }
+  ]
+}

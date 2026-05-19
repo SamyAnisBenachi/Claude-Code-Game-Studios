@@ -1,0 +1,30 @@
+{
+  "manifest_version": 1,
+  "description": "Clean PASS fixture for ADR-025 release-scan validator. All rows are studio-owned, approved, release-allowed, with approval evidence and non-dev paths.",
+  "logical_assets": [
+    {
+      "logical_id": "lid_card_frame_common",
+      "workflow_status": "approved",
+      "source_class": "studio_original",
+      "release_class": "release_allowed",
+      "approval_evidence": "production/qa/sign-off-2026-05-20-card-frames.md",
+      "path": "art/ui/card/ui_card_frame_common_hand.png"
+    },
+    {
+      "logical_id": "lid_hud_objective_dot_real_revealed",
+      "workflow_status": "approved",
+      "source_class": "studio_original",
+      "release_class": "release_allowed",
+      "approval_evidence": "production/qa/sign-off-2026-05-20-hud.md",
+      "path": "art/ui/hud/ui_objective_dot_real.png"
+    },
+    {
+      "logical_id": "lid_ui_placeholder_1x1_white",
+      "workflow_status": "approved",
+      "source_class": "studio_original",
+      "release_class": "release_allowed",
+      "approval_evidence": "production/qa/sign-off-2026-05-20-shared.md",
+      "path": "art/ui/shared/ui_placeholder_1x1_white.png"
+    }
+  ]
+}
