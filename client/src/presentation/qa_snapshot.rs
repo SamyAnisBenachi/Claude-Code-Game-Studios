@@ -98,10 +98,12 @@ use bevy::window::PrimaryWindow;
 use serde::Serialize;
 
 use crate::presentation::board_rendering::{
-    BoardEnvelope, BoardLocalPlayer, BoardRenderState, BoardUnit, BoardUnitCard, BoardUnitOwner,
-    BoardUnitRenderSource, BoardUnitStats, ObjectiveArtKind, SourceCardLink, StandingObjective,
-    StandingObjectiveArt, StandingObjectiveHp, TargetingDimWash, TargetingEndpointRing,
-    TargetingInvalidMarker, TargetingOverlayState, TargetingValidRing,
+    rendering_constants, BoardEnvelope, BoardGridOverlayLine, BoardGridOverlayState,
+    BoardGridOverlayToggleButton, BoardGridOverlayToggleRoot, BoardLocalPlayer, BoardRenderState,
+    BoardUnit, BoardUnitCard, BoardUnitOwner, BoardUnitRenderSource, BoardUnitStats,
+    ObjectiveArtKind, SourceCardLink, StandingObjective, StandingObjectiveArt, StandingObjectiveHp,
+    TargetingDimWash, TargetingEndpointRing, TargetingInvalidMarker, TargetingOverlayState,
+    TargetingValidRing,
 };
 use crate::presentation::shared::economy_view::{PlayerEconomyView, PlayerEconomyViewUpdateSource};
 use crate::state::{
@@ -1160,6 +1162,13 @@ pub struct ExtrasSnapshot {
     /// the payload stays compact regardless of churn.
     pub outbound_intents: OutboundIntentsSnapshot,
     pub input: InputDiagnosticsSnapshot,
+    /// Debug board-grid overlay observability. Resource-backed fields stay
+    /// `null` when the board renderer has not inserted the debug-grid state.
+    pub debug_grid: DebugGridSnapshot,
+    /// Local placement lifecycle summary for correlating staged / submitted /
+    /// rejected states against screenshot evidence. Server acceptance remains
+    /// `null` until a real local accepted-placement signal exists.
+    pub placement_lifecycle: PlacementLifecycleSnapshot,
     pub connection_lost: ConnectionLostDiagnosticsSnapshot,
 }
 
@@ -1479,9 +1488,35 @@ pub struct InputDiagnosticsSnapshot {
     pub last_pointer_world: Option<[f32; 2]>,
     pub hovered_entity: Option<String>,
     pub pressed_entity: Option<String>,
+    pub hovered_board_cell: Option<[u8; 2]>,
+    pub focused_semantic_target: Option<String>,
+    pub pressed_semantic_target: Option<String>,
+    pub last_hit_test_source: Option<String>,
     pub active_drag_state: Option<String>,
     pub target_cell: Option<[u8; 2]>,
     pub reject_reason: Option<String>,
+}
+
+#[derive(Debug, Clone, Default, Serialize)]
+pub struct DebugGridSnapshot {
+    pub enabled: Option<bool>,
+    pub toggle_visible: Option<bool>,
+    pub label: Option<String>,
+    pub line_count: usize,
+    pub z_layer: Option<f32>,
+    pub blocks_input: Option<bool>,
+}
+
+#[derive(Debug, Clone, Default, Serialize)]
+pub struct PlacementLifecycleSnapshot {
+    pub pending_ghost_visible: Option<bool>,
+    pub pending_ghost_bounds: Option<SurfaceBoundsRect>,
+    pub pending_ghost_source: Option<String>,
+    pub submitted: Option<bool>,
+    pub accepted: Option<bool>,
+    pub rejected: Option<bool>,
+    pub state: Option<String>,
+    pub last_rejection_reason: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -1533,6 +1568,7 @@ pub struct ExtrasInputs<'w, 's> {
     pub objective_identities: Option<Res<'w, ClientObjectiveIdentities>>,
     pub hand_outbound: Option<Res<'w, HandUiOutboundMessages>>,
     pub shop_outbound: Option<Res<'w, ShopAuctionUiOutboundMessages>>,
+    pub debug_grid: DebugGridInputs<'w, 's>,
 }
 
 #[derive(SystemParam)]
@@ -1627,6 +1663,22 @@ pub struct ExtrasSessionInputs<'w> {
     pub session_settings: Option<Res<'w, SessionSettingsView>>,
     pub opponent_connection: Option<Res<'w, OpponentConnectionView>>,
     pub session_lifecycle: Option<Res<'w, SessionLifecycleView>>,
+}
+
+#[derive(SystemParam)]
+pub struct DebugGridInputs<'w, 's> {
+    pub state: Option<Res<'w, BoardGridOverlayState>>,
+    pub lines: Query<'w, 's, (), With<BoardGridOverlayLine>>,
+    pub toggle_roots: Query<
+        'w,
+        's,
+        (
+            Option<&'static Visibility>,
+            Option<&'static InheritedVisibility>,
+        ),
+        With<BoardGridOverlayToggleRoot>,
+    >,
+    pub toggle_buttons: Query<'w, 's, &'static Text, With<BoardGridOverlayToggleButton>>,
 }
 
 /// PROMPT 1390 — read-only projection of the targeting overlay state and
@@ -1858,7 +1910,9 @@ impl<'w, 's> ExtrasInputs<'w, 's> {
             self.hand_outbound.as_deref(),
             self.shop_outbound.as_deref(),
         );
-        let input = build_input_diagnostics_snapshot(&drag, &hand, None);
+        let input = build_input_diagnostics_snapshot(&drag, &hand, None, None, None);
+        let debug_grid = build_debug_grid_snapshot(&self.debug_grid);
+        let placement_lifecycle = build_placement_lifecycle_snapshot(&hand, &drag, &timers);
         let connection_lost = build_connection_lost_diagnostics_snapshot(
             false,
             opponent_connection.as_ref(),
@@ -1882,6 +1936,8 @@ impl<'w, 's> ExtrasInputs<'w, 's> {
             session_lifecycle,
             outbound_intents,
             input,
+            debug_grid,
+            placement_lifecycle,
             connection_lost,
         }
     }
@@ -2413,6 +2469,8 @@ fn build_input_diagnostics_snapshot(
     drag: &DragSnapshot,
     hand: &Option<HandSnapshot>,
     active_targeting: Option<&ActiveTargetingSnapshot>,
+    pointer_screen: Option<[f32; 2]>,
+    focused_semantic_target: Option<String>,
 ) -> InputDiagnosticsSnapshot {
     let active_drag_state = if drag.placement_drag_active {
         Some("placement_drag".to_string())
@@ -2421,17 +2479,149 @@ fn build_input_diagnostics_snapshot(
     } else {
         None
     };
+    let target_cell = active_targeting.and_then(|t| t.endpoint_cell);
+    let last_pointer_screen = drag.ghost_unstage_cursor_screen.or(pointer_screen);
+    let pressed_entity = drag.placement_drag_card_entity.clone();
+    let pressed_semantic_target = pressed_entity
+        .as_ref()
+        .map(|entity| format!("placement_drag_card:{entity}"));
+    let last_hit_test_source = if active_targeting.is_some() {
+        Some("board_targeting_overlay".to_string())
+    } else if drag.placement_drag_active {
+        Some("active_placement_drag".to_string())
+    } else if drag.ghost_unstage_active {
+        Some("ghost_unstage_drag".to_string())
+    } else if pointer_screen.is_some() {
+        Some("primary_window_cursor".to_string())
+    } else {
+        None
+    };
+
     InputDiagnosticsSnapshot {
-        last_pointer_screen: drag.ghost_unstage_cursor_screen,
+        last_pointer_screen,
         last_pointer_world: drag.placement_drag_cursor_world,
         hovered_entity: None,
-        pressed_entity: drag.placement_drag_card_entity.clone(),
+        pressed_entity,
+        hovered_board_cell: target_cell,
+        focused_semantic_target,
+        pressed_semantic_target,
+        last_hit_test_source,
         active_drag_state,
-        target_cell: active_targeting.and_then(|t| t.endpoint_cell),
+        target_cell,
         reject_reason: hand
             .as_ref()
             .and_then(|h| h.disclosure_step.as_deref())
             .and_then(correction_reason_from_disclosure_name),
+    }
+}
+
+fn build_debug_grid_snapshot(inputs: &DebugGridInputs<'_, '_>) -> DebugGridSnapshot {
+    let enabled = inputs.state.as_deref().map(|state| state.enabled);
+    let line_count = inputs.lines.iter().count();
+    let toggle_visible = optional_query_any_visible(&inputs.toggle_roots);
+    let label = inputs
+        .toggle_buttons
+        .iter()
+        .next()
+        .map(|text| text.0.clone())
+        .or_else(|| enabled.map(debug_grid_label_from_state));
+    let blocks_input =
+        toggle_visible.map(|visible| visible && inputs.toggle_buttons.iter().next().is_some());
+
+    let available = enabled.is_some() || line_count > 0 || toggle_visible.is_some();
+
+    DebugGridSnapshot {
+        enabled,
+        toggle_visible,
+        label,
+        line_count,
+        z_layer: available.then_some(rendering_constants::Z_GRID_OVERLAY),
+        blocks_input,
+    }
+}
+
+fn debug_grid_label_from_state(enabled: bool) -> String {
+    if enabled {
+        "QA Grid: ON".to_string()
+    } else {
+        "QA Grid: OFF".to_string()
+    }
+}
+
+fn optional_query_any_visible(
+    query: &Query<
+        (Option<&Visibility>, Option<&InheritedVisibility>),
+        With<BoardGridOverlayToggleRoot>,
+    >,
+) -> Option<bool> {
+    let mut saw_entity = false;
+    for (visibility, inherited_visibility) in query.iter() {
+        saw_entity = true;
+        if visibility_is_visible(visibility)
+            && inherited_visibility_is_visible(inherited_visibility)
+        {
+            return Some(true);
+        }
+    }
+    saw_entity.then_some(false)
+}
+
+fn visibility_is_visible(visibility: Option<&Visibility>) -> bool {
+    !matches!(visibility, Some(Visibility::Hidden))
+}
+
+fn inherited_visibility_is_visible(inherited_visibility: Option<&InheritedVisibility>) -> bool {
+    inherited_visibility.is_none_or(|visibility| visibility.get())
+}
+
+fn build_placement_lifecycle_snapshot(
+    hand: &Option<HandSnapshot>,
+    drag: &DragSnapshot,
+    timers: &TimersSnapshot,
+) -> PlacementLifecycleSnapshot {
+    let submitted = timers.placement_timer.as_ref().map(|timer| timer.submitted);
+    let staged_count = hand.as_ref().map(|h| h.staged_count);
+    let last_rejection_reason = hand
+        .as_ref()
+        .and_then(|h| h.disclosure_step.as_deref())
+        .and_then(correction_reason_from_disclosure_name);
+    let rejected = hand.as_ref().map(|_| last_rejection_reason.is_some());
+    let placement_sources_available = hand.is_some()
+        || submitted.is_some()
+        || drag.placement_drag_active
+        || drag.ghost_unstage_active;
+    let pending_ghost_visible = placement_sources_available.then_some(drag.placement_drag_active);
+    let pending_ghost_source = if drag.placement_drag_active {
+        Some("active_placement_drag".to_string())
+    } else if staged_count.is_some_and(|count| count > 0) {
+        Some("pending_placements".to_string())
+    } else {
+        None
+    };
+    let accepted = None;
+    let state = if last_rejection_reason.is_some() {
+        Some("rejected".to_string())
+    } else if submitted == Some(true) {
+        Some("submitted".to_string())
+    } else if drag.placement_drag_active {
+        Some("pending_ghost".to_string())
+    } else if staged_count.is_some_and(|count| count > 0) {
+        Some("staged".to_string())
+    } else if hand.is_some() || submitted.is_some() {
+        Some("idle".to_string())
+    } else {
+        None
+    };
+
+    PlacementLifecycleSnapshot {
+        pending_ghost_visible,
+        pending_ghost_bounds: None,
+        pending_ghost_source,
+        submitted,
+        accepted,
+        rejected,
+        state,
+        last_rejection_reason,
     }
 }
 
@@ -3649,11 +3839,23 @@ pub fn build_snapshot_with_extras_and_layout(
     let snapshot_utc_iso = unix_millis_to_utc_iso(unix_millis);
     extras.timers.sampled_at_unix_ms = Some(unix_millis);
     extras.timers.sampled_at_utc_iso = Some(snapshot_utc_iso.clone());
+    let pointer_screen = window
+        .and_then(|w| w.cursor_position())
+        .map(|position| [position.x, position.y]);
+    let focused_semantic_target = extras
+        .shop_auction
+        .as_ref()
+        .and_then(|shop| shop.bid_keyboard_focus.as_ref())
+        .map(|entity| format!("auction_bid_button:{entity}"));
     extras.input = build_input_diagnostics_snapshot(
         &extras.drag,
         &extras.hand,
         board_targeting.active_targeting.as_ref(),
+        pointer_screen,
+        focused_semantic_target,
     );
+    extras.placement_lifecycle =
+        build_placement_lifecycle_snapshot(&extras.hand, &extras.drag, &extras.timers);
     extras.connection_lost = build_connection_lost_diagnostics_snapshot(
         ui_counts.connection_lost_overlay_visible > 0,
         extras.opponent_connection.as_ref(),

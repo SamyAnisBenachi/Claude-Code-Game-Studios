@@ -173,8 +173,7 @@ fn ac11_block_carries_staged_yet_and_submitted_yet_when_set() {
     }));
     let current_phase = phase("Placement");
 
-    let block =
-        build_auction_won_pending_snapshot(&extras, &current_phase).expect("block present");
+    let block = build_auction_won_pending_snapshot(&extras, &current_phase).expect("block present");
     assert_eq!(block.card_id, 107);
     assert_eq!(block.settle_round, 5);
     assert!(block.staged_yet, "staged_yet must propagate from extras");
