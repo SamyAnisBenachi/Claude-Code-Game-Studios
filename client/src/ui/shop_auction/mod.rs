@@ -6265,7 +6265,10 @@ fn shop_active(mode: &ShopAuctionUiMode, _state: &ShopAuctionShopState) -> bool 
 fn should_buffer_shop_slots(phase: RoundPhase) -> bool {
     matches!(
         phase,
-        RoundPhase::DraftInitial | RoundPhase::DraftAuction | RoundPhase::Resolution
+        RoundPhase::DraftInitial
+            | RoundPhase::DraftAuction
+            | RoundPhase::Placement
+            | RoundPhase::Resolution
     )
 }
 
