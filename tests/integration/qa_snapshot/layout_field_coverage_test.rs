@@ -27,10 +27,10 @@ use std::path::PathBuf;
 use bevy::prelude::*;
 use client::presentation::qa_snapshot::{
     build_layout_collisions, build_snapshot, build_snapshot_with_extras_and_layout,
-    write_snapshot_to_dir, ButtonAffordanceSnapshot, ExtrasSnapshot, LayoutCollisionsSnapshot,
-    LayoutSnapshot, QASnapshotData, ScreenshotInfo, SurfaceBoundsRect, SurfaceLayoutSnapshot,
-    UiCounts, ViewportLayoutSnapshot, QA_SCREENSHOT_FILENAME, QA_SCREENSHOT_FORMAT,
-    SCREENSHOT_STATUS_PENDING,
+    write_snapshot_to_dir, BoardTargetingSnapshot, ButtonAffordanceSnapshot, ExtrasSnapshot,
+    LayoutCollisionsSnapshot, LayoutSnapshot, QASnapshotData, ScreenshotInfo, SurfaceBoundsRect,
+    SurfaceLayoutSnapshot, UiCounts, ViewportLayoutSnapshot, QA_SCREENSHOT_FILENAME,
+    QA_SCREENSHOT_FORMAT, SCREENSHOT_STATUS_PENDING,
 };
 
 #[path = "../../test_helpers.rs"]
@@ -239,6 +239,7 @@ fn test_build_snapshot_with_extras_and_layout_embeds_supplied_layout() {
         UiCounts::default(),
         ExtrasSnapshot::default(),
         layout,
+        BoardTargetingSnapshot::default(),
     );
 
     // Assert — every supplied value lands on the snapshot field.
@@ -549,6 +550,8 @@ fn test_snapshot_json_round_trip_preserves_layout_block_keys_after_write_to_dir(
         layout,
         placement_state: client::presentation::qa_snapshot::PlacementStateSnapshot::default(),
         auction_state: client::presentation::qa_snapshot::AuctionStateSnapshot::default(),
+        auction_won_pending: None,
+        board_targeting: BoardTargetingSnapshot::default(),
         warnings: vec![],
     };
 
