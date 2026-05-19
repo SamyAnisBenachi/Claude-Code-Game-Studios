@@ -113,6 +113,19 @@ $ScriptDir    = Split-Path -Parent $MyInvocation.MyCommand.Path
 $ToolsDir     = Split-Path -Parent $ScriptDir
 $LauncherRoot = Split-Path -Parent $ToolsDir
 
+# PROMPT 1402: load the build-provenance helper module so we can emit a
+# `last-build-provenance.json` sidecar next to the binaries after build.
+# Start-TwoClients.ps1 reads this sidecar to surface rebuild SHA + branch
+# even when it does not rebuild itself.
+$BuildProvenanceModule = Join-Path $ScriptDir 'BuildProvenance.psm1'
+$BuildProvenanceLoaded = $false
+try {
+    Import-Module $BuildProvenanceModule -Force -ErrorAction Stop
+    $BuildProvenanceLoaded = $true
+} catch {
+    Write-Warning "BuildProvenance helper failed to import ($BuildProvenanceModule): $($_.Exception.Message). Continuing without last-build-provenance.json sidecar."
+}
+
 $DefaultPlayRoot = 'D:\_DEV\ccgs-play-main'
 $PlayRoot       = ''
 $PlayRootSource = ''
@@ -358,6 +371,64 @@ $serverBin = Join-Path $env:CARGO_TARGET_DIR "$profileDir\server.exe"
 $clientBin = Join-Path $env:CARGO_TARGET_DIR "$profileDir\client.exe"
 Write-Host "Server binary: $serverBin (exists=$(Test-Path $serverBin))"
 Write-Host "Client binary: $clientBin (exists=$(Test-Path $clientBin))"
+
+# ---- Build provenance sidecar (PROMPT 1402) -----------------------------
+Write-Section "Build provenance sidecar"
+if (-not $BuildProvenanceLoaded) {
+    Write-Host "last-build-provenance.json: BuildProvenance helper not loaded -- skipped."
+} elseif ($DryRun) {
+    Write-Host "last-build-provenance.json: -DryRun in effect -- skipped."
+} else {
+    $targetProfDir = Join-Path $env:CARGO_TARGET_DIR $profileDir
+    if (-not (Test-Path $targetProfDir)) {
+        Write-Host "last-build-provenance.json: target dir '$targetProfDir' does not exist (build may have failed earlier) -- skipped."
+    } else {
+        $launcherRel = 'tools/dev-launcher/Update-LatestMain.ps1'
+        $launcherRootNorm = ''
+        $playRootNorm     = ''
+        try {
+            $launcherRootNorm = [System.IO.Path]::GetFullPath($LauncherRoot)
+            $playRootNorm     = [System.IO.Path]::GetFullPath($RepoRoot)
+        } catch { }
+        $isLauncherRoot   = ($launcherRootNorm -ne '' -and $launcherRootNorm -ieq $playRootNorm)
+        $autoSwitchedOrDedicated = (-not $isLauncherRoot)
+
+        $gitProv    = Read-CcgsGitProvenance -Path $RepoRoot
+        $serverInfo = Read-CcgsBinaryInfo -Path $serverBin
+        $clientInfo = Read-CcgsBinaryInfo -Path $clientBin
+        $cargoEnv   = Get-CcgsCargoEnvSnapshot
+
+        $buildCmds = @()
+        $buildCmds += ('cargo ' + ($cargoArgsServer -join ' '))
+        $buildCmds += ('cargo ' + ($cargoArgsClient -join ' '))
+
+        $payload = New-CcgsBuildProvenance `
+            -Context 'rebuild' `
+            -GeneratedAtUtc (Get-Date).ToUniversalTime() `
+            -RepoRoot $RepoRoot `
+            -RepoRootSource $PlayRootSource `
+            -IsLauncherRoot $isLauncherRoot `
+            -AutoSwitchedOrDedicated $autoSwitchedOrDedicated `
+            -Git $gitProv `
+            -BuildProfile $profileDir `
+            -BuildCommands $buildCmds `
+            -TargetDir $env:CARGO_TARGET_DIR `
+            -ServerBinary $serverInfo `
+            -ClientBinary $clientInfo `
+            -CargoEnv $cargoEnv `
+            -LauncherScript $launcherRel `
+            -LastRebuild $null
+
+        $written = Write-CcgsBuildProvenance -EvidenceDir $targetProfDir -Payload $payload -FileName 'last-build-provenance.json'
+        if ($written) {
+            Write-Host "last-build-provenance.json written: $written"
+            if ($gitProv.head_short) {
+                Write-Host "  HEAD = $($gitProv.head_short) on '$($gitProv.branch)' (clean=$($gitProv.is_clean))"
+            }
+        }
+    }
+}
+
 Write-Host ""
 Write-Host "Next: launch with .\start-two-clients.bat (or tools\dev-launcher\Start-TwoClients.ps1)."
 exit 0
