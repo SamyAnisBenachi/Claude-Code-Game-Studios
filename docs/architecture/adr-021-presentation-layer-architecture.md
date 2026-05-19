@@ -438,6 +438,7 @@ No existing presentation code. Implementation order:
 - [ADR-004 — Asset Loading Pipeline](./adr-004-asset-loading-pipeline.md) — `bevy_asset_loader` LoadingState pattern extended to client-side presentation assets.
 - [ADR-009 — Round State Machine Phase State](./adr-009-rsm-phase-state.md) — `S2CPhaseChanged` broadcast that `phase_sink_system` drains.
 - [ADR-017 — Combat Resolution Execution Architecture](./adr-017-combat-resolution-execution-architecture.md) — `S2CResolutionEvent` consumed by Board Rendering and HUD in `MessageDrain`.
+- [ADR-025 — Asset-Pack Provenance Architecture and Dev-Only Krosmaga Proxy Boundary](./adr-025-asset-pack-provenance-architecture.md) — logical asset IDs and three-axis provenance taxonomy that classify the concrete files behind every presentation surface. Does not alter the bevy_ui / world-space rendering boundary or the `CardAtlas` / `BoardLayout` resource ownership in this ADR.
 - `design/gdd/board-rendering.md` — Bevy 0.18 API Contract, `AnimQueue`, `BoardLayout`.
 - `design/gdd/card-animations.md` — `Animator<T>` lifecycle, animation budget rules, `SpriteAlphaLens`.
 - `design/gdd/hand-ui.md` — pre-pooled fan, atlas-sharing dependency.

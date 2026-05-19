@@ -1,0 +1,46 @@
+# Example dev-only pack manifest. Documentation only — not a usable pack.
+#
+# Real dev-only packs live OUTSIDE the repo, at:
+#   dev-assets/krosmaga-proxy/pack.toml
+#
+# The dev-assets/ tree is gitignored. No Krosmaga payload is ever committed
+# to this repository. The release-scan validator at
+# tools/asset-provenance/check_release.py hard-fails any packaged build
+# that resolves a logical asset ID through a Krosmaga proxy.
+#
+# Authoritative schema: design/assets/provenance/schema.md
+# Governing ADR:       docs/architecture/adr-025-asset-pack-provenance-architecture.md
+
+[pack]
+pack_id          = "krosmaga-proxy-v1"
+description      = "Dev-only Krosmaga visual reference pack (example, no payload)"
+source_class     = "licensed_krosmaga_dev_proxy"
+release_class    = "dev_only"
+workflow_status  = "needed"
+
+# `entries` maps logical asset IDs (lid_*) to relative paths *inside the
+# pack directory*. On a developer workstation the resolved file path is
+#
+#   dev-assets/krosmaga-proxy/<relative-path>
+#
+# The release-scan validator rejects any concrete path that begins with
+# `dev-assets/`, so these entries can NEVER appear in a packaged build.
+
+[entries]
+lid_card_frame_common           = "frames/card_frame_common.png"
+lid_card_frame_rare             = "frames/card_frame_rare.png"
+lid_card_frame_epic             = "frames/card_frame_epic.png"
+lid_card_frame_legendary        = "frames/card_frame_legendary.png"
+
+lid_board_cell_idle_32x32       = "board/cell_idle_32x32.png"
+lid_board_cell_spawn_active_32x32 = "board/cell_spawn_active_32x32.png"
+lid_board_cell_invalid_32x32    = "board/cell_invalid_32x32.png"
+lid_board_unit_base_player_a_48x16 = "board/unit_base_player_a_48x16.png"
+lid_board_unit_base_player_b_48x16 = "board/unit_base_player_b_48x16.png"
+
+lid_overlay_targeting_marker_real = "overlays/target_real.png"
+lid_overlay_targeting_marker_fake = "overlays/target_fake.png"
+
+lid_result_panel_chrome_win     = "result/result_panel_win.png"
+lid_result_panel_chrome_loss    = "result/result_panel_loss.png"
+lid_result_panel_chrome_draw    = "result/result_panel_draw.png"

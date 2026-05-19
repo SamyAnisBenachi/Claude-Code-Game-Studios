@@ -1,0 +1,14 @@
+{
+  "manifest_version": 1,
+  "description": "FAIL fixture: row's resolved path begins with dev-assets/, which is gitignored dev-only territory. Validator must hard-fail (rule_6).",
+  "logical_assets": [
+    {
+      "logical_id": "lid_board_cell_idle_32x32",
+      "workflow_status": "approved",
+      "source_class": "studio_original",
+      "release_class": "release_allowed",
+      "approval_evidence": "production/qa/sign-off-2026-05-20-board.md",
+      "path": "dev-assets/krosmaga-proxy/board/cell_idle_32x32.png"
+    }
+  ]
+}
