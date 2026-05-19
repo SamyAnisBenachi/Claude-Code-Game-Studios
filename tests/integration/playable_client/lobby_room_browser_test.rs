@@ -526,7 +526,7 @@ fn test_row_label_formats_room_code_mode_filled_max() {
 
     let label = format_room_list_row_label(&entry);
 
-    assert_eq!(label, "ABCDEF · TwoVTwo · 2/4");
+    assert_eq!(label, "Join ABCDEF - TwoVTwo - 2/4 players - seat 2 open");
 }
 
 #[test]
