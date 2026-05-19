@@ -19,7 +19,7 @@ Refreshed PROMPT-1410 onto current `origin/main` after PROMPT-1433 landed. The w
 
 - Integration branch: `work/s18-board-picking-backend-1438`
 - Replayed commit: `8ced20a9fe71cf7200440abd653a52f5ccef3d28`
-- Final branch tip: see final relay/final chat status after report commit/push step
+- First pushed main tip with replay plus report: `c4a92223eafba109b577c218aa4df0a901764152`
 
 ## Changed Files
 
@@ -59,4 +59,8 @@ NOT RUN - separate runtime VERIFY lane required.
 
 ## Push Status
 
-Pending at report creation. Final status will be reported in relay/final chat after push attempt.
+LANDED. Pushed `work/s18-board-picking-backend-1438` to `origin/main`:
+
+- Before: `30a270d071a85135c66ecfc5c11b5cc990075dc2`
+- After first push: `c4a92223eafba109b577c218aa4df0a901764152`
+- Command: `git push origin HEAD:main`
