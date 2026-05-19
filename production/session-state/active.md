@@ -1,3 +1,135 @@
+# PROMPT 1354 State Banner -- S18-UI-HAND-MANA-PREVIEW-DURING-DRAG-001 `/story-done` Closed (Sprint 18 Should Row 1)
+
+Updated 2026-05-19 by PROMPT 1354. Source-of-truth at closure:
+`origin/main@6e0453f5407862231af924a6e1ad7ec6169b1a15` (PROMPT 1346
+`story-done-reconcile(s18): reconcile PROMPT 1331 S18-UI-SETTINGS-PANEL-FLEX-RELAYOUT-001 closure onto current main`).
+Strict fast-forward descendant of PROMPT 1228 dev-story implementation
+tip `8d0a3d3`, PROMPT 1336 AC5/6/8/9/10 refinement worker tip
+`69c50e6`, PROMPT 1344 integration tip
+`1e9548f23f7f19d3f8e14591b731cdfbbdd57874`, PROMPT 1337 row 4 closure
+tip `72b89ca`, and PROMPT 1346 row 24 reconcile tip `6e0453f`.
+Worktree:
+`D:/_DEV/claude-code-game-studios-worktrees/prompt-1354-mana-preview-story-done`
+on branch `story-done/s18-hand-mana-preview-1354`.
+
+PROMPT 1354 closes Sprint 18 Should Have Row 1
+`S18-UI-HAND-MANA-PREVIEW-DURING-DRAG-001` as a paperwork-only
+`/story-done` against the post-PROMPT-1346 main tip. **Third
+`/story-done` block of Sprint 18 by sequence** (PROMPT 1337 row 4 at
+position 1; PROMPT 1331 row 24 at position 2; PROMPT 1354 row 1 at
+position 3 of `sprint_18_story_done:`). Sprint 18 progress after this
+entry: **3 of 12 active rows DONE** (Must Have 1/4 via PROMPT 1337 +
+Should Have 2/6 via PROMPT 1331 + PROMPT 1354 + Nice to Have 0/2); 9
+rows preserved as their current status. Sprint 18 disposition
+`active` UNCHANGED. Stage `Polish` UNCHANGED (`production/stage.txt`
+NOT modified). PROMPT 761 Polish→Release FAIL preserved with NO retry.
+
+**Implementation lineage**: PROMPT 1228 initial dev-story commit
+`8d0a3d3` (`compute_placement_drag_mana_preview` in
+`client/src/ui/hud/mod.rs` + original test bin
+`tests/integration/hud/hud_mana_preview_during_drag_test.rs`;
+main-landed pre-Sprint-18 activation; inherited at activation tip
+`1345c6b` per PROMPT 1301). PROMPT 1332 disposition audit (`reports/
+PROMPT-1332-s18-hand-mana-preview-ac-gap-disposition.md` §4)
+identified five AC gaps on the PROMPT 1228 baseline: AC5 overdraw
+marker silent; AC6 multi-card staged subtraction off-by-staged-spend;
+AC8 non-Minion suppression missing; AC9 canonical test path; AC10 unit
+slice canonical path. PROMPT 1336 refinement worker commit `69c50e6`
+(branch `work/s18-hand-mana-preview-ac-refinement-1336`) closed all
+five gaps in one commit. PROMPT 1344 integration commit `1e9548f`
+(branch `integrate/s18-hand-mana-preview-ac-refinement-1336-1344`)
+cherry-picked PROMPT 1336 onto `origin/main@a24b3f4` with 173 tests /
+0 failed across 8 bins under Windows/MSVC Cargo resource policy.
+PROMPT 1345 readiness rerun read-only audit against
+`origin/main@1e9548f` returned verdict `READY_FOR_STORY_DONE`.
+
+**AC walk** (against post-PROMPT-1336/1344 main tip): AC1
+PASS-WITH-INTERPRETATION (HUD `Text` paints projected value while
+`ManaDisplayState.current_mana` stays at authoritative mirror —
+stronger ADR-002 read than literal AC1 wording; carried verbatim from
+PROMPT 1324 / PROMPT 1332 / PROMPT 1345 interpretation acceptance).
+AC2..AC10 + AC12..AC14 + AC16..AC17 PASS. AC11 ADVISORY (overdraw
+colour treatment lead-sign-off deferred per AC11 wording "lead
+sign-off acceptable in lieu of ECS assertion"; BLOCKING AC5 marker
+`preview_overdrawn` present and asserted by
+`ac5_overdrawn_marker_set_when_cost_exceeds_combined_pool`). AC15
+PARTIAL-PASS (target regression suite green per PROMPT 1336 + PROMPT
+1344 evidence; `hud_mana_text_test` flagged "if extant" by AC15 and
+is NOT extant; `hand_ui_placement_perspective_snapshot_test` was not
+in PROMPT 1336 verification set; PROMPT 1354 paperwork-only — no
+fresh Cargo invocation). AC18 ADVISORY-DEFERRED
+(`production/epics/hand-ui/EPIC.md` row 022 flip OUTSIDE PROMPT 1354
+allowed-writes scope per the PROMPT 1354 task spec "Allowed writes"
+list; the existing not-yet-folded note at
+`production/epics/hand-ui/EPIC.md:104` covers stories 020 / 022 / 023
+/ 025 / 026; a follow-on paperwork prompt MAY thread the flip).
+
+**Paperwork-only `/story-done` by PROMPT 1354**: flips
+`production/sprint-status.yaml` Row 1 `status: ready → done` +
+populates closure metadata (worker / refinement / integration /
+readiness / story-done prompt + commit refs + evidence + notes);
+appends 3rd PROMPT 1354 entry to existing `sprint_18_story_done:`
+block at EOF (after PROMPT 1337 entry at position 1 and PROMPT 1331
+entry at position 2); annotates `sprint_18_activation.active_set.
+should_have` entry for this row with `story_readiness_prompt +
+story_readiness_verdict + status_post_closure:` lines; flips
+`production/epics/hand-ui/story-022-hand-mana-preview-during-drag.md`
+Status banner `Draft → Done` + per-AC `[x]` checkboxes with verdict
+lines + Completion Notes section (PROMPT 1228 + 1336 + 1344 + 1345 +
+1354 lineage + AC1 interpretation + AC11 advisory + AC15 partial-pass
++ AC18 advisory-deferred + Test Evidence + Closure Trail); prepends
+this PROMPT 1354 banner above PROMPT 1331 banner; prepends a PROMPT
+1354 paragraph above PROMPT 1331 paragraph in
+`production/session-state/codex-orchestrator-state.md`. NO Cargo /
+trunk / CI invocation; trusted from PROMPT 1228 + PROMPT 1336 +
+PROMPT 1344 lineage per `/story-done` paperwork policy.
+
+**Carried conditions preserved verbatim**:
+`S11-HUD-TIMER-EYEBALL-VISUAL-001` human-operator-blocked Sprint
+13→14→15→16→17→18 carry (no LLM `/story-done` authorised);
+`S17-UI-HUD-OPP-MANA-CLEANUP-001` parent-row paperwork gap (no silent
+closure); `S8-QA-001-W1` OPEN; `QA-COND-0005` accepted-risk (this
+story is HUD reactive display, not WCAG conformance); `QA-COND-0006`
+accepted-risk; `PAW-TD-*-a` accepted-risk; `TQ-S12-C1..C7` preserved
+(TQ-S12-C7 NOT closed); PROMPT 683-era runtime divergence preserved;
+Sprint 12 story 019 cannot-reproduce preserved; PROMPT 1054
+BLOCKED-HUMAN-OPERATOR preserved; R1 (drag-pipeline-dead bug)
+preserved unclosed (AC9 integration test is R1-independent); R3
+(idle-hand affordance — sibling story 023
+`S18-UI-HAND-IDLE-PLAYABLE-AFFORDANCE-001`) preserved unclosed;
+`AUDIT-1076-02 / 03` (server-side placement loss) preserved unclosed;
+24 PROMPT 1022 findings preserved; long-tail `AUDIT-1076-*` +
+`SOURCE-1077-*` findings outside concrete repairs already on
+`origin/main` preserved; PROMPT 761 Polish→Release FAIL preserved
+with NO retry.
+
+**Non-claims preserved**: no public release readiness; no RC
+readiness; no full game completion; no LLM closure of
+`S11-HUD-TIMER-EYEBALL-VISUAL-001`; no silent closure of
+`S17-UI-HUD-OPP-MANA-CLEANUP-001`; no closure of `S8-QA-001-W1`,
+`QA-COND-0005`, `QA-COND-0006`, `PAW-TD-*-a`, `TQ-S12-C1..C7`, R1,
+R3, or `AUDIT-1076-02 / 03`; no Sprint 10-17 row reopen; no Sprint 17
+close-out reopen / re-author / silent overwrite; no Sprint 18
+close-out claim; no retroactive closure of any row not implemented on
+`origin/main` at the closure tip; no AC11 paint-treatment claim
+(advisory); no AC18 EPIC.md flip (advisory-deferred to follow-on
+paperwork prompt).
+
+**Current next launchable**: the four remaining Sprint 18 Should Have
+paperwork-only rows — `S18-UI-HAND-IDLE-PLAYABLE-AFFORDANCE-001`
+(impl PROMPT 1239 + 1243 `50b66ad` + `4c75cec`),
+`S18-UI-VIEWPORT-INVARIANT-LIVE-HARNESS-001` (impl PROMPT 1185
+`671c677`), `S18-OBS-SNAPSHOT-LAYOUT-FIELDS-001` (impl PROMPT 1229
+`e68ac4f` or PROMPT 1186 `d75db1a` per PROMPT 1324 §3 diagnostic) —
+plus follow-on paperwork prompt for the AC18 EPIC.md row flip if the
+orchestrator deems it required. Sprint 18 Must Have implementation
+lanes remain: `S18-AUCTION-WON-CARD-DISPOSITION-001` (awaiting
+`/dev-story` after Sprint 18 QA plan landed), `S18-UI-PLAY-AREA-CONTAINER-001`
+(PROMPT 1328 PlayArea flex container landed at `a24b3f4`; paperwork
+pending separate closure).
+
+---
+
 # PROMPT 1337 State Banner -- S18-UI-LAYOUT-CONTRACT-DOC-AND-LINT-001 `/story-done` Closed (Sprint 18 Must Row 4)
 
 Updated 2026-05-19 by PROMPT 1337. Source-of-truth at closure:

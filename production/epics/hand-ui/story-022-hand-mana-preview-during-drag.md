@@ -2,14 +2,17 @@
 
 > **Epic**: Hand UI
 > **Story ID**: `S18-UI-HAND-MANA-PREVIEW-DURING-DRAG-001`
-> **Status**: Draft — future Sprint 18 candidate; NOT activated
+> **Status**: Done -- Sprint 18 Should Have Row 1 (closed PROMPT 1354 on `origin/main@6e0453f` after PROMPT 1228 dev-story `8d0a3d3` + PROMPT 1336 AC5/6/8/9/10 refinement worker `69c50e6` + PROMPT 1344 integration `1e9548f` + PROMPT 1345 readiness rerun `READY_FOR_STORY_DONE`). AC1..AC10 + AC12..AC14 + AC16..AC17 PASS; AC11 ADVISORY (overdraw colour treatment lead-sign-off deferred; BLOCKING AC5 marker present and asserted); AC15 PARTIAL-PASS (target regression suite green per PROMPT 1336 + PROMPT 1344 evidence; PROMPT 1354 paperwork-only -- no fresh Cargo invocation); AC18 ADVISORY-DEFERRED (EPIC.md hand-ui row 022 flip outside PROMPT 1354 allowed-writes scope; row stays at the existing Story 020 / 022 / 023 / 025 / 026 "not yet folded into the active completion ratios" deferral note at `production/epics/hand-ui/EPIC.md:104`).
 > **Layer**: Presentation — Hand UI (drag-state read) + HUD (reactive mana label preview)
 > **Type**: Logic + Integration test (reactive UI mutation under simulated drag)
+> **Sprint**: Sprint 18 Should Have Row 1 (activated PROMPT 1301; closed PROMPT 1354)
 > **Authored**: 2026-05-18 by PROMPT 1136
 > **Authoring worktree**: `D:\_DEV\claude-code-game-studios-worktrees\s18-hand-mana-affordance-stories`
 > **Authoring branch**: `work/s18-hand-mana-affordance-stories`
 > **Authoring source-of-truth**: `origin/main@05192b5f830c5d5b17ed7af07df37f56187130fc`
 > (PROMPT 1125 `story-done(s17): close S17-OPS-VULKAN-VALIDATION-GATING-001`)
+> **Active impl PROMPT**: PROMPT 1228 worker commit `8d0a3d3` (initial dev-story landed pre-Sprint-18 activation; inherited at activation tip `1345c6b` per PROMPT 1301); PROMPT 1336 AC5/6/8/9/10 gap refinement worker commit `69c50e6` integrated by PROMPT 1344 as integration commit `1e9548f`; PROMPT 1345 readiness rerun verdict `READY_FOR_STORY_DONE`.
+> **Completed**: 2026-05-19 by PROMPT 1354 (`/story-done` paperwork-only).
 
 ---
 
@@ -403,7 +406,7 @@ All criteria are independently checkable. The integration test in AC9
 is the single BLOCKING evidence path; the unit test in AC10 is the
 companion BLOCKING evidence for the pure projection arithmetic.
 
-- [ ] **AC1 — Preview activates on drag start (Minion)**: GIVEN
+- [x] **AC1 — Preview activates on drag start (Minion)** (PASS-WITH-INTERPRETATION): GIVEN
   `Res<CurrentClientPhase> == Phase::Placement` AND a Minion card
   with `card.cost = 4` is in the local hand AND
   `PlayerEconomyView { current_mana: 5, reserve_mana: 2, ... }`,
@@ -416,7 +419,7 @@ companion BLOCKING evidence for the pure projection arithmetic.
   Verified by querying `ManaDisplayState` after one `App::update()`
   tick following the resource insertion.
 
-- [ ] **AC2 — Preview reflects projected current mana in HUD Text**:
+- [x] **AC2 — Preview reflects projected current mana in HUD Text** (PASS):
   GIVEN AC1 preconditions, WHEN one `App::update()` tick runs after
   AC1, THEN the HUD `ManaLabel` `Text::0` value contains the substring
   `"1"` (the projected `current_mana`) AND the rendered string
@@ -428,7 +431,7 @@ companion BLOCKING evidence for the pure projection arithmetic.
   numeric input. Verified by reading `Text::0` from the `ManaLabel`
   entity.
 
-- [ ] **AC3 — Reserve spillover when `cost > current_mana`**: GIVEN
+- [x] **AC3 — Reserve spillover when `cost > current_mana`** (PASS): GIVEN
   `PlayerEconomyView { current_mana: 1, reserve_mana: 3, ... }`
   AND a Minion card with `card.cost = 3` is drag-source, WHEN one
   tick runs, THEN `ManaDisplayState.current_mana == 0` AND
@@ -440,7 +443,7 @@ companion BLOCKING evidence for the pure projection arithmetic.
   iff projected reserve == 0); when projected reserve > 0 (as here),
   it remains `Visible`.
 
-- [ ] **AC4 — Preview resets on drag end / cancel / drop**: GIVEN
+- [x] **AC4 — Preview resets on drag end / cancel / drop** (PASS): GIVEN
   a preview was active per AC1 with `ManaDisplayState.current_mana == 1`,
   WHEN `ActivePlacementDrag::clear()` is invoked (drag end, drag
   cancel, or successful drop), THEN within the same frame and
@@ -454,7 +457,7 @@ companion BLOCKING evidence for the pure projection arithmetic.
     inactive. No stale projection survives one frame past
     `ActivePlacementDrag::is_active() == false`.
 
-- [ ] **AC5 — Overdraw indicator when cost exceeds combined pool**:
+- [x] **AC5 — Overdraw indicator when cost exceeds combined pool** (PASS — gap closed by PROMPT 1336):
   GIVEN `PlayerEconomyView { current_mana: 1, reserve_mana: 1, ... }`
   AND a Minion card with `card.cost = 5` is drag-source, WHEN one
   tick runs, THEN:
@@ -470,7 +473,7 @@ companion BLOCKING evidence for the pure projection arithmetic.
     BLOCKING assertion is the marker / state-field presence, not
     a specific colour value. See AC11 for advisory visual.
 
-- [ ] **AC6 — Multi-card preview subtracts already-staged spend**:
+- [x] **AC6 — Multi-card preview subtracts already-staged spend** (PASS — gap closed by PROMPT 1336):
   GIVEN `PlayerEconomyView { current_mana: 6, reserve_mana: 0, ... }`
   AND `PendingPlacements::placements` contains one
   `PlacedCardSubmit { current_mana_spend: 3, reserve_mana_spend: 0, ... }`
@@ -485,7 +488,7 @@ companion BLOCKING evidence for the pure projection arithmetic.
   AND drag of a Minion with `cost = 2`, THEN projected
   `reserve_mana == 1` (5 − 2 − 2 = 1) and projected `current_mana == 0`.
 
-- [ ] **AC7 — Preview suppressed outside `Phase::Placement`**: GIVEN
+- [x] **AC7 — Preview suppressed outside `Phase::Placement`** (PASS): GIVEN
   `Res<CurrentClientPhase> != Phase::Placement` (e.g.
   `Phase::DraftShop`) AND any `ActivePlacementDrag::is_active() == true`
   scenario constructed for tests, WHEN one tick runs, THEN the HUD
@@ -495,7 +498,7 @@ companion BLOCKING evidence for the pure projection arithmetic.
   suppression"); the preview must not contradict that by partially
   surfacing a projection.
 
-- [ ] **AC8 — Non-Minion card types: preview explicitly suppressed**:
+- [x] **AC8 — Non-Minion card types: preview explicitly suppressed** (PASS — gap closed by PROMPT 1336):
   GIVEN a drag-source card with `CardType::Spell` (or `Trap`,
   `Structure`, `Field`, `Order`, or `Instant`) AND any
   `PlayerEconomyView` / cost combination, WHEN one tick runs with
@@ -511,7 +514,7 @@ companion BLOCKING evidence for the pure projection arithmetic.
   mana-costing non-Minion types, a separate follow-on story extends
   this AC; the current story scope is Minion-only.**
 
-- [ ] **AC9 — Integration test in `tests/integration/hand-ui/`**:
+- [x] **AC9 — Integration test in `tests/integration/hand-ui/`** (PASS — gap closed by PROMPT 1336):
   GIVEN the post-implementation build, WHEN
   `cargo test -p client --test mana_preview_during_drag_test` is
   run (file path TBD by the `/dev-story` worker; likely
@@ -525,8 +528,8 @@ companion BLOCKING evidence for the pure projection arithmetic.
   `Pointer<*>` event synthesis. No `DefaultPickingPlugins`
   installation required (independent of R1 repair).
 
-- [ ] **AC10 — Unit test for projection arithmetic in
-  `tests/unit/hand-ui/mana_preview_projection_test.rs`**: GIVEN
+- [x] **AC10 — Unit test for projection arithmetic in
+  `tests/unit/hand-ui/mana_preview_projection_test.rs`** (PASS — gap closed by PROMPT 1336): GIVEN
   the post-implementation build, WHEN
   `cargo test -p client --test mana_preview_projection_test` is
   run, THEN it PASSES with at minimum 6 assertions covering the
@@ -544,7 +547,7 @@ companion BLOCKING evidence for the pure projection arithmetic.
   - `project((curr=3, res=0, cap=3), cost=0, staged=Σ0)` →
     `(3, 0, overdrawn=false)` (zero-cost card; no change)
 
-- [ ] **AC11 — Advisory overdraw colour treatment**: GIVEN AC5
+- [x] **AC11 — Advisory overdraw colour treatment** (ADVISORY — BLOCKING AC5 marker present and asserted; lead-sign-off SEMANTIC_ERROR paint deferred per AC11 wording "lead sign-off acceptable in lieu of ECS assertion"): GIVEN AC5
   preconditions, WHEN the HUD paints the preview, THEN the
   `ManaLabel` `Text` (or its surrounding `BackgroundColor`) reads
   the §7 `SEMANTIC_ERROR` palette colour (`#9C2000` or
@@ -554,8 +557,8 @@ companion BLOCKING evidence for the pure projection arithmetic.
   ECS assertion); the BLOCKING assertion is AC5's marker / state-
   field presence.
 
-- [ ] **AC12 — ADR-021 plugin registration + entity counts
-  preserved**: GIVEN the post-implementation build, WHEN inspected,
+- [x] **AC12 — ADR-021 plugin registration + entity counts
+  preserved** (PASS): GIVEN the post-implementation build, WHEN inspected,
   THEN:
   - `HandUiPlugin` and `HudPlugin` remain at their existing
     registration positions inside `PresentationPlugin`.
@@ -567,7 +570,7 @@ companion BLOCKING evidence for the pure projection arithmetic.
     but **preferred**: store the preview as a `Component` on the
     existing `ManaLabel` entity to avoid `HudEntities` churn).
 
-- [ ] **AC13 — ADR-002 + ADR-012 binding preserved**: GIVEN the
+- [x] **AC13 — ADR-002 + ADR-012 binding preserved** (PASS): GIVEN the
   post-implementation build, WHEN the new systems are inspected,
   THEN:
   - They read `Res<PlayerEconomyView>` (immutable), `Res<ActivePlacementDrag>`
@@ -583,7 +586,7 @@ companion BLOCKING evidence for the pure projection arithmetic.
   `client/src/presentation/shared/` for new `ResMut<PlayerEconomyView>`
   (zero hits) and by `git diff shared/src/protocol.rs` (empty).
 
-- [ ] **AC14 — Authoritative-restore precedence over preview**:
+- [x] **AC14 — Authoritative-restore precedence over preview** (PASS BY CONSTRUCTION — per-frame helper re-baselines against fresh `PlayerEconomyView`; no explicit `S2CGoldUpdate` mid-drag `#[test]` fn, but the architectural pattern in `sync_mana_text_system` makes the requirement structural per PROMPT 1345 verdict):
   GIVEN a drag is active AND a preview projection is applied AND
   a fresh `S2CGoldUpdate` is received mid-drag (e.g. server-side
   income tick), WHEN `drain_gold_update_receiver_system` runs,
@@ -597,7 +600,7 @@ companion BLOCKING evidence for the pure projection arithmetic.
   Rationale: authoritative state always wins; preview is a derived
   view, not a replacement.
 
-- [ ] **AC15 — Targeted regressions pass**: GIVEN the post-
+- [x] **AC15 — Targeted regressions pass** (PARTIAL-PASS — PROMPT 1336 worker recorded green on `cargo test -p client --lib` (114 / +3 to 117 at PROMPT 1344 integration), `mana_preview_during_drag_test` (8), `mana_preview_projection_test` (9), `hand_ui_submit_prevalidation_test` (8), `hand_ui_reserve_mana_strip_test` (4), `hand_ui_drag_state_visuals_test` (11), `hand_ui_drag_to_board_cell_test` (4), `ui_viewport_invariants_test` (12) = 170 tests across 8 bins at PROMPT 1336; PROMPT 1344 integration re-ran the same target set = 173 tests / 0 failed across 8 bins. `hud_mana_text_test` is flagged "if extant" by the AC and is NOT extant. `placement_perspective_snapshot_test` is registered as `hand_ui_placement_perspective_snapshot_test` (Cargo.toml line 255) and was not in PROMPT 1336's verification set. PROMPT 1354 paperwork-only — no fresh Cargo invocation): GIVEN the post-
   implementation build, WHEN the following tests run, THEN all
   PASS (existing hand-UI / HUD coverage must not regress):
   - `cargo test -p client --lib`
@@ -610,14 +613,14 @@ companion BLOCKING evidence for the pure projection arithmetic.
   - The 6-viewport invariant suite at
     `tests/integration/ui_viewport_invariants_test.rs`.
 
-- [ ] **AC16 — No accept-risk closure claimed**: GIVEN the
+- [x] **AC16 — No accept-risk closure claimed** (PASS): GIVEN the
   implementation evidence, WHEN inspected, THEN it explicitly does
   NOT claim closure of `S8-QA-001-W1`, `QA-COND-0005`,
   `QA-COND-0006`, `PAW-TD-*-a`, `TQ-S12-C1..C7`, R1
   (drag-pipeline-dead bug), R3 (idle-hand affordance — sibling
   story 023), or `AUDIT-1076-02 / 03` (server-side placement loss).
 
-- [ ] **AC17 — Sprint 17 / Sprint 18 disposition preserved**: GIVEN
+- [x] **AC17 — Sprint 17 / Sprint 18 disposition preserved** (PASS — PROMPT 1228 + 1336 + 1344 commits diffed against `shared/`, `server/`, `production/sprints/`, `production/sprint-status.yaml`, `production/stage.txt`, PROMPT 761 gate-check artifact = empty; PROMPT 1354 paperwork-only flips Row 1 status `ready -> done` only; Sprint 18 remains `active`; stage remains `Polish`; `production/stage.txt` NOT modified; PROMPT 761 Polish->Release FAIL preserved with NO retry): GIVEN
   the story commit, WHEN `production/sprint-status.yaml`,
   `production/sprints/sprint-17.md`, `production/sprints/sprint-18.md`
   (if present at integration time), `production/stage.txt`, and PROMPT
@@ -626,13 +629,123 @@ companion BLOCKING evidence for the pure projection arithmetic.
   beyond the standard `/story-done` row flip (which happens only
   AFTER Sprint 18 is independently activated by a separate prompt).
 
-- [ ] **AC18 — Hand UI EPIC count updated**: GIVEN the epic file
+- [ ] **AC18 — Hand UI EPIC count updated** (ADVISORY-DEFERRED — `production/epics/hand-ui/EPIC.md` is OUTSIDE PROMPT 1354 allowed-writes scope per the PROMPT 1354 task spec ("Allowed writes" list explicitly excludes `production/epics/hand-ui/EPIC.md`). The row stays at the existing "not yet folded into the active completion ratios" deferral note at `production/epics/hand-ui/EPIC.md:104`, which already documents stories 020 / 022 / 023 / 025 / 026 as not-yet-folded. A follow-on paperwork prompt MAY thread the EPIC.md flip if the orchestrator deems it required. Closure of record is in `production/sprint-status.yaml` Row 1 + `sprint_18_story_done:` block + the present Status banner + Completion Notes — all on `origin/main` via PROMPT 1354): GIVEN the epic file
   `production/epics/hand-ui/EPIC.md`, WHEN updated by the
   `/story-done` paperwork at terminal disposition, THEN the
   "Stories" table reflects this story 022 row consistently with the
   existing rows-not-yet-folded note. PROMPT 1136 authoring **DOES**
   add the story 022 row to the table as `Draft (future Sprint 18
   candidate)`; `/story-done` paperwork later flips it to `Done`.
+
+---
+
+## Completion Notes
+
+PROMPT 1354 paperwork-only `/story-done` closure executed against
+`origin/main@6e0453f5407862231af924a6e1ad7ec6169b1a15` (PROMPT 1346
+`story-done-reconcile(s18): reconcile PROMPT 1331 S18-UI-SETTINGS-PANEL-FLEX-RELAYOUT-001 closure onto current main`).
+
+**Implementation lineage**:
+
+- **PROMPT 1228 dev-story** (worker commit `8d0a3d3`, main-landed pre-Sprint-18 activation; inherited at activation tip `1345c6b` per PROMPT 1301): first landed implementation of `compute_placement_drag_mana_preview` in `client/src/ui/hud/mod.rs`, original integration test bin under `tests/integration/hud/hud_mana_preview_during_drag_test.rs`. Activation-time inventory carried this row as Should Have Row 1 paperwork-only candidate (`production/sprint-status.yaml` line 257 `landed_on_main_basis`).
+- **PROMPT 1332 disposition audit** (`reports/PROMPT-1332-s18-hand-mana-preview-ac-gap-disposition.md` §4) flagged five AC gaps on the PROMPT 1228 baseline: AC5 overdraw marker silent; AC6 multi-card staged subtraction off-by-staged-spend; AC8 non-Minion suppression missing (phantom mana drop for Spell / Trap / Structure / Field / Order / Instant drags); AC9 test path not canonical (`tests/integration/hud/` vs spec `tests/integration/hand-ui/`); AC10 unit slice signature mismatch (no canonical `tests/unit/hand-ui/mana_preview_projection_test.rs`).
+- **PROMPT 1336 AC refinement** (worker commit `69c50e6` on branch `work/s18-hand-mana-preview-ac-refinement-1336`; report `reports/PROMPT-1336-s18-hand-mana-preview-ac-refinement.md`): closed all five PROMPT 1332 gaps in one commit. Added `client/src/ui/hud/mana_preview.rs` (113 lines — pure `project_mana_preview(view, drag_card_def, staged_current, staged_reserve) -> ManaPreviewOutcome { current, reserve, overdrawn, suppressed }`); modified `client/src/ui/hud/mod.rs` (+125 / -20 — `ManaDisplayState.preview_overdrawn: bool`, `compute_placement_drag_mana_preview` aggregates `PendingPlacements` then delegates to helper, `sync_mana_text_system` gated on `RoundPhase::Placement` + paints clamped `"0 / cap"` + cleared reserve on overdraw); rewrote `client/Cargo.toml` test registration (swap from old `hud_mana_preview_during_drag_test` to canonical-path `mana_preview_during_drag_test` + new `mana_preview_projection_test`); created `tests/integration/hand-ui/mana_preview_during_drag_test.rs` (465 lines, 8 `#[test]` fns covering AC1 + AC2 + AC3 + AC4 + AC5 + AC6 (two sub-cases) + AC7 + AC8, drives drag via direct resource insertion so independent of R1 `bevy_picking` repair); created `tests/unit/hand-ui/mana_preview_projection_test.rs` (252 lines, 9 `#[test]` fns covering the six AC10 enumerated cases plus three companion guards); deleted legacy `tests/integration/hud/hud_mana_preview_during_drag_test.rs` (-285 lines) via `git rm`.
+- **PROMPT 1344 integration** (integration branch `integrate/s18-hand-mana-preview-ac-refinement-1336-1344`; integration commit `1e9548f23f7f19d3f8e14591b731cdfbbdd57874`; report `reports/PROMPT-1344-s18-hand-mana-preview-ac-refinement-integration.md`): cherry-picked PROMPT 1336 worker `69c50e6` onto `origin/main@a24b3f4` (PROMPT 1328 PlayArea flex container). `client/Cargo.toml` auto-merged cleanly (no conflict; resolution replaced the PROMPT 1228 `[[test]] hud_mana_preview_during_drag_test` block with the PROMPT 1336 dual-block registration for `mana_preview_during_drag_test` and `mana_preview_projection_test`). No conflicts in `client/src/ui/hud/mod.rs`, `mana_preview.rs`, or any test file. Diff vs starting `origin/main`: 6 files, +949 / -337 (identical to worker commit footprint). Cargo resource policy applied (`CARGO_TARGET_DIR=D:/_DEV/cargo-target/ccgs-msvc` + `CARGO_PROFILE_DEV_DEBUG=0` + `CARGO_PROFILE_TEST_DEBUG=0` + `CARGO_INCREMENTAL=0` + `RUSTFLAGS=-C debuginfo=0 -C link-arg=/DEBUG:NONE`). Targeted test suite passed: `--lib` 117 / 0, `mana_preview_during_drag_test` 8 / 0, `mana_preview_projection_test` 9 / 0, `hand_ui_submit_prevalidation_test` 8 / 0, `hand_ui_reserve_mana_strip_test` 4 / 0, `hand_ui_drag_state_visuals_test` 11 / 0, `hand_ui_drag_to_board_cell_test` 4 / 0, `ui_viewport_invariants_test` 12 / 0 — total 173 tests / 0 failed across 8 bins. Pushed `integrate/s18-hand-mana-preview-ac-refinement-1336-1344`; main-land of `1e9548f` occurred outside the PROMPT 1344 worker scope per the standard integration-to-main pipeline.
+- **PROMPT 1345 readiness rerun** (read-only audit against `origin/main@1e9548f`; report `reports/PROMPT-1345-s18-hand-mana-preview-readiness-rerun-after-repair.md`): re-verified all 18 AC paths post-PROMPT-1344 main-land. Verdict `READY_FOR_STORY_DONE`. AC walk: AC1 PASS-WITH-INTERPRETATION (HUD `Text` paints projected value directly while `ManaDisplayState.current_mana` stays at authoritative mirror — stronger ADR-002 read than the literal spec wording; PROMPT 1324 / PROMPT 1332 also accepted this interpretation); AC2 PASS; AC3 PASS; AC4 PASS; AC5 PASS (gap closed); AC6 PASS (gap closed, two sub-cases); AC7 PASS (defensive double-gate at `mod.rs:2137`); AC8 PASS (gap closed, helper short-circuit at `mana_preview.rs:92`); AC9 PASS (gap closed, canonical path); AC10 PASS (gap closed, canonical path); AC11 ADVISORY; AC12 PASS (no new pre-pooled top-level entity; preview lives as `ManaDisplayState.preview_overdrawn` bool on existing entity); AC13 PASS (helper takes `&PlayerEconomyView` immutably; `shared/src/protocol.rs` diff empty); AC14 PASS BY CONSTRUCTION; AC15 PARTIAL-PASS (target regression suite green; `hud_mana_text_test` not extant); AC16 PASS; AC17 PASS; AC18 deferred to `/story-done` paperwork.
+- **PROMPT 1354 `/story-done`** (THIS PROMPT): paperwork-only closure. Flips `production/sprint-status.yaml` Row 1 `status: ready -> done` + populates closure metadata; appends 3rd PROMPT 1354 entry to existing `sprint_18_story_done:` block (PROMPT 1337 entry at position 1; PROMPT 1331 entry at position 2; PROMPT 1354 entry at position 3); annotates `sprint_18_activation.active_set.should_have` entry for this row with `status_post_closure:`; flips this story file Status banner `Draft -> Done` + per-AC `[x]` checkboxes with verdict lines + this Completion Notes section; prepends a PROMPT 1354 banner to `production/session-state/active.md` (above PROMPT 1331 banner) and a PROMPT 1354 paragraph to `production/session-state/codex-orchestrator-state.md` (above PROMPT 1331 paragraph). EPIC.md hand-ui row 022 flip is OUTSIDE PROMPT 1354 allowed-writes scope (AC18 advisory-deferred per the explicit allowed-writes list in the PROMPT 1354 task spec).
+
+**AC1 interpretation note (carried verbatim from PROMPT 1345 readiness)**:
+The integration test `ac1_preview_activates_on_minion_drag` asserts that
+HUD `Text` paints projected `"1 / 8"` (cost 4 against current 5, cap 8).
+The implementation chose to keep `ManaDisplayState.current_mana` at the
+authoritative mirror (5) and render the projection through `Text`
+directly — a stronger ADR-002 read than the literal AC1 wording would
+allow ("`ManaDisplayState.current_mana == 1`" is the spec; "HUD shows
+projected value" is the spirit). AC1+AC2 spirit met; literal
+`ManaDisplayState.current_mana == 1` is not asserted and not held.
+Documented in test comment lines 56-61. PROMPT 1324 + PROMPT 1332 +
+PROMPT 1345 + PROMPT 1354 all accept this interpretation.
+
+**AC15 partial-pass note**:
+PROMPT 1336 worker and PROMPT 1344 integration both ran the full
+target regression suite called out in AC15 with the exception of:
+(a) `hud_mana_text_test` — flagged "if extant" by the AC and is NOT
+extant in the project's `client/Cargo.toml`; (b)
+`placement_perspective_snapshot_test` — registered as
+`hand_ui_placement_perspective_snapshot_test` (Cargo.toml line 255)
+under the `hand_ui_*` prefix convention. Neither absence is a hard
+blocker per the AC15 wording ("if extant"). PROMPT 1354 is
+paperwork-only and does not invoke Cargo per the project's
+`/story-done` paperwork policy; AC4 + AC11 + AC12 + AC16 + AC15
+trusted from the PROMPT 1228 + 1336 + 1344 commit lineage.
+
+**AC11 advisory note**:
+The BLOCKING AC5 marker (`ManaDisplayState.preview_overdrawn: bool`)
+is present and asserted by `ac5_overdrawn_marker_set_when_cost_exceeds_combined_pool`.
+The advisory AC11 SEMANTIC_ERROR paint treatment is documented as
+"lead sign-off acceptable in lieu of ECS assertion" by the AC11
+wording itself; PROMPT 1354 accepts the marker presence as the
+binding gate and records the colour treatment as a follow-on Polish
+task discretion.
+
+**AC18 advisory-deferred note**:
+`production/epics/hand-ui/EPIC.md` is explicitly outside the
+PROMPT 1354 "Allowed writes" list in the task spec. The hand-ui
+EPIC.md row 099 ("| 022 | [S18-UI-HAND-MANA-PREVIEW-DURING-DRAG-001 —
+Mana Preview During PLACEMENT Drag] ... Draft -- future Sprint 18
+candidate ... NOT activated |") remains as authored by PROMPT 1136;
+the existing not-yet-folded note at line 104 covers stories 020 /
+022 / 023 / 025 / 026. The closure of record is in
+`production/sprint-status.yaml` Row 1 + the `sprint_18_story_done:`
+PROMPT 1354 block + this story file Status banner + Completion
+Notes. A follow-on paperwork prompt MAY thread the EPIC.md flip
+along with the other hand-ui not-yet-folded rows; PROMPT 1354
+does not perform that work.
+
+## Test Evidence
+
+| Type | Location | Tests | Status |
+|------|----------|-------|--------|
+| Unit (AC10) | `tests/unit/hand-ui/mana_preview_projection_test.rs` (NEW; 252 lines; PROMPT 1336) | 9 `#[test]` fns: zero-cost, current-only spend, reserve spillover, exact exhaustion, overdrawn true, multi-card current, multi-card reserve, non-Minion suppression, no-drag suppression, saturating-baseline never-underflow | PASS (9/0 at PROMPT 1336 worker + PROMPT 1344 integration under Windows/MSVC Cargo resource policy) |
+| Integration (AC9) | `tests/integration/hand-ui/mana_preview_during_drag_test.rs` (NEW; 465 lines; PROMPT 1336) | 8 `#[test]` fns covering AC1 + AC2 + AC3 + AC4 + AC5 + AC6 (×2) + AC7 + AC8 with ≥17 distinct assertions; drives drag via direct `ActivePlacementDrag` + `PendingPlacements` resource insertion so independent of R1 `bevy_picking` repair | PASS (8/0 at PROMPT 1336 worker + PROMPT 1344 integration) |
+| Targeted regression (AC15) | `cargo test -p client --lib` + 7 sibling test bins | --lib 117, `hand_ui_submit_prevalidation_test` 8, `hand_ui_reserve_mana_strip_test` 4, `hand_ui_drag_state_visuals_test` 11, `hand_ui_drag_to_board_cell_test` 4, `ui_viewport_invariants_test` 12 | PASS (173 / 0 across 8 bins at PROMPT 1344; `hud_mana_text_test` not extant, `hand_ui_placement_perspective_snapshot_test` not in PROMPT 1336 verification set) |
+
+Deleted: legacy `tests/integration/hud/hud_mana_preview_during_drag_test.rs`
+(-285 lines) — superseded by canonical-path `tests/integration/hand-ui/mana_preview_during_drag_test.rs`
+per AC9.
+
+## Closure Trail
+
+| Prompt | Role | Source-of-truth | Outcome |
+|--------|------|-----------------|---------|
+| PROMPT 1127 | Diagnostic | `reports/PROMPT-1127-placement-drag-drop-mana-preview-diagnostic.md` §R2 | MISSING-FEATURE classification (basis for this story's authoring) |
+| PROMPT 1136 | Story authoring | `origin/main@05192b5f` | Story file authored as future Sprint 18 candidate (Draft) |
+| PROMPT 1228 | Dev-story | `origin/main@8d0a3d3` | Initial implementation landed pre-Sprint-18 activation |
+| PROMPT 1287 | Sprint 18 plan candidate roster inventory | `origin/main` | Identified PROMPT 1228 `8d0a3d3` as the implementation tip for this row |
+| PROMPT 1292 | Sprint 18 plan draft main-land | `origin/main@1345c6b` | Story listed in Section 2.2 Should Have Row 1 |
+| PROMPT 1301 | Sprint 18 activation | `origin/main@1345c6b` | Row activated as Sprint 18 Should Have Row 1 paperwork-only candidate; inherited PROMPT 1228 implementation |
+| PROMPT 1320 | Sprint 18 QA plan | `origin/main` (`production/qa/qa-plan-sprint-18.md`) | QA plan Row 1 paperwork-only |
+| PROMPT 1332 | Disposition audit | `reports/PROMPT-1332-s18-hand-mana-preview-ac-gap-disposition.md` | Identified 5 AC gaps (AC5 / AC6 / AC8 / AC9 / AC10) on the PROMPT 1228 baseline |
+| PROMPT 1336 | AC refinement worker | `origin/work/s18-hand-mana-preview-ac-refinement-1336@69c50e6` | All 5 PROMPT 1332 gaps closed in one commit |
+| PROMPT 1344 | Integration | `origin/main@1e9548f` (`integrate/s18-hand-mana-preview-ac-refinement-1336-1344`) | PROMPT 1336 worker cherry-picked onto current main; 173 tests / 0 failed |
+| PROMPT 1345 | Readiness rerun | `origin/main@1e9548f` (read-only) | Verdict `READY_FOR_STORY_DONE` |
+| PROMPT 1354 | `/story-done` paperwork | `origin/main@6e0453f` | Row Status `ready -> done`; sprint_18_story_done: 3rd entry appended; story file Status flipped |
+
+**Non-claims preserved (verbatim from PROMPT 1345)**: no public release
+readiness; no RC readiness; no full game completion; no closure of
+`S8-QA-001-W1`, `QA-COND-0005`, `QA-COND-0006`, `PAW-TD-*-a`, or
+`TQ-S12-C1..C7`; no LLM closure of `S11-HUD-TIMER-EYEBALL-VISUAL-001`
+(human-operator-blocked carry); no silent closure of
+`S17-UI-HUD-OPP-MANA-CLEANUP-001` parent-row paperwork gap; no closure
+of R1 (drag-pipeline-dead bug); no closure of R3 (idle-hand
+affordance — sibling story 023); no closure of `AUDIT-1076-02 / 03`
+(server-side placement loss); no closure of `PROMPT 1054` BLOCKED-HUMAN
+visual retest; no retry of PROMPT 761 Polish->Release FAIL; no stage
+advance from `Polish` to `Release`; no closure of any
+`AUDIT-1131-*` / `AUDIT-1076-*` / `SOURCE-1077-*` / PROMPT 1022 /
+1076 / 1077 finding outside the concrete repairs already on
+`origin/main`; no Sprint 10-17 row reopen; no Sprint 17 closeout
+reopen / re-author / silent overwrite; no Sprint 18 close-out claim.
 
 ---
 
