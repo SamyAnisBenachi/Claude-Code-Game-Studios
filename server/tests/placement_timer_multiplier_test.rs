@@ -22,12 +22,14 @@ fn ready_slots() -> SessionSlots {
             team: 0,
             player: Some(player(1)),
             class: Some(ClassId::Iop),
+            is_bot: false,
         },
         SessionSlot {
             index: 1,
             team: 1,
             player: Some(player(2)),
             class: Some(ClassId::Cra),
+            is_bot: false,
         },
     ])
 }
@@ -172,12 +174,14 @@ fn empty_slots_for_owner(owner: PlayerId) -> SessionSlots {
             team: 0,
             player: Some(owner),
             class: None,
+            is_bot: false,
         },
         SessionSlot {
             index: 1,
             team: 1,
             player: None,
             class: None,
+            is_bot: false,
         },
     ])
 }
@@ -194,12 +198,14 @@ fn effective_session_settings_update_returns_room_effective_multiplier_for_joine
             team: 0,
             player: Some(p1),
             class: None,
+            is_bot: false,
         },
         SessionSlot {
             index: 1,
             team: 1,
             player: Some(p2),
             class: None,
+            is_bot: false,
         },
     ]);
 
@@ -225,12 +231,14 @@ fn effective_session_settings_update_defaults_to_x1_for_room_with_no_requests() 
             team: 0,
             player: Some(p1),
             class: None,
+            is_bot: false,
         },
         SessionSlot {
             index: 1,
             team: 1,
             player: Some(p2),
             class: None,
+            is_bot: false,
         },
     ]);
 

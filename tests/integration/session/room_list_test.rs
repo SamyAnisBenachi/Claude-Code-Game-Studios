@@ -1,6 +1,6 @@
 use server::core::session::{
-    build_room_list, create_room, join_room, ActiveSessions, CreateRoomOutcome, JoinRoomOutcome,
-    LobbyState, RoomCode, RoomSessions, SessionId,
+    add_bot_to_room, build_room_list, create_room, join_room, ActiveSessions, BotSlotActionOutcome,
+    CreateRoomOutcome, JoinRoomOutcome, LobbyState, RoomCode, RoomSessions, SessionId,
 };
 use shared::protocol::{GameMode, RoomListEntry};
 use shared::session::PlayerId;
@@ -187,6 +187,47 @@ fn test_build_room_list_reports_correct_filled_and_first_open_slot() {
         entry.first_open_slot,
         Some(2),
         "first open slot must be the next-index empty slot (after creator slot 0 and joiner slot 1)"
+    );
+}
+
+#[test]
+fn test_build_room_list_reports_bot_slots_as_filled_metadata() {
+    test_helpers::init_test_tracing();
+    let mut rooms = RoomSessions::default();
+    let mut active = ActiveSessions::default();
+    let owner = player(1);
+    let id = session_id(1);
+
+    create_fixed_room(
+        &mut rooms,
+        &mut active,
+        owner,
+        id,
+        "ABCDEF",
+        GameMode::TwoVTwo,
+        1.0,
+    );
+    match add_bot_to_room(&mut rooms, &mut active, owner, 2, 2.0) {
+        BotSlotActionOutcome::Updated { .. } => {}
+        BotSlotActionOutcome::Rejected(rejection) => {
+            panic!("owner add bot should succeed, got {:?}", rejection.reason)
+        }
+    }
+
+    let result = build_room_list(&rooms, None);
+    assert_eq!(
+        result.rooms.len(),
+        1,
+        "2v2 with one bot still has open slots"
+    );
+    let entry: &RoomListEntry = &result.rooms[0];
+    assert_eq!(entry.room_code, "ABCDEF");
+    assert_eq!(entry.slots_filled, 2, "bot slots count as occupied");
+    assert_eq!(entry.bot_count, 1);
+    assert_eq!(entry.first_open_slot, Some(1));
+    assert!(
+        entry.has_human_opponent,
+        "open non-owner slots remain human opportunities in the browser"
     );
 }
 

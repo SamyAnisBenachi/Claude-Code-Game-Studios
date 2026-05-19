@@ -540,6 +540,7 @@ fn ac6_own_slot_label_prefers_authoritative_lobby_slots_over_input_default() {
                 player_id: Some(PlayerId(7)),
                 class_id: None,
                 class_confirmed: false,
+                is_bot: false,
             },
             SessionSlot {
                 slot: 1,
@@ -547,6 +548,7 @@ fn ac6_own_slot_label_prefers_authoritative_lobby_slots_over_input_default() {
                 player_id: Some(PlayerId(99)),
                 class_id: None,
                 class_confirmed: false,
+                is_bot: false,
             },
         ],
         ..Default::default()

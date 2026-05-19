@@ -22,6 +22,11 @@ pub struct SessionSlot {
     pub team: TeamId,
     pub player: Option<PlayerId>,
     pub class: Option<ClassId>,
+    /// PROMPT 1430 (S19-BOT-PROTOCOL-FOUNDATIONS): true when `player` holds a
+    /// server-allocated synthetic id for a bot rather than a remote human
+    /// PlayerId. Mirrored to clients via `protocol::SessionSlot.is_bot`.
+    /// Existing human-only sessions construct slots with `is_bot: false`.
+    pub is_bot: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Resource)]

@@ -21,6 +21,8 @@ fn entry(code: &str, slot: Option<u8>, filled: u8, max: u8, mode: GameMode) -> R
         slots_filled: filled,
         slots_max: max,
         first_open_slot: slot,
+        bot_count: 0,
+        has_human_opponent: true,
     }
 }
 

@@ -328,6 +328,7 @@ fn slot_with_team(slot: u8, team: u8, player_id: PlayerId) -> SessionSlot {
         player_id: Some(player_id),
         class_id: None,
         class_confirmed: false,
+        is_bot: false,
     }
 }
 

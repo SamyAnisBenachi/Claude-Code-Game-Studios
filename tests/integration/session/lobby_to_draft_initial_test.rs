@@ -37,12 +37,14 @@ fn full_session_app() -> App {
             team: 0,
             player: Some(player(1)),
             class: Some(ClassId::Iop),
+            is_bot: false,
         },
         SessionSlot {
             index: 1,
             team: 1,
             player: Some(player(2)),
             class: Some(ClassId::Cra),
+            is_bot: false,
         },
     ]));
     app.insert_resource(ClassSelections(HashMap::from([

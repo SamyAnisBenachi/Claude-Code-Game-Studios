@@ -22,6 +22,7 @@ fn occupied_slot(index: u8, team: u8, player: PlayerId, class: ClassId) -> Sessi
         team,
         player: Some(player),
         class: Some(class),
+        is_bot: false,
     }
 }
 
@@ -87,6 +88,7 @@ fn test_build_session_config_panics_when_occupied_slot_has_no_class() {
         team: 0,
         player: Some(p1),
         class: None,
+        is_bot: false,
     }]);
     let selections = ClassSelections(HashMap::new());
 

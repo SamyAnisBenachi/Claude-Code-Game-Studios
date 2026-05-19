@@ -30,12 +30,14 @@ fn ready_slots() -> SessionSlots {
             team: 0,
             player: Some(player(1)),
             class: Some(ClassId::Iop),
+            is_bot: false,
         },
         SessionSlot {
             index: 1,
             team: 1,
             player: Some(player(2)),
             class: Some(ClassId::Cra),
+            is_bot: false,
         },
     ])
 }

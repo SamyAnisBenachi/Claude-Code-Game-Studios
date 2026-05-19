@@ -233,6 +233,7 @@ fn ac3_status_banner_populated_players_value_survives_compaction() {
             player_id: player,
             class_id: None,
             class_confirmed: false,
+            is_bot: false,
         }
     }
 

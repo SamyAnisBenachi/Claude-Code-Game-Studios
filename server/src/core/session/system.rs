@@ -6,13 +6,14 @@ use bevy::prelude::*;
 use lightyear::prelude::*;
 use shared::card::ClassId;
 use shared::protocol::{
-    self, C2SAcknowledgeResult, C2SConfirmClass, C2SCreateRoom, C2SHeartbeat, C2SJoinRoom,
-    C2SListRooms, C2SSelectClass, C2SSetPlacementTimerMultiplier, ConfirmClassRejectedReason,
+    self, BotActionRejectedReason, C2SAcknowledgeResult, C2SAddBot, C2SConfirmClass,
+    C2SCreateBotRoom, C2SCreateRoom, C2SHeartbeat, C2SJoinRoom, C2SListRooms, C2SRemoveBot,
+    C2SSelectClass, C2SSetPlacementTimerMultiplier, ConfirmClassRejectedReason,
     CreateRoomRejectedReason, GameMode, JoinRejectedReason, PlacementTimerMultiplier,
-    ReliableChannel, RoomListEntry, RoundPhase as ProtocolRoundPhase, S2CClassLocked,
-    S2CClassesRevealed, S2CConfirmClassRejected, S2CCreateRoomRejected, S2CGameOver, S2CJoinAck,
-    S2CJoinRejected, S2CRoomCreated, S2CRoomList, S2CSessionCancelled, S2CSessionSettingsUpdated,
-    S2CSlotUpdated,
+    ReliableChannel, RoomListEntry, RoundPhase as ProtocolRoundPhase, S2CBotActionRejected,
+    S2CClassLocked, S2CClassesRevealed, S2CConfirmClassRejected, S2CCreateRoomRejected,
+    S2CGameOver, S2CJoinAck, S2CJoinRejected, S2CRoomCreated, S2CRoomList, S2CSessionCancelled,
+    S2CSessionSettingsUpdated, S2CSlotUpdated,
 };
 use shared::session::PlayerId;
 use uuid::Uuid;
@@ -31,6 +32,7 @@ use crate::foundation::rng::ServerRng;
 
 pub const ROOM_CODE_LEN: usize = 6;
 const ROOM_CODE_ALPHABET: &[u8] = b"ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+const BOT_PLAYER_ID_HIGH_BIT: u64 = 1 << 63;
 
 #[derive(SystemSet, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SessionSystemSet {
@@ -81,6 +83,21 @@ pub enum JoinRoomOutcome {
         slot_update_recipients: Vec<PlayerId>,
     },
     Rejected(S2CJoinRejected),
+}
+
+#[derive(Debug, Clone)]
+pub enum CreateBotRoomOutcome {
+    Created(S2CRoomCreated),
+    Rejected(S2CBotActionRejected),
+}
+
+#[derive(Debug, Clone)]
+pub enum BotSlotActionOutcome {
+    Updated {
+        slot_update: S2CSlotUpdated,
+        slot_update_recipients: Vec<PlayerId>,
+    },
+    Rejected(S2CBotActionRejected),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -595,6 +612,57 @@ pub fn handle_create_room(
     }
 }
 
+/// Sole drainer for `MessageReceiver<C2SCreateBotRoom>`.
+#[allow(clippy::too_many_arguments)]
+pub fn handle_create_bot_room(
+    time: Res<Time>,
+    config: Option<Res<GameConfig>>,
+    connections: Res<PlayerConnectionMap>,
+    mut rooms: ResMut<RoomSessions>,
+    mut active_sessions: ResMut<ActiveSessions>,
+    mut receivers: Query<(&RemoteId, &mut MessageReceiver<C2SCreateBotRoom>)>,
+    server: Query<&Server>,
+    mut sender: Option<ServerMultiMessageSender>,
+) {
+    let now = time.elapsed().as_secs_f64();
+    let lobby_timeout_seconds = config
+        .as_ref()
+        .map(|config| config.lobby_timeout_seconds)
+        .unwrap_or_else(|| shared::config::GameConfig::default().lobby_timeout_seconds);
+    let server = server.single().ok();
+
+    for (remote, mut receiver) in receivers.iter_mut() {
+        for msg in receiver.receive() {
+            tracing::info!(
+                peer_id = ?remote.0,
+                mode = ?msg.mode,
+                bot_kind = ?msg.bot_kind,
+                "c2s_create_bot_room: recv"
+            );
+            let Some(player_id) = connections.0.get(&remote.0).copied() else {
+                continue;
+            };
+
+            let session_id = SessionId(Uuid::new_v4());
+            let room_code = generate_unique_room_code(&rooms);
+            let outcome = create_bot_room(
+                &mut rooms,
+                &mut active_sessions,
+                player_id,
+                msg.mode,
+                now,
+                lobby_timeout_seconds,
+                session_id,
+                room_code,
+            );
+
+            if let (Some(server), Some(sender)) = (server, sender.as_mut()) {
+                send_create_bot_room_outcome(sender, server, remote.0, &outcome);
+            }
+        }
+    }
+}
+
 /// Sole drainer for `MessageReceiver<C2SListRooms>`. Builds the joinable-room
 /// list (`build_room_list`) excluding the requester's own active session, then
 /// unicasts the result on `ReliableChannel`. Defensive when server/sender are
@@ -622,6 +690,75 @@ pub fn handle_list_rooms(
 
             if let (Some(server), Some(sender)) = (server, sender.as_mut()) {
                 send_room_list(sender, server, remote.0, &payload);
+            }
+        }
+    }
+}
+
+/// Sole drainer for `MessageReceiver<C2SAddBot>`.
+#[allow(clippy::too_many_arguments)]
+pub fn handle_add_bot(
+    time: Res<Time>,
+    connections: Res<PlayerConnectionMap>,
+    mut rooms: ResMut<RoomSessions>,
+    mut active_sessions: ResMut<ActiveSessions>,
+    mut receivers: Query<(&RemoteId, &mut MessageReceiver<C2SAddBot>)>,
+    server: Query<&Server>,
+    mut sender: Option<ServerMultiMessageSender>,
+) {
+    let now = time.elapsed().as_secs_f64();
+    let server = server.single().ok();
+
+    for (remote, mut receiver) in receivers.iter_mut() {
+        for msg in receiver.receive() {
+            tracing::info!(
+                peer_id = ?remote.0,
+                slot = msg.slot,
+                bot_kind = ?msg.bot_kind,
+                "c2s_add_bot: recv"
+            );
+            let Some(player_id) = connections.0.get(&remote.0).copied() else {
+                continue;
+            };
+
+            let outcome =
+                add_bot_to_room(&mut rooms, &mut active_sessions, player_id, msg.slot, now);
+
+            if let (Some(server), Some(sender)) = (server, sender.as_mut()) {
+                send_bot_slot_action_outcome(sender, server, &connections.0, remote.0, &outcome);
+            }
+        }
+    }
+}
+
+/// Sole drainer for `MessageReceiver<C2SRemoveBot>`.
+#[allow(clippy::too_many_arguments)]
+pub fn handle_remove_bot(
+    connections: Res<PlayerConnectionMap>,
+    mut rooms: ResMut<RoomSessions>,
+    mut active_sessions: ResMut<ActiveSessions>,
+    mut receivers: Query<(&RemoteId, &mut MessageReceiver<C2SRemoveBot>)>,
+    server: Query<&Server>,
+    mut sender: Option<ServerMultiMessageSender>,
+) {
+    let server = server.single().ok();
+
+    for (remote, mut receiver) in receivers.iter_mut() {
+        for msg in receiver.receive() {
+            tracing::info!(
+                peer_id = ?remote.0,
+                slot = msg.slot,
+                "c2s_remove_bot: recv"
+            );
+            let Some(player_id) = connections.0.get(&remote.0).copied() else {
+                continue;
+            };
+
+            let outcome =
+                remove_bot_from_room(&mut rooms, &mut active_sessions, player_id, msg.slot);
+
+            if let (Some(server), Some(sender)) = (server, sender.as_mut()) {
+                send_bot_slot_action_outcome(sender, server, &connections.0, remote.0, &outcome);
             }
         }
     }
@@ -1118,6 +1255,153 @@ pub fn create_room(
     CreateRoomOutcome::Created(message)
 }
 
+#[allow(clippy::too_many_arguments)]
+pub fn create_bot_room(
+    rooms: &mut RoomSessions,
+    active_sessions: &mut ActiveSessions,
+    player_id: PlayerId,
+    mode: GameMode,
+    now: f64,
+    lobby_timeout_seconds: u32,
+    session_id: SessionId,
+    room_code: RoomCode,
+) -> CreateBotRoomOutcome {
+    if active_sessions.0.contains_key(&player_id) {
+        return create_bot_room_rejected(BotActionRejectedReason::AlreadyInSession);
+    }
+
+    let mut slots = initialise_slots(mode, player_id);
+    let Some(bot_slot) = first_opposing_open_slot(&slots, player_id) else {
+        return create_bot_room_rejected(BotActionRejectedReason::InvalidMode);
+    };
+    let bot_player_id = synthetic_bot_player_id(session_id, bot_slot);
+    if !fill_bot_slot(&mut slots, bot_slot, bot_player_id) {
+        return create_bot_room_rejected(BotActionRejectedReason::InvalidSlot);
+    }
+
+    let session = RoomSession {
+        session_id,
+        room_code: room_code.clone(),
+        owner: player_id,
+        mode,
+        state: LobbyState::LobbyWaiting,
+        slots,
+        lobby_deadline: LobbyDeadline(now + f64::from(lobby_timeout_seconds)),
+        heartbeats: LobbyHeartbeats(HashMap::from([(player_id, now)])),
+    };
+
+    active_sessions.0.insert(player_id, session_id);
+    active_sessions.0.insert(bot_player_id, session_id);
+    let message = room_created_message(&session);
+    rooms.insert(session);
+
+    CreateBotRoomOutcome::Created(message)
+}
+
+pub fn add_bot_to_room(
+    rooms: &mut RoomSessions,
+    active_sessions: &mut ActiveSessions,
+    requester: PlayerId,
+    requested_slot: u8,
+    _now: f64,
+) -> BotSlotActionOutcome {
+    let Some(session_id) = active_sessions.0.get(&requester).copied() else {
+        return bot_slot_action_rejected(BotActionRejectedReason::UnknownSession);
+    };
+    let Some(session) = rooms.get_mut(session_id) else {
+        return bot_slot_action_rejected(BotActionRejectedReason::UnknownSession);
+    };
+
+    if session.owner != requester {
+        return bot_slot_action_rejected(BotActionRejectedReason::NotOwner);
+    }
+    if session.state != LobbyState::LobbyWaiting {
+        return bot_slot_action_rejected(BotActionRejectedReason::SessionNotJoinable);
+    }
+    if session
+        .slots
+        .0
+        .iter()
+        .filter(|slot| slot.is_bot && slot.player.is_some())
+        .count()
+        >= session.slots.0.len().saturating_sub(1)
+    {
+        return bot_slot_action_rejected(BotActionRejectedReason::BotCapReached);
+    }
+
+    let Some(slot) = session
+        .slots
+        .0
+        .iter_mut()
+        .find(|slot| slot.index == requested_slot)
+    else {
+        return bot_slot_action_rejected(BotActionRejectedReason::InvalidSlot);
+    };
+    if slot.player.is_some() {
+        return bot_slot_action_rejected(BotActionRejectedReason::SlotOccupied);
+    }
+
+    let bot_player_id = synthetic_bot_player_id(session_id, requested_slot);
+    slot.player = Some(bot_player_id);
+    slot.class = None;
+    slot.is_bot = true;
+    active_sessions.0.insert(bot_player_id, session_id);
+
+    BotSlotActionOutcome::Updated {
+        slot_update: S2CSlotUpdated {
+            slots: protocol_slots(&session.slots),
+        },
+        slot_update_recipients: human_players(&session.slots),
+    }
+}
+
+pub fn remove_bot_from_room(
+    rooms: &mut RoomSessions,
+    active_sessions: &mut ActiveSessions,
+    requester: PlayerId,
+    requested_slot: u8,
+) -> BotSlotActionOutcome {
+    let Some(session_id) = active_sessions.0.get(&requester).copied() else {
+        return bot_slot_action_rejected(BotActionRejectedReason::UnknownSession);
+    };
+    let Some(session) = rooms.get_mut(session_id) else {
+        return bot_slot_action_rejected(BotActionRejectedReason::UnknownSession);
+    };
+
+    if session.owner != requester {
+        return bot_slot_action_rejected(BotActionRejectedReason::NotOwner);
+    }
+    if session.state != LobbyState::LobbyWaiting {
+        return bot_slot_action_rejected(BotActionRejectedReason::SessionNotJoinable);
+    }
+
+    let Some(slot) = session
+        .slots
+        .0
+        .iter_mut()
+        .find(|slot| slot.index == requested_slot)
+    else {
+        return bot_slot_action_rejected(BotActionRejectedReason::InvalidSlot);
+    };
+    if !slot.is_bot || slot.player.is_none() {
+        return bot_slot_action_rejected(BotActionRejectedReason::SlotNotBot);
+    }
+
+    if let Some(bot_player_id) = slot.player.take() {
+        active_sessions.0.remove(&bot_player_id);
+        session.heartbeats.0.remove(&bot_player_id);
+    }
+    slot.class = None;
+    slot.is_bot = false;
+
+    BotSlotActionOutcome::Updated {
+        slot_update: S2CSlotUpdated {
+            slots: protocol_slots(&session.slots),
+        },
+        slot_update_recipients: human_players(&session.slots),
+    }
+}
+
 pub fn join_room(
     rooms: &mut RoomSessions,
     active_sessions: &mut ActiveSessions,
@@ -1166,6 +1450,7 @@ pub fn join_room(
 
     slot.player = Some(player_id);
     slot.class = None;
+    slot.is_bot = false;
     session.heartbeats.0.insert(player_id, now);
     active_sessions.0.insert(player_id, session.session_id);
 
@@ -1285,12 +1570,14 @@ pub fn initialise_slots(mode: GameMode, creator: PlayerId) -> SessionSlots {
                 team: 0,
                 player: Some(creator),
                 class: None,
+                is_bot: false,
             },
             SessionSlot {
                 index: 1,
                 team: 1,
                 player: None,
                 class: None,
+                is_bot: false,
             },
         ]),
         GameMode::TwoVTwo => SessionSlots(vec![
@@ -1299,24 +1586,28 @@ pub fn initialise_slots(mode: GameMode, creator: PlayerId) -> SessionSlots {
                 team: 0,
                 player: Some(creator),
                 class: None,
+                is_bot: false,
             },
             SessionSlot {
                 index: 1,
                 team: 0,
                 player: None,
                 class: None,
+                is_bot: false,
             },
             SessionSlot {
                 index: 2,
                 team: 1,
                 player: None,
                 class: None,
+                is_bot: false,
             },
             SessionSlot {
                 index: 3,
                 team: 1,
                 player: None,
                 class: None,
+                is_bot: false,
             },
         ]),
     }
@@ -1342,6 +1633,20 @@ pub fn build_room_list(rooms: &RoomSessions, exclude_session: Option<SessionId>)
         .filter_map(|session| {
             let slots = &session.slots.0;
             let slots_filled = slots.iter().filter(|slot| slot.player.is_some()).count();
+            let bot_count = slots
+                .iter()
+                .filter(|slot| slot.is_bot && slot.player.is_some())
+                .count();
+            // PROMPT 1430: a non-owner slot is a "human opportunity" when it
+            // is either empty (joinable by a human) or already occupied by a
+            // human peer. Pure-bot opposition flips this to `false` so the
+            // lobby browser can flag effectively single-player rooms.
+            let has_human_opponent = slots.iter().any(|slot| {
+                if slot.player == Some(session.owner) {
+                    return false;
+                }
+                slot.player.is_none() || !slot.is_bot
+            });
             let first_open_slot = slots
                 .iter()
                 .find(|slot| slot.player.is_none())
@@ -1353,6 +1658,8 @@ pub fn build_room_list(rooms: &RoomSessions, exclude_session: Option<SessionId>)
                 slots_filled: u8::try_from(slots_filled).unwrap_or(u8::MAX),
                 slots_max: u8::try_from(slots.len()).unwrap_or(u8::MAX),
                 first_open_slot: Some(open_slot),
+                bot_count: u8::try_from(bot_count).unwrap_or(u8::MAX),
+                has_human_opponent,
             })
         })
         .collect();
@@ -1371,6 +1678,7 @@ pub fn protocol_slots(slots: &SessionSlots) -> Vec<protocol::SessionSlot> {
             player_id: slot.player,
             class_id: slot.class,
             class_confirmed: slot.class.is_some(),
+            is_bot: slot.is_bot,
         })
         .collect()
 }
@@ -1407,8 +1715,58 @@ fn room_created_message(session: &RoomSession) -> S2CRoomCreated {
     }
 }
 
+fn create_bot_room_rejected(reason: BotActionRejectedReason) -> CreateBotRoomOutcome {
+    CreateBotRoomOutcome::Rejected(S2CBotActionRejected { reason })
+}
+
+fn bot_slot_action_rejected(reason: BotActionRejectedReason) -> BotSlotActionOutcome {
+    BotSlotActionOutcome::Rejected(S2CBotActionRejected { reason })
+}
+
+fn synthetic_bot_player_id(session_id: SessionId, slot: u8) -> PlayerId {
+    let raw = session_id.0.as_u128();
+    let folded = (raw as u64) ^ ((raw >> 64) as u64);
+    PlayerId(BOT_PLAYER_ID_HIGH_BIT | (folded << 8) | u64::from(slot))
+}
+
+fn first_opposing_open_slot(slots: &SessionSlots, owner: PlayerId) -> Option<u8> {
+    let owner_team = slots
+        .0
+        .iter()
+        .find(|slot| slot.player == Some(owner))
+        .map(|slot| slot.team)?;
+    slots
+        .0
+        .iter()
+        .find(|slot| slot.player.is_none() && slot.team != owner_team)
+        .map(|slot| slot.index)
+}
+
+fn fill_bot_slot(slots: &mut SessionSlots, requested_slot: u8, bot_player_id: PlayerId) -> bool {
+    let Some(slot) = slots.0.iter_mut().find(|slot| slot.index == requested_slot) else {
+        return false;
+    };
+    if slot.player.is_some() {
+        return false;
+    }
+
+    slot.player = Some(bot_player_id);
+    slot.class = None;
+    slot.is_bot = true;
+    true
+}
+
 fn occupied_players(slots: &SessionSlots) -> Vec<PlayerId> {
     slots.0.iter().filter_map(|slot| slot.player).collect()
+}
+
+fn human_players(slots: &SessionSlots) -> Vec<PlayerId> {
+    slots
+        .0
+        .iter()
+        .filter(|slot| !slot.is_bot)
+        .filter_map(|slot| slot.player)
+        .collect()
 }
 
 fn first_game_over_message(world: &World) -> Option<GameOverEmitted> {
@@ -1799,7 +2157,7 @@ fn find_lobby_heartbeat_timeout(
         }
         let slots = slots?;
         let heartbeats = heartbeats?;
-        return occupied_players(slots).into_iter().find(|player| {
+        return human_players(slots).into_iter().find(|player| {
             active_sessions.0.contains_key(player)
                 && heartbeats
                     .0
@@ -1814,7 +2172,7 @@ fn find_lobby_heartbeat_timeout(
         if session.state != LobbyState::LobbyWaiting {
             return None;
         }
-        occupied_players(&session.slots).into_iter().find(|player| {
+        human_players(&session.slots).into_iter().find(|player| {
             session
                 .heartbeats
                 .0
@@ -2009,6 +2367,118 @@ fn send_create_room_outcome(
                     reason = ?msg.reason,
                     err = ?e,
                     "S2C send failed: type=S2CCreateRoomRejected, handler=send_create_room_outcome"
+                );
+            }
+        }
+    }
+}
+
+fn send_create_bot_room_outcome(
+    sender: &mut ServerMultiMessageSender,
+    server: &Server,
+    peer_id: PeerId,
+    outcome: &CreateBotRoomOutcome,
+) {
+    match outcome {
+        CreateBotRoomOutcome::Created(msg) => {
+            tracing::info!(
+                peer_id = ?peer_id,
+                room_code = %msg.room_code,
+                session_id = %msg.session_id,
+                "send_create_bot_room_outcome enter (Created)"
+            );
+            if let Err(e) = sender.send::<S2CRoomCreated, ReliableChannel>(
+                msg,
+                server,
+                &NetworkTarget::Single(peer_id),
+            ) {
+                tracing::error!(
+                    peer_id = ?peer_id,
+                    room_code = %msg.room_code,
+                    err = ?e,
+                    "S2C send failed: type=S2CRoomCreated, handler=send_create_bot_room_outcome"
+                );
+            }
+        }
+        CreateBotRoomOutcome::Rejected(msg) => {
+            tracing::info!(
+                peer_id = ?peer_id,
+                reason = ?msg.reason,
+                "send_create_bot_room_outcome enter (Rejected)"
+            );
+            if let Err(e) = sender.send::<S2CBotActionRejected, ReliableChannel>(
+                msg,
+                server,
+                &NetworkTarget::Single(peer_id),
+            ) {
+                tracing::error!(
+                    peer_id = ?peer_id,
+                    reason = ?msg.reason,
+                    err = ?e,
+                    "S2C send failed: type=S2CBotActionRejected, handler=send_create_bot_room_outcome"
+                );
+            }
+        }
+    }
+}
+
+fn send_bot_slot_action_outcome(
+    sender: &mut ServerMultiMessageSender,
+    server: &Server,
+    connections: &HashMap<PeerId, PlayerId>,
+    peer_id: PeerId,
+    outcome: &BotSlotActionOutcome,
+) {
+    match outcome {
+        BotSlotActionOutcome::Updated {
+            slot_update,
+            slot_update_recipients,
+        } => {
+            tracing::info!(
+                peer_id = ?peer_id,
+                recipient_count = slot_update_recipients.len(),
+                "send_bot_slot_action_outcome enter (Updated)"
+            );
+            let target_peers = slot_update_recipients
+                .iter()
+                .filter_map(|player_id| peer_for_player(connections, *player_id))
+                .collect::<Vec<_>>();
+
+            if target_peers.is_empty() {
+                tracing::warn!(
+                    peer_id = ?peer_id,
+                    recipient_count = slot_update_recipients.len(),
+                    "send_bot_slot_action_outcome (SlotUpdated) DROPPED - target_peers empty; all recipients unresolved in connections map"
+                );
+            } else if let Err(e) = sender.send::<S2CSlotUpdated, ReliableChannel>(
+                slot_update,
+                server,
+                &NetworkTarget::Only(target_peers),
+            ) {
+                tracing::error!(
+                    peer_id = ?peer_id,
+                    recipient_count = slot_update_recipients.len(),
+                    err = ?e,
+                    "S2C send failed: type=S2CSlotUpdated, handler=send_bot_slot_action_outcome"
+                );
+            }
+        }
+        BotSlotActionOutcome::Rejected(msg) => {
+            tracing::info!(
+                peer_id = ?peer_id,
+                reason = ?msg.reason,
+                "send_bot_slot_action_outcome enter (Rejected)"
+            );
+            if let Err(e) = sender.send::<S2CBotActionRejected, ReliableChannel>(
+                msg,
+                server,
+                &NetworkTarget::Single(peer_id),
+            ) {
+                tracing::error!(
+                    peer_id = ?peer_id,
+                    reason = ?msg.reason,
+                    err = ?e,
+                    "S2C send failed: type=S2CBotActionRejected, handler=send_bot_slot_action_outcome"
                 );
             }
         }
