@@ -1,3 +1,93 @@
+# PROMPT 1357 State Banner -- S18-UI-HAND-IDLE-PLAYABLE-AFFORDANCE-001 `/story-done` Closed (Sprint 18 Should Row 2)
+
+Updated 2026-05-19 by PROMPT 1357. Source-of-truth at closure:
+`origin/main@516b6427ba18fbfd0a8a85fe2f382d22d59be320` (PROMPT 1370
+`story-authoring-integrate(s19-hand-reserve-strip-cleanup): cherry-pick
+PROMPT 1351 story-027 onto origin/main@daa7759 (PROMPT 1370)` -- strict
+fast-forward descendant of PROMPT 1239 worker `50b66ad` + PROMPT 1243
+integration `4c75cec` that comprise the S18-UI-HAND-IDLE-PLAYABLE-
+AFFORDANCE-001 implementation lineage on origin/main). Worktree:
+`D:/_DEV/claude-code-game-studios-worktrees/prompt-1357-s18-hand-idle-affordance-story-done`
+on branch `story-done/s18-hand-idle-playable-affordance-1357`.
+
+PROMPT 1357 closes Sprint 18 Should Have Row 2
+`S18-UI-HAND-IDLE-PLAYABLE-AFFORDANCE-001` (idle-hand playable
+affordance distinct from Story 020 drag-state overlays) on the strength
+of PROMPT 1239 worker (`50b66adfbe30c50eb5e45130b718c70bde8b03a2`
+`dev-story(s18-hand-idle-playable-affordance): surface idle Playable /
+Unaffordable hint per local fan slot (PROMPT 1239)`) + PROMPT 1243
+integration (`4c75cec72adb28e9b81d31ed0806f38336b661c3`) already on
+origin/main, with PROMPT 1324 row 2 readiness verdict
+`READY_FOR_STORY_DONE` (Sprint 18 Should-row 2) and PROMPT 1356
+readiness refresh re-confirming `READY_FOR_STORY_DONE` against the
+current closure source-of-truth `origin/main@516b642`.
+
+Per-AC outcomes: AC1..AC10 + AC12..AC16 + AC18 + AC19 PASS /
+PASS-BY-CONSTRUCTION; AC11 PASS (test bin
+`tests/integration/hand-ui/hand_ui_idle_playable_affordance_test.rs` at
+canonical path with 10 `#[test]` fns + 16 helpers meeting AC11 floor of
+10 named cases exactly; state driven via direct resource insertion;
+R1-independent); AC17 PASS-WITH-ADVISORY (documentation drift: AC17
+names `hand_ui_plugin_scaffold_test.rs` which does not exist as an
+integration test bin; canonical scaffold tests live as
+`tests/unit/hand-ui/plugin_scaffold_test.rs`; the entity-count
+assertion is satisfied within the new
+`hand_ui_idle_playable_affordance_test.rs` bin's AC14 case inline --
+mirrors PROMPT 1110 trailing-whitespace + PROMPT 1331 / 1354 test-path
+mismatch advisory precedent); AC20 ADVISORY-DEFERRED
+(`production/epics/hand-ui/EPIC.md` flip outside PROMPT 1357
+allowed-writes scope per task spec; mirrors PROMPT 1354 AC18
+disposition for sibling story-022 closure). Zero changes under
+`client/src/**`, `server/src/**`, `shared/src/**`, `tests/**` across
+PROMPT 1239 + 1243 + 1357 commits combined (AC13 + AC16 PASS).
+
+Paperwork-only `/story-done`: PROMPT 1357 modifies four files only --
+`production/epics/hand-ui/story-023-hand-idle-playable-affordance.md`
+(Status `Draft -> Done` + Sprint / Active impl / Completed / Closure
+source-of-truth lines + AC1..AC19 `[x]` flipped from `[ ]` with AC20
+`[ ]` preserved as ADVISORY-DEFERRED + Completion Notes (PROMPT 1357)
+section + Closure Trail table + Conditions / non-claims lists + final
+status line); `production/sprint-status.yaml` (Row 2 status `ready ->
+done` with closure metadata + `sprint_18_activation.active_set.should_have`
+row 2 annotated with `status_post_closure` + PROMPT 1357 entry
+appended as 3rd `sprint_18_story_done:` block preserving PROMPT 1337 +
+PROMPT 1331 entries verbatim above); this `production/session-state/active.md`
+banner prepended above PROMPT 1337 banner; the sibling
+`production/session-state/codex-orchestrator-state.md` paragraph
+prepended above the PROMPT 1337 paragraph. NO Cargo / Trunk / CI
+invocation; AC4 + AC11 + AC12 + AC14 + AC17 trusted from PROMPT 1239
++ 1243 commit lineage per `/story-done` paperwork policy.
+
+Carried conditions preserved verbatim: `S11-HUD-TIMER-EYEBALL-VISUAL-001`
+Sprint 13 -> 14 -> 15 -> 16 -> 17 -> 18 human-operator-blocked carry
+(no LLM `/story-done` authorised); `S17-UI-HUD-OPP-MANA-CLEANUP-001`
+parent-row paperwork gap (no silent closure); `S8-QA-001-W1` OPEN;
+`QA-COND-0005` accept-risk; `QA-COND-0006` accept-risk; `PAW-TD-*-a`
+accept-risk across PAW-002..PAW-006; `TQ-S12-C1..C7` preserved
+(`TQ-S12-C7` NOT closed); PROMPT 1054 BLOCKED-HUMAN-OPERATOR
+preserved; PROMPT 761 Polish->Release gate-check FAIL preserved at
+`production/gate-checks/gate-polish-release-2026-05-12.md` with NO
+retry; `production/stage.txt` NOT modified (remains `Polish`); Sprint
+12 story 019 underlying drag-runtime bug NOT claimed fixed
+(`cannot-reproduce` preserved; PROMPT 1357 closure is independent of
+the drag-runtime bug per AC11 R1-independent test design); R1
+drag-pipeline-dead bug remains separate prompt; R2 mana-preview
+missing-feature owned by sibling PROMPT 1354 closure (DONE locally at
+PROMPT 1357 launch but NOT yet on `origin/main@516b642`; orchestrator
+expected to reconcile PROMPT 1354 + PROMPT 1357 entries together if
+PROMPT 1354 lands later).
+
+Sprint 18 status snapshot at PROMPT 1357 closure: 3 of 12 Sprint 18
+active rows done (Must Have 1 of 4 via PROMPT 1337
+`S18-UI-LAYOUT-CONTRACT-DOC-AND-LINT-001`; Should Have 2 of 6 via
+PROMPT 1331 reconciled by PROMPT 1346 `S18-UI-SETTINGS-PANEL-FLEX-
+RELAYOUT-001` + PROMPT 1357 `S18-UI-HAND-IDLE-PLAYABLE-AFFORDANCE-001`;
+Nice to Have 0 of 2); 9 rows preserved as their current status. Sprint
+18 disposition remains `active` (NOT closed-out by PROMPT 1357). Stage
+remains `Polish`.
+
+---
+
 # PROMPT 1337 State Banner -- S18-UI-LAYOUT-CONTRACT-DOC-AND-LINT-001 `/story-done` Closed (Sprint 18 Must Row 4)
 
 Updated 2026-05-19 by PROMPT 1337. Source-of-truth at closure:

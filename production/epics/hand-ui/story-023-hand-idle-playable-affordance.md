@@ -2,10 +2,14 @@
 
 > **Epic**: Hand UI
 > **Story ID**: `S18-UI-HAND-IDLE-PLAYABLE-AFFORDANCE-001`
-> **Status**: Draft — future Sprint 18 candidate; NOT activated
+> **Status**: Done — closed by PROMPT 1357 on `origin/main@516b642` (Sprint 18 Should Have Row 2). Implementation: PROMPT 1239 (`50b66ad`) + PROMPT 1243 (`4c75cec`).
 > **Layer**: Presentation — Hand UI (idle-hand visual affordance, distinct
 > from drag-state overlays)
 > **Type**: UI + Integration test (ECS marker / colour assertions)
+> **Sprint**: Sprint 18 Should Have row per `production/sprints/sprint-18.md`. Activated by PROMPT 1301; closed by PROMPT 1357.
+> **Active impl PROMPT**: PROMPT 1239 (`50b66adfbe30c50eb5e45130b718c70bde8b03a2` `dev-story(s18-hand-idle-playable-affordance): surface idle Playable / Unaffordable hint per local fan slot`) + PROMPT 1243 (`4c75cec72adb28e9b81d31ed0806f38336b661c3` integration).
+> **Completed**: 2026-05-19 by PROMPT 1357 paperwork-only `/story-done`.
+> **Closure source-of-truth**: `origin/main@516b6427ba18fbfd0a8a85fe2f382d22d59be320` (PROMPT 1370 `story-authoring-integrate(s19-hand-reserve-strip-cleanup): cherry-pick PROMPT 1351 story-027 onto origin/main@daa7759` -- strict fast-forward descendant of PROMPT 1239 worker `50b66ad` + PROMPT 1243 integration `4c75cec` that comprise the implementation lineage on origin/main).
 > **Authored**: 2026-05-18 by PROMPT 1136
 > **Authoring worktree**: `D:\_DEV\claude-code-game-studios-worktrees\s18-hand-mana-affordance-stories`
 > **Authoring branch**: `work/s18-hand-mana-affordance-stories`
@@ -474,7 +478,7 @@ This is **NOT** a:
 
 All criteria are independently checkable.
 
-- [ ] **AC1 — Playable affordance applies to affordable local
+- [x] **AC1 — Playable affordance applies to affordable local
   hand cards (idle)**: GIVEN `Res<CurrentClientPhase> == Phase::Placement`
   AND `Res<HandUiMode> ∈ { Passive, Staging }` AND
   `Res<ActivePlacementDrag>::is_active() == false` AND a local
@@ -494,7 +498,7 @@ All criteria are independently checkable.
     discretion within §7 token symbols).
   Verified by integration-test ECS query.
 
-- [ ] **AC2 — Subdued treatment applies to unaffordable local
+- [x] **AC2 — Subdued treatment applies to unaffordable local
   hand cards (idle)**: GIVEN the same idle preconditions as AC1
   AND `slot_is_affordable(card_id, &catalog, &economy) == false`
   (i.e. `card.card_type == Minion` AND
@@ -511,7 +515,7 @@ All criteria are independently checkable.
   - The unaffordable overlay does NOT carry `DragStateOverlay`.
   Verified by integration-test ECS query.
 
-- [ ] **AC3 — Playable / Unaffordable are mutually exclusive**:
+- [x] **AC3 — Playable / Unaffordable are mutually exclusive**:
   GIVEN any single local hand slot in any frame, WHEN the
   affordance sync system runs, THEN at most one of
   `FanSlotPlayableAffordanceActive::{Playable, Unaffordable}`
@@ -520,7 +524,7 @@ All criteria are independently checkable.
   visibilities are inverses; both `Hidden` only when the
   affordance is suppressed (AC4, AC7, AC8, AC9).
 
-- [ ] **AC4 — Opponent hand unaffected**: GIVEN the post-
+- [x] **AC4 — Opponent hand unaffected**: GIVEN the post-
   implementation build, WHEN inspected, THEN no opponent-side
   entity carries `FanSlotPlayableAffordanceActive` or
   `FanSlotPlayableAffordanceOverlay` / `FanSlotPlayableAffordanceUnaffordableOverlay`.
@@ -534,7 +538,7 @@ All criteria are independently checkable.
     slot entity (synthesised in the test fixture) does NOT
     receive the new markers when the affordance system runs.
 
-- [ ] **AC5 — Non-Minion card types treated as Playable**: GIVEN
+- [x] **AC5 — Non-Minion card types treated as Playable**: GIVEN
   the same idle preconditions as AC1 AND the slot's card has
   `CardType ∈ { Spell, Trap, Structure, Field, Order, Instant }`,
   WHEN one tick runs, THEN `FanSlotPlayableAffordanceActive::Playable`
@@ -546,7 +550,7 @@ All criteria are independently checkable.
   types, the `slot_is_affordable` helper changes there and this
   story's behaviour follows naturally.
 
-- [ ] **AC6 — Reactive updates on PlayerEconomyView change**:
+- [x] **AC6 — Reactive updates on PlayerEconomyView change**:
   GIVEN the slot is currently in `FanSlotPlayableAffordanceActive::Unaffordable`
   (cost = 4, current = 2, reserve = 1, sum = 3 < 4), WHEN a fresh
   `S2CGoldUpdate` (or `S2CGameSnapshot`) drains and updates
@@ -560,7 +564,7 @@ All criteria are independently checkable.
   Verified by inserting the new economy values and observing
   the marker / visibility on the subsequent tick.
 
-- [ ] **AC7 — Drag-active suppresses idle affordance**: GIVEN
+- [x] **AC7 — Drag-active suppresses idle affordance**: GIVEN
   the same idle preconditions AND
   `Res<ActivePlacementDrag>::is_active() == true` (drag in
   flight), WHEN one tick runs, THEN both the Playable and
@@ -569,7 +573,7 @@ All criteria are independently checkable.
   slots. The drag-state visuals (Story 020) own the frame.
   Verified by ECS query.
 
-- [ ] **AC8 — Phase / mode gating**: GIVEN any of the following
+- [x] **AC8 — Phase / mode gating**: GIVEN any of the following
   fails: (a) `Res<CurrentClientPhase> != Phase::Placement`;
   (b) `Res<HandUiMode> ∉ { Passive, Staging }` (i.e. `Hidden`,
   `Grid`, or `PassiveLocked`); WHEN one tick runs, THEN both
@@ -580,7 +584,7 @@ All criteria are independently checkable.
   extension is advisory and may be added by a follow-on story
   if product flagged.
 
-- [ ] **AC9 — Staged-card suppression**: GIVEN the slot's
+- [x] **AC9 — Staged-card suppression**: GIVEN the slot's
   `HandSlotCard(card_id)` is in `PendingPlacements::placements`
   (i.e. the card has been staged this PLACEMENT window), WHEN
   one tick runs, THEN both overlays are `Visibility::Hidden`
@@ -588,14 +592,14 @@ All criteria are independently checkable.
   removed. The staged-ghost dim treatment from Story 005 /
   Story 008 is preserved as the only visual on that slot.
 
-- [ ] **AC10 — Empty slot suppression**: GIVEN a fan slot has
+- [x] **AC10 — Empty slot suppression**: GIVEN a fan slot has
   NO `HandSlotCard` component (empty slot in the pre-pool),
   WHEN one tick runs, THEN both overlays are
   `Visibility::Hidden`. `FanSlotPlayableAffordanceActive` is
   absent. Verified by ECS query against the empty slots in the
   pre-pool.
 
-- [ ] **AC11 — Integration test in
+- [x] **AC11 — Integration test in
   `tests/integration/hand-ui/`**: GIVEN the post-implementation
   build, WHEN
   `cargo test -p client --test hand_ui_idle_playable_affordance_test`
@@ -608,7 +612,7 @@ All criteria are independently checkable.
   insert / clear `ActivePlacementDrag` / `PendingPlacements`).
   No `Pointer<*>` event synthesis. Independent of R1 repair.
 
-- [ ] **AC12 — Story 020 AC9 regression continues to PASS**:
+- [x] **AC12 — Story 020 AC9 regression continues to PASS**:
   GIVEN the post-implementation build, WHEN
   `cargo test -p client --test hand_ui_drag_state_visuals_test`
   is run, THEN it PASSES (all 11 / 11 ECS-query assertions
@@ -621,7 +625,7 @@ All criteria are independently checkable.
   ensuring the affordance markers / queries are properly
   disjoint from `DragStateOverlay`) before commit.
 
-- [ ] **AC13 — ADR-002 + ADR-012 binding preserved**: GIVEN the
+- [x] **AC13 — ADR-002 + ADR-012 binding preserved**: GIVEN the
   post-implementation build, WHEN inspected, THEN:
   - The new systems read `Res<PlayerEconomyView>` (immutable),
     `Res<HandCardCatalog>` (immutable), `Res<HandUiMode>`
@@ -641,7 +645,7 @@ All criteria are independently checkable.
   `ResMut<PendingPlacements>` (zero hits), and by
   `git diff shared/src/protocol.rs` (empty).
 
-- [ ] **AC14 — ADR-021 pre-pool discipline preserved**: GIVEN
+- [x] **AC14 — ADR-021 pre-pool discipline preserved**: GIVEN
   the post-implementation build, WHEN inspected, THEN:
   - `HAND_UI_ENTITY_COUNT` reflects the new overlay child
     entities (`+HAND_FAN_SLOT_COUNT` for a single overlay per
@@ -655,7 +659,7 @@ All criteria are independently checkable.
   - `HandUiPlugin` and `HudPlugin` registration order is
     unchanged.
 
-- [ ] **AC15 — Tween conflict-free**: GIVEN any tween installed
+- [x] **AC15 — Tween conflict-free**: GIVEN any tween installed
   by the affordance systems (worker discretion to add a subtle
   scale or alpha fade on the playable treatment), WHEN
   inspected, THEN it does NOT target a `Sprite` / `Node`
@@ -664,13 +668,13 @@ All criteria are independently checkable.
   used for any install / cancel. (Worker may opt for a step
   change with no tween, as Story 020's hover overlay does.)
 
-- [ ] **AC16 — No new Lightyear / protocol message**: GIVEN the
+- [x] **AC16 — No new Lightyear / protocol message**: GIVEN the
   post-implementation build, WHEN `git diff` is inspected for
   `shared/src/protocol.rs` / `shared/src/network/` /
   `client/src/network/` / `server/src/network/`, THEN no diff
   is present. `liv-bevy-lightyear` is NOT activated.
 
-- [ ] **AC17 — Targeted regressions pass**: GIVEN the post-
+- [x] **AC17 — Targeted regressions pass**: GIVEN the post-
   implementation build, WHEN run, THEN all PASS:
   - `cargo test -p client --lib`
   - `cargo test -p client --test hand_ui_drag_state_visuals_test`
@@ -689,14 +693,14 @@ All criteria are independently checkable.
   - `cargo test -p client --test hand_ui_plugin_scaffold_test`
     (entity-count assertion will need updating; AC14).
 
-- [ ] **AC18 — No accept-risk closure claimed**: GIVEN the
+- [x] **AC18 — No accept-risk closure claimed**: GIVEN the
   evidence, WHEN inspected, THEN it explicitly does NOT claim
   closure of `S8-QA-001-W1`, `QA-COND-0005`, `QA-COND-0006`,
   `PAW-TD-*-a`, `TQ-S12-C1..C7`, R1 (drag-pipeline-dead bug),
   R2 (mana-preview missing-feature — sibling story 022), or
   `AUDIT-1076-02 / 03` (server-side placement loss).
 
-- [ ] **AC19 — Sprint 17 / Sprint 18 disposition preserved**:
+- [x] **AC19 — Sprint 17 / Sprint 18 disposition preserved**:
   GIVEN the story commit, WHEN `production/sprint-status.yaml`,
   `production/sprints/sprint-17.md`,
   `production/sprints/sprint-18.md` (if extant),
@@ -1132,3 +1136,261 @@ These are sanity checks for the orchestrator that emits the
   (designed-out) is now formally documented as a Sprint 18
   candidate story; no implementation is performed by this
   authoring run.
+
+---
+
+## Completion Notes (PROMPT 1357)
+
+PROMPT 1357 is the paperwork-only Sprint 18 `/story-done` closure
+for `S18-UI-HAND-IDLE-PLAYABLE-AFFORDANCE-001` on the strength of
+the PROMPT 1239 worker + PROMPT 1243 integration commits already on
+`origin/main` and the PROMPT 1356 readiness refresh
+(`READY_FOR_STORY_DONE` against `origin/main@516b642`).
+
+### Implementation lineage on origin/main
+
+- **PROMPT 1239 worker** (`50b66adfbe30c50eb5e45130b718c70bde8b03a2`
+  `dev-story(s18-hand-idle-playable-affordance): surface idle
+  Playable / Unaffordable hint per local fan slot`):
+  - Added marker components `FanSlotPlayableAffordanceOverlay`,
+    `FanSlotPlayableAffordanceUnaffordableOverlay`, and state
+    enum `FanSlotPlayableAffordanceActive { Playable, Unaffordable }`
+    inline in `client/src/ui/hand/mod.rs` (the story file's "Likely
+    Files" listed a NEW `playable_affordance.rs` submodule as
+    recommended; the worker chose the inline-in-`mod.rs` placement
+    as the equally-acceptable alternative; both options are
+    explicitly sanctioned by the story Implementation Notes /
+    Likely Files table).
+  - Added `sync_hand_idle_playable_affordance_system` (registered in
+    `HandUiSystemSet::StateSync` after `sync_hand_drag_state_visuals_system`
+    so drag-state visuals own the frame when a drag is in flight).
+  - Spawned two new overlay children per `FanSlotIndex` entity
+    (Playable + Unaffordable; both `Visibility::Hidden` at spawn);
+    neither overlay carries `DragStateOverlay`, preserving Story
+    020 AC2 `Without<DragStateOverlay>` query semantics by
+    construction.
+  - Bumped `HAND_UI_ENTITY_COUNT` by `+HAND_FAN_SLOT_COUNT * 2`
+    (one Playable + one Unaffordable overlay child per of the 10
+    fan slots) — second `+ HAND_FAN_SLOT_COUNT * 2` term in the
+    constant; the first occurrence is the Story 020 drag-state
+    overlay bump. No new top-level pre-pool entry (ADR-021 Impl
+    Guideline 5 preserved).
+  - Test bin `tests/integration/hand-ui/hand_ui_idle_playable_affordance_test.rs`
+    (NEW; per PROMPT 1356 readiness refresh §2.2: 10 `#[test]`
+    fns + 16 helpers = 26 total `fn` decls); state driven via
+    direct resource insertion (no `Pointer<*>` event synthesis;
+    AC11 R1-independent).
+- **PROMPT 1243 integration** (`4c75cec72adb28e9b81d31ed0806f38336b661c3`):
+  integration commit landing PROMPT 1239 onto `origin/main`.
+- **PROMPT 1281** subsequently applied a `cargo fmt` cosmetic
+  refresh that touched the new test bin (15 cosmetic line changes:
+  `assert_eq!(...)` line-wraps and query-builder line-break splits);
+  zero semantic drift (PROMPT 1356 §3 drift analysis).
+- **PROMPT 1324** readiness audit (row 2): `READY_FOR_STORY_DONE`
+  against `origin/main@6e885b7`. PROMPT 1356 re-confirmed
+  `READY_FOR_STORY_DONE` against `origin/main@516b642` (current
+  closure source-of-truth); no commit since PROMPT 1324 mutates
+  the affordance pathway in any way that invalidates the per-AC
+  verdicts.
+
+### Per-AC outcomes (paperwork-only verification)
+
+| AC | Verdict | Evidence at closure tip |
+|---|---|---|
+| AC1 — Playable affordance applies (idle) | **PASS** | `FanSlotPlayableAffordanceOverlay` + `FanSlotPlayableAffordanceActive::Playable` symbols present in `client/src/ui/hand/mod.rs` on `origin/main@516b642`; idle-active gating preserved in `sync_hand_idle_playable_affordance_system`. Test `ac1_playable_affordance_applies_when_idle_and_affordable` covers. |
+| AC2 — Subdued treatment applies (idle, unaffordable) | **PASS** | `FanSlotPlayableAffordanceUnaffordableOverlay` + `FanSlotPlayableAffordanceActive::Unaffordable` symbols present; impl uses `OVERLAY_DIM_ALPHA` per design tokens (story Implementation Notes lines 832-836). Test covers. |
+| AC3 — Playable / Unaffordable mutually exclusive | **PASS** | `slot_states: HashMap<Entity, FanSlotPlayableAffordanceActive>` written once per slot per tick; overlay visibility branches on `matches!(...)`. Test covers. |
+| AC4 — Opponent hand unaffected | **PASS** | Local-only `slots` query (`Query<(Entity, &FanSlotIndex, Option<&HandSlotCard>)>`); no opponent-side write site introduced (confirmed by grep). Integration-test fixture synthesises an opponent dummy slot and asserts no markers. |
+| AC5 — Non-Minion treated as Playable | **PASS** | Inherited via reused `slot_is_affordable` helper (Minion-only fast-path at `drag_state_visuals.rs:363-365`, unchanged). |
+| AC6 — Reactive on PlayerEconomyView change | **PASS** | System runs every frame in `PresentationSet::StateSync`; reads `Res<PlayerEconomyView>` immutably; flips on next tick after S2C drain mutates the mirror. Test covers. |
+| AC7 — Drag-active suppresses idle affordance | **PASS** | `idle_active = phase_ok && mode_ok && drag_inactive` predicate; `slot_states` left empty when false; all overlays Hidden and markers removed. |
+| AC8 — Phase / mode gating (BLOCKING `Phase::Placement`) | **PASS** | `phase_ok = *phase == CurrentClientPhase::Placement`; `mode_ok = matches!(*mode, HandUiMode::Passive \| HandUiMode::Staging)`. Test asserts both sub-cases (Phase != Placement and HandUiMode == PassiveLocked). |
+| AC9 — Staged-card suppression | **PASS** | `staged_ids.contains(&card.0) { continue; }` short-circuit; AC9 test case asserts. |
+| AC10 — Empty slot suppression | **PASS** | `let Some(card) = slot_card else { continue; };` short-circuit; AC10 test case asserts. |
+| AC11 — Integration test ≥ 10 assertions | **PASS** | `tests/integration/hand-ui/hand_ui_idle_playable_affordance_test.rs` at canonical path on `origin/main@516b642`; 10 `#[test]` fns meeting AC11 floor exactly; state driven via direct resource insertion (R1-independent). |
+| AC12 — Story 020 AC9 regression continues to PASS | **PASS-BY-CONSTRUCTION** | New affordance overlays do NOT carry `DragStateOverlay`; `Query<&FanSlotIndex, Without<DragStateOverlay>>` semantics preserved. No source drift in `drag_state_visuals.rs` since PROMPT 1239 (`50b66ad`). |
+| AC13 — ADR-002 + ADR-012 binding preserved | **PASS** | System reads `Res<*>` immutably; no `S2C*` / `C2S*` message added; `git diff 4c75cec~..4c75cec -- shared/src/protocol.rs shared/src/network/ client/src/network/ server/src/network/` empty per PROMPT 1356; `liv-bevy-lightyear` not activated. |
+| AC14 — ADR-021 pre-pool discipline preserved | **PASS** | `HAND_UI_ENTITY_COUNT` carries the second `+ HAND_FAN_SLOT_COUNT * 2` term for the new overlays; no new top-level pre-pool entry. |
+| AC15 — Tween conflict-free | **PASS-BY-CONSTRUCTION** | Impl uses step `Visibility` changes only; no tween installed. Story 020 hover-overlay precedent followed (step `BorderColor`-only treatment). |
+| AC16 — No new Lightyear / protocol message | **PASS** | Same diff window as AC13; empty. |
+| AC17 — Targeted regressions pass | **PASS-WITH-ADVISORY** | PROMPT 1239 worker commit body asserted Story 020 regression `hand_ui_drag_state_visuals_test` 11/11 PASS + PROMPT 1226 auto-submit 5/5 + sibling hand-ui regressions continue PASS alongside the new test. **Advisory** (per PROMPT 1356 §4): the story AC17 list names `hand_ui_plugin_scaffold_test.rs` as an existing test bin; the canonical scaffold tests live as `tests/unit/hand-ui/plugin_scaffold_test.rs` (not the `tests/integration/hand-ui/hand_ui_plugin_scaffold_test.rs` path implied by AC17). The entity-count assertion is satisfied within the new `hand_ui_idle_playable_affordance_test.rs` bin's AC14 case. PROMPT 1357 records this as documentation drift on AC17, not a hard gap. PROMPT 1357 itself does NOT re-invoke Cargo (paperwork-only). |
+| AC18 — No accept-risk closure claimed | **PASS-BY-CONSTRUCTION** | PROMPT 1239 + 1243 + 1357 commits make no closure claim for `S8-QA-001-W1`, `QA-COND-0005`, `QA-COND-0006`, `PAW-TD-*-a`, `TQ-S12-C1..C7`, R1, R2, or `AUDIT-1076-02 / 03`. |
+| AC19 — Sprint 17 / Sprint 18 disposition preserved | **PASS** | PROMPT 1357 flips Row 2 status only; Sprint 18 remains `active`; stage `Polish` unchanged; `production/stage.txt` NOT modified; `production/sprints/sprint-17.md` and `sprint-18.md` body NOT rewritten by PROMPT 1357; PROMPT 761 gate-check artifact untouched. |
+| AC20 — Hand UI EPIC count updated | **ADVISORY-DEFERRED** | `production/epics/hand-ui/EPIC.md` is OUTSIDE PROMPT 1357 allowed-writes scope per the task spec. Mirrors the PROMPT 1354 AC18 disposition for the sibling story-022 closure. Closure-of-record lives in `production/sprint-status.yaml` (`sprint_18_story_done:` PROMPT 1357 entry) + this story file Status banner / Completion Notes. A follow-on paperwork prompt MAY thread the `hand-ui/EPIC.md` flip. |
+
+### AC17 documentation-drift advisory
+
+Per PROMPT 1356 §4 (AC17 row): the story file AC17 lists
+`cargo test -p client --test hand_ui_plugin_scaffold_test` as the
+final entry. There is **no** integration test bin at
+`tests/integration/hand-ui/hand_ui_plugin_scaffold_test.rs` on
+`origin/main` (the canonical scaffold tests live under
+`tests/unit/hand-ui/plugin_scaffold_test.rs` and the
+hand-ui-plugin entity-count assertion lives within the new
+`hand_ui_idle_playable_affordance_test.rs` bin's AC14 case
+inline). PROMPT 1357 records this as **documentation drift on
+AC17**, not a hard AC gap — same family of disposition as the
+PROMPT 1110 "trailing-whitespace advisory" + PROMPT 1331 /
+PROMPT 1354 paperwork-only test-path mismatch advisories. A
+follow-on paperwork prompt MAY thread the AC17 wording to
+match the actual on-`origin/main` bin layout; PROMPT 1357 is
+forbidden from touching `tests/**` anyway by the allowed-files
+scope.
+
+### Test Evidence
+
+- **Story type**: UI + Integration (BLOCKING per story
+  classification; matches PROMPT 1356 §2.2 walk).
+- **Required evidence**: BLOCKING integration test (AC11 + AC12);
+  Story 020 regression PASS (AC12); `hand_ui_plugin_scaffold_test`
+  PASS at updated `HAND_UI_ENTITY_COUNT` (AC14 — satisfied within
+  the new test bin per the AC17 documentation-drift advisory above).
+- **Worker evidence on `origin/main@516b642`**:
+  - `tests/integration/hand-ui/hand_ui_idle_playable_affordance_test.rs`
+    on `origin/main` with 10 `#[test]` fns covering AC1..AC10 (AC8
+    asserts both phase-gating and mode-gating sub-cases; AC11 is
+    satisfied by the floor of 10 named cases).
+  - `client/src/ui/hand/mod.rs` carries the marker components +
+    state enum + `sync_hand_idle_playable_affordance_system` +
+    `HAND_UI_ENTITY_COUNT` bump.
+  - PROMPT 1239 worker commit message documents Cargo gate pass
+    under the project's Windows/MSVC Cargo resource policy at
+    worker time.
+- **PROMPT 1357 itself does NOT invoke Cargo** (paperwork-only
+  closure). AC4 / AC11 / AC12 / AC15 / AC16 / AC17 trusted from
+  PROMPT 1239 + PROMPT 1243 commit lineage per the project's
+  `/story-done` paperwork policy.
+
+### Skill activation
+
+- `liv-bevy-018`: NOT re-activated by PROMPT 1357 (paperwork-only;
+  no `.rs` edit). Activation was carried by PROMPT 1239 worker per
+  its commit message and is trusted from lineage.
+- `liv-bevy-lightyear`: NOT activated (AC13 confirms zero
+  `shared/src/protocol.rs` / `shared/src/network/` /
+  `client/src/network/` / `server/src/network/` diff at PROMPT
+  1239 + 1243 closure tip).
+
+### Code review
+
+PROMPT 1357 verified that PROMPT 1239 + PROMPT 1243 commits
+(`50b66ad` + `4c75cec`) are reachable from `origin/main@516b642`
+via `git log --oneline 4c75cec..516b642` (intermediate commits
+PROMPT 1244 + 1281 + 1322 + 1326 + 1328 + 1333 + 1334 + 1335 +
+1336 + 1337 + 1346 + 1364 + 1365 + 1370 do not touch the
+affordance pathway in any way that invalidates the per-AC
+verdicts per PROMPT 1356 §3 drift analysis). No `client/`,
+`server/`, `shared/`, `tests/`, Cargo, `production/sprints/`,
+`production/qa/`, `production/stage.txt`, or gate-check artifact
+was edited by PROMPT 1357.
+
+---
+
+## Closure Trail
+
+| Prompt | Date | Source-of-truth | Commit | Disposition |
+|---|---|---|---|---|
+| PROMPT 1127 | 2026-05-18 | (diagnostic report) | n/a | R3 idle-hand affordance classified MISSING-FEATURE (designed out); recommended Sprint 18 candidate story |
+| PROMPT 1136 | 2026-05-18 | `origin/main@05192b5` | (story authoring commit) | Story 023 authored as Sprint 18 candidate; sibling story 022 authored in same run |
+| PROMPT 1239 | 2026-05-18 | (pre-Sprint-18 activation) | `50b66ad` | `/dev-story` worker: marker components + state enum + `sync_hand_idle_playable_affordance_system` + `HAND_UI_ENTITY_COUNT` bump + NEW test bin `tests/integration/hand-ui/hand_ui_idle_playable_affordance_test.rs`; Story 020 + sibling hand-ui regressions PASS at worker |
+| PROMPT 1243 | 2026-05-18 | (integration) | `4c75cec` | Integration commit landing PROMPT 1239 onto `origin/main` |
+| PROMPT 1281 | 2026-05-18 | (cargo fmt drift repair) | `d73e25e` | `cargo fmt` cosmetic refresh that touched 15 lines of the new test bin; zero semantic drift |
+| PROMPT 1287 | 2026-05-18 | (Sprint 18 plan §2 inventory) | n/a | Row 2 inventoried as "implementation main-landed at 50b66ad + 4c75cec per PROMPT 1287 Section 2 Sprint 17 candidate roster inventory" |
+| PROMPT 1292 | 2026-05-18 | `origin/main@1345c6b` | (Sprint 18 plan main-land) | Sprint 18 plan draft landed on `origin/main` |
+| PROMPT 1301 | 2026-05-18 | `origin/main@1345c6b` | (Sprint 18 activation tip) | Sprint 18 activated; this row included in 6-row Should Have set as activation-time `/story-readiness` then `/story-done` paperwork-only candidate |
+| PROMPT 1320 | 2026-05-18 | (Sprint 18 QA plan main-land) | n/a | Sprint 18 QA plan authored; this row classified Should Have Row 2 |
+| PROMPT 1324 | 2026-05-19 | (Sprint 18 Should `/story-readiness` batch) | n/a | Row 2 verdict `READY_FOR_STORY_DONE`; AC1..AC20 walked PASS / structural / advisory |
+| PROMPT 1356 | 2026-05-19 | `origin/main@516b642` | (readiness refresh report) | Re-confirmed `READY_FOR_STORY_DONE` against current `origin/main`; no drift invalidating PROMPT 1324 verdict; AC17 documentation drift recorded as advisory |
+| PROMPT 1357 | 2026-05-19 | `origin/main@516b642` | (this `/story-done` paperwork commit) | `/story-done` paperwork closure: Status `Draft` → `Done`; AC1..AC19 `[x]` with per-AC verdicts in Completion Notes table (PASS / PASS-BY-CONSTRUCTION / PASS-WITH-ADVISORY for AC17); AC20 `[ ]` ADVISORY-DEFERRED (EPIC.md outside allowed-writes scope) |
+
+### Conditions carried forward unchanged
+
+- Sprint 18 disposition `active` (UNCHANGED; Sprint 18 NOT
+  closed-out by PROMPT 1357).
+- Stage `Polish` (UNCHANGED; `production/stage.txt` NOT modified).
+- PROMPT 761 `Polish->Release` gate-check FAIL preserved at
+  `production/gate-checks/gate-polish-release-2026-05-12.md`; NO
+  retry attempted by PROMPT 1357.
+- `S8-QA-001-W1` OPEN preserved (two-client GAME_OVER closure
+  remains gap; Sprint 13 story 017 AC12 forbid-auto-closure
+  preserved through Sprint 13 → 14 → 15 → 16 → 17 → 18).
+- `QA-COND-0005` Standard-tier accessibility remains accepted-risk
+  (friend-game scope only; this row is HUD visual polish, not WCAG
+  conformance).
+- `QA-COND-0006` playtest / fun-hypothesis validation remains
+  accepted-risk / deferred.
+- `PAW-TD-*-a` placeholder-art accept-risk preserved across
+  PAW-002..PAW-006.
+- `TQ-S12-C1..C7` preserved verbatim. `TQ-S12-C7` explicitly NOT
+  closed by PROMPT 1357.
+- `S11-HUD-TIMER-EYEBALL-VISUAL-001` Sprint 13 → 14 → 15 → 16 →
+  17 → 18 human-operator-blocked carry preserved; no LLM
+  `/story-done` authorised.
+- `S17-UI-HUD-OPP-MANA-CLEANUP-001` parent-row paperwork gap
+  preserved; Sprint 18 does NOT silently close it.
+- Sprint 17 disposition `closed-with-conditions` preserved
+  (PROMPT 1279 + PROMPT 1289 / 1291 closeout evidence reconcile).
+- Sprint 10..16 dispositions preserved verbatim.
+- PROMPT 1054 P1 UI snapshot retest `BLOCKED-HUMAN-OPERATOR`
+  preserved.
+- Sprint 12 story 019 underlying drag-runtime bug NOT claimed
+  fixed (`cannot-reproduce` preserved; PROMPT 1357 closure of
+  this row is independent of R1 per AC11).
+- R1 drag-pipeline-dead bug repair remains a separate prompt; not
+  in scope for PROMPT 1357 (the AC11 integration test is
+  R1-independent by construction).
+- R2 mana-preview missing-feature was discharged by the sibling
+  PROMPT 1354 `/story-done` for `S18-UI-HAND-MANA-PREVIEW-DURING-DRAG-001`
+  (closure committed on a sibling worker branch at PROMPT 1357
+  closure time; orchestrator is expected to reconcile PROMPT 1354
+  + PROMPT 1357 entries together if needed).
+- All AUDIT-1076-* findings outside concrete repairs already on
+  `origin/main` preserved as open / report-only inputs.
+- All SOURCE-1077-* findings outside concrete repairs already on
+  `origin/main` preserved.
+- All 24 PROMPT 1022 QA snapshot audit findings preserved as
+  report-only.
+
+### Explicitly NOT claimed by PROMPT 1357
+
+- Public release readiness; release-candidate readiness; full
+  game completion.
+- Broad / Standard-tier accessibility completion (`QA-COND-0005`
+  accept-risk preserved; this row is friend-game visual polish).
+- Playtest / fun-hypothesis validation (`QA-COND-0006`
+  accept-risk preserved).
+- Full playable-client manual QA.
+- Two-client GAME_OVER closure (`S8-QA-001-W1` remains OPEN).
+- Final-art / asset-production completion (`PAW-TD-*-a`
+  accept-risk preserved).
+- `Polish->Release` gate-check retry (PROMPT 761 FAIL preserved
+  with NO retry).
+- Stage advance from `Polish` to `Release` (`production/stage.txt`
+  NOT modified).
+- LLM closure of `S11-HUD-TIMER-EYEBALL-VISUAL-001`
+  (human-operator-blocked carry preserved).
+- Silent closure of `S17-UI-HUD-OPP-MANA-CLEANUP-001` parent-row
+  paperwork gap.
+- Closure of R1 (drag-pipeline-dead bug; AC11 integration test is
+  R1-independent by construction).
+- Closure of R2 (mana-preview missing-feature; sibling story-022
+  closed by PROMPT 1354).
+- Closure of `AUDIT-1076-02 / AUDIT-1076-03` (server-side
+  placement loss; out of host module).
+- Closure of any AUDIT-1131-* / AUDIT-1076-* / SOURCE-1077-* /
+  PROMPT 1022 / 1076 / 1077 finding outside concrete repairs
+  already on `origin/main`.
+- Sprint 10 through Sprint 17 row reopen.
+- Sprint 17 close-out reopen / re-author / silent overwrite.
+- Sprint 18 close-out.
+- Retroactive closure of any row not implemented on
+  `origin/main` at the closure tip.
+- AC20 EPIC.md flip (advisory-deferred — outside PROMPT 1357
+  allowed-writes scope; follow-on paperwork prompt MAY thread).
+- `TQ-S12-C7` closure (preserved verbatim).
+- Closure of any other Sprint 18 active row (the other 11 rows
+  preserved as their current status — see
+  `production/sprint-status.yaml` `sprint_18_story_done:` block
+  for the full closure ledger).
+
+`1357: S18-UI-HAND-IDLE-PLAYABLE-AFFORDANCE-001: DONE`
