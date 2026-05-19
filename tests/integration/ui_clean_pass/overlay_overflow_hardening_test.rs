@@ -22,10 +22,23 @@
 //! - **AC8**: `client/src/presentation/result_screen.rs:502-549` (the
 //!   reference template under PROMPT 1180 §1.5 O-04) is unchanged by
 //!   PROMPT 1349 -- its 92 % + scroll contract still matches verbatim.
+//! - **PROMPT 1405 / V-P1-10**: connection-lost overlay hardening
+//!   (`S19-UI-CONN-LOST-OVERLAY-OVERFLOW-001`):
+//!   `connection_lost_overlay_text_node()` declares `width: 100 %` so the
+//!   headline + body wrap inside the 520 px panel;
+//!   `connection_lost_overlay_panel_node()` declares
+//!   `overflow.x = OverflowAxis::Clip` so worst-case body copy cannot
+//!   spill horizontally; spawned text entities carry the width node
+//!   plus a centered `TextLayout`; the panel's 92 % ceiling resolves
+//!   correctly at 1280×720 / 1366×768 / 1920×1080 with > 600 px of
+//!   vertical room reserved for the centered headline + body.
 //!
 //! Test classification: read-only geometric / Node-shape assertions over
 //! the published node builders + source-string check on the draft-initial
-//! spawn site. No World composition required for this bin.
+//! spawn site. PROMPT 1405 additionally composes the
+//! `ConnectionLostOverlayPlugin` against `MinimalPlugins` to assert the
+//! spawned text entities carry the expected Node + TextLayout shape and
+//! that a worst-case body swap does not panic.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -33,7 +46,10 @@ use std::path::{Path, PathBuf};
 use bevy::prelude::*;
 use bevy::ui::{Overflow, OverflowAxis};
 use client::presentation::connection_lost_overlay::{
-    connection_lost_overlay_panel_node, CONNECTION_LOST_PANEL_MAX_HEIGHT_PERCENT,
+    connection_lost_overlay_panel_node, connection_lost_overlay_text_node,
+    ConnectionLostOverlayBody, ConnectionLostOverlayEntities, ConnectionLostOverlayHeadline,
+    ConnectionLostOverlayPlugin, ConnectionLostOverlayState,
+    CONNECTION_LOST_PANEL_MAX_HEIGHT_PERCENT,
 };
 use client::ui::photosensitivity_warning::{
     photosensitivity_warning_panel_node, warning_footer_node,
@@ -54,6 +70,12 @@ use client::ui::shop_auction::{
 const CANONICAL_VIEWPORT_SUB_FLOOR_HEIGHT: f32 = 600.0;
 const CANONICAL_VIEWPORT_PRIMARY_HEIGHT: f32 = 768.0;
 const CANONICAL_VIEWPORT_4K_HEIGHT: f32 = 2160.0;
+
+// PROMPT 1405 (V-P1-10): the three target viewports the audit named for
+// "no text clipping" — covers the 1280×720 hackathon floor, the 1366×768
+// primary laptop, and the 1920×1080 desktop baseline.
+const CONN_LOST_TARGET_VIEWPORT_HEIGHTS: [(f32, &str); 3] =
+    [(720.0, "1280x720"), (768.0, "1366x768"), (1080.0, "1920x1080")];
 
 fn resolve_percent(val: Val, parent_extent_px: f32) -> Option<f32> {
     match val {
@@ -165,11 +187,19 @@ fn test_overlay_overflow_ac2_connection_lost_panel_declares_max_height_and_scrol
         CONNECTION_LOST_PANEL_MAX_HEIGHT_PERCENT, 92.0,
         "AC2: connection-lost panel max_height constant must equal 92.0 (§5 C-5)"
     );
-    let Overflow { x: _, y } = panel.overflow;
+    let Overflow { x, y } = panel.overflow;
     assert_eq!(
         y,
         OverflowAxis::Scroll,
         "AC2: connection-lost panel must declare Overflow::scroll_y()"
+    );
+    // PROMPT 1405 (V-P1-10 hardening): horizontal overflow must clip so
+    // a future body-text expansion cannot spill past the 520 px box.
+    assert_eq!(
+        x,
+        OverflowAxis::Clip,
+        "AC2 (PROMPT 1405): connection-lost panel must clip horizontal overflow \
+         so worst-case body copy never leaks past the panel's 520 px max-width"
     );
     // Existing layout preserved.
     assert_eq!(
@@ -191,6 +221,160 @@ fn test_overlay_overflow_ac2_connection_lost_panel_declares_max_height_and_scrol
         panel.max_width,
         Val::Px(520.0),
         "AC2: connection-lost panel must keep its 520 px max-width"
+    );
+}
+
+#[test]
+fn test_overlay_overflow_ac2_connection_lost_text_node_is_full_panel_width() {
+    // PROMPT 1405 (V-P1-10): headline + body text entities must wrap
+    // inside the panel rather than overflow horizontally if reconnect
+    // copy grows. Matches the photosensitivity-warning `warning_body_node`
+    // contract (width: 100 %).
+    let text_node = connection_lost_overlay_text_node();
+    assert_eq!(
+        text_node.width,
+        Val::Percent(100.0),
+        "AC2 (PROMPT 1405): connection-lost text-node must declare width: 100 % \
+         so headline + body wrap inside the panel"
+    );
+}
+
+#[test]
+fn test_overlay_overflow_ac2_connection_lost_spawned_text_entities_carry_width_node() {
+    // Build the overlay app and verify that the spawned headline + body
+    // entities actually carry the width-100 % Node + the centered
+    // TextLayout (worst-case body copy can wrap and stay centered).
+    let mut app = App::new();
+    app.add_plugins(MinimalPlugins);
+    app.add_plugins(ConnectionLostOverlayPlugin);
+    app.update();
+
+    let entities = app
+        .world()
+        .resource::<ConnectionLostOverlayEntities>()
+        .clone();
+
+    for (label, entity) in [
+        ("headline", entities.headline),
+        ("body", entities.body),
+    ] {
+        let world = app.world();
+        let node = world
+            .entity(entity)
+            .get::<Node>()
+            .unwrap_or_else(|| panic!("AC2 (PROMPT 1405): {label} entity must carry a Node"));
+        assert_eq!(
+            node.width,
+            Val::Percent(100.0),
+            "AC2 (PROMPT 1405): {label} entity Node must declare width: 100 % so the text wraps"
+        );
+        let layout = world.entity(entity).get::<TextLayout>().unwrap_or_else(|| {
+            panic!("AC2 (PROMPT 1405): {label} entity must carry a TextLayout for centered text")
+        });
+        assert_eq!(
+            layout.justify,
+            Justify::Center,
+            "AC2 (PROMPT 1405): {label} TextLayout must justify Center to preserve visual intent"
+        );
+    }
+
+    // Sanity: the marker components are still attached to the same
+    // entities so existing AC paperwork holds.
+    assert!(
+        app.world()
+            .entity(entities.headline)
+            .get::<ConnectionLostOverlayHeadline>()
+            .is_some(),
+        "AC2 (PROMPT 1405): headline marker must remain on the headline entity"
+    );
+    assert!(
+        app.world()
+            .entity(entities.body)
+            .get::<ConnectionLostOverlayBody>()
+            .is_some(),
+        "AC2 (PROMPT 1405): body marker must remain on the body entity"
+    );
+}
+
+#[test]
+fn test_overlay_overflow_ac2_connection_lost_worst_case_body_does_not_panic() {
+    // PROMPT 1405 (V-P1-10): drive the overlay with a worst-case
+    // multi-paragraph body (single long unbreakable token + extended
+    // copy) and verify the overlay app still pumps a frame without
+    // panicking. The width-100 % Node + max_height 92 % + scroll_y +
+    // overflow_x Clip contract makes this robust to future copy growth.
+    let mut app = App::new();
+    app.add_plugins(MinimalPlugins);
+    app.add_plugins(ConnectionLostOverlayPlugin);
+    app.update();
+
+    let entities = app
+        .world()
+        .resource::<ConnectionLostOverlayEntities>()
+        .clone();
+
+    // Worst-case body: a long unbreakable token followed by a long
+    // wrapping paragraph. If the panel allowed horizontal overflow or
+    // the text entity had no width constraint, the visual layout would
+    // be broken; here we only assert the runtime contract (no panic +
+    // panel/text Node shapes preserved after a long body swap).
+    let worst_case = format!(
+        "{}\n\n{}",
+        "ConnectionResetByPeerError/CategoryWebTransport/Code0x000000ff/SubcodeUnreachableHostEndpointDoesNotRespondAfterRetryBudgetExhaustedRestartingHandshakePipeline",
+        "Reconnecting to the lobby; please remain on this screen while the \
+         transport renegotiates the session. The countdown will resume once \
+         the server confirms your seat. If reconnection fails after the retry \
+         budget is exhausted the result screen will surface a forfeit \
+         disposition; no further player input is required at this time.",
+    );
+
+    let body_entity = entities.body;
+    {
+        let world = app.world_mut();
+        let mut entity_mut = world.entity_mut(body_entity);
+        let mut text = entity_mut
+            .get_mut::<Text>()
+            .expect("body entity must carry a Text component");
+        *text = Text::new(worst_case.clone());
+    }
+    app.world_mut()
+        .resource_mut::<ConnectionLostOverlayState>()
+        .visible = true;
+
+    // Pumping a frame must not panic; the visibility-sync system mirrors
+    // state -> Visibility::Visible on the root.
+    app.update();
+    app.update();
+
+    let panel = connection_lost_overlay_panel_node();
+    assert_eq!(
+        panel.max_height,
+        Val::Percent(CONNECTION_LOST_PANEL_MAX_HEIGHT_PERCENT),
+        "AC2 (PROMPT 1405): worst-case body must not loosen the panel's max_height contract"
+    );
+    let Overflow { x, y } = panel.overflow;
+    assert_eq!(y, OverflowAxis::Scroll);
+    assert_eq!(x, OverflowAxis::Clip);
+
+    // Body Text now carries the worst-case copy and the width-100 %
+    // Node + centered TextLayout, so wrapping is enforced.
+    let world = app.world();
+    let body_text = world
+        .entity(body_entity)
+        .get::<Text>()
+        .expect("body must keep its Text component after swap");
+    assert!(
+        body_text.0.contains("ConnectionResetByPeerError"),
+        "AC2 (PROMPT 1405): worst-case body copy must be applied to the body entity"
+    );
+    let body_node = world
+        .entity(body_entity)
+        .get::<Node>()
+        .expect("body entity must still carry a Node after worst-case swap");
+    assert_eq!(
+        body_node.width,
+        Val::Percent(100.0),
+        "AC2 (PROMPT 1405): worst-case body must still wrap inside the 100 % width Node"
     );
 }
 
@@ -410,6 +594,39 @@ fn test_overlay_overflow_ac7_4k_viewport_modal_scales_to_max_height() {
         ceiling,
         DRAFT_INITIAL_MODAL_HEIGHT_PX
     );
+}
+
+// ─── PROMPT 1405 — connection-lost ceiling at 1280×720 / 1366×768 / 1920×1080 ─
+
+#[test]
+fn test_overlay_overflow_prompt_1405_conn_lost_resolves_at_target_viewports() {
+    // V-P1-10 audit asks for "no text clipping at 1280x720 / 1366x768 /
+    // 1920x1080". The 92 % ceiling must resolve to a positive px at
+    // each viewport, leaving sufficient room for the headline + body +
+    // padding (panel content < 200 px in normal copy, scroll-y handles
+    // worst-case growth).
+    let panel = connection_lost_overlay_panel_node();
+    for (viewport_height, label) in CONN_LOST_TARGET_VIEWPORT_HEIGHTS {
+        let ceiling = resolve_percent(panel.max_height, viewport_height)
+            .unwrap_or_else(|| panic!("PROMPT 1405: conn-lost max_height must resolve at {label}"));
+        let expected = viewport_height * 0.92;
+        assert!(
+            (ceiling - expected).abs() < 0.01,
+            "PROMPT 1405: conn-lost max_height must resolve to ~{} px at {} (got {})",
+            expected,
+            label,
+            ceiling,
+        );
+        // Sanity: enough room for the existing headline (H1) + body
+        // (H3) + 2× 22 px panel padding (~120 px minimum content at
+        // default font metrics). Any viewport at or above 1280×720
+        // yields > 600 px of vertical room.
+        assert!(
+            ceiling >= 600.0,
+            "PROMPT 1405: conn-lost ceiling at {label} must give > 600 px of vertical room (got {})",
+            ceiling,
+        );
+    }
 }
 
 // ─── AC8: result_screen.rs reference template unchanged ──────────────────

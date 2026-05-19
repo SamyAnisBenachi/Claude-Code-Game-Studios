@@ -19,7 +19,7 @@
 //! result screen).
 
 use bevy::prelude::*;
-use bevy::ui::Overflow;
+use bevy::ui::{Overflow, OverflowAxis};
 use lightyear::prelude::{Connected, Disconnected};
 use shared::protocol::RoundPhase;
 
@@ -44,6 +44,12 @@ pub const CONNECTION_LOST_PANEL_MAX_HEIGHT_PERCENT: f32 = 92.0;
 /// modal. Carries the `max_height: 92%` + `Overflow::scroll_y()`
 /// contract so the panel never clips against a short viewport and the
 /// body can scroll if reconnect copy grows (story 026 AC2).
+///
+/// PROMPT 1405 (Sprint 19 / S19-UI-CONN-LOST-OVERLAY-OVERFLOW-001) —
+/// extends the hardening contract per PROMPT 1396 V-P1-10:
+/// `overflow.x = OverflowAxis::Clip` so a future body-text expansion
+/// can never spill horizontally past the 520 px max-width box. The
+/// vertical scroll path remains the canonical Lane J behaviour.
 pub fn connection_lost_overlay_panel_node() -> Node {
     Node {
         display: Display::Flex,
@@ -51,12 +57,29 @@ pub fn connection_lost_overlay_panel_node() -> Node {
         width: Val::Percent(60.0),
         max_width: Val::Px(520.0),
         max_height: Val::Percent(CONNECTION_LOST_PANEL_MAX_HEIGHT_PERCENT),
-        overflow: Overflow::scroll_y(),
+        overflow: Overflow {
+            x: OverflowAxis::Clip,
+            y: OverflowAxis::Scroll,
+        },
         row_gap: Val::Px(12.0),
         padding: UiRect::all(Val::Px(22.0)),
         align_items: AlignItems::Center,
         border: UiRect::all(Val::Px(2.0)),
         border_radius: BorderRadius::all(Val::Px(8.0)),
+        ..default()
+    }
+}
+
+/// PROMPT 1405 — text-node builder for the connection-lost overlay's
+/// headline + body. Declares `width: 100 %` so the text wraps inside
+/// the panel rather than overflowing its 520 px max-width box when
+/// the body copy grows (photosensitivity-warning pattern, story 026
+/// §5 C-5). Paired with `TextLayout::new_with_justify(Justify::Center)`
+/// at spawn so the centered visual intent of the original layout is
+/// preserved.
+pub fn connection_lost_overlay_text_node() -> Node {
+    Node {
+        width: Val::Percent(100.0),
         ..default()
     }
 }
@@ -268,6 +291,8 @@ fn spawn_connection_lost_overlay_system(mut commands: Commands) {
                 ..default()
             },
             TextColor(Color::srgb(0.99, 0.96, 0.84)),
+            connection_lost_overlay_text_node(),
+            TextLayout::new_with_justify(Justify::Center),
         ))
         .id();
 
@@ -282,6 +307,8 @@ fn spawn_connection_lost_overlay_system(mut commands: Commands) {
                 ..default()
             },
             TextColor(Color::srgb(0.92, 0.90, 0.82)),
+            connection_lost_overlay_text_node(),
+            TextLayout::new_with_justify(Justify::Center),
         ))
         .id();
 
