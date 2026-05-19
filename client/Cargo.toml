@@ -436,6 +436,11 @@ path = "../tests/integration/presentation/result_screen_mvp_test.rs"
 name = "result_screen_return_to_lobby_test"
 path = "../tests/integration/presentation/result_screen_return_to_lobby_test.rs"
 
+# PROMPT 1481 -- Result screen hero/accounting Krosmaga polish focused tests.
+[[test]]
+name = "result_screen_hero_accounting_polish_test"
+path = "../tests/integration/presentation/result_screen_hero_accounting_polish_test.rs"
+
 # S13-PROTO-ORPHAN-DRAIN-001 (Story 008 AC5): drain wiring + single-drainer
 # assertions for the S2C orphan Path A cluster (opponent connection +
 # session lifecycle + prism lifecycle).

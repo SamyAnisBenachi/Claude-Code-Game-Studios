@@ -19,6 +19,19 @@ const OBJECTIVE_LANES: usize = 5;
 const FOCUS_BORDER: Color = Color::srgb(0.93, 0.82, 0.28);
 const IDLE_BORDER: Color = Color::srgba(0.82, 0.86, 0.9, 0.35);
 
+// Outcome accent palette — Krosmaga-style hero affordance: a strongly tinted
+// accent stripe + panel border that communicates outcome at a glance, distinct
+// from the read-only data rows. Kept inside the result_screen module so the
+// rest of the UI is not coupled to result-specific colours.
+const OUTCOME_ACCENT_VICTORY: Color = Color::srgb(0.32, 0.78, 0.42);
+const OUTCOME_ACCENT_DEFEAT: Color = Color::srgb(0.86, 0.32, 0.32);
+const OUTCOME_ACCENT_DRAW: Color = Color::srgb(0.93, 0.78, 0.32);
+const OUTCOME_ACCENT_NEUTRAL: Color = Color::srgb(0.62, 0.68, 0.76);
+
+const CTA_PRIMARY_BG: Color = Color::srgb(0.86, 0.66, 0.22);
+const CTA_PRIMARY_BORDER: Color = Color::srgba(0.96, 0.82, 0.36, 0.85);
+const CTA_SECONDARY_BG: Color = Color::srgb(0.14, 0.22, 0.31);
+
 pub struct ResultScreenPlugin;
 
 impl Plugin for ResultScreenPlugin {
@@ -209,12 +222,18 @@ impl ResultScreenStepState {
 #[derive(Resource, Debug, Clone, Copy)]
 pub struct ResultScreenEntities {
     pub root: Entity,
+    pub panel: Entity,
+    pub accent_stripe: Entity,
+    pub round_chip: Entity,
     pub hero_panel: Entity,
     pub accounting_panel: Entity,
     pub headline: Entity,
     pub class_persona: Entity,
     pub cause: Entity,
+    pub continue_hint: Entity,
     pub summary: Entity,
+    pub resources_line: Entity,
+    pub ledger_line: Entity,
     pub own_rows: [Entity; OBJECTIVE_LANES],
     pub opponent_rows: [Entity; OBJECTIVE_LANES],
     pub continue_button: Entity,
@@ -273,6 +292,32 @@ pub struct ResultScreenFocusIndicator;
 
 #[derive(Component, Debug, Clone, Copy)]
 pub struct ResultScreenRematchButton;
+
+/// Marker on the outcome-tinted accent stripe along the panel's left edge.
+/// Background colour is updated each frame from the outcome accent palette
+/// so VICTORY / DEFEAT / DRAW / pending read at a glance.
+#[derive(Component, Debug, Clone, Copy)]
+pub struct ResultScreenAccentStripe;
+
+/// Marker on the "Round N" chip rendered above the headline on the hero
+/// panel. Hidden when no round number is known (no result and no snapshot).
+#[derive(Component, Debug, Clone, Copy)]
+pub struct ResultScreenRoundChip;
+
+/// Marker on the small caption rendered under the Continue CTA on the hero
+/// step ("Press Enter to view details"). Hidden during the accounting step.
+#[derive(Component, Debug, Clone, Copy)]
+pub struct ResultScreenContinueHint;
+
+/// Marker on the explicit resources readout (Gold / Mana / Reserve) on the
+/// accounting panel.
+#[derive(Component, Debug, Clone, Copy)]
+pub struct ResultScreenResourcesLine;
+
+/// Marker on the chunked "objectives lost" ledger line on the accounting
+/// panel — short, scannable counts separate from the verbose summary.
+#[derive(Component, Debug, Clone, Copy)]
+pub struct ResultScreenLedgerLine;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ResultScreenOutcomeCopy {
@@ -382,6 +427,71 @@ fn class_id_label(class: ClassId) -> &'static str {
         ClassId::Sadida => "Sadida",
         ClassId::Neutral => "Neutral",
     }
+}
+
+/// Maps an outcome headline ("VICTORY" / "DEFEAT" / "DRAW" / "RESULT PENDING"
+/// / "NO RESULT") onto the outcome accent palette consumed by the hero
+/// stripe and the panel border. Keeps colour selection in one place so the
+/// accent stripe, border, and any future outcome-tinted chrome stay in
+/// sync.
+pub fn result_screen_outcome_accent(headline: &str) -> Color {
+    match headline {
+        "VICTORY" => OUTCOME_ACCENT_VICTORY,
+        "DEFEAT" => OUTCOME_ACCENT_DEFEAT,
+        "DRAW" => OUTCOME_ACCENT_DRAW,
+        _ => OUTCOME_ACCENT_NEUTRAL,
+    }
+}
+
+/// Round number label ("Round N") sourced from the authoritative result or
+/// the cached snapshot, whichever is available. Returns `None` when no round
+/// number is known — the round chip is hidden in that case rather than
+/// rendering a placeholder.
+pub fn result_screen_round_label(
+    result: Option<&S2CGameOver>,
+    snapshot: Option<&S2CGameSnapshot>,
+) -> Option<String> {
+    let round = result
+        .map(|value| value.round)
+        .or_else(|| snapshot.map(|value| value.round_number))?;
+    Some(format!("Round {round}"))
+}
+
+/// Explicit resources line for the local player ("Gold N | Mana C/M |
+/// Reserve R"). Returns `None` when the snapshot does not carry a player
+/// entry matching the local recipient — the line is hidden in that case.
+pub fn result_screen_resources_line(snapshot: Option<&S2CGameSnapshot>) -> Option<String> {
+    let snapshot = snapshot?;
+    let player = snapshot
+        .players
+        .iter()
+        .find(|player| player.player_id == snapshot.recipient_player_id)?;
+    Some(format!(
+        "Gold {}  |  Mana {} / {}  |  Reserve {}",
+        player.gold, player.current_mana, player.mana_cap, player.reserve_mana
+    ))
+}
+
+/// Compact "objectives lost" ledger line for the accounting panel.
+/// Surfaces own real / fake losses and opponent real / fake reveals as
+/// short scannable counts — distinct from the verbose summary text which
+/// remains the canonical contract for AC verification.
+pub fn result_screen_ledger_line(snapshot: Option<&S2CGameSnapshot>) -> String {
+    let summary = build_result_objective_summary(snapshot);
+    let count = |rows: &[ResultObjectiveRow], identity: ResultObjectiveIdentity| {
+        rows.iter()
+            .filter(|row| {
+                row.identity == identity && row.state == ResultObjectiveState::Destroyed
+            })
+            .count()
+    };
+    let own_real = count(&summary.own_rows, ResultObjectiveIdentity::Real);
+    let own_fake = count(&summary.own_rows, ResultObjectiveIdentity::Fake);
+    let opp_real = count(&summary.opponent_rows, ResultObjectiveIdentity::Real);
+    let opp_fake = count(&summary.opponent_rows, ResultObjectiveIdentity::Fake);
+    format!(
+        "Objectives Lost — You: {own_real} real / {own_fake} fake   •   Opponent: {opp_real} real / {opp_fake} fake"
+    )
 }
 
 pub fn result_screen_outcome_copy(
@@ -621,6 +731,10 @@ fn spawn_result_screen_system(
         ))
         .id();
 
+    // Outer panel is now a Row container: a thin outcome-tinted accent
+    // stripe along the left edge + the existing column of result content
+    // along the right. The stripe makes the outcome legible at a glance
+    // (Krosmaga-style hero affordance) without altering the data contract.
     let panel = commands
         .spawn((
             Name::new("Result screen panel"),
@@ -628,18 +742,53 @@ fn spawn_result_screen_system(
             ChildOf(root),
             Node {
                 display: Display::Flex,
-                flex_direction: FlexDirection::Column,
+                flex_direction: FlexDirection::Row,
                 width: Val::Percent(88.0),
                 max_width: Val::Px(860.0),
                 max_height: Val::Percent(92.0),
-                row_gap: Val::Px(14.0),
-                padding: UiRect::all(Val::Px(26.0)),
+                column_gap: Val::Px(18.0),
+                padding: UiRect {
+                    left: Val::Px(14.0),
+                    right: Val::Px(26.0),
+                    top: Val::Px(22.0),
+                    bottom: Val::Px(22.0),
+                },
                 border: UiRect::all(Val::Px(2.0)),
-                border_radius: BorderRadius::all(Val::Px(8.0)),
+                border_radius: BorderRadius::all(Val::Px(10.0)),
                 ..default()
             },
-            BackgroundColor(Color::srgba(0.055, 0.062, 0.078, 0.94)),
-            BorderColor::all(Color::srgba(0.82, 0.86, 0.9, 0.26)),
+            BackgroundColor(Color::srgba(0.055, 0.062, 0.078, 0.96)),
+            BorderColor::all(Color::srgba(0.82, 0.86, 0.9, 0.32)),
+        ))
+        .id();
+
+    let accent_stripe = commands
+        .spawn((
+            Name::new("Result outcome accent stripe"),
+            ResultScreenAccentStripe,
+            ChildOf(panel),
+            Node {
+                width: Val::Px(6.0),
+                min_width: Val::Px(6.0),
+                height: Val::Percent(100.0),
+                border_radius: BorderRadius::all(Val::Px(3.0)),
+                ..default()
+            },
+            BackgroundColor(OUTCOME_ACCENT_NEUTRAL),
+        ))
+        .id();
+
+    let content = commands
+        .spawn((
+            Name::new("Result screen content"),
+            ChildOf(panel),
+            Node {
+                display: Display::Flex,
+                flex_direction: FlexDirection::Column,
+                flex_grow: 1.0,
+                row_gap: Val::Px(14.0),
+                ..default()
+            },
         ))
         .id();
 
@@ -648,10 +797,11 @@ fn spawn_result_screen_system(
         .spawn((
             Name::new("Result hero panel"),
             ResultScreenHeroPanel,
-            ChildOf(panel),
+            ChildOf(content),
             Node {
                 display: Display::Flex,
                 flex_direction: FlexDirection::Column,
+                align_items: AlignItems::FlexStart,
                 row_gap: Val::Px(10.0),
                 width: Val::Percent(100.0),
                 ..default()
@@ -659,11 +809,45 @@ fn spawn_result_screen_system(
         ))
         .id();
 
+    // Round chip — small outcome-tinted pill above the headline. Hidden when
+    // no round number is available yet.
+    let round_chip = commands
+        .spawn((
+            Name::new("Result round chip"),
+            ResultScreenRoundChip,
+            ChildOf(hero_panel),
+            Node {
+                display: Display::None,
+                padding: UiRect {
+                    left: Val::Px(10.0),
+                    right: Val::Px(10.0),
+                    top: Val::Px(3.0),
+                    bottom: Val::Px(3.0),
+                },
+                border: UiRect::all(Val::Px(1.0)),
+                border_radius: BorderRadius::all(Val::Px(10.0)),
+                ..default()
+            },
+            BackgroundColor(Color::srgba(0.10, 0.12, 0.16, 0.85)),
+            BorderColor::all(Color::srgba(0.82, 0.86, 0.9, 0.42)),
+            Text::new(""),
+            TextFont {
+                font_size: typography::CAPTION,
+                ..default()
+            },
+            TextColor(Color::srgb(0.96, 0.97, 0.99)),
+        ))
+        .id();
+
+    // Headline reads bigger than other surfaces — Krosmaga's outcome hero is
+    // dominated by the result word. Promoted from H1 to DISPLAY so it reads
+    // as the screen's hero element, distinct from headline-tier text
+    // elsewhere in the client.
     let headline = spawn_result_text(
         &mut commands,
         hero_panel,
         "RESULT PENDING",
-        typography::H1,
+        typography::DISPLAY,
         Color::srgb(0.96, 0.97, 0.99),
         Some(ResultScreenHeadline),
     );
@@ -683,28 +867,64 @@ fn spawn_result_screen_system(
         Color::srgb(0.82, 0.86, 0.9),
         Some(ResultScreenCause),
     );
+    let continue_hint = spawn_result_text(
+        &mut commands,
+        hero_panel,
+        "Press Enter or Space to view round accounting.",
+        typography::CAPTION,
+        Color::srgba(0.74, 0.79, 0.84, 0.85),
+        Some(ResultScreenContinueHint),
+    );
 
-    // Step 2: accounting sub-panel — summary line + own/opponent objective rows.
+    // Step 2: accounting sub-panel — round/resources/objectives accounting.
     let accounting_panel = commands
         .spawn((
             Name::new("Result accounting panel"),
             ResultScreenAccountingPanel,
-            ChildOf(panel),
+            ChildOf(content),
             Node {
                 display: Display::None,
                 flex_direction: FlexDirection::Column,
-                row_gap: Val::Px(12.0),
+                row_gap: Val::Px(10.0),
                 width: Val::Percent(100.0),
                 ..default()
             },
         ))
         .id();
 
+    // Accounting section header — readable label above the verbose summary.
+    spawn_result_text(
+        &mut commands,
+        accounting_panel,
+        "Match Accounting",
+        typography::H2,
+        Color::srgb(0.93, 0.95, 0.98),
+        None::<ResultScreenSummaryText>,
+    );
+
+    let resources_line = spawn_result_text(
+        &mut commands,
+        accounting_panel,
+        "",
+        typography::H3,
+        Color::srgb(0.93, 0.83, 0.42),
+        Some(ResultScreenResourcesLine),
+    );
+
+    let ledger_line = spawn_result_text(
+        &mut commands,
+        accounting_panel,
+        "",
+        typography::BODY,
+        Color::srgb(0.91, 0.93, 0.96),
+        Some(ResultScreenLedgerLine),
+    );
+
     let summary = spawn_result_text(
         &mut commands,
         accounting_panel,
         "Round Unknown | Resources Unknown | Objectives Unknown",
-        typography::BODY,
+        typography::CAPTION,
         Color::srgb(0.74, 0.79, 0.84),
         Some(ResultScreenSummaryText),
     );
@@ -751,14 +971,15 @@ fn spawn_result_screen_system(
     let actions = commands
         .spawn((
             Name::new("Result screen actions"),
-            ChildOf(panel),
+            ChildOf(content),
             Node {
                 display: Display::Flex,
                 flex_direction: FlexDirection::Row,
                 justify_content: JustifyContent::FlexEnd,
-                column_gap: Val::Px(10.0),
+                align_items: AlignItems::Center,
+                column_gap: Val::Px(12.0),
                 margin: UiRect {
-                    top: Val::Px(8.0),
+                    top: Val::Px(10.0),
                     ..default()
                 },
                 ..default()
@@ -766,12 +987,16 @@ fn spawn_result_screen_system(
         ))
         .id();
 
+    // Continue is the primary CTA on the hero step — accent-tinted and a
+    // wider hit target so the transition affordance dominates the action row.
     let continue_button = spawn_result_cta_button(
         &mut commands,
         actions,
         ResultScreenContinueButton,
-        "Continue",
-        Color::srgb(0.18, 0.27, 0.36),
+        "Continue ▸",
+        CTA_PRIMARY_BG,
+        CTA_PRIMARY_BORDER,
+        true,
     );
 
     // Return-to-Lobby CTA stays mounted in the actions row across both steps
@@ -782,17 +1007,25 @@ fn spawn_result_screen_system(
         actions,
         ResultScreenReturnToLobbyButton,
         "Return to Lobby",
-        Color::srgb(0.14, 0.22, 0.31),
+        CTA_SECONDARY_BG,
+        IDLE_BORDER,
+        false,
     );
 
     commands.insert_resource(ResultScreenEntities {
         root,
+        panel,
+        accent_stripe,
+        round_chip,
         hero_panel,
         accounting_panel,
         headline,
         class_persona,
         cause,
+        continue_hint,
         summary,
+        resources_line,
+        ledger_line,
         own_rows,
         opponent_rows,
         continue_button,
@@ -806,7 +1039,14 @@ fn spawn_result_cta_button<M: Component>(
     marker: M,
     label: &str,
     background: Color,
+    border: Color,
+    primary: bool,
 ) -> Entity {
+    let (min_width, height, font_size) = if primary {
+        (200.0, 50.0, typography::H2)
+    } else {
+        (176.0, 46.0, typography::H3)
+    };
     commands
         .spawn((
             Name::new(format!("Result CTA {label}")),
@@ -815,13 +1055,13 @@ fn spawn_result_cta_button<M: Component>(
             Button,
             Interaction::None,
             Node {
-                min_width: Val::Px(176.0),
-                height: Val::Px(46.0),
+                min_width: Val::Px(min_width),
+                height: Val::Px(height),
                 align_items: AlignItems::Center,
                 justify_content: JustifyContent::Center,
                 padding: UiRect {
-                    left: Val::Px(18.0),
-                    right: Val::Px(18.0),
+                    left: Val::Px(20.0),
+                    right: Val::Px(20.0),
                     top: Val::Px(0.0),
                     bottom: Val::Px(0.0),
                 },
@@ -830,10 +1070,10 @@ fn spawn_result_cta_button<M: Component>(
                 ..default()
             },
             BackgroundColor(background),
-            BorderColor::all(IDLE_BORDER),
+            BorderColor::all(border),
             Text::new(label),
             TextFont {
-                font_size: typography::H3,
+                font_size,
                 ..default()
             },
             TextColor(Color::srgb(0.96, 0.97, 0.99)),
@@ -1089,6 +1329,7 @@ fn sync_result_screen_ui_system(
     mut node_query: Query<&mut Node>,
     mut text_query: Query<&mut Text>,
     mut border_query: Query<&mut BorderColor>,
+    mut background_query: Query<&mut BackgroundColor>,
     focused_query: Query<Entity, With<ResultScreenFocusIndicator>>,
 ) {
     let Some(entities) = entities else {
@@ -1132,6 +1373,56 @@ fn sync_result_screen_ui_system(
         entities.class_persona,
         class_persona.as_deref().unwrap_or(""),
     );
+
+    // Outcome accent stripe + panel border tint communicate VICTORY /
+    // DEFEAT / DRAW at a glance. A neutral colour is applied when no result
+    // is cached yet so the screen never reads as a real outcome by accident.
+    let accent = result_screen_outcome_accent(&copy.headline);
+    if let Ok(mut background) = background_query.get_mut(entities.accent_stripe) {
+        *background = BackgroundColor(accent);
+    }
+    if let Ok(mut border) = border_query.get_mut(entities.panel) {
+        *border = BorderColor::all(accent.with_alpha(0.42));
+    }
+
+    // Round chip — only mounted when a round number is known.
+    let round_label =
+        result_screen_round_label(view_state.cached_result.as_ref(), view_state.cached_snapshot.as_ref());
+    set_text(
+        &mut text_query,
+        entities.round_chip,
+        round_label.as_deref().unwrap_or(""),
+    );
+    set_node_display(
+        &mut node_query,
+        entities.round_chip,
+        if round_label.is_some() {
+            Display::Flex
+        } else {
+            Display::None
+        },
+    );
+
+    // Resources line on the accounting panel — only mounted when the
+    // snapshot carries a player entry for the local recipient.
+    let resources_label = result_screen_resources_line(view_state.cached_snapshot.as_ref());
+    set_text(
+        &mut text_query,
+        entities.resources_line,
+        resources_label.as_deref().unwrap_or(""),
+    );
+    set_node_display(
+        &mut node_query,
+        entities.resources_line,
+        if resources_label.is_some() {
+            Display::Flex
+        } else {
+            Display::None
+        },
+    );
+
+    let ledger_label = result_screen_ledger_line(view_state.cached_snapshot.as_ref());
+    set_text(&mut text_query, entities.ledger_line, &ledger_label);
 
     // Hide the class line when the snapshot has not yet provided a class
     // rather than rendering a blank row.
@@ -1177,6 +1468,9 @@ fn sync_result_screen_ui_system(
     set_node_display(&mut node_query, entities.hero_panel, hero_display);
     set_node_display(&mut node_query, entities.accounting_panel, accounting_display);
     set_node_display(&mut node_query, entities.continue_button, continue_display);
+    // Continue hint only reads on the hero step — it advertises the Enter /
+    // Space affordance for the Continue CTA.
+    set_node_display(&mut node_query, entities.continue_hint, continue_display);
 
     focus_order.set_entities(focus_targets);
     sync_focus_indicator(
