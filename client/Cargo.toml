@@ -591,6 +591,19 @@ path = "../tests/integration/ui_clean_pass/interaction_state_primitives_test.rs"
 name = "ui_clean_pass_card_slot_primitive_test"
 path = "../tests/integration/ui_clean_pass/card_slot_primitive_test.rs"
 
+# Sprint 18 story-022 (S18-UI-CARD-ART-AND-LABEL-STRIP-001 / PROMPT
+# 1180 §6 Lane C): card-art image-mode policy + label-strip primitive
+# extension. Asserts that every `CardSlotKind` resolves to a card-art
+# `ImageNode` with `NodeImageMode::Auto` (banner-stretch defect
+# UI-1129-05 closed structurally), that the new `CardSlotArtImage`
+# Node's per-side absolute-position edges equal the geometry catalog's
+# image-inset rectangle, and that the `CardSlotLabelStrip` Node carries
+# an opaque `BackgroundColor` (alpha ≥ 0.85), a `min_width` clamp, and
+# `Overflow::clip_x()` (AC2 / AC3 / AC8 of story-022).
+[[test]]
+name = "ui_clean_pass_card_art_aspect_fit_test"
+path = "../tests/integration/ui_clean_pass/card_art_aspect_fit_test.rs"
+
 # Sprint 17 PROMPT 1181 (S17-UI-LAYOUT-FOUNDATION-PRIMITIVES-REPAIR):
 # Layout-foundation viewport-safety invariants — modal-panel content
 # budget, stable CTA row, scroll-region body protection, status-chip vs
@@ -752,6 +765,16 @@ path = "../tests/integration/shop_auction_ui/auction_card_drop_buffer_test.rs"
 [[test]]
 name = "shop_auction_ui_auction_featured_card_layout_test"
 path = "../tests/integration/shop_auction_ui/auction_featured_card_layout_test.rs"
+
+# Sprint 18 story-022 (S18-UI-CARD-ART-AND-LABEL-STRIP-001) AC9:
+# the spawned auction featured card produces a `CardSlotArtImage`
+# child (image_mode Auto), a `CardSlotLabelStrip` child (opaque
+# background, min_width, overflow.clip_x), and the four featured-card
+# text children (stats / keyword / price / timer) re-parent into
+# the strip.
+[[test]]
+name = "shop_auction_ui_auction_featured_art_binding_test"
+path = "../tests/integration/shop_auction_ui/auction_featured_art_binding_test.rs"
 
 [[test]]
 name = "shop_auction_ui_auction_free_gold_counters_layout_test"
