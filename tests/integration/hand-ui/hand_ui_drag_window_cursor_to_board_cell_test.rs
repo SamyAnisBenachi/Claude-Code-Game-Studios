@@ -41,6 +41,7 @@ use bevy::picking::{
 use bevy::prelude::*;
 use bevy::state::app::StatesPlugin;
 use bevy::window::{PrimaryWindow, WindowResolution};
+use client::presentation::board_rendering::BoardEnvelope;
 use client::state::{ClientState, CurrentClientPhase};
 use client::ui::hand::{
     ActivePlacementDrag, BoardSpawnEdge, FanSlotIndex, HandCardCatalog, HandContents,
@@ -63,6 +64,8 @@ const FIRST_CELL: u8 = 2;
 const SECOND_LANE: u8 = 3;
 const SECOND_CELL: u8 = 6;
 const LOCAL_PLAYER_ID: PlayerId = PlayerId(7);
+const LIVE_1449_CLIENT_B_MISS_SCREEN: Vec2 = Vec2::new(972.0, 643.0);
+const LIVE_1449_CLIENT_A_MISS_SCREEN: Vec2 = Vec2::new(955.0, 683.0);
 
 #[test]
 fn window_cursor_during_drag_resolves_drop_to_hovered_board_cell() {
@@ -307,6 +310,101 @@ fn interaction_press_drag_tracks_window_cursor_cell_changes_and_drops_last_cell(
 
 // ── App / camera / window setup ──────────────────────────────────────────────
 
+#[test]
+fn live_1449_fixed_screen_points_are_outside_board_but_cell_centers_resolve() {
+    test_helpers::init_test_tracing();
+
+    let (mut app, camera) = app_with_board_camera_and_window();
+    set_hand(&mut app, [CardId(100)]);
+    spawn_board_cells(&mut app);
+    app.update();
+
+    let layout = *app.world().resource::<BoardLayout>();
+    let envelope = BoardEnvelope::from_layout(&layout);
+    assert!(
+        envelope_contains(&envelope, layout.cell_to_world(FIRST_LANE, FIRST_CELL)),
+        "known board cell centers must be inside the live board envelope",
+    );
+
+    for miss_screen in [LIVE_1449_CLIENT_B_MISS_SCREEN, LIVE_1449_CLIENT_A_MISS_SCREEN] {
+        let slot = fan_slot(&mut app, 0);
+        press_fan_slot_interaction(&mut app, slot);
+        app.update();
+        assert!(active_drag_active(&app));
+
+        let world_position = camera_viewport_to_world(&app, camera, miss_screen);
+        assert!(
+            !envelope_contains(&envelope, world_position),
+            "PROMPT 1449 fixed screen point {:?} projected to {:?}, outside board envelope {:?}..{:?}",
+            miss_screen,
+            world_position,
+            envelope.world_min(),
+            envelope.world_max(),
+        );
+
+        set_window_cursor(&mut app, miss_screen);
+        app.update();
+        app.update();
+        release_primary_mouse(&mut app);
+        app.update();
+        app.world_mut()
+            .resource_mut::<ButtonInput<MouseButton>>()
+            .clear();
+        assert!(
+            app.world()
+                .resource::<PendingPlacements>()
+                .placements
+                .is_empty(),
+            "screen point {:?} is outside the board envelope and must not stage a hidden placement",
+            miss_screen,
+        );
+    }
+
+    let slot = fan_slot(&mut app, 0);
+    press_fan_slot_interaction(&mut app, slot);
+    app.update();
+
+    let first_screen = camera_world_to_viewport(
+        &app,
+        camera,
+        layout.cell_to_world(FIRST_LANE, FIRST_CELL),
+    );
+    let second_screen = camera_world_to_viewport(
+        &app,
+        camera,
+        layout.cell_to_world(SECOND_LANE, SECOND_CELL),
+    );
+    assert_ne!(
+        first_screen, second_screen,
+        "known board-cell centers must produce distinct live viewport drag targets",
+    );
+
+    set_window_cursor(&mut app, first_screen);
+    app.update();
+    let first_world = app
+        .world()
+        .resource::<ActivePlacementDrag>()
+        .cursor_world_position
+        .expect("first board-cell center should project to world");
+    assert!(envelope_contains(&envelope, first_world));
+
+    set_window_cursor(&mut app, second_screen);
+    app.update();
+    release_primary_mouse(&mut app);
+    app.update();
+
+    let pending = &app.world().resource::<PendingPlacements>().placements;
+    assert_eq!(pending.len(), 1);
+    assert_eq!(
+        pending[0].target,
+        PlayTarget::BoardCell {
+            lane: SECOND_LANE,
+            cell: SECOND_CELL,
+        },
+        "a live harness must drag to projected BoardLayout cell centers, not PROMPT 1449 fixed bottom-window points",
+    );
+}
+
 fn app_with_board_camera_and_window() -> (App, Entity) {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins);
@@ -380,6 +478,8 @@ fn spawn_world_space_camera(app: &mut App, viewport_size: UVec2) -> Entity {
     let logical_size = viewport_size.as_vec2();
     projection.update(logical_size.x, logical_size.y);
     let clip_from_view = projection.get_clip_from_view();
+    let board_layout = *app.world().resource::<BoardLayout>();
+    let envelope = BoardEnvelope::from_layout(&board_layout);
 
     let mut camera = Camera::default();
     camera.computed.target_info = Some(RenderTargetInfo {
@@ -388,7 +488,7 @@ fn spawn_world_space_camera(app: &mut App, viewport_size: UVec2) -> Entity {
     });
     camera.computed.clip_from_view = clip_from_view;
 
-    let transform = Transform::from_xyz(0.0, 0.0, 0.0);
+    let transform = Transform::from_xyz(envelope.world_center.x, envelope.world_center.y, 0.0);
     app.world_mut()
         .spawn((
             camera,
@@ -415,6 +515,26 @@ fn camera_world_to_viewport(app: &App, camera: Entity, world_position: Vec2) -> 
 }
 
 // ── Resource + hand wiring ───────────────────────────────────────────────────
+
+fn camera_viewport_to_world(app: &App, camera: Entity, viewport_position: Vec2) -> Vec2 {
+    let camera_component = app
+        .world()
+        .get::<Camera>(camera)
+        .expect("camera entity must carry Camera");
+    let transform = app
+        .world()
+        .get::<GlobalTransform>(camera)
+        .expect("camera entity must carry GlobalTransform");
+    camera_component
+        .viewport_to_world_2d(transform, viewport_position)
+        .expect("viewport point should project through the live-like board camera")
+}
+
+fn envelope_contains(envelope: &BoardEnvelope, world_position: Vec2) -> bool {
+    let min = envelope.world_min();
+    let max = envelope.world_max();
+    (min.x..=max.x).contains(&world_position.x) && (min.y..=max.y).contains(&world_position.y)
+}
 
 fn test_catalog<const N: usize>(entries: [(CardId, CardType); N]) -> HashMap<CardId, CardData> {
     entries
