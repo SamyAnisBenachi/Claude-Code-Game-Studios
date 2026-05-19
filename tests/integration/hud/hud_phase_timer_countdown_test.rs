@@ -15,7 +15,10 @@ use bevy::state::app::StatesPlugin;
 use bevy::time::TimePlugin;
 use client::{
     state::{ClientPhaseView, ClientState},
-    ui::hud::{HudEntities, HudPlayerIds, HudPlugin, HudTimerCountdown, PhaseTimerState},
+    ui::hud::{
+        HudEntities, HudPlayerIds, HudPlugin, HudTimerCountdown, PhaseTimerState,
+        HUD_TIMER_COUNTDOWN_FONT_SIZE_PX, HUD_TIMER_COUNTDOWN_MIN_WIDTH_PX,
+    },
 };
 use shared::session::PlayerId;
 
@@ -33,8 +36,8 @@ fn countdown_shows_remaining_seconds_for_placement_phase() {
 
     assert_eq!(
         text(&app, entities.timer_countdown),
-        "60s",
-        "countdown must render the rounded remaining seconds at reset",
+        "TIME 60s",
+        "countdown must render a labelled rounded remaining-seconds chip at reset",
     );
     assert_eq!(
         app.world().get::<Visibility>(entities.timer_countdown),
@@ -51,13 +54,13 @@ fn countdown_ticks_down_each_frame() {
 
     set_phase_view(&mut app, 30_000);
     app.update();
-    assert_eq!(text(&app, entities.timer_countdown), "30s");
+    assert_eq!(text(&app, entities.timer_countdown), "TIME 30s");
 
     advance_time(&mut app, Duration::from_millis(5_000));
     app.update();
     assert_eq!(
         text(&app, entities.timer_countdown),
-        "25s",
+        "TIME 25s",
         "countdown must decrement as Time::delta accumulates",
     );
 
@@ -66,7 +69,7 @@ fn countdown_ticks_down_each_frame() {
     // Round-up keeps the readout from showing `0s` while time remains.
     assert_eq!(
         text(&app, entities.timer_countdown),
-        "1s",
+        "TIME 1s",
         "countdown must round up so 1ms remaining still reads as `1s`",
     );
 
@@ -74,7 +77,7 @@ fn countdown_ticks_down_each_frame() {
     app.update();
     assert_eq!(
         text(&app, entities.timer_countdown),
-        "0s",
+        "TIME 0s",
         "countdown must read `0s` once the budget is fully elapsed",
     );
 }
@@ -90,7 +93,7 @@ fn countdown_does_not_reset_when_same_phase_view_is_marked_changed() {
 
     advance_time(&mut app, Duration::from_millis(5_000));
     app.update();
-    assert_eq!(text(&app, entities.timer_countdown), "25s");
+    assert_eq!(text(&app, entities.timer_countdown), "TIME 25s");
 
     advance_time(&mut app, Duration::ZERO);
     set_phase_view(&mut app, 30_000);
@@ -103,8 +106,24 @@ fn countdown_does_not_reset_when_same_phase_view_is_marked_changed() {
     );
     assert_eq!(
         text(&app, entities.timer_countdown),
-        "25s",
+        "TIME 25s",
         "countdown must stay elapsed-aware when ClientPhaseView is re-marked changed"
+    );
+}
+
+#[test]
+fn countdown_state_display_text_remains_snapshot_compatible() {
+    let timer = PhaseTimerState {
+        active: true,
+        duration_ms: 30_000,
+        elapsed_ms: 5_000,
+        ..default()
+    };
+
+    assert_eq!(
+        timer.display_text(),
+        "25s",
+        "PhaseTimerState display_text remains the unprefixed snapshot field"
     );
 }
 
@@ -139,6 +158,33 @@ fn countdown_entity_is_uniquely_marked() {
         q.iter(app.world()).count(),
         1,
         "exactly one HudTimerCountdown entity must be pre-pooled",
+    );
+}
+
+#[test]
+fn countdown_chip_uses_readable_fixed_layout() {
+    let app = app_with_hud_in_session();
+    let entities = hud_entities(&app);
+
+    let node = app
+        .world()
+        .get::<Node>(entities.timer_countdown)
+        .expect("countdown should carry a Node");
+    assert_eq!(node.min_width, Val::Px(HUD_TIMER_COUNTDOWN_MIN_WIDTH_PX));
+    assert_eq!(node.flex_shrink, 0.0);
+    assert_ne!(node.border.left, Val::Px(0.0));
+
+    let font = app
+        .world()
+        .get::<TextFont>(entities.timer_countdown)
+        .expect("countdown should carry TextFont");
+    assert_eq!(font.font_size, HUD_TIMER_COUNTDOWN_FONT_SIZE_PX);
+
+    assert!(
+        app.world()
+            .get::<BorderColor>(entities.timer_countdown)
+            .is_some(),
+        "countdown should carry a high-contrast border"
     );
 }
 

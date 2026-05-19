@@ -62,6 +62,8 @@ pub const HUD_DIM_OVERLAY_ALPHA: f32 = overlays::OVERLAY_DIM_ALPHA;
 /// `sync_hud_timer_bar_system` scales `Node.width` from 0 up to this value
 /// based on `PhaseTimerState` remaining ratio.
 pub const HUD_PHASE_TIMER_BAR_MAX_WIDTH_PX: f32 = 200.0;
+pub const HUD_TIMER_COUNTDOWN_MIN_WIDTH_PX: f32 = 112.0;
+pub const HUD_TIMER_COUNTDOWN_FONT_SIZE_PX: f32 = typography::H1;
 pub const CURRENT_MANA_BAR_WIDTH_PX: f32 = 104.0;
 pub const CURRENT_MANA_BAR_HEIGHT_PX: f32 = 28.0;
 pub const RESERVE_MANA_DIAMOND_SIZE_PX: f32 = 74.0;
@@ -496,6 +498,7 @@ pub enum ScoreboardRow {
 
 #[derive(Component, Default, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ScoreboardDotState {
+    pub known: bool,
     pub destroyed: bool,
 }
 
@@ -598,6 +601,9 @@ impl Plugin for HudPlugin {
                         // identical assets when both fire on the same
                         // frame, so the ordering is correctness-neutral.
                         sync_scoreboard_dot_image_for_state_system
+                            .in_set(HudSystemSet::StateSync)
+                            .after(handle_game_snapshot_system),
+                        sync_scoreboard_dot_name_for_state_system
                             .in_set(HudSystemSet::StateSync)
                             .after(handle_game_snapshot_system),
                     ),
@@ -936,10 +942,11 @@ fn spawn_hud(
             HudEntity,
             HudTimerCountdown,
             Text::new(""),
-            hud_text_font(HUD_SECONDARY_FONT_SIZE_PX),
+            hud_text_font(HUD_TIMER_COUNTDOWN_FONT_SIZE_PX),
             TextColor(HUD_PRIMARY_TEXT_COLOR),
             BackgroundColor(HUD_TEXT_BACKGROUND_COLOR),
-            top_strip_text_node(),
+            BorderColor::all(timer_countdown_border()),
+            top_strip_timer_countdown_node(),
             Visibility::Hidden,
             ChildOf(top_strip),
         ))
@@ -1224,6 +1231,10 @@ fn spawn_scoreboard_dots(
                 ScoreboardRow::Local => ObjectiveDotState::Alive,
                 ScoreboardRow::Opponent => ObjectiveDotState::Unknown,
             };
+            let initial_scoreboard_state = ScoreboardDotState {
+                known: matches!(row_marker, ScoreboardRow::Local),
+                destroyed: false,
+            };
             let dot_image_path = hud_objective_dot_asset(initial_dot_state);
             let dot_image = if let Some(server) = asset_server {
                 ImageNode::new(server.load(dot_image_path))
@@ -1233,10 +1244,10 @@ fn spawn_scoreboard_dots(
 
             commands
                 .spawn((
-                    Name::new(format!(
-                        "HUD {:?} Scoreboard Dot {}",
+                    Name::new(scoreboard_dot_name(
                         row_marker,
-                        lane_index + 1
+                        lane_index,
+                        initial_scoreboard_state,
                     )),
                     HudEntity,
                     HudScoreboardDotRoot,
@@ -1244,7 +1255,7 @@ fn spawn_scoreboard_dots(
                         row: row_marker,
                         lane_index,
                     },
-                    ScoreboardDotState::default(),
+                    initial_scoreboard_state,
                     Node {
                         position_type: PositionType::Absolute,
                         // PROMPT 1027 — anchor scoreboard dots BELOW the
@@ -1268,8 +1279,8 @@ fn spawn_scoreboard_dots(
                         ..default()
                     },
                     dot_image,
-                    BackgroundColor(alive_dot_fill()),
-                    BorderColor::all(alive_dot_border()),
+                    BackgroundColor(dot_fill(initial_scoreboard_state)),
+                    BorderColor::all(dot_border(initial_scoreboard_state)),
                     Visibility::Hidden,
                     ChildOf(parent),
                 ))
@@ -1480,9 +1491,10 @@ pub fn handle_hud_objective_update_system(
         let lane_index = usize::from(update.lane - 1);
         let dot = entities.dots[row_index][lane_index];
         if let Ok((mut state, mut background, mut border)) = dots.get_mut(dot) {
+            state.known = true;
             state.destroyed = true;
-            *background = BackgroundColor(Color::NONE);
-            *border = BorderColor::all(destroyed_dot_border());
+            *background = BackgroundColor(dot_fill(*state));
+            *border = BorderColor::all(dot_border(*state));
         }
     }
 }
@@ -1892,12 +1904,22 @@ pub fn sync_scoreboard_dot_image_for_state_system(
         return;
     }
     for (mut image, state) in &mut dots {
-        let asset = if state.destroyed {
+        let asset = if !state.known {
+            crate::asset_wiring::HUD_OBJECTIVE_DOT_UNKNOWN_ASSET
+        } else if state.destroyed {
             HUD_OBJECTIVE_DOT_DESTROYED_ASSET
         } else {
             crate::asset_wiring::HUD_OBJECTIVE_DOT_ALIVE_ASSET
         };
         image.image = server.load(asset);
+    }
+}
+
+pub fn sync_scoreboard_dot_name_for_state_system(
+    mut dots: Query<(&mut Name, &ScoreboardDot, &ScoreboardDotState), Changed<ScoreboardDotState>>,
+) {
+    for (mut name, dot, state) in &mut dots {
+        name.set(scoreboard_dot_name(dot.row, dot.lane_index, *state));
     }
 }
 
@@ -2575,14 +2597,10 @@ fn write_dot_destroyed(
     )>,
 ) {
     if let Ok((mut state, mut background, mut border)) = dots.get_mut(entity) {
+        state.known = true;
         state.destroyed = destroyed;
-        if destroyed {
-            *background = BackgroundColor(Color::NONE);
-            *border = BorderColor::all(destroyed_dot_border());
-        } else {
-            *background = BackgroundColor(alive_dot_fill());
-            *border = BorderColor::all(alive_dot_border());
-        }
+        *background = BackgroundColor(dot_fill(*state));
+        *border = BorderColor::all(dot_border(*state));
     }
 }
 
@@ -2712,7 +2730,7 @@ pub fn sync_hud_timer_countdown_text_system(
         return;
     }
     let (target_text, target_visibility) = if timer.active && timer.duration_ms > 0 {
-        (timer.display_text(), Visibility::Visible)
+        (hud_timer_countdown_text(&timer), Visibility::Visible)
     } else {
         (String::new(), Visibility::Hidden)
     };
@@ -2723,6 +2741,15 @@ pub fn sync_hud_timer_countdown_text_system(
         if *visibility != target_visibility {
             *visibility = target_visibility;
         }
+    }
+}
+
+fn hud_timer_countdown_text(timer: &PhaseTimerState) -> String {
+    let display = timer.display_text();
+    if display.is_empty() {
+        String::new()
+    } else {
+        format!("TIME {display}")
     }
 }
 
@@ -2796,16 +2823,67 @@ fn scoreboard_row_index(target_player_id: PlayerId, player_ids: &HudPlayerIds) -
     }
 }
 
+fn scoreboard_dot_name(row: ScoreboardRow, lane_index: usize, state: ScoreboardDotState) -> String {
+    let owner = match row {
+        ScoreboardRow::Opponent => "Opponent",
+        ScoreboardRow::Local => "Local",
+    };
+    let status = if !state.known {
+        "Unknown"
+    } else if state.destroyed {
+        "Destroyed"
+    } else {
+        "Alive"
+    };
+    format!("HUD {owner} Objective Lane {} {status}", lane_index + 1)
+}
+
+fn dot_fill(state: ScoreboardDotState) -> Color {
+    if !state.known {
+        unknown_dot_fill()
+    } else if state.destroyed {
+        destroyed_dot_fill()
+    } else {
+        alive_dot_fill()
+    }
+}
+
+fn dot_border(state: ScoreboardDotState) -> Color {
+    if !state.known {
+        unknown_dot_border()
+    } else if state.destroyed {
+        destroyed_dot_border()
+    } else {
+        alive_dot_border()
+    }
+}
+
 fn alive_dot_fill() -> Color {
-    Color::srgba(0.84, 0.88, 0.92, 0.88)
+    Color::srgba(0.24, 0.92, 0.72, 0.96)
 }
 
 fn alive_dot_border() -> Color {
-    Color::srgba(0.96, 0.98, 1.0, 0.95)
+    Color::srgba(0.88, 1.0, 0.94, 1.0)
+}
+
+fn unknown_dot_fill() -> Color {
+    Color::srgba(0.18, 0.22, 0.28, 0.94)
+}
+
+fn unknown_dot_border() -> Color {
+    Color::srgba(0.64, 0.70, 0.78, 0.96)
+}
+
+fn destroyed_dot_fill() -> Color {
+    Color::srgba(0.54, 0.08, 0.10, 0.96)
 }
 
 fn destroyed_dot_border() -> Color {
-    Color::srgba(0.30, 0.32, 0.35, 0.70)
+    Color::srgba(1.0, 0.36, 0.32, 1.0)
+}
+
+fn timer_countdown_border() -> Color {
+    Color::srgba(0.96, 0.98, 1.0, 0.95)
 }
 
 fn current_mana_bar_fill() -> Color {
@@ -3128,6 +3206,21 @@ fn top_strip_timer_bar_node() -> Node {
         width: Val::Px(HUD_PHASE_TIMER_BAR_MAX_WIDTH_PX),
         height: Val::Px(spacing::SPACING_SM),
         min_height: Val::Px(spacing::SPACING_SM),
+        flex_shrink: 0.0,
+        ..default()
+    }
+}
+
+fn top_strip_timer_countdown_node() -> Node {
+    Node {
+        min_width: Val::Px(HUD_TIMER_COUNTDOWN_MIN_WIDTH_PX),
+        min_height: Val::Px(36.0),
+        padding: UiRect::axes(Val::Px(spacing::SPACING_SM), Val::Px(spacing::SPACING_XS)),
+        border: UiRect::all(Val::Px(1.0)),
+        border_radius: BorderRadius::all(Val::Px(spacing::SPACING_XS)),
+        align_items: AlignItems::Center,
+        justify_content: JustifyContent::Center,
+        flex_shrink: 0.0,
         ..default()
     }
 }

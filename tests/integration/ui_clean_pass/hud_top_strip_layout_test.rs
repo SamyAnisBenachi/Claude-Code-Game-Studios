@@ -16,6 +16,7 @@ use client::ui::hud::{
     CurrentManaShape, GoldDisplayState, GoldLabelOwner, HudEntities, HudEntity, HudPillContainer,
     HudPillPrefixLabel, HudPlugin, HudRoot, HudTimerBar, HudTopStrip, ManaLabel, PhaseLabel,
     ReserveManaLabel, ReserveManaShape, RoundCounter, HUD_ENTITY_COUNT,
+    HUD_TIMER_COUNTDOWN_MIN_WIDTH_PX,
 };
 
 #[path = "../../test_helpers.rs"]
@@ -119,6 +120,7 @@ fn ac1_spawns_single_header_bar_top_strip_with_readouts_under_it() {
         entities.mana_pill,
         entities.reserve_container,
         entities.timer_bar,
+        entities.timer_countdown,
     ] {
         assert_eq!(
             parent_of(&app, child),
@@ -176,6 +178,7 @@ fn ac2_top_strip_children_do_not_use_absolute_offset_nodes() {
         entities.mana_label,
         entities.reserve_container,
         entities.timer_bar,
+        entities.timer_countdown,
     ] {
         let node = app
             .world()
@@ -278,6 +281,38 @@ fn ac3_hud_entities_preserve_existing_fields_and_add_top_strip() {
         .get::<ReserveManaLabel>(entities.reserve_label)
         .is_some());
     assert!(app.world().get::<HudTimerBar>(entities.timer_bar).is_some());
+}
+
+#[test]
+fn prompt_1463_timer_countdown_chip_has_stable_non_overlapping_width() {
+    test_helpers::init_test_tracing();
+    let app = app_with_hud_in_session();
+    let entities = hud_entities(&app);
+    let timer_node = app
+        .world()
+        .get::<Node>(entities.timer_countdown)
+        .expect("timer countdown should carry Node");
+    let bar_node = app
+        .world()
+        .get::<Node>(entities.timer_bar)
+        .expect("timer bar should carry Node");
+
+    assert_eq!(
+        timer_node.min_width,
+        Val::Px(HUD_TIMER_COUNTDOWN_MIN_WIDTH_PX)
+    );
+    assert_eq!(
+        timer_node.flex_shrink, 0.0,
+        "timer text chip must not collapse into ambiguous cramped text"
+    );
+    assert_eq!(
+        bar_node.flex_shrink, 0.0,
+        "timer bar should stay a stable sibling of the text chip"
+    );
+    assert_eq!(
+        parent_of(&app, entities.timer_countdown),
+        entities.top_strip
+    );
 }
 
 #[test]

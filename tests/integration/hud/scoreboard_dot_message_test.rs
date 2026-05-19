@@ -69,15 +69,49 @@ fn hud_objective_update_destroys_only_target_dot_in_same_tick() {
                 expected_destroyed,
                 "unexpected dot state at row {row}, lane index {lane_index}"
             );
+            assert_eq!(
+                dot_state(&app, entities.dots[row][lane_index]).known,
+                row == 1 || expected_destroyed,
+                "unexpected dot known flag at row {row}, lane index {lane_index}"
+            );
         }
     }
 
     let destroyed_dot = entities.dots[0][2];
-    assert_eq!(
+    assert_ne!(
         app.world().get::<BackgroundColor>(destroyed_dot),
-        Some(&BackgroundColor(Color::NONE))
+        Some(&BackgroundColor(Color::NONE)),
+        "destroyed objective dots should retain a visible high-contrast fill"
+    );
+    assert_eq!(
+        name(&app, destroyed_dot),
+        "HUD Opponent Objective Lane 3 Destroyed"
     );
     assert!(app.world().get::<TweenAnim>(destroyed_dot).is_none());
+}
+
+#[test]
+fn objective_dot_names_expose_lane_owner_and_known_status() {
+    test_helpers::init_test_tracing();
+    let mut app = app_with_hud_in_session();
+    let entities = hud_entities(&app);
+
+    assert_eq!(
+        name(&app, entities.dots[0][0]),
+        "HUD Opponent Objective Lane 1 Unknown"
+    );
+    assert_eq!(
+        name(&app, entities.dots[1][0]),
+        "HUD Local Objective Lane 1 Alive"
+    );
+
+    write_update(&mut app, player(2), 1);
+    app.update();
+
+    assert_eq!(
+        name(&app, entities.dots[0][0]),
+        "HUD Opponent Objective Lane 1 Destroyed"
+    );
 }
 
 #[test]
@@ -209,6 +243,14 @@ fn dot_state(app: &App, entity: Entity) -> ScoreboardDotState {
     *app.world()
         .get::<ScoreboardDotState>(entity)
         .expect("dot should have state")
+}
+
+fn name(app: &App, entity: Entity) -> String {
+    app.world()
+        .get::<Name>(entity)
+        .expect("dot should have Name")
+        .as_str()
+        .to_string()
 }
 
 fn hud_text_contains(app: &mut App, needle: &str) -> bool {
