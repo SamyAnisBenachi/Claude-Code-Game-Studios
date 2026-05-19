@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use bevy::ui::Overflow;
 
 use crate::state::ClientState;
 use crate::ui::design_tokens::{typography, z_layers};
@@ -6,6 +7,17 @@ use crate::ui::design_tokens::{typography, z_layers};
 pub const PHOTOSENSITIVITY_WARNING_TITLE: &str = "Photosensitivity Warning";
 pub const PHOTOSENSITIVITY_WARNING_COPY: &str = "Lanes and Lies uses brief impact flashes, timer urgency effects, objective-destruction bursts, and phase transitions. Stop playing and consult a medical professional if you feel discomfort, dizziness, eye twitching, or nausea.";
 pub const PHOTOSENSITIVITY_WARNING_ACKNOWLEDGE_COPY: &str = "I understand";
+
+/// PROMPT 1349 (Sprint 18 story 026 / Lane J) — modal-overflow contract
+/// shared with `result_screen.rs` (PROMPT 1180 §1.5 O-04 template) and
+/// every modal in the in-scope set: panels must declare
+/// `max_height: Val::Percent(92.0)` + `overflow: Overflow::scroll_y()`
+/// per `production/epics/ui-clean-pass/story-026-ui-overlay-panel-overflow-hardening.md`
+/// §5 C-5.
+pub const PHOTOSENSITIVITY_PANEL_MAX_HEIGHT_PERCENT: f32 = 92.0;
+const PHOTOSENSITIVITY_PANEL_PADDING_PX: f32 = 20.0;
+const PHOTOSENSITIVITY_FOOTER_HEIGHT_PX: f32 = 44.0;
+const PHOTOSENSITIVITY_FOOTER_TOP_GAP_PX: f32 = 14.0;
 
 pub struct PhotosensitivityWarningPlugin;
 
@@ -42,6 +54,12 @@ pub struct PhotosensitivityWarningBody;
 
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PhotosensitivityWarningAcknowledge;
+
+/// PROMPT 1349 — footer slot wrapping the Acknowledge button. Anchored
+/// to the panel's bottom edge via `position_type: Absolute` so the
+/// Acknowledge stays in view regardless of body length / panel scroll.
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PhotosensitivityWarningFooter;
 
 impl Plugin for PhotosensitivityWarningPlugin {
     fn build(&self, app: &mut App) {
@@ -116,6 +134,19 @@ pub fn spawn_photosensitivity_warning(
         ))
         .id();
 
+    // PROMPT 1349 — footer slot anchored to the panel's bottom edge.
+    // The Acknowledge button lives inside this absolute footer so it
+    // stays in view regardless of body length or panel scroll position
+    // (story 026 AC1).
+    let footer = commands
+        .spawn((
+            Name::new("Photosensitivity Warning Footer"),
+            PhotosensitivityWarningFooter,
+            warning_footer_node(),
+            ChildOf(panel),
+        ))
+        .id();
+
     let acknowledge = commands
         .spawn((
             Name::new("Photosensitivity Warning Acknowledge"),
@@ -126,7 +157,7 @@ pub fn spawn_photosensitivity_warning(
             TextColor(Color::srgb(0.08, 0.12, 0.18)),
             warning_acknowledge_node(),
             BackgroundColor(Color::srgb(0.98, 0.78, 0.26)),
-            ChildOf(panel),
+            ChildOf(footer),
         ))
         .id();
 
@@ -223,14 +254,34 @@ fn photosensitivity_warning_root_node() -> Node {
     }
 }
 
-fn photosensitivity_warning_panel_node() -> Node {
+/// PROMPT 1349 (Sprint 18 story 026 / Lane J) — panel-node builder for
+/// the photosensitivity warning modal. Declares the modal-overflow
+/// contract: `max_height: 92%` + `Overflow::scroll_y()` so the
+/// panel never clips its own viewport at any supported resolution. The
+/// panel is `position_type: Relative` so the absolute `footer` child
+/// anchors to the panel's padding-box rather than to the viewport.
+pub fn photosensitivity_warning_panel_node() -> Node {
     Node {
         width: Val::Px(560.0),
         max_width: Val::Percent(92.0),
+        max_height: Val::Percent(PHOTOSENSITIVITY_PANEL_MAX_HEIGHT_PERCENT),
+        overflow: Overflow::scroll_y(),
+        position_type: PositionType::Relative,
         display: Display::Flex,
         flex_direction: FlexDirection::Column,
-        row_gap: Val::Px(14.0),
-        padding: UiRect::all(Val::Px(20.0)),
+        row_gap: Val::Px(PHOTOSENSITIVITY_FOOTER_TOP_GAP_PX),
+        // Reserve bottom padding for the absolute footer so flex-flow
+        // children (title + body) never overlap the Acknowledge button.
+        padding: UiRect {
+            top: Val::Px(PHOTOSENSITIVITY_PANEL_PADDING_PX),
+            right: Val::Px(PHOTOSENSITIVITY_PANEL_PADDING_PX),
+            bottom: Val::Px(
+                PHOTOSENSITIVITY_PANEL_PADDING_PX
+                    + PHOTOSENSITIVITY_FOOTER_HEIGHT_PX
+                    + PHOTOSENSITIVITY_FOOTER_TOP_GAP_PX,
+            ),
+            left: Val::Px(PHOTOSENSITIVITY_PANEL_PADDING_PX),
+        },
         border: UiRect::all(Val::Px(2.0)),
         ..default()
     }
@@ -250,14 +301,31 @@ fn warning_body_node() -> Node {
     }
 }
 
+/// PROMPT 1349 — footer slot positioned absolutely at the panel's
+/// bottom-padding edge so the Acknowledge button is always reachable
+/// without scrolling, even if the body copy or panel size grows
+/// (story 026 AC1 / §5 C-5 footer slot pattern).
+pub fn warning_footer_node() -> Node {
+    Node {
+        position_type: PositionType::Absolute,
+        left: Val::Px(PHOTOSENSITIVITY_PANEL_PADDING_PX),
+        right: Val::Px(PHOTOSENSITIVITY_PANEL_PADDING_PX),
+        bottom: Val::Px(PHOTOSENSITIVITY_PANEL_PADDING_PX),
+        height: Val::Px(PHOTOSENSITIVITY_FOOTER_HEIGHT_PX),
+        display: Display::Flex,
+        align_items: AlignItems::Center,
+        justify_content: JustifyContent::Center,
+        ..default()
+    }
+}
+
 fn warning_acknowledge_node() -> Node {
     Node {
         width: Val::Px(144.0),
-        height: Val::Px(44.0),
+        height: Val::Px(PHOTOSENSITIVITY_FOOTER_HEIGHT_PX),
         align_items: AlignItems::Center,
         justify_content: JustifyContent::Center,
         padding: UiRect::all(Val::Px(8.0)),
-        margin: UiRect::top(Val::Px(4.0)),
         ..default()
     }
 }

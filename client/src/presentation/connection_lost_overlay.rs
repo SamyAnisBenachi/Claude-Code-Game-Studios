@@ -19,6 +19,7 @@
 //! result screen).
 
 use bevy::prelude::*;
+use bevy::ui::Overflow;
 use lightyear::prelude::{Connected, Disconnected};
 use shared::protocol::RoundPhase;
 
@@ -31,6 +32,34 @@ use crate::ui::design_tokens::{typography, z_layers};
 /// the invariant guarded by `ac7_overlay_z_index_is_below_result_screen` in
 /// `tests/integration/playable_client/connection_lost_overlay_test.rs`.
 pub const CONNECTION_LOST_OVERLAY_Z_INDEX: i32 = z_layers::UI_OVERLAY.0;
+
+/// PROMPT 1349 (Sprint 18 story 026 / Lane J / §5 C-5) — modal-overflow
+/// contract: every modal panel must cap its height at `92%` of the
+/// viewport and scroll when content exceeds the cap. Shared with
+/// `result_screen.rs` (PROMPT 1180 §1.5 O-04 reference template) and
+/// the photosensitivity warning + draft-initial modal.
+pub const CONNECTION_LOST_PANEL_MAX_HEIGHT_PERCENT: f32 = 92.0;
+
+/// PROMPT 1349 — panel-node builder for the connection-lost overlay
+/// modal. Carries the `max_height: 92%` + `Overflow::scroll_y()`
+/// contract so the panel never clips against a short viewport and the
+/// body can scroll if reconnect copy grows (story 026 AC2).
+pub fn connection_lost_overlay_panel_node() -> Node {
+    Node {
+        display: Display::Flex,
+        flex_direction: FlexDirection::Column,
+        width: Val::Percent(60.0),
+        max_width: Val::Px(520.0),
+        max_height: Val::Percent(CONNECTION_LOST_PANEL_MAX_HEIGHT_PERCENT),
+        overflow: Overflow::scroll_y(),
+        row_gap: Val::Px(12.0),
+        padding: UiRect::all(Val::Px(22.0)),
+        align_items: AlignItems::Center,
+        border: UiRect::all(Val::Px(2.0)),
+        border_radius: BorderRadius::all(Val::Px(8.0)),
+        ..default()
+    }
+}
 
 pub struct ConnectionLostOverlayPlugin;
 
@@ -222,18 +251,7 @@ fn spawn_connection_lost_overlay_system(mut commands: Commands) {
             Name::new("Connection lost overlay panel"),
             ConnectionLostOverlayPanel,
             ChildOf(root),
-            Node {
-                display: Display::Flex,
-                flex_direction: FlexDirection::Column,
-                width: Val::Percent(60.0),
-                max_width: Val::Px(520.0),
-                row_gap: Val::Px(12.0),
-                padding: UiRect::all(Val::Px(22.0)),
-                align_items: AlignItems::Center,
-                border: UiRect::all(Val::Px(2.0)),
-                border_radius: BorderRadius::all(Val::Px(8.0)),
-                ..default()
-            },
+            connection_lost_overlay_panel_node(),
             BackgroundColor(Color::srgba(0.16, 0.10, 0.04, 0.92)),
             BorderColor::all(Color::srgba(0.96, 0.74, 0.30, 0.85)),
         ))

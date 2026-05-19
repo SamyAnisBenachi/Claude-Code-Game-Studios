@@ -526,6 +526,20 @@ path = "../tests/integration/ui_clean_pass/strips_test.rs"
 name = "play_area_budget_test"
 path = "../tests/integration/ui_clean_pass/play_area_budget_test.rs"
 
+# Sprint 18 story 026 (S18-UI-OVERLAY-PANEL-OVERFLOW-HARDENING-001):
+# photosensitivity warning + connection-lost + draft-initial modal
+# overflow-hardening contract (PROMPT 1180 §1.5 O-02 / O-03 + §1.4
+# S-08 / S-09 + §5 C-5 + §6 Lane J). Asserts every in-scope modal
+# declares max_height: 92 % + Overflow::scroll_y(), the draft-initial
+# modal drops its fixed 360 px height literal, the draft-initial grid
+# migrates from per-slot absolute offsets to Display::Grid auto-
+# placement, viewport-resolved ceilings hold at 1280×600 / 1366×768 /
+# 3840×2160, and result_screen.rs (the §1.5 O-04 reference template)
+# is left untouched.
+[[test]]
+name = "ui_clean_pass_overlay_overflow_hardening_test"
+path = "../tests/integration/ui_clean_pass/overlay_overflow_hardening_test.rs"
+
 # S11-UX-HUD-TOP-STRIP-LAYOUT (Sprint 14 story 015): HUD top-strip
 # HeaderBar composition, entity preservation, schedule stability,
 # font-size grep guard, and UI_BASE z-layer usage (AC1, AC2, AC3,
