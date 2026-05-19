@@ -131,6 +131,89 @@ pub fn primary_action_button_border_color() -> Color {
     Color::srgba(0.92, 0.94, 0.96, 0.55)
 }
 
+fn rarity_product_accent_color(rarity: Rarity) -> Color {
+    match rarity {
+        Rarity::Common => Color::srgb(0.74, 0.82, 0.90),
+        Rarity::Uncommon => Color::srgb(0.36, 0.78, 0.48),
+        Rarity::Rare => Color::srgb(0.34, 0.58, 0.94),
+        Rarity::Epic => Color::srgb(0.70, 0.43, 0.94),
+        Rarity::Legendary => Color::srgb(0.98, 0.67, 0.26),
+    }
+}
+
+fn shop_product_card_background_color(
+    state: ShopSlotState,
+    rarity: Option<Rarity>,
+    affordable: bool,
+) -> Color {
+    match state {
+        ShopSlotState::Available if affordable => Color::srgba(0.15, 0.12, 0.08, 0.94),
+        ShopSlotState::Available if rarity.is_some() => Color::srgba(0.10, 0.11, 0.14, 0.92),
+        ShopSlotState::PendingPurchase => Color::srgba(0.24, 0.20, 0.10, 0.96),
+        ShopSlotState::Refreshing => Color::srgba(0.10, 0.14, 0.18, 0.90),
+        ShopSlotState::HandFullLocked => Color::srgba(0.13, 0.10, 0.10, 0.92),
+        ShopSlotState::Empty | ShopSlotState::Available => Color::srgba(0.07, 0.09, 0.12, 0.86),
+    }
+}
+
+fn shop_product_card_border_color(
+    state: ShopSlotState,
+    rarity: Option<Rarity>,
+    affordable: bool,
+) -> Color {
+    match state {
+        ShopSlotState::Available if affordable => {
+            rarity_product_accent_color(rarity.unwrap_or(Rarity::Common))
+        }
+        ShopSlotState::Available => Color::srgba(0.92, 0.94, 0.96, 0.35),
+        ShopSlotState::PendingPurchase => Color::srgb(0.98, 0.86, 0.36),
+        ShopSlotState::Refreshing => Color::srgb(0.42, 0.72, 0.92),
+        ShopSlotState::HandFullLocked => Color::srgb(0.92, 0.36, 0.34),
+        ShopSlotState::Empty => Color::srgba(0.64, 0.70, 0.78, 0.25),
+    }
+}
+
+fn shop_product_card_text_color(state: ShopSlotState, affordable: bool) -> Color {
+    match state {
+        ShopSlotState::Available if affordable => Color::srgb(0.99, 0.95, 0.78),
+        ShopSlotState::Available => Color::srgba(0.90, 0.92, 0.96, 0.62),
+        ShopSlotState::PendingPurchase => Color::srgb(1.0, 0.88, 0.45),
+        ShopSlotState::Refreshing => Color::srgb(0.74, 0.88, 0.96),
+        ShopSlotState::HandFullLocked => Color::srgb(1.0, 0.66, 0.55),
+        ShopSlotState::Empty => Color::srgba(0.82, 0.86, 0.92, 0.48),
+    }
+}
+
+fn shop_slot_affordable(
+    state: ShopSlotState,
+    card_id: Option<CardId>,
+    cost: Option<u32>,
+    hand_size: usize,
+    economy: &PlayerEconomyView,
+) -> bool {
+    state == ShopSlotState::Available
+        && card_id.is_some()
+        && hand_size < 10
+        && economy.initialized
+        && economy.gold >= cost.unwrap_or(0)
+}
+
+fn primary_action_enabled_background_color(enabled: bool) -> Color {
+    if enabled {
+        Color::srgba(0.22, 0.17, 0.08, 0.92)
+    } else {
+        Color::srgba(0.08, 0.09, 0.11, 0.58)
+    }
+}
+
+fn primary_action_enabled_border_color(enabled: bool) -> Color {
+    if enabled {
+        Color::srgb(0.98, 0.74, 0.30)
+    } else {
+        Color::srgba(0.92, 0.94, 0.96, 0.28)
+    }
+}
+
 #[derive(SystemSet, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ShopAuctionUiSystemSet {
     PhaseTransition,
@@ -3510,9 +3593,13 @@ pub fn sync_shop_panel_system(
                 &ShopSlotIndex,
                 Option<&ShopSlotCard>,
                 Option<&ShopSlotGoldCost>,
+                Option<&ShopSlotRarity>,
                 &mut ShopSlotState,
                 &mut Visibility,
                 &mut Text,
+                &mut TextColor,
+                &mut BackgroundColor,
+                &mut BorderColor,
             ),
             With<ShopSlotIndex>,
         >,
@@ -3576,8 +3663,19 @@ pub fn sync_shop_panel_system(
 
     {
         let mut slots = shop_ui.p1();
-        for (slot_entity, slot_index, card, cost, mut slot_state, mut visibility, mut text) in
-            &mut slots
+        for (
+            slot_entity,
+            slot_index,
+            card,
+            cost,
+            rarity,
+            mut slot_state,
+            mut visibility,
+            mut text,
+            mut text_color,
+            mut background_color,
+            mut border_color,
+        ) in &mut slots
         {
             // PROMPT 1042 — slot wells stay hidden until `S2CShopSlots`
             // delivers offers; while waiting, the shop_empty_state copy
@@ -3606,6 +3704,24 @@ pub fn sync_shop_panel_system(
             // surfaced by the child `ShopSlotAffordanceLabel` so the player
             // can read purchase intent at a glance.
             let idx = slot_index.0 as usize;
+            let affordable = shop_slot_affordable(
+                *slot_state,
+                card.map(|c| c.0),
+                cost.map(|c| c.0),
+                hand_view.hand_size,
+                &economy,
+            );
+            *text_color = TextColor(shop_product_card_text_color(*slot_state, affordable));
+            *background_color = BackgroundColor(shop_product_card_background_color(
+                *slot_state,
+                rarity.map(|r| r.0),
+                affordable,
+            ));
+            *border_color = BorderColor::all(shop_product_card_border_color(
+                *slot_state,
+                rarity.map(|r| r.0),
+                affordable,
+            ));
             if idx < affordance_text.len() {
                 affordance_text[idx] = shop_slot_affordance_copy(
                     *slot_state,
@@ -3644,6 +3760,32 @@ pub fn sync_shop_panel_system(
         && !shop_state.refresh_in_flight
         && economy.initialized
         && economy.gold >= refresh_cost;
+    commands.entity(entities.shop_refresh_button).insert((
+        BackgroundColor(primary_action_enabled_background_color(refresh_enabled)),
+        BorderColor::all(primary_action_enabled_border_color(refresh_enabled)),
+        TextColor(if refresh_enabled {
+            Color::srgb(0.99, 0.93, 0.72)
+        } else {
+            Color::srgba(0.86, 0.90, 0.96, 0.48)
+        }),
+    ));
+    commands.entity(entities.shop_ready_button).insert((
+        BackgroundColor(if shop_state.ready_signalled {
+            Color::srgba(0.12, 0.20, 0.13, 0.92)
+        } else {
+            primary_action_enabled_background_color(interactive)
+        }),
+        BorderColor::all(if shop_state.ready_signalled {
+            Color::srgb(0.35, 0.86, 0.48)
+        } else {
+            primary_action_enabled_border_color(interactive)
+        }),
+        TextColor(if interactive {
+            Color::srgb(0.99, 0.93, 0.72)
+        } else {
+            Color::srgba(0.86, 0.90, 0.96, 0.48)
+        }),
+    ));
 
     {
         let mut refresh_buttons = shop_ui.p3();
@@ -3946,6 +4088,14 @@ pub fn sync_auction_panel_system(
             *border_color =
                 BorderColor::all(auction_featured_card_lead_loss_color(featured_card_state));
         }
+        commands.entity(entities.auction_featured_card).insert((
+            BackgroundColor(match featured_card_state {
+                AuctionFeaturedCardLeadLossState::Leading => Color::srgba(0.06, 0.15, 0.09, 0.96),
+                AuctionFeaturedCardLeadLossState::Losing => Color::srgba(0.16, 0.07, 0.07, 0.96),
+                AuctionFeaturedCardLeadLossState::Neutral => Color::srgba(0.09, 0.10, 0.12, 0.96),
+            }),
+            BorderColor::all(auction_featured_card_lead_loss_color(featured_card_state)),
+        ));
     }
 
     {
@@ -3995,13 +4145,13 @@ pub fn sync_auction_panel_system(
         if let Ok(mut text) = texts.get_mut(entities.auction_featured_card_price_label) {
             text.0.clear();
             if auction_visible && auction_state.card_id.is_some() {
-                text.0
-                    .push_str(&format!("Bid: {}g", auction_state.current_price));
+                text.0.push_str(&auction_featured_price_label(&auction_state));
             }
         }
         if let Ok(mut text) = texts.get_mut(entities.auction_featured_card_timer_label) {
             text.0.clear();
             if auction_visible && auction_state.card_id.is_some() {
+                text.0.push_str("Time: ");
                 text.0
                     .push_str(&auction_featured_timer_label(&auction_state));
             }
@@ -4041,7 +4191,9 @@ pub fn sync_auction_panel_system(
                             auction_state.locally_expired_elapsed_ms,
                         ));
                     } else {
-                        text.0.push_str("Auction live");
+                        text.0.push_str("Auction live - ");
+                        text.0
+                            .push_str(auction_leader_status_label(&auction_state, &local_gold));
                     }
                 }
                 ShopAuctionAuctionPanelState::Settling => {
@@ -4053,13 +4205,11 @@ pub fn sync_auction_panel_system(
 
         if let Ok(mut text) = texts.get_mut(entities.auction_bid_status_text) {
             text.0.clear();
-            if local_leading {
-                text.0.push_str("YOU ARE LEADING");
-            } else if hand_full {
-                text.0.push_str("Hand full - no bids possible this auction");
-            } else if opponent_leading {
-                text.0.push_str("OPPONENT LEADING");
-            }
+            text.0.push_str(auction_bid_status_copy(
+                local_leading,
+                hand_full,
+                opponent_leading,
+            ));
         }
 
         let free_gold_text = format!("{local_free_gold}g");
@@ -6392,6 +6542,41 @@ pub fn auction_featured_timer_label(state: &ShopAuctionAuctionState) -> String {
 /// the player saw no disabled-reason feedback when clicking unaffordable
 /// slots; this helper is the single source of that copy so every state
 /// renders a deterministic, non-empty string for the visible cases.
+fn auction_featured_price_label(state: &ShopAuctionAuctionState) -> String {
+    if state.current_leader.is_some() {
+        format!("Bid: {}g current", state.current_price)
+    } else {
+        format!("Bid: {}g opening", state.current_price)
+    }
+}
+
+fn auction_leader_status_label(
+    state: &ShopAuctionAuctionState,
+    local_gold: &ShopAuctionLocalGoldView,
+) -> &'static str {
+    match state.current_leader {
+        Some(leader) if Some(leader) == local_gold.player_id => "You lead",
+        Some(_) => "Opponent leads",
+        None => "No bids yet",
+    }
+}
+
+fn auction_bid_status_copy(
+    local_leading: bool,
+    hand_full: bool,
+    opponent_leading: bool,
+) -> &'static str {
+    if local_leading {
+        "YOU LEAD"
+    } else if hand_full {
+        "HAND FULL - NO BIDS"
+    } else if opponent_leading {
+        "OPPONENT LEADS"
+    } else {
+        ""
+    }
+}
+
 pub fn shop_slot_affordance_copy(
     state: ShopSlotState,
     card_id: Option<CardId>,
@@ -6401,21 +6586,21 @@ pub fn shop_slot_affordance_copy(
 ) -> String {
     match state {
         ShopSlotState::Empty => String::new(),
-        ShopSlotState::PendingPurchase => "PENDING...".to_string(),
-        ShopSlotState::Refreshing => "REFRESHING...".to_string(),
-        ShopSlotState::HandFullLocked => "LOCKED · Hand full".to_string(),
+        ShopSlotState::PendingPurchase => "BUYING...".to_string(),
+        ShopSlotState::Refreshing => "REFRESH...".to_string(),
+        ShopSlotState::HandFullLocked => "LOCKED - Hand full".to_string(),
         ShopSlotState::Available => {
             if card_id.is_none() {
                 return String::new();
             }
             if hand_size >= 10 {
-                return "LOCKED · Hand full".to_string();
+                return "LOCKED - Hand full".to_string();
             }
             let cost = cost.unwrap_or(0);
             if !economy.initialized || economy.gold < cost {
-                return format!("LOCKED · Need {cost}g");
+                return format!("LOCKED - Need {cost}g");
             }
-            format!("BUY · {cost}g")
+            format!("BUY - {cost}g")
         }
     }
 }
@@ -6728,14 +6913,14 @@ fn apply_shop_slot(
     text.0.clear();
     if stats.is_empty() {
         text.0
-            .push_str(&format!("{}\n{:?} · {}g", card_name.as_str(), rarity, cost));
+            .push_str(&format!("{}\n{}g | {:?}", card_name.as_str(), cost, rarity));
     } else {
         text.0.push_str(&format!(
-            "{}\n{:?} · {}g · {}",
+            "{}\n{}g | {} | {:?}",
             card_name.as_str(),
-            rarity,
             cost,
-            stats
+            stats,
+            rarity
         ));
     }
     commands.entity(entity).insert((
