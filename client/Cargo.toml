@@ -219,6 +219,17 @@ path = "../tests/integration/hand-ui/hand_ui_drag_to_board_cell_test.rs"
 name = "hand_ui_drag_cursor_world_projection_test"
 path = "../tests/integration/hand-ui/hand_ui_drag_cursor_world_projection_test.rs"
 
+# PROMPT 1410 — S18-BOARD-PICKING-BACKEND-DRAG-TO-CELL-001. Drives the
+# explicit `Window.cursor_position` → world-space cursor producer added
+# alongside the `Pointer<Move>` producer so dragging over the board (which
+# has no bevy_picking backend) still feeds
+# `ActivePlacementDrag.cursor_world_position`. Pins the fix for
+# AUDIT-1392-P02 (drag-to-cell always falls back to `fan_active_default_drop`)
+# and locks the no-cursor regression contract for the click-to-stage path.
+[[test]]
+name = "hand_ui_drag_window_cursor_to_board_cell_test"
+path = "../tests/integration/hand-ui/hand_ui_drag_window_cursor_to_board_cell_test.rs"
+
 [[test]]
 name = "hand_ui_drag_state_visuals_test"
 path = "../tests/integration/hand-ui/hand_ui_drag_state_visuals_test.rs"
