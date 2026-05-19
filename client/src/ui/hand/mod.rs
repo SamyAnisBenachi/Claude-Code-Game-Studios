@@ -3419,22 +3419,56 @@ pub fn handle_submit_button_click_system(
     };
 
     for click in clicks.read() {
-        if *mode != HandUiMode::Staging || click.button != entities.submit_button {
+        // PROMPT 1399 — explicit click-receipt log so live audits can
+        // distinguish "no click event reached the handler" (upstream picking
+        // / bevy_ui interaction gap) from "click reached the handler but
+        // short-circuited downstream" (submit_pending_placements gate). The
+        // 2026-05-18 dev-run audit (AUDIT-1392-P01) could not tell the two
+        // cases apart because no log line bracketed the click handler entry.
+        tracing::info!(
+            target: "client::ui::hand",
+            handler = "handle_submit_button_click_system",
+            click_button = ?click.button,
+            submit_button = ?entities.submit_button,
+            mode = ?*mode,
+            staged_count = pending_placements.staged_count(),
+            placement_timer_submitted = placement_timer.submitted,
+            "hand_ui_submit_click_received"
+        );
+
+        if *mode != HandUiMode::Staging {
+            tracing::info!(
+                target: "client::ui::hand",
+                handler = "handle_submit_button_click_system",
+                reason = "mode_not_staging",
+                mode = ?*mode,
+                "hand_ui_submit_click_short_circuit"
+            );
             continue;
         }
 
-        let submit_is_active = {
-            let Ok((_text, interaction_state)) = submit_buttons.get_mut(entities.submit_button)
-            else {
-                continue;
-            };
-            *interaction_state == HandSubmitInteractionState::Active
-        };
-
-        if !submit_is_active {
+        if click.button != entities.submit_button {
+            tracing::info!(
+                target: "client::ui::hand",
+                handler = "handle_submit_button_click_system",
+                reason = "click_target_not_submit_button",
+                click_button = ?click.button,
+                submit_button = ?entities.submit_button,
+                "hand_ui_submit_click_short_circuit"
+            );
             continue;
         }
 
+        // PROMPT 1399 — the previous `interaction_state == Active` gate was
+        // redundant with `placement_timer.submitted` and silently swallowed
+        // submit clicks whenever the two flags briefly disagreed (e.g.
+        // button spawned `Inactive` before `entering_staging` re-promoted it,
+        // or any future code path that flips presentational state without
+        // flipping the timer). `placement_timer.submitted` is the
+        // authoritative duplicate-submit guard inside
+        // `submit_pending_placements`; gating again here masked the
+        // AUDIT-1392-P01 "Confirm does nothing" symptom. Defer all gating
+        // to the callee, which now logs every short-circuit reason.
         submit_pending_placements(
             &pending_placements,
             entities.submit_button,
@@ -4877,19 +4911,48 @@ fn submit_pending_placements(
     commands: &mut Commands,
     disclosure_state: &mut PlacementDisclosureState,
 ) -> bool {
+    // PROMPT 1399 — `placement_timer.submitted` is the authoritative gate
+    // against duplicate submits within a single Placement round. Every code
+    // path that performs a send sets it to `true` before any peer call can
+    // observe it again; rejection (`handle_placement_rejected_system`) and
+    // phase reset both clear it explicitly.
     if placement_timer.submitted {
+        tracing::info!(
+            target: "client::ui::hand",
+            handler = "submit_pending_placements",
+            reason = "already_submitted",
+            staged_count = pending_placements.staged_count(),
+            "hand_ui_submit_short_circuit"
+        );
         return false;
     }
 
     let Ok((mut text, mut interaction_state)) = submit_buttons.get_mut(submit_button) else {
+        // PROMPT 1399 — make the silent path explicit. The submit button is
+        // a single `HandSubmitButton`-tagged entity referenced from
+        // `HandUiEntities::submit_button`; the only way this branch fires is
+        // a mid-session despawn race, in which case we want a trail.
+        tracing::warn!(
+            target: "client::ui::hand",
+            handler = "submit_pending_placements",
+            reason = "submit_button_query_failed",
+            ?submit_button,
+            "hand_ui_submit_short_circuit"
+        );
         return false;
     };
 
-    if *interaction_state != HandSubmitInteractionState::Active {
-        return false;
-    }
-
     if let Err(error) = validate_submit_placement_spend(pending_placements, economy) {
+        tracing::info!(
+            target: "client::ui::hand",
+            handler = "submit_pending_placements",
+            reason = "validation_failed",
+            ?error,
+            staged_count = pending_placements.staged_count(),
+            current_mana = economy.current_mana,
+            reserve_mana = economy.reserve_mana,
+            "hand_ui_submit_short_circuit"
+        );
         commands.entity(submit_button).insert(error);
         disclosure_state.step = PlacementDisclosureStep::Correction { error };
         return false;
@@ -4898,6 +4961,17 @@ fn submit_pending_placements(
     commands
         .entity(submit_button)
         .remove::<SubmitValidationError>();
+
+    // PROMPT 1399 — the prior `interaction_state != Active` early-return was
+    // dropped here. Its only effect was a silent no-op when the
+    // presentational button state momentarily disagreed with
+    // `placement_timer.submitted` (e.g. the spawn-time `Inactive` default
+    // before `entering_staging` runs, or any future state-sync ordering
+    // bug). `placement_timer.submitted` already prevents duplicate sends,
+    // so deferring all gating to that flag closes the AUDIT-1392-P01
+    // silent-submit hole without weakening duplicate prevention. Authority
+    // stays server-side: this only sends the wire message; the local
+    // ECS view continues to wait for server-confirmed spawns.
 
     let msg = C2SSubmitPlacement {
         placements: pending_placements.placements.clone(),
