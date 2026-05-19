@@ -22,12 +22,15 @@ use client::state::ClientState;
 use client::ui::design_tokens::spacing::{SPACING_LG, SPACING_SM};
 use client::ui::design_tokens::typography;
 use client::ui::lobby::{
-    lobby_all_class_ids, lobby_class_options, LobbyClassButton, LobbyClassPickerBlock,
-    LobbyClassPickerCell, LobbyClassPickerGrid, LobbyClassPickerHeading, LobbyClassPortrait,
-    LobbyInputState, LobbyPanel, LobbyPanelBody, LobbyUiPlugin, LOBBY_CLASS_PICKER_BUTTON_WIDTH_PX,
-    LOBBY_CLASS_PICKER_CELL_HEIGHT_PX, LOBBY_CLASS_PICKER_CELL_WIDTH_PX,
-    LOBBY_CLASS_PICKER_GRID_COLUMNS, LOBBY_CLASS_PICKER_SELECTABLE_COUNT, LOBBY_PANEL_MAX_WIDTH_PX,
-    LOBBY_PANEL_WIDTH_PERCENT,
+    lobby_all_class_ids, lobby_class_options, lobby_selected_class_identity_text, LobbyClassButton,
+    LobbyClassPickerBlock, LobbyClassPickerCell, LobbyClassPickerGrid, LobbyClassPickerHeading,
+    LobbyClassPortrait, LobbyInputState, LobbyPanel, LobbyPanelBody,
+    LobbySelectedClassIdentityPanel, LobbySelectedClassIdentityPortrait,
+    LobbySelectedClassIdentityText, LobbyUiPlugin, LobbyViewState,
+    LOBBY_CLASS_PICKER_BUTTON_WIDTH_PX, LOBBY_CLASS_PICKER_CELL_HEIGHT_PX,
+    LOBBY_CLASS_PICKER_CELL_WIDTH_PX, LOBBY_CLASS_PICKER_GRID_COLUMNS,
+    LOBBY_CLASS_PICKER_SELECTABLE_COUNT, LOBBY_PANEL_MAX_WIDTH_PX, LOBBY_PANEL_WIDTH_PERCENT,
+    LOBBY_SELECTED_CLASS_PANEL_HEIGHT_PX,
 };
 use shared::card::ClassId;
 
@@ -403,4 +406,76 @@ fn ac6_selected_cell_affordance_exists_and_refreshes_without_respawn() {
         iop_after, cra_after,
         "AC6: previously selected Iop cell must return to the non-selected affordance"
     );
+}
+
+#[test]
+fn ac7_selected_class_identity_panel_pairs_portrait_and_status_copy() {
+    test_helpers::init_test_tracing();
+    let mut app = spawn_lobby_test_app();
+    let world = app.world_mut();
+
+    let panel_entity = {
+        let mut panels = world.query_filtered::<Entity, With<LobbySelectedClassIdentityPanel>>();
+        panels
+            .single(world)
+            .expect("AC7: single selected-class identity panel exists")
+    };
+    let panel_node = world
+        .entity(panel_entity)
+        .get::<Node>()
+        .expect("AC7: selected-class identity panel owns a Node");
+    assert_eq!(
+        panel_node.height,
+        Val::Px(LOBBY_SELECTED_CLASS_PANEL_HEIGHT_PX),
+        "AC7: selected-class identity panel must have a stable height"
+    );
+
+    let children = child_entities(world, panel_entity);
+    assert!(
+        children.iter().any(|child| {
+            world
+                .entity(*child)
+                .get::<LobbySelectedClassIdentityPortrait>()
+                .is_some()
+        }),
+        "AC7: selected-class identity panel must carry a portrait child"
+    );
+    assert!(
+        children.iter().any(|child| {
+            world
+                .entity(*child)
+                .get::<LobbySelectedClassIdentityText>()
+                .is_some()
+                && world.entity(*child).get::<Text>().is_some()
+        }),
+        "AC7: selected-class identity panel must carry text status copy"
+    );
+}
+
+#[test]
+fn ac7_selected_class_identity_copy_distinguishes_pre_join_ready_and_waiting() {
+    test_helpers::init_test_tracing();
+    let mut input = LobbyInputState::default();
+    input.selected_class = ClassId::Xelor;
+
+    let pre_join = lobby_selected_class_identity_text(&LobbyViewState::default(), &input);
+    assert!(pre_join.contains("Selected: Xelor"));
+    assert!(pre_join.contains("Create or join"));
+
+    let in_room = LobbyViewState {
+        session_id: Some("session-1".to_string()),
+        ..Default::default()
+    };
+    let ready = lobby_selected_class_identity_text(&in_room, &input);
+    assert!(ready.contains("Selected: Xelor"));
+    assert!(ready.contains("Confirm this class"));
+
+    let locked = LobbyViewState {
+        session_id: Some("session-1".to_string()),
+        locked_class: Some(ClassId::Xelor),
+        ..Default::default()
+    };
+    let waiting = lobby_selected_class_identity_text(&locked, &input);
+    assert!(waiting.contains("Confirmed: Xelor"));
+    assert!(waiting.contains("Waiting for opponent"));
 }
