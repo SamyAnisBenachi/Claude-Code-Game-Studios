@@ -61,7 +61,17 @@ fn sau_015_draft_initial_uses_centered_modal_root_and_panel_constants() {
         modal_node.max_width,
         Val::Px(DRAFT_INITIAL_MODAL_MAX_WIDTH_PX)
     );
-    assert_eq!(modal_node.height, Val::Px(DRAFT_INITIAL_MODAL_HEIGHT_PX));
+    // PROMPT 1349 (Sprint 18 story 026 / Lane J) -- the pre-1349
+    // `height: Val::Px(360.0)` literal was a fixed-pixel ceiling that
+    // never honored the published `max_height: 92 %` cap (PROMPT 1180
+    // §1.4 S-08). The literal is now expressed as `min_height` so the
+    // visual floor at small viewports is preserved while the
+    // `max_height: 92 %` ceiling actually scales with the viewport.
+    assert_eq!(modal_node.height, Val::Auto);
+    assert_eq!(
+        modal_node.min_height,
+        Val::Px(DRAFT_INITIAL_MODAL_HEIGHT_PX)
+    );
     assert_eq!(
         modal_node.max_height,
         Val::Percent(DRAFT_INITIAL_MODAL_MAX_HEIGHT_PERCENT)
@@ -131,7 +141,13 @@ fn sau_015_draft_initial_grid_has_stable_rows_columns_and_spacing() {
     assert_eq!(grid_node.width, Val::Px(DRAFT_INITIAL_GRID_WIDTH_PX));
     assert_eq!(grid_node.height, Val::Px(DRAFT_INITIAL_GRID_HEIGHT_PX));
 
-    for (index, slot) in entities.draft_initial_slots.iter().enumerate() {
+    // PROMPT 1349 (Sprint 18 story 026 / Lane J) -- the pre-1349 slot
+    // placed itself via per-index `position_type: Absolute` + `left =
+    // col * (width + gap)` / `top = row * (height + gap)` (PROMPT 1180
+    // §1.4 S-09). The grid container now uses `Display::Grid` so the
+    // slots auto-place via the 3 × 3 fixed-px template; the per-slot
+    // left/top assertion is replaced by an auto-placement assertion.
+    for slot in entities.draft_initial_slots.iter() {
         assert_eq!(parent_of(&app, *slot), entities.draft_initial_grid);
         assert!(app.world().get::<DraftInitialSlotCard>(*slot).is_some());
         assert_eq!(
@@ -139,22 +155,14 @@ fn sau_015_draft_initial_grid_has_stable_rows_columns_and_spacing() {
             Some(&Visibility::Visible)
         );
 
-        let column = index % 3;
-        let row = index / 3;
         let slot_node = node(&app, *slot);
-        assert_eq!(
-            slot_node.left,
-            Val::Px(
-                column as f32
-                    * (DRAFT_INITIAL_GRID_COLUMN_WIDTH_PX + DRAFT_INITIAL_GRID_COLUMN_GAP_PX)
-            )
-        );
-        assert_eq!(
-            slot_node.top,
-            Val::Px(
-                row as f32 * (DRAFT_INITIAL_GRID_ROW_HEIGHT_PX + DRAFT_INITIAL_GRID_ROW_GAP_PX)
-            )
-        );
+        // Auto-placement -- slot positions come from the grid container,
+        // not per-slot offsets.
+        assert_eq!(slot_node.position_type, PositionType::Relative);
+        assert_eq!(slot_node.left, Val::Auto);
+        assert_eq!(slot_node.top, Val::Auto);
+        // Cell dimensions preserved so visual output matches the
+        // pre-1349 manual-offset layout.
         assert_eq!(slot_node.width, Val::Px(DRAFT_INITIAL_GRID_COLUMN_WIDTH_PX));
         assert_eq!(slot_node.height, Val::Px(DRAFT_INITIAL_GRID_ROW_HEIGHT_PX));
     }
