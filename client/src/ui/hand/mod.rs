@@ -90,8 +90,8 @@ pub const HAND_UI_ENTITY_COUNT: usize = HAND_FAN_SLOT_COUNT
     // into the existing pre-pooled `FanSlotIndex` entity (ADR-021 Impl
     // Guideline 5 preserved — no new top-level pre-pool entries).
     + HAND_FAN_SLOT_COUNT;
-const HAND_CARD_DISPLAY_WIDTH_PX: f32 = 96.0;
-const HAND_CARD_DISPLAY_HEIGHT_PX: f32 = 136.0;
+const HAND_CARD_DISPLAY_WIDTH_PX: f32 = 108.0;
+const HAND_CARD_DISPLAY_HEIGHT_PX: f32 = 150.0;
 const HAND_DRAFT_GRID_CARD_WIDTH_PX: f32 = 120.0;
 const HAND_DRAFT_GRID_CARD_HEIGHT_PX: f32 = 56.0;
 const HAND_DRAG_SPRITE_SCALE: f32 = 1.10;
@@ -109,8 +109,8 @@ impl Default for HandFanLayoutConfig {
         Self {
             fan_base_margin_px: 100.0,
             fan_half_spread_px: 280.0,
-            arc_height_px: 10.0,
-            max_rotation_deg: 10.0,
+            arc_height_px: 20.0,
+            max_rotation_deg: 8.0,
         }
     }
 }
@@ -1394,7 +1394,7 @@ pub fn apply_fan_layout_system(
 }
 
 pub fn apply_reserve_strip_layout_system(
-    viewport: Res<HandFanViewport>,
+    _viewport: Res<HandFanViewport>,
     fan_slots: Query<(&FanSlotIndex, &Node), With<FanSlotIndex>>,
     mut reserve_strips: Query<(&ReserveStripForFanSlot, &mut Node), Without<FanSlotIndex>>,
 ) {
@@ -1411,7 +1411,9 @@ pub fn apply_reserve_strip_layout_system(
         }
 
         if let Some(top) = val_px(fan_node.top) {
-            reserve_node.bottom = Val::Px((viewport.height_px - top + 8.0).max(0.0));
+            let card_top_gap_px = 10.0;
+            reserve_node.bottom =
+                Val::Px((HAND_FAN_STRIP_HEIGHT_PX - top + card_top_gap_px).max(0.0));
         }
     }
 }
@@ -4418,7 +4420,7 @@ fn playable_affordance_overlay_node() -> Node {
         top: Val::Percent(0.0),
         width: Val::Percent(100.0),
         height: Val::Percent(100.0),
-        border: UiRect::all(Val::Px(2.0)),
+        border: UiRect::all(Val::Px(3.0)),
         ..default()
     }
 }
@@ -4430,9 +4432,14 @@ fn unaffordable_affordance_overlay_node() -> Node {
         top: Val::Percent(0.0),
         width: Val::Percent(100.0),
         height: Val::Percent(100.0),
+        border: UiRect::all(Val::Px(1.0)),
         ..default()
     }
 }
+
+const PLAYABLE_AFFORDANCE_FILL: Color = Color::srgba(0.95, 0.78, 0.28, 0.10);
+const UNAFFORDABLE_AFFORDANCE_DIM: Color = Color::srgba(0.0, 0.0, 0.0, 0.28);
+const UNAFFORDABLE_AFFORDANCE_BORDER: Color = Color::srgba(0.46, 0.50, 0.56, 0.72);
 
 /// Spawn the two idle-affordance overlay child nodes for a single pre-pooled
 /// fan slot. Both overlays start `Visibility::Hidden`; the sync system flips
@@ -4455,6 +4462,7 @@ fn spawn_fan_slot_playable_affordance_overlays(
         FanSlotPlayableAffordanceOverlay,
         playable_affordance_overlay_node(),
         BorderColor::all(drag_state_visuals::accent_color()),
+        BackgroundColor(PLAYABLE_AFFORDANCE_FILL),
         Visibility::Hidden,
         ChildOf(slot),
     ));
@@ -4467,7 +4475,8 @@ fn spawn_fan_slot_playable_affordance_overlays(
         HandUiEntity,
         FanSlotPlayableAffordanceUnaffordableOverlay,
         unaffordable_affordance_overlay_node(),
-        BackgroundColor(drag_state_visuals::dim_overlay_color()),
+        BackgroundColor(UNAFFORDABLE_AFFORDANCE_DIM),
+        BorderColor::all(UNAFFORDABLE_AFFORDANCE_BORDER),
         Visibility::Hidden,
         ChildOf(slot),
     ));
@@ -4627,7 +4636,7 @@ enum SlotIconAnchor {
 
 /// Stat badge footprint inside a fan slot — kept symmetric so badges read at
 /// the four corners (MP top-left, AR top-right, ATK bottom-left, HP bottom-right).
-const FAN_SLOT_STAT_BADGE_PERCENT: f32 = 20.0;
+const FAN_SLOT_STAT_BADGE_PERCENT: f32 = 24.0;
 /// Rarity / type icon footprint — smaller than stat badges so the top-center
 /// rarity glyph stays visually distinct from the corner badges flanking it.
 const FAN_SLOT_ICON_PERCENT: f32 = 15.0;
@@ -4691,7 +4700,7 @@ fn stat_badge_label_node() -> Node {
 /// font size keeps typography review in one place.
 fn stat_badge_label_text_font() -> TextFont {
     TextFont {
-        font_size: typography::BODY,
+        font_size: typography::BODY + 1.0,
         ..default()
     }
 }
