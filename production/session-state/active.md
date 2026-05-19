@@ -1,3 +1,192 @@
+# PROMPT 1331 State Banner -- Sprint 18 S18-UI-SETTINGS-PANEL-FLEX-RELAYOUT-001 Story-Done (Polish stage)
+
+Updated 2026-05-19 by PROMPT 1331. Source-of-truth at closure:
+`origin/main@4940a7bdcbf7189a6c1d7adb5cf87edc93022096` (PROMPT 1326
+windows launcher main-land tip `report(prompt-1326): windows launcher
+dedicated main checkout main-land on 5c6e721`). Strict fast-forward
+descendant of PROMPT 1187 dev-story implementation tip
+`8eeb94e3244245850b044e83ffcfff4df0da835f`, PROMPT 1301 Sprint 18
+activation tip `1345c6b8b1cbd543dbd63d279186c93924ca54db`, and PROMPT
+1320 Sprint 18 QA plan main-land tip. Worktree:
+`.claude/worktrees/prompt-1331-settings-panel-flex-relayout-story-done`.
+Branch: `prompt-1331-s18-settings-panel-flex-relayout-story-done`
+(from base `origin/main@4940a7b`).
+
+PROMPT 1331 is a paperwork-only Sprint 18 `/story-done` closure for
+`S18-UI-SETTINGS-PANEL-FLEX-RELAYOUT-001` (Should Have, story 024 in
+`production/epics/ui-clean-pass/`). **First /story-done block of
+Sprint 18.** Single-row closure on the basis of PROMPT 1187 dev-story
+commit `8eeb94e3244245850b044e83ffcfff4df0da835f`
+(`dev-story(s18-ui-settings-panel-flex-relayout): replace absolute
+child stack with bounded flex layout (PROMPT 1187)`): replaces the
+8-child absolute-positioned 760×520 settings panel with a bounded
+flex hierarchy (`panel` flex column with `Overflow::scroll_y` +
+`max_width Percent(92)` + `max_height Percent(92)` → `header_row` →
+`body_row` (flex row, `flex_grow 1`) containing `category_column`
+(width 170 px) + `content_pane` (flex column, `flex_grow 1`,
+`Overflow::scroll_y`) → `footer_row` with
+`JustifyContent::SpaceBetween`). New `SETTINGS_PANEL_MIN_WIDTH_PX =
+540.0` floor preserves room at 75% scale.
+`sync_settings_shell_visibility_system` rewrites
+width/min_width/max_width/max_height every frame.
+`client/src/ui/settings/mod.rs` diff: +218 / -49. NEW
+`tests/integration/accessibility_settings/ui_scale_invariant_test.rs`
+324 lines, 8 `#[test]` declarations covering AC1..AC8 + marker
+counts + focus-order traversal. `client/Cargo.toml` +4 lines. Total
+3 files / 498 insertions / 49 deletions per PROMPT 1187 commit. No
+separate `/integrate` prompt; impl landed pre-Sprint-18 activation
+and was inherited at the Sprint 18 activation tip `1345c6b` per
+PROMPT 1301. PROMPT 1324 readiness audit row 6 verdict:
+`READY_FOR_STORY_DONE` with minor test-path mismatch advisory
+(paperwork-only). AC1..AC13 PASS; AC7 PASS-STRUCTURAL +
+ADVISORY-EVIDENCE-DEFERRED.
+
+**PROMPT 1324 test-path mismatch advisory** preserved explicitly:
+spec path per story-024 `Owned files` + `production/qa/qa-plan-sprint-18.md`
+Row 10 §"Required automated tests" is
+`tests/integration/settings/ui_scale_invariant_test.rs`; actual
+landed path per PROMPT 1187 commit `8eeb94e` on `origin/main@4940a7b`
+is `tests/integration/accessibility_settings/ui_scale_invariant_test.rs`.
+Same surface coverage; the actual directory is consistent with the
+established pattern (sibling tests `settings_shell_test.rs` +
+`timer_selector_test.rs` already live under
+`accessibility_settings/`). PROMPT 1331 selects PROMPT 1324
+discharge option (a): accept the actual landed path as the binding
+test artifact; record the directory mismatch explicitly in story
+Completion Notes, in `production/sprint-status.yaml`
+`sprint_18_story_done:` PROMPT 1331
+`paperwork_advisory.test_path_mismatch:` sub-block, in this banner,
+in the codex-orchestrator-state.md PROMPT 1331 paragraph, and in
+the PROMPT 1331 final report — NOT hidden. Story-024 narrative
+(`Owned files` + 1180 Lane Coverage table) and qa-plan Row 10
+`Required automated tests` / `Owned-file scope` preserve the spec
+path wording verbatim; PROMPT 1331 does NOT rewrite those references
+(allowed-files scope forbids touching `production/qa/**` +
+`production/sprints/**`). Mirrors the PROMPT 1110 "PROMPT 1106
+evidence-file trailing-whitespace advisory" precedent.
+
+**Evidence directory deferred advisory** preserved explicitly:
+optional `production/qa/evidence/sprint-18-settings-flex-relayout/`
+screenshot directory was not authored at activation. Story-024
+`Owned files` explicitly lists it as "Optional AC7 screenshots". The
+structural integration test in
+`tests/integration/accessibility_settings/ui_scale_invariant_test.rs`
+is the binding AC7 gate (visual-hierarchy structural assertions
+inside the test file). ADVISORY recorded here and in the story
+Completion Notes; not hidden.
+
+**Paperwork mis-attribution diagnostic finding** preserved
+explicitly: PROMPT 1324 §3 flagged paperwork mis-attributions at
+`production/sprints/sprint-18.md:206` and
+`production/qa/qa-plan-sprint-18.md:653` (both cite "no explicit
+commit captured"; correct is `8eeb94e` per PROMPT 1187). These are
+**outside PROMPT 1331 allowed-files scope** (sprint plan + QA plan
+are forbidden). A follow-on paperwork prompt MAY thread those
+corrections into the sprint plan + QA plan.
+
+Sprint 18 progress after PROMPT 1331: 1 of 12 active rows DONE
+(Must Have 0/4 + Should Have 1/6 + Nice to Have 0/2). Rows preserved
+as their current status and **NOT** closed by PROMPT 1331:
+`S11-HUD-TIMER-EYEBALL-VISUAL-001` (Must Have human-operator-blocked
+carry; no LLM `/story-done` authorised);
+`S18-AUCTION-WON-CARD-DISPOSITION-001`,
+`S18-UI-PLAY-AREA-CONTAINER-001`,
+`S18-UI-LAYOUT-CONTRACT-DOC-AND-LINT-001` (3 of 4 Must Have);
+`S18-UI-HAND-MANA-PREVIEW-DURING-DRAG-001`,
+`S18-UI-HAND-IDLE-PLAYABLE-AFFORDANCE-001`,
+`S18-UI-VIEWPORT-INVARIANT-LIVE-HARNESS-001`,
+`S18-UI-CARD-ART-AND-LABEL-STRIP-001`,
+`S18-OBS-SNAPSHOT-LAYOUT-FIELDS-001` (5 of 6 Should Have);
+`S18-UI-INTERACTION-STATE-MIGRATION-WAVE-2-001`,
+`S18-UI-OVERLAY-PANEL-OVERFLOW-HARDENING-001` (2 of 2 Nice to Have).
+
+All non-claims preserved verbatim: `S8-QA-001-W1` OPEN,
+`QA-COND-0005` / `QA-COND-0006` accepted-risk (this row is a
+PRECONDITION for Standard-tier accessibility, not closure),
+`PAW-TD-*-a` preserved, `TQ-S12-C1..C7` preserved
+(`TQ-S12-C7` explicitly NOT closed), PROMPT 683-era runtime
+divergence preserved, PROMPT 761 `Polish->Release` FAIL preserved
+with NO retry, PROMPT 1054 P1 UI snapshot retest BLOCKED-HUMAN
+preserved, 24 PROMPT 1022 QA snapshot audit findings preserved,
+long-tail AUDIT-1076-* + SOURCE-1077-* findings outside concrete
+repairs already on `origin/main` preserved, no LLM closure of
+`S11-HUD-TIMER-EYEBALL-VISUAL-001`, no silent closure of
+`S17-UI-HUD-OPP-MANA-CLEANUP-001` parent-row paperwork gap. Stage
+`Polish` UNCHANGED; `production/stage.txt` NOT modified. Sprint 18
+disposition `active` UNCHANGED.
+
+Files changed by PROMPT 1331:
+
+- `production/epics/ui-clean-pass/story-024-ui-settings-panel-flex-relayout.md`
+  (Status banner Draft -> Done; Closure source-of-truth + Sprint
+  disposition lines added; AC1..AC13 [x] with per-AC VERDICT lines
+  (AC7 PASS-STRUCTURAL + ADVISORY-EVIDENCE-DEFERRED); Status /
+  No-Claim Banner refreshed to closure wording; Completion Notes
+  section added with PROMPT 1187 worker summary + PROMPT 1324
+  test-path mismatch advisory sub-section + Test Evidence
+  sub-section; Closure Trail table populated with PROMPT 1180 /
+  1187 / 1189 / 1232 / 1263 / 1287 / 1292 / 1301 / 1320 / 1324 /
+  1331 entries; final status line flipped DRAFT -> DONE).
+- `production/epics/ui-clean-pass/EPIC.md` (story 024 Stories table
+  row Status column flipped from Draft -- future Sprint 18 candidate
+  to Done -- Sprint 18 Should Have closure with paperwork advisory
+  note).
+- `production/sprint-status.yaml` (S18-UI-SETTINGS-PANEL-FLEX-RELAYOUT-001
+  row in top-level stories: block flipped `status: ready -> done`
+  with `completed: 2026-05-19` + worker / integration / evidence
+  metadata + closure source-of-truth + PROMPT 1324 paperwork
+  advisory notes; `sprint_18_activation.active_set.should_have`
+  entry for this row annotated with `status_post_closure:`;
+  `sprint_18_story_done:` block authored fresh at EOF with full
+  PROMPT 1331 disposition block including AC1..AC13 outcomes,
+  `paperwork_advisory.test_path_mismatch:` sub-block,
+  `paperwork_advisory.evidence_directory_deferred:` sub-block,
+  `rows_not_closed_by_prompt_1331` enumerating the 11 remaining
+  Sprint 18 active rows, `conditions_carried_forward_unchanged` +
+  `explicitly_not_claimed` + `files_changed_by_prompt_1331` +
+  `forbidden_changes_observed` sections).
+- `production/session-state/active.md` (this PROMPT 1331 banner
+  prepended above PROMPT 1301 banner).
+- `production/session-state/codex-orchestrator-state.md` (PROMPT
+  1331 paragraph prepended above PROMPT 1301 paragraph).
+- `reports/PROMPT-1331-s18-settings-panel-flex-relayout-story-done.md`
+  (mandatory final report file; `reports/` is gitignored; not
+  staged or committed).
+
+Files explicitly NOT touched by PROMPT 1331: `client/`, `server/`,
+`shared/`, `tests/` (in particular
+`tests/integration/accessibility_settings/ui_scale_invariant_test.rs`
+preserved verbatim on `origin/main` via PROMPT 1187 dev-story; no
+rename to `tests/integration/settings/`), `Cargo.toml`,
+`Cargo.lock`, `.cargo/`, `.github/`, `Trunk.toml`,
+`production/stage.txt`, `production/sprints/**` (sprint-18 plan body
+NOT rewritten; PROMPT 1324 diagnostic finding for line 206
+mis-attribution NOT discharged by PROMPT 1331),
+`production/qa/qa-plan-sprint-18.md` (PROMPT 1324 diagnostic finding
+for line 653 mis-attribution NOT discharged by PROMPT 1331),
+`production/qa/smoke-*.md`, `production/qa/team-qa-*.md`,
+`production/qa/evidence/*` (sprint-18-settings-flex-relayout/ NOT
+created), `production/gate-checks/**` (PROMPT 761 FAIL preserved
+with NO retry), `docs/architecture/adr-*.md`, any Sprint 18 / 17 /
+16 / 15 / 14 / 13 / 12 / 11 / 10 story file under `production/epics/`
+other than story-024 + ui-clean-pass/EPIC.md, `.octogent/`,
+`.claude/scheduled_tasks.lock`, `.claude/settings.json`.
+
+Cargo policy: N/A (paperwork-only; no `cargo` or `trunk` invocation
+by PROMPT 1331).
+
+Current next action: launch the next paperwork-only Sprint 18
+`/story-done` row(s) -- e.g. `S18-UI-HAND-MANA-PREVIEW-DURING-DRAG-001`
+(impl PROMPT 1228 `8d0a3d3`), `S18-UI-HAND-IDLE-PLAYABLE-AFFORDANCE-001`
+(impl PROMPT 1239 / 1243 `50b66ad` + `4c75cec`),
+`S18-UI-VIEWPORT-INVARIANT-LIVE-HARNESS-001` (impl PROMPT 1185
+`671c677`), `S18-OBS-SNAPSHOT-LAYOUT-FIELDS-001` (impl PROMPT 1186
+`d75db1a` per PROMPT 1324 §3 vs PROMPT 1287 mis-attribution), and
+`S18-UI-LAYOUT-CONTRACT-DOC-AND-LINT-001` (effectively-implemented
+paperwork-only candidate). Each /story-done is a small disjoint edit
+on its own row + sprint-status.yaml entry; parallel-safe per PROMPT
+1324 §2 cross-row matrix (EPIC.md serialisation only).
+
 # PROMPT 1301 State Banner -- Sprint 18 Activated (Polish stage)
 
 Updated 2026-05-18 by PROMPT 1301. Source-of-truth at activation:
