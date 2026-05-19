@@ -1,3 +1,81 @@
+# PROMPT 1337 State Banner -- S18-UI-LAYOUT-CONTRACT-DOC-AND-LINT-001 `/story-done` Closed (Sprint 18 Must Row 4)
+
+Updated 2026-05-19 by PROMPT 1337. Source-of-truth at closure:
+`origin/main@72b89ca9702eed5fc9149b92a2d8b7cc1d56aad6` (PROMPT 1335
+main-land tip for the PROMPT 1334 AC9 cross-link backfill;
+`docs(ux): backfill global-ui-design-spec cross-link to global-ui-layout-contract (PROMPT 1334)`).
+Worktree: `D:/_DEV/claude-code-game-studios-worktrees/prompt-1337-story-done-relaunch`
+on branch `work/s18-ui-layout-contract-doc-and-lint-story-done-relaunch-1337`.
+
+PROMPT 1337 closes Sprint 18 Must Have Row 4 `S18-UI-LAYOUT-CONTRACT-DOC-AND-LINT-001`
+as the relaunch of `/story-done` after PROMPT 1327 returned `NEEDS_WORK`
+on the AC9 hard gap (`reports/PROMPT-1327-...md`). PROMPT 1334 authored
+the cross-link bullet from `docs/ux/global-ui-design-spec.md` to
+`docs/ux/global-ui-layout-contract.md`; PROMPT 1335 main-landed at
+`72b89ca` (+5 lines / 0 deletions; body otherwise unchanged). PROMPT
+1337 re-runs the per-AC walk against the post-1335 main tip and finds
+AC1..AC5 + AC7..AC16 PASS; AC6 ADVISORY (L4 chip-side static lint
+deferred per contract §10 false-positive-surface rationale; advisory
+preserved per PROMPT 1323 + PROMPT 1327 directive + PROMPT 1337
+re-confirmation -- no new hard blocker).
+
+Implementation lineage: PROMPT 1188 worker commit `c2eaab0`
+(`docs(s18-ui-layout-contract): author layout contract + button/chip
+lint (PROMPT 1188)` -- NEW `docs/ux/global-ui-layout-contract.md` 553
+lines + NEW `tests/integration/ui_clean_pass/button_vs_chip_lint_test.rs`
+629 lines + `client/Cargo.toml` `[[test]]` registration); PROMPT 1208
+integration commit `ae8f7d1` (`integrate(s18-ui-layout-contract): bump
+hand reserve-strip baseline line 3774 -> 3783 (PROMPT 1208)`); PROMPT
+1334 / 1335 AC9 cross-link backfill at `72b89ca`. Zero changes under
+`client/src/**`, `server/src/**`, `shared/src/**` across PROMPT 1188 +
+1208 + 1334 + 1335 + 1337 commits combined (AC13 PASS).
+
+Paperwork-only `/story-done` relaunch by PROMPT 1337: flips
+`production/sprint-status.yaml` Row 4 `status: ready -> done` +
+populates closure metadata (worker / integration / ac9-backfill /
+story-done prompt + commit refs + notes); appends `sprint_18_story_done:`
+block at EOF (first Sprint 18 closure block, sibling structure to
+`sprint_17_story_done:`); flips `production/epics/ui-clean-pass/story-
+027-ui-layout-contract-doc-and-lint.md` Status banner `Draft -> Done`
++ AC checkboxes (AC6 left advisory `[ ]` with inline note); updates
+`production/epics/ui-clean-pass/EPIC.md` Story 027 row Status column
+`Draft -- future Sprint 18 candidate ... NOT activated -> Done -- Sprint
+18 Must Have (closed PROMPT 1337 on origin/main@72b89ca)`; prepends this
+PROMPT 1337 banner above the prior PROMPT 1301 Sprint 18 activation
+banner; prepends a PROMPT 1337 paragraph above the prior PROMPT 1301
+paragraph in `production/session-state/codex-orchestrator-state.md`.
+NO Cargo / trunk / CI invocation; AC4 + AC11 + AC12 + AC16 trusted from
+PROMPT 1188 + 1208 commit lineage per `/story-done` paperwork policy.
+
+Carried conditions preserved verbatim: S11-HUD-TIMER-EYEBALL-VISUAL-001
+Sprint 13 -> 14 -> 15 -> 16 -> 17 -> 18 human-operator-blocked carry
+(no LLM `/story-done` authorised); S17-UI-HUD-OPP-MANA-CLEANUP-001
+parent-row paperwork gap (no silent closure); S8-QA-001-W1 OPEN;
+QA-COND-0005 accept-risk; QA-COND-0006 accept-risk; PAW-TD-*-a
+accept-risk; TQ-S12-C1..C7 preserved (TQ-S12-C7 NOT closed); PROMPT
+1054 BLOCKED-HUMAN-OPERATOR preserved; PROMPT 761 Polish->Release
+gate-check FAIL preserved at `production/gate-checks/gate-polish-release-
+2026-05-12.md` with NO retry; `production/stage.txt` NOT modified.
+
+Sprint 18 status snapshot at PROMPT 1337 closure: 1 of 4 Must Have row
+DONE (Row 4 S18-UI-LAYOUT-CONTRACT-DOC-AND-LINT-001 closed by PROMPT
+1337); 3 of 4 Must Have rows remain `ready` (S11-HUD-TIMER-EYEBALL-VISUAL-
+001 human-operator-blocked carry + S18-AUCTION-WON-CARD-DISPOSITION-001 +
+S18-UI-PLAY-AREA-CONTAINER-001); 6 Should Have + 2 Nice to Have rows
+remain `ready`. Sprint 18 disposition `active` UNCHANGED; stage `Polish`
+UNCHANGED. Sprint 18 NOT closed-out by PROMPT 1337.
+
+Non-claims preserved: no public release readiness, no RC readiness, no
+full game completion, no Polish->Release retry, no stage advance, no
+LLM closure of S11-HUD-TIMER-EYEBALL-VISUAL-001, no silent closure of
+S17-UI-HUD-OPP-MANA-CLEANUP-001 parent row, no closure of any AUDIT-
+1131-* / AUDIT-1076-* / SOURCE-1077-* / PROMPT 1022 / 1076 / 1077
+finding outside concrete repairs already on origin/main, no Sprint
+10-17 row reopen, no Sprint 17 close-out reopen, no Sprint 18 close-out
+claim.
+
+---
+
 # PROMPT 1301 State Banner -- Sprint 18 Activated (Polish stage)
 
 Updated 2026-05-18 by PROMPT 1301. Source-of-truth at activation:
