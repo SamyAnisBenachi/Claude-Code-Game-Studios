@@ -41,11 +41,26 @@ The asset path convention is derived from the existing `asset_wiring.rs` pattern
 | TR-PAW-004 | HUD class figurines (7 variants), phase timer bar, and 4 objective dot states wired with `ImageNode::new()` | ADR-021 |
 | TR-PAW-005 | Board unit `Sprite.image` wired per `ClassId` as world-space sprite; fallback to `UNIT_PLACEHOLDER_ASSET`; board chrome path constants | ADR-021 |
 | TR-PAW-006 | Lobby class portraits (7 variants), player slot panel backgrounds, and room code chip wired with `ImageNode::new()` | ADR-021 |
-| TR-PAW-007 | Dev-only Krosmaga proxy pack/provenance boundary: logical asset IDs, three-axis provenance taxonomy, release scan failure on dev proxies, no Krosmaga files under `assets/**` | ADR-021 |
+| TR-PAW-007 | Dev-only Krosmaga proxy pack/provenance boundary: logical asset IDs, three-axis provenance taxonomy, release scan failure on dev proxies, no Krosmaga files under `assets/**` | ADR-021, ADR-025 |
 
 ## Traceability Notes
 
-Story 001 is cross-surface infrastructure; TR-PAW-001 covers the foundation resource and all path constants. Stories 002–006 are surface-specific and trace to the surface's primary GDD. All stories reference ADR-021 as the sole governing ADR — ADR-021 is the authority on `ImageNode` vs `Sprite` boundary and path constant organisation.
+Story 001 is cross-surface infrastructure; TR-PAW-001 covers the foundation resource and all path constants. Stories 002–006 are surface-specific and trace to the surface's primary GDD. All stories reference ADR-021 as the sole governing ADR — ADR-021 is the authority on `ImageNode` vs `Sprite` boundary and path constant organisation. Story 007 adds ADR-025 as a second governing ADR for the asset-pack provenance boundary it introduces; ADR-025 layers on top of ADR-021 and does not alter the rendering boundary.
+
+### Logical-ID / Source-Swap Invariant (TR-PAW-007)
+
+Per [ADR-025](../../../docs/architecture/adr-025-asset-pack-provenance-architecture.md),
+every UI surface's art reference is identified by a stable **logical asset
+ID** (`lid_*`) that is independent of which concrete file currently
+resolves it. Final art delivery is a single remap of the logical ID to a
+new concrete path (or pack entry); no call-site change is required.
+Krosmaga-derived dev-only proxies resolve through the same logical-ID
+layer on a developer workstation but live under gitignored
+`dev-assets/krosmaga-proxy/` and are hard-failed by the
+`tools/asset-provenance/check_release.py` validator before they can ever
+reach a packaged build. The logical-ID index lives at
+`design/assets/provenance/logical-id-index.md`. The release-scan rules
+live at `design/assets/provenance/schema.md`.
 
 ## Dependency Map
 

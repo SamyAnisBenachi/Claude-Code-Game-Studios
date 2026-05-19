@@ -1,0 +1,22 @@
+{
+  "manifest_version": 1,
+  "description": "FAIL fixture: a Krosmaga proxy row has leaked into the release manifest. Validator must hard-fail (rule_1).",
+  "logical_assets": [
+    {
+      "logical_id": "lid_card_frame_common",
+      "workflow_status": "approved",
+      "source_class": "studio_original",
+      "release_class": "release_allowed",
+      "approval_evidence": "production/qa/sign-off-2026-05-20-card-frames.md",
+      "path": "art/ui/card/ui_card_frame_common_hand.png"
+    },
+    {
+      "logical_id": "lid_card_frame_legendary",
+      "workflow_status": "needed",
+      "source_class": "licensed_krosmaga_dev_proxy",
+      "release_class": "dev_only",
+      "approval_evidence": null,
+      "path": "art/ui/card/ui_card_frame_legendary_hand.png"
+    }
+  ]
+}
