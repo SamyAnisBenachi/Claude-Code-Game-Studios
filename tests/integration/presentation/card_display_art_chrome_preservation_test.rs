@@ -18,6 +18,7 @@
 use bevy::asset::AssetPlugin;
 use bevy::prelude::*;
 use bevy::state::app::StatesPlugin;
+use bevy::ui::widget::NodeImageMode;
 use client::asset_wiring::{
     apply_card_display_art, clear_card_display_art, AssetWiringPlugin, CardDisplayArtAsset,
     CardDisplayArtFallback, CardDisplayArtFallbackReason, MissingCardArtWarnings,
@@ -251,6 +252,98 @@ fn shop_slot_happy_path_apply_sets_card_art_binding() {
     assert!(
         app.world().get::<CardDisplayArtFallback>(slot).is_none(),
         "happy-path apply must not leave a fallback marker"
+    );
+}
+
+// ── PROMPT 1403 / V-P0-01 / RC-6: card-art image_mode must not be Stretch ──
+
+#[test]
+fn shop_slot_happy_path_apply_carries_non_stretch_image_mode() {
+    // PROMPT 1403 / V-P0-01 / RC-6 — `apply_card_display_art` is the single
+    // chokepoint every card-art swap routes through (hand fan, shop slot,
+    // draft-initial slot, auction featured). The previous body wrote
+    // `ImageNode::new(handle)` with no explicit `image_mode`; any future
+    // consumer site that overrode the slot's `ImageNode` to `Stretch`
+    // would silently re-create the UI-1129-05 banner-stretch defect. The
+    // helper now binds the canonical `NodeImageMode::Auto` policy via
+    // `card_slot_art_image_mode()` so the contract is structural.
+    //
+    // Bevy 0.18's `NodeImageMode` enum has no `Fit` variant — `Auto` is
+    // the justified mapping (story-022 AC2 "Fit or Auto with
+    // justification"); see `client::ui::design_tokens::card_slot`
+    // documentation for the full rationale.
+    test_helpers::init_test_tracing();
+    let mut app = make_app();
+    enter_session(&mut app);
+    let slot = spawn_chrome_slot(&mut app);
+    let known_card = card(1, "iop_knight_001");
+    let asset_server_clone = app.world().resource::<AssetServer>().clone();
+
+    {
+        let mut commands_queue = app.world_mut().commands();
+        apply_card_display_art(
+            &mut commands_queue,
+            slot,
+            Some(&known_card),
+            Some(&asset_server_clone),
+        );
+    }
+    app.update();
+
+    let image_node = app
+        .world()
+        .get::<ImageNode>(slot)
+        .expect("happy-path apply must bind an ImageNode on the slot");
+    assert!(
+        !matches!(image_node.image_mode, NodeImageMode::Stretch),
+        "PROMPT 1403 / RC-6 — apply_card_display_art must bind a non-Stretch image_mode (got {:?})",
+        image_node.image_mode,
+    );
+    assert!(
+        matches!(image_node.image_mode, NodeImageMode::Auto),
+        "PROMPT 1403 / RC-6 — apply_card_display_art must bind the canonical NodeImageMode::Auto policy (got {:?})",
+        image_node.image_mode,
+    );
+}
+
+#[test]
+fn missing_sentinel_apply_carries_non_stretch_image_mode() {
+    // PROMPT 1403 / V-P0-01 / RC-6 — the documented `"missing"` sentinel
+    // routes through `CARD_ART_PLACEHOLDER_ASSET` via the Ok branch and
+    // therefore goes through the same `ImageNode` insert as the happy
+    // path. The chokepoint contract must hold for sentinel art too,
+    // otherwise placeholder portraits would still stretch.
+    test_helpers::init_test_tracing();
+    let mut app = make_app();
+    enter_session(&mut app);
+    let slot = spawn_chrome_slot(&mut app);
+    let sentinel_card = card(99, CARD_ART_MISSING_SENTINEL);
+    let asset_server_clone = app.world().resource::<AssetServer>().clone();
+
+    {
+        let mut commands_queue = app.world_mut().commands();
+        apply_card_display_art(
+            &mut commands_queue,
+            slot,
+            Some(&sentinel_card),
+            Some(&asset_server_clone),
+        );
+    }
+    app.update();
+
+    let image_node = app
+        .world()
+        .get::<ImageNode>(slot)
+        .expect("sentinel apply must bind an ImageNode on the slot");
+    assert!(
+        !matches!(image_node.image_mode, NodeImageMode::Stretch),
+        "PROMPT 1403 / RC-6 — sentinel apply must not bind NodeImageMode::Stretch (got {:?})",
+        image_node.image_mode,
+    );
+    assert!(
+        matches!(image_node.image_mode, NodeImageMode::Auto),
+        "PROMPT 1403 / RC-6 — sentinel apply must bind NodeImageMode::Auto (got {:?})",
+        image_node.image_mode,
     );
 }
 
