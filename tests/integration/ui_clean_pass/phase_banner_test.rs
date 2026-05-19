@@ -26,9 +26,10 @@ use bevy::state::app::StatesPlugin;
 use bevy::time::TimePlugin;
 use client::state::{ClientState, CurrentClientPhase};
 use client::ui::{
-    phase_banner_label_for, PhaseBannerLabel, PhaseBannerPanel, PhaseBannerPlugin,
-    PhaseBannerRoot, PHASE_BANNER_LIFETIME, PHASE_BANNER_MAX_WIDTH_PERCENT,
-    PHASE_BANNER_MAX_WIDTH_PX,
+    phase_banner_label_for, PhaseBannerLabel, PhaseBannerPanel, PhaseBannerPlugin, PhaseBannerRoot,
+    PHASE_BANNER_BACKGROUND_COLOR, PHASE_BANNER_BORDER_COLOR, PHASE_BANNER_LIFETIME,
+    PHASE_BANNER_MAX_WIDTH_PERCENT, PHASE_BANNER_MAX_WIDTH_PX, PHASE_BANNER_MIN_HEIGHT_PX,
+    PHASE_BANNER_TEXT_COLOR,
 };
 use shared::protocol::RoundPhase;
 
@@ -139,6 +140,41 @@ fn ac3_banner_panel_declares_bounded_max_width() {
     assert!(
         PHASE_BANNER_MAX_WIDTH_PERCENT < 100.0,
         "AC3: panel max_width % must leave horizontal breathing room at every viewport"
+    );
+    assert_eq!(
+        panel.min_height,
+        Val::Px(PHASE_BANNER_MIN_HEIGHT_PX),
+        "AC3: banner panel should reserve enough vertical chrome for the phase callout"
+    );
+}
+
+#[test]
+fn ac3_banner_panel_uses_readable_layered_chrome() {
+    test_helpers::init_test_tracing();
+    let mut app = app_with_phase_banner_in_session();
+
+    app.update();
+    set_phase(&mut app, RoundPhase::DraftShop);
+    app.update();
+
+    let panel = single_panel(&mut app);
+    assert_eq!(
+        app.world()
+            .get::<BackgroundColor>(panel)
+            .map(|color| color.0),
+        Some(PHASE_BANNER_BACKGROUND_COLOR),
+        "phase banner panel should use the shared readable background"
+    );
+    assert_eq!(
+        app.world().get::<BorderColor>(panel).map(|color| color.top),
+        Some(PHASE_BANNER_BORDER_COLOR),
+        "phase banner panel should use the shared bright border"
+    );
+    let label = single_banner_label(&mut app);
+    assert_eq!(
+        app.world().get::<TextColor>(label).map(|color| color.0),
+        Some(PHASE_BANNER_TEXT_COLOR),
+        "phase banner label should use the shared readable text color"
     );
 }
 
@@ -271,6 +307,14 @@ fn single_banner_phase(app: &mut App) -> RoundPhase {
 }
 
 fn single_panel_node(app: &mut App) -> Node {
+    let panel = single_panel(app);
+    app.world()
+        .get::<Node>(panel)
+        .expect("banner panel must carry a Node component")
+        .clone()
+}
+
+fn single_panel(app: &mut App) -> Entity {
     let entities: Vec<Entity> = app
         .world_mut()
         .query_filtered::<Entity, With<PhaseBannerPanel>>()
@@ -282,13 +326,10 @@ fn single_panel_node(app: &mut App) -> Node {
         "expected exactly one banner panel; found {}",
         entities.len()
     );
-    app.world()
-        .get::<Node>(entities[0])
-        .expect("banner panel must carry a Node component")
-        .clone()
+    entities[0]
 }
 
-fn banner_label_text(app: &mut App) -> String {
+fn single_banner_label(app: &mut App) -> Entity {
     let entities: Vec<Entity> = app
         .world_mut()
         .query_filtered::<Entity, With<PhaseBannerLabel>>()
@@ -300,8 +341,13 @@ fn banner_label_text(app: &mut App) -> String {
         "expected exactly one banner label; found {}",
         entities.len()
     );
+    entities[0]
+}
+
+fn banner_label_text(app: &mut App) -> String {
+    let label = single_banner_label(app);
     app.world()
-        .get::<Text>(entities[0])
+        .get::<Text>(label)
         .expect("banner label must carry a Text component")
         .0
         .clone()

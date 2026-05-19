@@ -27,6 +27,7 @@ pub use design_tokens::play_area::{PlayArea, PlayAreaPlugin, PlayAreaRoot, PlayA
 // in-session UI plugins.
 pub use phase_banner::{
     phase_banner_label_for, PhaseBannerLabel, PhaseBannerPanel, PhaseBannerPlugin,
-    PhaseBannerRoot, PHASE_BANNER_LIFETIME, PHASE_BANNER_MAX_WIDTH_PERCENT,
-    PHASE_BANNER_MAX_WIDTH_PX,
+    PhaseBannerRoot, PHASE_BANNER_BACKGROUND_COLOR, PHASE_BANNER_BORDER_COLOR,
+    PHASE_BANNER_LIFETIME, PHASE_BANNER_MAX_WIDTH_PERCENT, PHASE_BANNER_MAX_WIDTH_PX,
+    PHASE_BANNER_MIN_HEIGHT_PX, PHASE_BANNER_TEXT_COLOR,
 };
