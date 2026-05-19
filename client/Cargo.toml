@@ -900,6 +900,13 @@ path = "../tests/integration/board_rendering/resolution_anim_queue_test.rs"
 name = "board_rendering_resolution_combat_feedback_test"
 path = "../tests/integration/board_rendering/resolution_combat_feedback_test.rs"
 
+# PROMPT 1390 (S19-BR-PLAYAREA-HIERARCHY-TARGETING-FEEDBACK-001) — targeting
+# overlay feedback (dim, valid/endpoint rings, invalid marker, source-card
+# link) + QA snapshot AC9 fields.
+[[test]]
+name = "board_rendering_targeting_feedback_test"
+path = "../tests/integration/board_rendering/targeting_feedback_test.rs"
+
 [[test]]
 name = "asset_wiring_foundation_test"
 path = "../tests/integration/presentation/asset_wiring_foundation_test.rs"
