@@ -114,7 +114,7 @@ use crate::ui::hand::{
 };
 use crate::ui::hud::{HudClassReveal, HudMode, HudPlayerIds, PhaseTimerState};
 use crate::ui::shop_auction::{
-    AuctionBidKeyboardFocus, AuctionLocallyPassed, ShopAuctionAuctionPanelState,
+    AuctionBidKeyboardFocus, AuctionLocallyPassed, AuctionWonPending, ShopAuctionAuctionPanelState,
     ShopAuctionAuctionState, ShopAuctionDraftInitialState, ShopAuctionLocalGoldView,
     ShopAuctionSettlementOutcome, ShopAuctionSettlementState, ShopAuctionShopState,
     ShopAuctionShopTimerState, ShopAuctionToastState, ShopAuctionUiMode,
@@ -424,7 +424,44 @@ pub struct QASnapshotData {
     /// across phases: `available = false` + nested `null`s outside the
     /// auction phase. See [`AuctionStateSnapshot`].
     pub auction_state: AuctionStateSnapshot,
+    /// PROMPT 1347 (S18-AUCTION-WON-CARD-DISPOSITION-001 / AUDIT-1131-02
+    /// Lane D3 + §6 row 3) — pending auction-won disposition block. Present
+    /// only on the winner client during the auction-followup PLACEMENT
+    /// window; absent in every other case (non-winner clients, Case B
+    /// no-winner settlements, non-auction-followup PLACEMENT phases, after
+    /// successful submit of the won-card, after phase change to Resolution
+    /// or later). The `skip_serializing_if` annotation ensures the field
+    /// is omitted from the serialised JSON when `None` rather than being
+    /// emitted as `null` — the "absent (NOT `null` — absent)" contract
+    /// from the AC11 spec.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub auction_won_pending: Option<AuctionWonPendingSnapshot>,
     pub warnings: Vec<String>,
+}
+
+/// PROMPT 1347 / AC11 — AC11 snapshot block shape. Emitted at the top of
+/// the snapshot JSON only on the winner client during the auction-followup
+/// PLACEMENT window; absent otherwise.
+///
+/// Field-name choices:
+/// - `card_id`: matches the wire-level `S2CCardAcquired.card_id` and
+///   `S2CAuctionSettled.card_id` (when emitted server-side).
+/// - `acquired_phase`: "Placement" while the block exists (the block is
+///   only present in PLACEMENT). Stable string keeps JSON greppable.
+/// - `settle_round`: `phase_view.round_number` captured at auction
+///   settle. Enables cross-correlation with the server-side AC10 log line.
+/// - `staged_yet`: `true` once the won card appears in
+///   `PendingPlacements`.
+/// - `submitted_yet`: `true` once `PlacementTimer::submitted` fires while
+///   the won card was previously staged. Block becomes absent on the
+///   same frame.
+#[derive(Debug, Clone, Serialize)]
+pub struct AuctionWonPendingSnapshot {
+    pub card_id: u32,
+    pub acquired_phase: &'static str,
+    pub settle_round: u32,
+    pub staged_yet: bool,
+    pub submitted_yet: bool,
 }
 
 /// Metadata describing the screenshot bundled alongside `snapshot.json`.
@@ -1094,6 +1131,23 @@ pub struct ShopAuctionExtrasSnapshot {
     pub bid_keyboard_focus: Option<String>,
     pub locally_passed: bool,
     pub toast: Option<ToastSnapshot>,
+    /// PROMPT 1347 / AC11 — captured raw state of the
+    /// [`AuctionWonPending`] resource so the snapshot builder can project
+    /// the top-level `auction_won_pending` block consistently. `None` when
+    /// the resource is absent or has no pending state; the top-level
+    /// block respects this as "block absent".
+    pub auction_won_pending_state: Option<AuctionWonPendingExtrasSnapshot>,
+}
+
+/// PROMPT 1347 / AC11 — raw captured state used as the projection input
+/// for [`AuctionWonPendingSnapshot`] at the top level. Public so unit
+/// tests can construct it directly without spinning up the resource.
+#[derive(Debug, Clone, Copy, Serialize)]
+pub struct AuctionWonPendingExtrasSnapshot {
+    pub card_id: u32,
+    pub settle_round: u32,
+    pub staged_yet: bool,
+    pub submitted_yet: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -1286,6 +1340,11 @@ pub struct ExtrasShopAuctionInputs<'w> {
     pub bid_focus: Option<Res<'w, AuctionBidKeyboardFocus>>,
     pub locally_passed: Option<Res<'w, AuctionLocallyPassed>>,
     pub toast: Option<Res<'w, ShopAuctionToastState>>,
+    /// PROMPT 1347 / AC11 (S18-AUCTION-WON-CARD-DISPOSITION-001) — pending
+    /// auction-won disposition state surfaced at the top of the snapshot
+    /// as the `auction_won_pending` block. Present only on the winner
+    /// client during the auction-followup PLACEMENT window.
+    pub auction_won_pending: Option<Res<'w, AuctionWonPending>>,
 }
 
 #[derive(SystemParam)]
@@ -1664,6 +1723,22 @@ fn build_shop_auction_snapshot(
     let bid_focus = inputs.bid_focus.as_deref().copied();
     let locally_passed = inputs.locally_passed.as_deref().copied();
     let toast_res = inputs.toast.as_deref();
+    // PROMPT 1347 / AC11 — capture AuctionWonPending state (if any) for
+    // the top-level snapshot projection. Absent resource → None;
+    // resource present but `Idle` (`state == None`) → also None so the
+    // top-level block is correctly absent.
+    let auction_won_pending_state =
+        inputs
+            .auction_won_pending
+            .as_deref()
+            .and_then(|pending| {
+                pending.state.map(|s| AuctionWonPendingExtrasSnapshot {
+                    card_id: s.card_id.0,
+                    settle_round: s.settle_round,
+                    staged_yet: s.staged_yet,
+                    submitted_yet: s.submitted_yet,
+                })
+            });
 
     if ui_mode.is_none()
         && draft_initial_res.is_none()
@@ -1673,6 +1748,7 @@ fn build_shop_auction_snapshot(
         && bid_focus.is_none()
         && locally_passed.is_none()
         && toast_res.is_none()
+        && auction_won_pending_state.is_none()
     {
         return None;
     }
@@ -1750,6 +1826,7 @@ fn build_shop_auction_snapshot(
         bid_keyboard_focus,
         locally_passed,
         toast,
+        auction_won_pending_state,
     })
 }
 
@@ -3058,6 +3135,13 @@ pub fn build_snapshot_with_extras_and_layout(
     // with a missing-resource regression (B-1203-X-03).
     let placement_state = build_placement_state_snapshot(&extras);
     let auction_state = build_auction_state_snapshot(&extras);
+    // PROMPT 1347 / AC11 — top-level `auction_won_pending` block. Present
+    // only when the local player is in `Placement` (so the block is
+    // scoped to the auction-followup PLACEMENT window) AND a pending
+    // disposition is armed. Absent otherwise (see
+    // [`AuctionWonPendingSnapshot`]).
+    let auction_won_pending =
+        build_auction_won_pending_snapshot(&extras, &current_phase_info);
 
     QASnapshotData {
         snapshot_id,
@@ -3074,6 +3158,7 @@ pub fn build_snapshot_with_extras_and_layout(
         layout,
         placement_state,
         auction_state,
+        auction_won_pending,
         warnings,
     }
 }
@@ -3112,6 +3197,41 @@ pub fn build_placement_state_snapshot(extras: &ExtrasSnapshot) -> PlacementState
         drag_target_kind: drag.placement_drag_target_kind.clone(),
         disclosure_step: hand.and_then(|h| h.disclosure_step.clone()),
     }
+}
+
+/// PROMPT 1347 / AC11 / AC16 — build the top-level `auction_won_pending`
+/// snapshot block. Pure projection from `extras.shop_auction` +
+/// `current_phase`. Exposed (`pub`) so unit tests can verify all five
+/// AC16 cases (winner-in-placement / non-winner / no-pending / phase
+/// change to Resolution / submit) without spinning up a real Bevy app.
+///
+/// Returns `Some(_)` only when:
+/// 1. `extras.shop_auction.auction_won_pending_state.is_some()`
+///    (resource is armed for a winner client).
+/// 2. `current_phase.phase == Some("Placement")` (local player is in
+///    the auction-followup PLACEMENT window).
+///
+/// Returns `None` otherwise — the top-level field uses
+/// `skip_serializing_if = "Option::is_none"` so `None` ⇒ absent JSON key,
+/// matching the AC11 "absent (NOT `null` — absent)" contract.
+pub fn build_auction_won_pending_snapshot(
+    extras: &ExtrasSnapshot,
+    current_phase: &PhaseInfo,
+) -> Option<AuctionWonPendingSnapshot> {
+    let captured = extras
+        .shop_auction
+        .as_ref()
+        .and_then(|s| s.auction_won_pending_state)?;
+    if current_phase.phase.as_deref() != Some("Placement") {
+        return None;
+    }
+    Some(AuctionWonPendingSnapshot {
+        card_id: captured.card_id,
+        acquired_phase: "Placement",
+        settle_round: captured.settle_round,
+        staged_yet: captured.staged_yet,
+        submitted_yet: captured.submitted_yet,
+    })
 }
 
 /// PROMPT 1229 — build [`AuctionStateSnapshot`] from the already-collected

@@ -710,7 +710,27 @@ pub fn settle_expired_auction(
                 );
             }
 
-            award_auction_card(winner, card_id, hands, connections, outbox);
+            // PROMPT 1347 / AC10 (AUDIT-1131-02 / PROMPT 1131 §6 row 3 + Lane
+            // D3) — trace-only observability hook naming the auction-won card
+            // disposition. `award_auction_card` now returns the hand-size
+            // delta so the call site can emit a single structured log line
+            // for future audits to verify "card → winner hand on settle" from
+            // logs alone without a source dive. Behaviour unchanged.
+            let grant = award_auction_card(winner, card_id, hands, connections, outbox);
+            let (hand_size_before, hand_size_after) =
+                grant.map(|g| (g.hand_size_before, g.hand_size_after))
+                    .unwrap_or((0, 0));
+            tracing::info!(
+                target: "server::game",
+                event = "auction_settled",
+                winner = winner.0,
+                card_id = card_id.0,
+                current_price = bid_amount,
+                hand_size_before = hand_size_before as u32,
+                hand_size_after = hand_size_after as u32,
+                "auction_settled: winner hand-grant disposition"
+            );
+
             outbox.push_settled(AuctionSettledDispatch {
                 message: S2CAuctionSettled {
                     winner: Some(winner),
@@ -725,6 +745,23 @@ pub fn settle_expired_auction(
             }
         }
         None => {
+            // PROMPT 1347 / AC10 — Case B: no winner, no hand mutation, no
+            // S2CCardAcquired. The log line records the disposition explicitly
+            // so absence of a winner is visible from logs. `winner` field
+            // omitted (vs Case A which carries `winner = u64`); both Case A
+            // and Case B share the same `event = "auction_settled"` key so
+            // future audits can grep for the disposition without distinguishing
+            // cases at the log layer.
+            tracing::info!(
+                target: "server::game",
+                event = "auction_settled",
+                card_id = card_id.0,
+                current_price = 0u32,
+                hand_size_before = 0u32,
+                hand_size_after = 0u32,
+                "auction_settled: no-winner disposition"
+            );
+
             outbox.push_settled(AuctionSettledDispatch {
                 message: S2CAuctionSettled {
                     winner: None,
@@ -785,13 +822,25 @@ fn settle_winner_economy(
     }
 }
 
+/// PROMPT 1347 / AC10 — observability hook for AUDIT-1131-02 / PROMPT 1131
+/// §6 row 3 + Lane D3. Records the winner's hand size immediately before and
+/// after the auction-won hand grant so the call site can emit a single
+/// structured `auction_settled` log line. Returned for tracing only; the
+/// outbox dispatch + state mutation is the canonical disposition contract
+/// (`design/gdd/auction-system.md` §"Case A" rule 2; unchanged by this
+/// row).
+pub(crate) struct AuctionAwardGrant {
+    pub hand_size_before: usize,
+    pub hand_size_after: usize,
+}
+
 fn award_auction_card(
     winner: PlayerId,
     card_id: CardId,
     hands: Option<&mut PlayerHands>,
     connections: Option<&PlayerConnectionMap>,
     outbox: &mut AuctionNetworkOutbox,
-) {
+) -> Option<AuctionAwardGrant> {
     let Some(hands) = hands else {
         tracing::error!(
             target: "server::game",
@@ -799,8 +848,10 @@ fn award_auction_card(
             card_id = card_id.0,
             "auction settlement could not award card because PlayerHands is missing"
         );
-        return;
+        return None;
     };
+
+    let hand_size_before = hands.hand_len(winner);
 
     if hand_push(hands, winner, card_id).is_err() {
         tracing::error!(
@@ -809,8 +860,13 @@ fn award_auction_card(
             card_id = card_id.0,
             "auction settlement winner hand full; card discarded"
         );
-        return;
+        return Some(AuctionAwardGrant {
+            hand_size_before,
+            hand_size_after: hand_size_before,
+        });
     }
+
+    let hand_size_after = hands.hand_len(winner);
 
     outbox.push_card_acquired(AuctionCardAcquiredDispatch {
         player_id: winner,
@@ -820,6 +876,11 @@ fn award_auction_card(
             source: CardSource::AuctionWon,
         },
     });
+
+    Some(AuctionAwardGrant {
+        hand_size_before,
+        hand_size_after,
+    })
 }
 
 fn handle_abort_auction(auction: &mut AuctionState, economies: &mut PlayerEconomies) {
