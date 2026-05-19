@@ -346,6 +346,16 @@ path = "../tests/integration/hud/hud_opp_class_recipient_mismatch_test.rs"
 name = "hud_scoreboard_dot_image_refresh_test"
 path = "../tests/integration/hud/hud_scoreboard_dot_image_refresh_test.rs"
 
+# PROMPT 1400 (S18-HUD-OPP-CLASS-MANA-MICROBADGE-POLISH-001):
+# - opponent class pill must not display a trailing `?` after
+#   `S2CClassesRevealed` lands (AUDIT-1131-05 / AUDIT-1392-P13)
+# - HUD-side invariant lock against re-introducing the duplicate mana
+#   microbadge wording in HUD-owned text (AUDIT-1131-04 / AUDIT-1392-P12
+#   regression-lock; visible duplicate is hand-side, out of HUD scope)
+[[test]]
+name = "hud_opp_class_pill_no_trailing_questionmark_test"
+path = "../tests/integration/hud/hud_opp_class_pill_no_trailing_questionmark_test.rs"
+
 # PROMPT 1336 (S18-UI-HAND-MANA-PREVIEW-DURING-DRAG-001 AC9): HUD mana label
 # paints a projected current/reserve readout while a `Phase::Placement` drag
 # holds an affordable Minion. Subtracts already-staged `PendingPlacements`
