@@ -1185,6 +1185,11 @@ impl Plugin for HandUiPlugin {
                         // tick the pointer event was buffered.
                         produce_fan_slot_drag_started_from_pointer_press_system,
                         produce_drag_cursor_moved_from_pointer_move_system,
+                        // PROMPT 1410 — explicit window→world cursor
+                        // producer that runs alongside the Pointer<Move>
+                        // producer so dragging over the board (no picking
+                        // backend) still feeds `cursor_world_position`.
+                        produce_drag_cursor_moved_from_window_system,
                         produce_drag_ended_from_pointer_release_system,
                         handle_placement_drag_started_system,
                         handle_placement_cursor_moved_system,
@@ -3060,6 +3065,64 @@ pub fn produce_drag_cursor_moved_from_pointer_move_system(
             screen_position: Some(screen_position),
         });
     }
+}
+
+/// PROMPT 1410 / S18-BOARD-PICKING-BACKEND-DRAG-TO-CELL-001 — explicit
+/// cursor-to-board-cell producer.
+///
+/// Reads the primary `Window`'s cursor position every frame the drag is
+/// active and emits `HandUiPlacementCursorMoved` independent of the
+/// `bevy_picking` `Pointer<Move>` stream. Required because `ui_picking`
+/// only generates `Pointer<Move>` events while the cursor is over a UI
+/// node — once the cursor leaves the hand-fan into the board area (which
+/// has no picking backend), `Pointer<Move>` stops firing and
+/// `ActivePlacementDrag.cursor_world_position` goes stale. At drag-end the
+/// downstream `cursor_to_lane_cell` then returns `None`, the drop is
+/// resolved as `target=None`, the card flips back to `FanSlotState::Active`,
+/// and the next click hits the `fan_active_default_drop` fallback that
+/// AUDIT-1392-P02 surfaced — never picking the cell under the cursor.
+///
+/// Conversion math matches `produce_drag_cursor_moved_from_pointer_move_system`:
+/// the raw viewport pixel is preserved on `screen_position` and the
+/// world-space sibling is computed via `Camera::viewport_to_world_2d` on
+/// the first active 2D camera. The producer is a no-op while no drag is
+/// active and during the same tick a `Pointer<Move>` already fed the
+/// resource (the consumer `handle_placement_cursor_moved_system` simply
+/// overwrites with the latest value — last writer wins).
+pub fn produce_drag_cursor_moved_from_window_system(
+    active_drag: Res<ActivePlacementDrag>,
+    windows: Query<&Window, With<PrimaryWindow>>,
+    cameras: Query<(&Camera, &GlobalTransform), With<Camera2d>>,
+    mut writer: MessageWriter<HandUiPlacementCursorMoved>,
+) {
+    if !active_drag.is_active() {
+        return;
+    }
+    // `Query<&Window, With<PrimaryWindow>>::iter().next()` is used rather
+    // than `Option<Single<...>>` because the latter declines to match a
+    // PrimaryWindow that was spawned *after* HandUiPlugin init in test
+    // harnesses driven by raw `App::new()` / `MinimalPlugins`. The
+    // production app always spawns its primary window before
+    // HandUiPlugin runs, so either pattern works there — Query is the
+    // safe lower-bound for both production and test entry orders.
+    let Some(window) = windows.iter().next() else {
+        return;
+    };
+    let Some(screen_position) = window.cursor_position() else {
+        return;
+    };
+
+    let world_position = cameras
+        .iter()
+        .find(|(camera, _)| camera.is_active)
+        .and_then(|(camera, transform)| {
+            camera.viewport_to_world_2d(transform, screen_position).ok()
+        });
+
+    writer.write(HandUiPlacementCursorMoved {
+        world_position,
+        screen_position: Some(screen_position),
+    });
 }
 
 /// PROMPT 696 / HU-DRAG-03 — Producer for `HandUiPlacementDragEnded`.
