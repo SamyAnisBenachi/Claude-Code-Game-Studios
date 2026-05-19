@@ -13,6 +13,7 @@ use bevy::state::app::StatesPlugin;
 use bevy::time::TimeUpdateStrategy;
 use client::presentation::PlayerEconomyView;
 use client::state::{ClientPhaseView, ClientState, CurrentClientPhase};
+use client::ui::hud::HudPlayerIds;
 use client::ui::shop_auction::{
     auction_featured_card_accent_color, auction_featured_card_leading_color,
     auction_featured_card_losing_color, AuctionFeaturedCardFrame, AuctionFeaturedCardLeadLossState,
@@ -76,6 +77,76 @@ fn sau_018_opponent_leader_uses_error_frame_and_text_fallback() {
 }
 
 #[test]
+fn sau_018_snapshot_local_id_wins_over_stale_hud_id_for_local_leader_label() {
+    test_helpers::init_test_tracing();
+    let mut app = app_in_active_auction_with_ids(
+        OPPONENT_PLAYER,
+        Some(HudPlayerIds {
+            local_id: LOCAL_PLAYER,
+            opponent_id: OPPONENT_PLAYER,
+        }),
+        4,
+        20_000,
+    );
+
+    write_bid_accepted(&mut app, OPPONENT_PLAYER, 5, 10_000);
+
+    assert_featured_frame_state(
+        &app,
+        AuctionFeaturedCardLeadLossState::Leading,
+        auction_featured_card_leading_color(),
+    );
+    assert_eq!(bid_status_text(&app), "YOU ARE LEADING");
+    assert_eq!(bid_status_visibility(&app), Visibility::Visible);
+}
+
+#[test]
+fn sau_018_snapshot_local_id_wins_over_stale_hud_id_for_opponent_leader_label() {
+    test_helpers::init_test_tracing();
+    let mut app = app_in_active_auction_with_ids(
+        OPPONENT_PLAYER,
+        Some(HudPlayerIds {
+            local_id: LOCAL_PLAYER,
+            opponent_id: OPPONENT_PLAYER,
+        }),
+        4,
+        20_000,
+    );
+
+    write_bid_accepted(&mut app, LOCAL_PLAYER, 7, 8_000);
+
+    assert_featured_frame_state(
+        &app,
+        AuctionFeaturedCardLeadLossState::Losing,
+        auction_featured_card_losing_color(),
+    );
+    assert_eq!(bid_status_text(&app), "OPPONENT LEADING");
+    assert_eq!(bid_status_visibility(&app), Visibility::Visible);
+}
+
+#[test]
+fn sau_018_snapshot_local_id_does_not_show_opponent_leading_before_first_bid() {
+    test_helpers::init_test_tracing();
+    let app = app_in_active_auction_with_ids(
+        OPPONENT_PLAYER,
+        Some(HudPlayerIds {
+            local_id: LOCAL_PLAYER,
+            opponent_id: OPPONENT_PLAYER,
+        }),
+        4,
+        20_000,
+    );
+
+    assert_featured_frame_state(
+        &app,
+        AuctionFeaturedCardLeadLossState::Neutral,
+        auction_featured_card_accent_color(),
+    );
+    assert_eq!(bid_status_text(&app), "");
+    assert_eq!(bid_status_visibility(&app), Visibility::Hidden);
+}
+
+#[test]
 fn sau_018_state_transitions_remain_strictly_exclusive() {
     test_helpers::init_test_tracing();
     let mut app = app_in_active_auction(4, 20_000);
@@ -99,6 +170,15 @@ fn sau_018_state_transitions_remain_strictly_exclusive() {
 }
 
 fn app_in_active_auction(starting_price: u32, timer_duration_ms: u32) -> App {
+    app_in_active_auction_with_ids(LOCAL_PLAYER, None, starting_price, timer_duration_ms)
+}
+
+fn app_in_active_auction_with_ids(
+    local_player: PlayerId,
+    hud_player_ids: Option<HudPlayerIds>,
+    starting_price: u32,
+    timer_duration_ms: u32,
+) -> App {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins);
     app.add_plugins(bevy::asset::AssetPlugin::default());
@@ -115,11 +195,14 @@ fn app_in_active_auction(starting_price: u32, timer_duration_ms: u32) -> App {
         ..default()
     });
     app.insert_resource(ShopAuctionLocalGoldView {
-        player_id: Some(LOCAL_PLAYER),
+        player_id: Some(local_player),
         gold: 12,
         reserved_gold: 0,
         initialized: true,
     });
+    if let Some(hud_player_ids) = hud_player_ids {
+        app.insert_resource(hud_player_ids);
+    }
     app.world_mut()
         .resource_mut::<NextState<ClientState>>()
         .set(ClientState::InSession);

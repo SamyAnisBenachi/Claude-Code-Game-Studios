@@ -2115,10 +2115,7 @@ pub fn handle_auction_gold_broadcast_system(
     mut local_gold: ResMut<ShopAuctionLocalGoldView>,
     mut auction_state: ResMut<ShopAuctionAuctionState>,
 ) {
-    let local_player_id = player_ids
-        .as_deref()
-        .map(|ids| ids.local_id)
-        .or(local_gold.player_id);
+    let local_player_id = auction_local_player_id(&local_gold, player_ids.as_deref());
 
     if let Some(player_id) = local_player_id {
         local_gold.player_id = Some(player_id);
@@ -2145,10 +2142,7 @@ pub fn handle_auction_bid_accepted_system(
     mut auction_state: ResMut<ShopAuctionAuctionState>,
     mut timer_target: ResMut<AuctionTimerTargetFill>,
 ) {
-    let local_player_id = player_ids
-        .as_deref()
-        .map(|ids| ids.local_id)
-        .or(local_gold.player_id);
+    let local_player_id = auction_local_player_id(&local_gold, player_ids.as_deref());
 
     for message in messages.read() {
         if current.phase != RoundPhase::DraftAuction
@@ -2231,10 +2225,7 @@ pub fn handle_auction_settled_system(
     mut auction_won_pending: ResMut<AuctionWonPending>,
     mut anim_messages: AuctionSettledAnimMessages,
 ) {
-    let local_player_id = player_ids
-        .as_deref()
-        .map(|ids| ids.local_id)
-        .or(local_gold.player_id);
+    let local_player_id = auction_local_player_id(&local_gold, player_ids.as_deref());
 
     for message in messages.read() {
         if !auction_settlement_can_start(current.phase, &auction_state) {
@@ -6430,6 +6421,15 @@ fn local_player_is_leading(
     local_gold: &ShopAuctionLocalGoldView,
 ) -> bool {
     state.current_leader.is_some() && state.current_leader == local_gold.player_id
+}
+
+fn auction_local_player_id(
+    local_gold: &ShopAuctionLocalGoldView,
+    player_ids: Option<&HudPlayerIds>,
+) -> Option<PlayerId> {
+    local_gold
+        .player_id
+        .or_else(|| player_ids.map(|ids| ids.local_id))
 }
 
 pub fn auction_featured_card_lead_loss_state(
