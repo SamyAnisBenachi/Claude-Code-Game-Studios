@@ -58,6 +58,18 @@ Key current rules:
   completion notes).
 - Future-sprint work may be prepared only when it is Ready, disjoint, and does
   not activate that sprint.
+- When many implementation agents run in parallel, do not make every worker run
+  Cargo checks/tests. Implementation workers should commit and report quickly
+  after focused local validation; Cargo verification should move into separate
+  `VERIFY` prompts or serialized checkpoint/smoke lanes. If a verify lane fails,
+  launch a follow-up repair worker from the failing output.
+- Worker Git permissions must not stall the flow. If push, protected-branch,
+  GitHub export, rebase, or similar policy blocks a worker, the worker should
+  keep its local commit/branch, push any non-protected worker/integration branch
+  if allowed, and relay the exact branch, commit, command, and blocker to the
+  orchestrator. Do not ask the human for special push/rebase permission from the
+  worker window; the orchestrator handles main-land and permission-sensitive Git
+  actions.
 - Final prompt/status line is one line only: `N: TICKET-ID: STATUS`. No delimiter
   line, no HTML/span/CSS/ANSI markup, and STATUS must be a real outcome word.
 

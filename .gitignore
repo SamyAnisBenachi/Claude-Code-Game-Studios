@@ -21,6 +21,7 @@ production/session-logs/
 # === Codex local agent state ===
 .agents/
 .codex-tmp/
+.codex-worktrees/
 
 # === Octogent local orchestration state ===
 .octogent/

@@ -1,3 +1,54 @@
+# ORCHESTRATOR QUEUE REFRESH -- Post-Placement Repair Main-Land Sweep
+
+Updated 2026-05-19 by orchestrator. Source-of-truth now
+`origin/main@7b683ead043b9f20f915fd291a5dd25935a7a47d` (PROMPT 1471).
+
+Current landed repair/verification chain since the last stale root checkout:
+PROMPT 1399 placement-submit silent-noop repair; PROMPT 1410 board picking
+drag-to-cell backend; PROMPT 1433 lobby confirm CTA reachability; PROMPT 1436
+HUD opponent class/mana microbadge; PROMPT 1438 board-picking main-land;
+PROMPT 1439 bot foundation scaffold main-land; PROMPT 1441 bot protocol room
+foundations integration; PROMPT 1444 drag cursor target trace integration;
+PROMPT 1450 auction leader perspective label integration; PROMPT 1451 shop
+slots client receive integration; PROMPT 1452 HUD phase timer countdown
+snapshot integration; PROMPT 1456 placement board hit-test integration;
+PROMPT 1457 placement drag cursor board hit-test live verify PASS; PROMPT 1458
+QA snapshot forensic fields integration; PROMPT 1460 accepted placement unit
+visibility integration; PROMPT 1466 board grid overlay toggle integration;
+PROMPT 1463 HUD objective/timer readability repair main-land; PROMPT 1468
+placement rejection recovery UX repair main-land; PROMPT 1470 shop-auction
+z-order/readability main refresh; PROMPT 1471 connection-lost auction-overlay
+observability main refresh.
+
+Current known worker queue: no active running worker is known from the latest
+relay state. PROMPT 1440 and PROMPT 1449 live verification failures are
+historical evidence, not current blockers by themselves; PROMPT 1457 only
+verified the board hit-test repair path, not the full two-client game loop.
+
+Next required orchestration action: launch PROMPT 1472
+`POST-REPAIR-LIVE-TWO-CLIENT-QA-RETEST` as a verify-only lane against latest
+`origin/main`. It must rebuild latest main, run the two-client flow, capture
+logs/snapshots, and validate lobby confirm, shop offers, auction timer/leader
+labels, drag/drop placement, accepted unit visibility, rejection recovery,
+HUD timer/readability, board grid overlay toggle, and snapshot forensic fields.
+Snapshot review must analyze each image individually with its JSON state and
+timestamp-correlated logs; no bulk shallow QA pass.
+
+Do not launch new overlapping code repairs in `client/src/ui/hand/mod.rs`,
+`client/src/presentation/board_rendering.rs`, `client/src/ui/shop_auction/mod.rs`,
+or `client/src/presentation/qa_snapshot.rs` until PROMPT 1472 reports, unless
+the user explicitly chooses speed over diagnosis. Parallel-safe work remains
+read-only audits/specs/story authoring, bot roadmap/design work, and separate
+verification lanes. Cargo-heavy checks should be split into dedicated VERIFY
+prompts instead of making every implementation worker run full Cargo.
+
+Sprint 18 remains active; stage remains Polish. PROMPT 761 Polish->Release FAIL
+is preserved with no retry. No release, Sprint 18 close-out, Sprint 19
+activation, final-art/legal clearance, QA-COND advancement, PAW-TD closure,
+S8-QA-001-W1 closure, or S11-HUD-TIMER-EYEBALL-VISUAL closure is claimed.
+
+---
+
 # PROMPT 1357 State Banner -- S18-UI-HAND-IDLE-PLAYABLE-AFFORDANCE-001 `/story-done` Closed (Sprint 18 Should Row 2)
 
 Updated 2026-05-19 by PROMPT 1357. Source-of-truth at closure:
