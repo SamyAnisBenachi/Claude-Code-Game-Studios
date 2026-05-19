@@ -1116,7 +1116,17 @@ impl Plugin for HandUiPlugin {
             )
             .add_systems(
                 OnEnter(ClientState::InSession),
-                spawn_hand_ui.after(insert_placeholder_assets),
+                // Sprint 18 story 020 (S18-UI-PLAY-AREA-CONTAINER-001):
+                // chain after `PlayAreaSpawnSet` so the `PlayAreaRoot`
+                // resource (when `PlayAreaPlugin` is registered) is
+                // available before `spawn_hand_ui` parents the placement
+                // action panel into `PlayArea`. Harness apps without
+                // `PlayAreaPlugin` fall back to the historical
+                // `HandFanRoot` parent via the `unwrap_or(fan_root)`
+                // branch inside `spawn_hand_ui`.
+                spawn_hand_ui
+                    .after(insert_placeholder_assets)
+                    .after(crate::ui::PlayAreaSpawnSet),
             )
             .add_systems(OnExit(ClientState::InSession), despawn_hand_ui)
             .add_systems(
@@ -3582,6 +3592,13 @@ pub fn spawn_hand_ui(
     mut commands: Commands,
     existing: Option<Res<HandUiEntities>>,
     placeholder: Option<Res<PlaceholderAssets>>,
+    // Sprint 18 story 020 (S18-UI-PLAY-AREA-CONTAINER-001) AC6: the
+    // placement action panel parents into `PlayArea` when
+    // `PlayAreaPlugin` is registered, instead of `fan_root` inside
+    // `HandBar`. Harness apps without the plugin
+    // (`client/src/hand_ui_*_harness.rs`) keep parenting the panel
+    // into `fan_root` via the `unwrap_or(fan_root)` fallback below.
+    play_area_root: Option<Res<crate::ui::PlayAreaRoot>>,
 ) {
     if existing.is_some() {
         return;
@@ -3851,6 +3868,15 @@ pub fn spawn_hand_ui(
     // reports/PROMPT-1036 §4.5 documented the affordance as visually
     // unrecognisable, which left every Placement round closing with
     // `committed_players=0`.
+    // Sprint 18 story 020 (S18-UI-PLAY-AREA-CONTAINER-001) AC6:
+    // placement action panel parents into `PlayArea` instead of
+    // `fan_root` when the `PlayAreaRoot` resource is present. This
+    // lifts the panel out of the 180 px `HandBar` footprint so it
+    // sits above the fan inside the canonical middle band. Harness
+    // apps without `PlayAreaPlugin` keep the historical `fan_root`
+    // parent so the existing presentation tests preserve their
+    // hierarchy invariants.
+    let placement_action_panel_parent = play_area_root.as_ref().map(|p| p.0).unwrap_or(fan_root);
     let placement_action_panel = commands
         .spawn((
             Name::new("Hand UI Placement Action Panel"),
@@ -3861,7 +3887,7 @@ pub fn spawn_hand_ui(
             BackgroundColor(PLACEMENT_ACTION_PANEL_BACKGROUND),
             BorderColor::all(PLACEMENT_ACTION_PANEL_BORDER),
             Visibility::Hidden,
-            ChildOf(fan_root),
+            ChildOf(placement_action_panel_parent),
         ))
         .id();
 
@@ -4483,12 +4509,28 @@ const PLACEMENT_ACTION_PANEL_BUTTON_TEXT_COLOR: Color = Color::srgb(0.98, 0.99, 
 const HAND_CARD_SLOT_BACKGROUND: Color = Color::srgba(0.07, 0.10, 0.14, 0.95);
 const HAND_RESERVE_STRIP_BUTTON_BACKGROUND: Color = Color::srgba(0.08, 0.12, 0.16, 0.90);
 
-fn placement_action_panel_node() -> Node {
+/// Placement-action-panel `Node` builder. `pub` so the
+/// `tests/integration/ui_clean_pass/play_area_budget_test.rs`
+/// integration bin can assert the migrated Node shape (AC6 + AC7) at
+/// the canonical 1280×720 / 1366×768 / 1920×1080 viewport matrix.
+pub fn placement_action_panel_node() -> Node {
+    // Sprint 18 story 020 (S18-UI-PLAY-AREA-CONTAINER-001) AC6: placement
+    // action panel parents into `PlayArea` (was a child of `fan_root`
+    // inside `HandBar` — its `bottom: 16` anchor placed the panel inside
+    // the 180 px `HandBar` footprint and produced overlap F-03 per
+    // PROMPT 1180 §2 RC-1). AC6 requires `max_height` + scroll-y (or
+    // `flex_wrap` / pagination); we adopt the scroll-y branch with
+    // `max_height: 100%` so the panel never exceeds the `PlayArea`
+    // middle band even when the placement timer + disclosure body row
+    // text grows. `overflow: scroll_y()` keeps overflow content reachable
+    // without breaking the panel's bottom-right anchor inside `PlayArea`.
     Node {
         position_type: PositionType::Absolute,
         right: Val::Px(PLACEMENT_ACTION_PANEL_RIGHT_PX),
         bottom: Val::Px(PLACEMENT_ACTION_PANEL_BOTTOM_PX),
         width: Val::Px(PLACEMENT_ACTION_PANEL_WIDTH_PX),
+        max_height: Val::Percent(100.0),
+        overflow: Overflow::scroll_y(),
         display: Display::Flex,
         flex_direction: FlexDirection::Column,
         align_items: AlignItems::Stretch,

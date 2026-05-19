@@ -1412,7 +1412,17 @@ impl Plugin for ShopAuctionUiPlugin {
                     .chain()
                     .run_if(in_state(ClientState::InSession)),
             )
-            .add_systems(OnEnter(ClientState::InSession), spawn_shop_auction_ui)
+            .add_systems(
+                OnEnter(ClientState::InSession),
+                // Sprint 18 story 020 (S18-UI-PLAY-AREA-CONTAINER-001):
+                // chain after `PlayAreaSpawnSet` so the `PlayAreaRoot`
+                // resource (when `PlayAreaPlugin` is registered) is
+                // available before the four migrated panels parent into
+                // it. Harness apps without `PlayAreaPlugin` fall back to
+                // the historical `ShopAuctionUiRoot` parent inside
+                // `spawn_shop_auction_ui`.
+                spawn_shop_auction_ui.after(crate::ui::PlayAreaSpawnSet),
+            )
             .add_systems(OnExit(ClientState::InSession), despawn_shop_auction_ui)
             .add_systems(
                 Update,
@@ -4116,6 +4126,15 @@ pub fn spawn_shop_auction_ui(
     asset_server: Res<AssetServer>,
     refresh_config: Res<ShopAuctionRefreshConfig>,
     existing: Option<Res<ShopAuctionUiEntities>>,
+    // Sprint 18 story 020 (S18-UI-PLAY-AREA-CONTAINER-001): when
+    // `PlayAreaPlugin` is registered, the four migrated panels
+    // (`bottom_panel_node` / `auction_panel_node` / `footer_node` /
+    // `toast_node`) parent into the `PlayAreaRoot` entity instead of
+    // the full-viewport `ShopAuctionUiRoot`. Harness apps without the
+    // plugin (e.g. `client/src/shop_auction_*_harness.rs`) keep
+    // parenting into the local `ShopAuctionUiRoot` via the
+    // `unwrap_or(root)` fallback below.
+    play_area_root: Option<Res<crate::ui::PlayAreaRoot>>,
 ) {
     if existing.is_some() {
         return;
@@ -4138,6 +4157,8 @@ pub fn spawn_shop_auction_ui(
             z_layers::UI_BASE,
         ))
         .id();
+
+    let play_area_parent = play_area_root.as_ref().map(|p| p.0).unwrap_or(root);
 
     #[cfg(feature = "ui_picking")]
     commands
@@ -4194,7 +4215,7 @@ pub fn spawn_shop_auction_ui(
         spawn_draft_initial_countdown_label(&mut commands, draft_initial_modal_panel);
     let shop_panel = spawn_panel_root(
         &mut commands,
-        root,
+        play_area_parent,
         ShopAuctionPanelRoot::Shop,
         "Shop Auction Shop Root",
         bottom_panel_node(),
@@ -4213,7 +4234,7 @@ pub fn spawn_shop_auction_ui(
     let shop_hand_full_banner = spawn_shop_hand_full_banner(&mut commands, shop_panel);
     let auction_panel = spawn_panel_root(
         &mut commands,
-        root,
+        play_area_parent,
         ShopAuctionPanelRoot::Auction,
         "Shop Auction Auction Root",
         auction_panel_node(),
@@ -4248,7 +4269,7 @@ pub fn spawn_shop_auction_ui(
     );
     let shop_footer = spawn_panel_root(
         &mut commands,
-        root,
+        play_area_parent,
         ShopAuctionPanelRoot::ShopFooter,
         "Shop Auction Footer Root",
         footer_node(),
@@ -4257,7 +4278,7 @@ pub fn spawn_shop_auction_ui(
     let shop_footer_slots = spawn_shop_footer_slots(&mut commands, shop_footer);
     let toast_root = spawn_panel_root(
         &mut commands,
-        root,
+        play_area_parent,
         ShopAuctionPanelRoot::Toast,
         "Shop Auction Toast Root",
         toast_node(),
@@ -5237,13 +5258,26 @@ fn spawn_shop_footer_slots(
     })
 }
 
-fn bottom_panel_node() -> Node {
+/// Shop-bottom-panel `Node` builder. `pub` so the
+/// `tests/integration/ui_clean_pass/play_area_budget_test.rs`
+/// integration bin can assert the migrated Node shape (AC2 + AC7) at
+/// the canonical 1280×720 / 1366×768 / 1920×1080 viewport matrix.
+pub fn bottom_panel_node() -> Node {
+    // Sprint 18 story 020 (S18-UI-PLAY-AREA-CONTAINER-001) AC2: shop
+    // panel parents into `PlayArea` and fills the middle band instead of
+    // anchoring `bottom: 0, height: 260` against the viewport (the
+    // viewport-anchored literal that overlapped `HandBar` and produced
+    // overlap S-01 per PROMPT 1180 §2 RC-1). Within `PlayArea` the panel
+    // occupies the canonical `viewport − HeaderBar − FooterBar −
+    // HandBar` middle band, with the shop slots / refresh / ready
+    // buttons still positioned via their existing per-child `Absolute`
+    // anchors relative to the panel box.
     Node {
         position_type: PositionType::Absolute,
         left: Val::Px(0.0),
         right: Val::Px(0.0),
+        top: Val::Px(0.0),
         bottom: Val::Px(0.0),
-        height: Val::Px(260.0),
         ..default()
     }
 }
@@ -5545,13 +5579,24 @@ fn shop_empty_state_node() -> Node {
     }
 }
 
-fn auction_panel_node() -> Node {
+/// Auction-panel `Node` builder. `pub` so the
+/// `tests/integration/ui_clean_pass/play_area_budget_test.rs`
+/// integration bin can assert the migrated Node shape (AC3 + AC7) at
+/// the canonical 1280×720 / 1366×768 / 1920×1080 viewport matrix.
+pub fn auction_panel_node() -> Node {
+    // Sprint 18 story 020 (S18-UI-PLAY-AREA-CONTAINER-001) AC3: auction
+    // panel parents into `PlayArea` (was `top: 80, bottom: 140` against
+    // the viewport — the mis-tuned viewport-anchored literal overlapped
+    // `HandBar` and `FooterBar` per PROMPT 1180 §2 RC-1 / overlap S-02).
+    // The 50% × 50% featured-card centering anchor inside the panel now
+    // resolves against `PlayArea`'s middle band, which is the strip-
+    // budget-correct container shape.
     Node {
         position_type: PositionType::Absolute,
         left: Val::Px(0.0),
         right: Val::Px(0.0),
-        top: Val::Px(80.0),
-        bottom: Val::Px(140.0),
+        top: Val::Px(0.0),
+        bottom: Val::Px(0.0),
         border: UiRect::all(Val::Px(2.0)),
         ..default()
     }
@@ -5823,12 +5868,25 @@ fn auction_pass_button_node() -> Node {
     }
 }
 
-fn footer_node() -> Node {
+/// Shop-footer `Node` builder. `pub` so the
+/// `tests/integration/ui_clean_pass/play_area_budget_test.rs`
+/// integration bin can assert the migrated Node shape (AC4 + AC7) at
+/// the canonical 1280×720 / 1366×768 / 1920×1080 viewport matrix.
+pub fn footer_node() -> Node {
+    // Sprint 18 story 020 (S18-UI-PLAY-AREA-CONTAINER-001) AC4: shop
+    // footer parents into `PlayArea` (was `bottom: 100, height: 96`
+    // against the viewport — the viewport-anchored `bottom: 100`
+    // literal was a hand-computed offset above the strip column and
+    // overlapped the bottom strips per PROMPT 1180 §2 RC-1 / overlap
+    // S-06). The footer now sits flush at `PlayArea`'s bottom edge so
+    // the 96 px footer band stays inside the middle-band budget and the
+    // four shop-footer slots remain horizontally aligned with the shop
+    // panel above.
     Node {
         position_type: PositionType::Absolute,
         left: Val::Px(0.0),
         right: Val::Px(0.0),
-        bottom: Val::Px(100.0),
+        bottom: Val::Px(0.0),
         height: Val::Px(96.0),
         ..default()
     }
@@ -5846,11 +5904,23 @@ fn shop_footer_slot_node(index: usize) -> Node {
     }
 }
 
-fn toast_node() -> Node {
+/// Shop-toast `Node` builder. `pub` so the
+/// `tests/integration/ui_clean_pass/play_area_budget_test.rs`
+/// integration bin can assert the migrated Node shape (AC5 + AC7) at
+/// the canonical 1280×720 / 1366×768 / 1920×1080 viewport matrix.
+pub fn toast_node() -> Node {
+    // Sprint 18 story 020 (S18-UI-PLAY-AREA-CONTAINER-001) AC5: toast
+    // parents into `PlayArea` (was `bottom: 220` against the viewport —
+    // the literal `HAND_BAR_HEIGHT_PX + FOOTER_BAR_HEIGHT_PX = 220`
+    // offset above the bottom strip column is structurally what
+    // `PlayArea` now provides). AC5 explicitly allows the toast to stay
+    // `position_type: Absolute` within `PlayArea`; the toast sits flush
+    // at `PlayArea`'s bottom-right corner with a small inset margin so
+    // it does not clip the shop / auction panels' affordances.
     Node {
         position_type: PositionType::Absolute,
         right: Val::Px(24.0),
-        bottom: Val::Px(220.0),
+        bottom: Val::Px(0.0),
         width: Val::Px(260.0),
         height: Val::Px(48.0),
         ..default()
