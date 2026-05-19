@@ -49,6 +49,10 @@ pub const PHASE_BANNER_MAX_WIDTH_PX: f32 = 520.0;
 /// at 80 % so the banner never reaches the viewport edges on ultra-wide
 /// displays.
 pub const PHASE_BANNER_MAX_WIDTH_PERCENT: f32 = 80.0;
+pub const PHASE_BANNER_MIN_HEIGHT_PX: f32 = 82.0;
+pub const PHASE_BANNER_BACKGROUND_COLOR: Color = Color::srgba(0.045, 0.055, 0.070, 0.95);
+pub const PHASE_BANNER_BORDER_COLOR: Color = Color::srgba(1.0, 0.78, 0.30, 1.0);
+pub const PHASE_BANNER_TEXT_COLOR: Color = Color::srgb(1.0, 0.95, 0.78);
 
 /// Marker + lifetime carrier for the active phase-banner root entity.
 #[derive(Component, Debug)]
@@ -76,19 +80,20 @@ pub struct PhaseBannerPlugin;
 impl Plugin for PhaseBannerPlugin {
     fn build(&self, app: &mut App) {
         tracing::info!("PhaseBannerPlugin loaded");
-        app.init_resource::<CurrentClientPhase>().add_systems(
-            Update,
-            (
-                spawn_phase_banner_on_phase_change,
-                tick_phase_banner_lifetime,
+        app.init_resource::<CurrentClientPhase>()
+            .add_systems(
+                Update,
+                (
+                    spawn_phase_banner_on_phase_change,
+                    tick_phase_banner_lifetime,
+                )
+                    .chain()
+                    .run_if(in_state(ClientState::InSession)),
             )
-                .chain()
-                .run_if(in_state(ClientState::InSession)),
-        )
-        .add_systems(
-            OnExit(ClientState::InSession),
-            despawn_all_phase_banners_on_session_exit,
-        );
+            .add_systems(
+                OnExit(ClientState::InSession),
+                despawn_all_phase_banners_on_session_exit,
+            );
     }
 }
 
@@ -160,8 +165,8 @@ pub fn spawn_phase_banner_on_phase_change(
             Name::new("Phase Banner Panel"),
             PhaseBannerPanel,
             phase_banner_panel_node(),
-            BackgroundColor(Color::srgba(0.05, 0.08, 0.12, 0.92)),
-            BorderColor::all(Color::srgba(0.99, 0.76, 0.28, 0.95)),
+            BackgroundColor(PHASE_BANNER_BACKGROUND_COLOR),
+            BorderColor::all(PHASE_BANNER_BORDER_COLOR),
             ChildOf(root),
         ))
         .id();
@@ -179,7 +184,7 @@ pub fn spawn_phase_banner_on_phase_change(
             font_size: typography::H1,
             ..default()
         },
-        TextColor(Color::srgb(0.99, 0.96, 0.84)),
+        TextColor(PHASE_BANNER_TEXT_COLOR),
         ChildOf(panel),
     ));
 }
@@ -236,9 +241,10 @@ pub fn phase_banner_panel_node() -> Node {
         justify_content: JustifyContent::Center,
         max_width: Val::Percent(PHASE_BANNER_MAX_WIDTH_PERCENT),
         width: Val::Px(PHASE_BANNER_MAX_WIDTH_PX),
-        padding: UiRect::axes(Val::Px(spacing::SPACING_XL), Val::Px(spacing::SPACING_MD)),
-        border: UiRect::all(Val::Px(2.0)),
-        border_radius: BorderRadius::all(Val::Px(10.0)),
+        min_height: Val::Px(PHASE_BANNER_MIN_HEIGHT_PX),
+        padding: UiRect::axes(Val::Px(spacing::SPACING_XL), Val::Px(spacing::SPACING_LG)),
+        border: UiRect::all(Val::Px(3.0)),
+        border_radius: BorderRadius::all(Val::Px(spacing::SPACING_SM)),
         ..default()
     }
 }

@@ -17,7 +17,8 @@ use client::{
     state::{ClientPhaseView, ClientState},
     ui::hud::{
         HudEntities, HudPlayerIds, HudPlugin, HudTimerCountdown, PhaseTimerState,
-        HUD_TIMER_COUNTDOWN_FONT_SIZE_PX, HUD_TIMER_COUNTDOWN_MIN_WIDTH_PX,
+        HUD_STRIP_BACKGROUND_COLOR, HUD_STRIP_BORDER_COLOR, HUD_TIMER_COUNTDOWN_FONT_SIZE_PX,
+        HUD_TIMER_COUNTDOWN_MIN_WIDTH_PX, HUD_TIMER_TEXT_COLOR,
     },
 };
 use shared::session::PlayerId;
@@ -186,6 +187,39 @@ fn countdown_chip_uses_readable_fixed_layout() {
             .is_some(),
         "countdown should carry a high-contrast border"
     );
+    assert_eq!(
+        app.world()
+            .get::<TextColor>(entities.timer_countdown)
+            .map(|color| color.0),
+        Some(HUD_TIMER_TEXT_COLOR),
+        "countdown should be the brightest timer-priority readout in the top strip"
+    );
+}
+
+#[test]
+fn hud_edge_strips_carry_layered_chrome() {
+    let app = app_with_hud_in_session();
+    let entities = hud_entities(&app);
+
+    for (name, entity) in [
+        ("top strip", entities.top_strip),
+        ("bottom strip", entities.bottom_strip),
+    ] {
+        assert_eq!(
+            app.world()
+                .get::<BackgroundColor>(entity)
+                .map(|color| color.0),
+            Some(HUD_STRIP_BACKGROUND_COLOR),
+            "{name} should carry the shared edge-strip background"
+        );
+        assert_eq!(
+            app.world()
+                .get::<BorderColor>(entity)
+                .map(|color| color.top),
+            Some(HUD_STRIP_BORDER_COLOR),
+            "{name} should carry the shared edge-strip border"
+        );
+    }
 }
 
 fn app_with_hud_in_session() -> App {
