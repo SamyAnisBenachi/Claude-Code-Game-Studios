@@ -283,6 +283,48 @@ fn sau_008_late_shop_confirmations_are_ignored_after_phase_exit() {
 }
 
 #[test]
+fn shop_slots_buffered_during_placement_apply_on_next_draft_shop() {
+    test_helpers::init_test_tracing();
+    let mut app = app_in_session(10);
+    set_phase(&mut app, RoundPhase::Placement, 10_000);
+
+    app.world_mut().write_message(ShopAuctionShopSlotsReceived {
+        slots: vec![Some(CardId(4)), Some(CardId(5)), Some(CardId(6))],
+    });
+    run_update(&mut app);
+
+    assert_eq!(
+        app.world().resource::<ShopAuctionUiMode>(),
+        &ShopAuctionUiMode::Inactive
+    );
+    assert!(!app.world().resource::<ShopAuctionShopState>().slots_loaded);
+    assert_eq!(shop_panel_visibility(&app), Visibility::Hidden);
+
+    set_phase(&mut app, RoundPhase::DraftShop, 30_000);
+    run_update(&mut app);
+
+    assert_eq!(
+        app.world().resource::<ShopAuctionUiMode>(),
+        &ShopAuctionUiMode::Shop
+    );
+    assert!(app.world().resource::<ShopAuctionShopState>().slots_loaded);
+    assert_eq!(
+        shop_slot_cards(&app),
+        vec![Some(CardId(4)), Some(CardId(5)), Some(CardId(6))]
+    );
+    assert_eq!(
+        shop_slot_states(&app),
+        vec![
+            ShopSlotState::Available,
+            ShopSlotState::Available,
+            ShopSlotState::Available
+        ]
+    );
+    assert_eq!(shop_panel_visibility(&app), Visibility::Visible);
+    assert_eq!(visible_shop_slot_count(&app), 3);
+}
+
+#[test]
 fn sau_008_draft_initial_snapshot_does_not_restore_grid_from_shop_slots() {
     test_helpers::init_test_tracing();
     let mut app = app_in_session(10);
@@ -543,6 +585,15 @@ fn visible_draft_slot_count(app: &App) -> usize {
     app.world()
         .resource::<ShopAuctionUiEntities>()
         .draft_initial_slots
+        .iter()
+        .filter(|slot| app.world().get::<Visibility>(**slot) == Some(&Visibility::Visible))
+        .count()
+}
+
+fn visible_shop_slot_count(app: &App) -> usize {
+    app.world()
+        .resource::<ShopAuctionUiEntities>()
+        .shop_slots
         .iter()
         .filter(|slot| app.world().get::<Visibility>(**slot) == Some(&Visibility::Visible))
         .count()
