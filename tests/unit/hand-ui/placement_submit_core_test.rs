@@ -1,11 +1,13 @@
 use bevy::prelude::*;
 use bevy::state::app::StatesPlugin;
 use client::card_animations::HandDragSprite;
+use client::presentation::PlayerEconomyView;
 use client::state::{ClientState, CurrentClientPhase};
 use client::ui::hand::{
     ConfirmationModal, FanSlotIndex, FanSlotState, GhostPlacementChanged, HandContents,
     HandSubmitButton, HandSubmitButtonClicked, HandSubmitInteractionState, HandUiOutboundMessages,
-    HandUiPlacementDropResolved, HandUiPlugin, PendingPlacements, ReserveStripForFanSlot,
+    HandUiPlacementDropResolved, HandUiPlugin, PendingPlacements, PlacementTimer,
+    ReserveStripForFanSlot,
 };
 use shared::card::CardId;
 use shared::protocol::{PlacedCardSubmit, PlayTarget, RoundPhase};
@@ -178,6 +180,169 @@ fn hu_17_rapid_duplicate_submit_clicks_emit_only_one_submission() {
     );
 }
 
+// PROMPT 1399 — S18-PLACEMENT-SUBMIT-SILENT-NOOP-REPAIR-001
+//
+// Regression: the prior submit pipeline gated the network send on
+// `HandSubmitInteractionState == Active`. When the presentational flag and
+// `PlacementTimer::submitted` momentarily disagreed (button spawned with
+// the default `Inactive` flag before the phase-transition system ran, any
+// future state-sync ordering bug, etc.), legitimate submit clicks were
+// silently swallowed — the AUDIT-1392-P01 "Confirm does nothing"
+// failure mode in the 2026-05-18 dev-run.
+//
+// The repair drops the redundant `interaction_state` gate; the
+// authoritative duplicate-submit guard is now solely
+// `placement_timer.submitted` (set by every successful send before any
+// peer call observes it). This test pins the new contract: as long as
+// the timer says we have not submitted yet, clicking Submit MUST queue
+// exactly one `C2SSubmitPlacement` regardless of the presentational
+// `HandSubmitInteractionState`.
+#[test]
+fn hu_25_submit_proceeds_when_interaction_state_inactive_but_not_yet_submitted() {
+    let mut app = app_with_hand_ui_in_session();
+    set_economy(&mut app, 10, 10);
+    set_hand(&mut app, [CardId(401)]);
+    set_phase(&mut app, RoundPhase::Placement);
+    app.update();
+
+    let submit = submit_button(&mut app);
+    // Sanity: entering Placement promotes the submit button to Active.
+    assert_eq!(
+        app.world().get::<HandSubmitInteractionState>(submit),
+        Some(&HandSubmitInteractionState::Active),
+        "entering Placement must promote the submit button to Active"
+    );
+
+    // Stage one card so the click has a non-empty payload to send.
+    let slot = fan_slot(&mut app, 0);
+    app.world_mut().write_message(HandUiPlacementDropResolved {
+        card: slot,
+        owner_id: PlayerId(7),
+        target: Some(PlayTarget::BoardCell { lane: 1, cell: 2 }),
+    });
+    app.update();
+    assert_eq!(
+        app.world()
+            .resource::<PendingPlacements>()
+            .placements
+            .len(),
+        1,
+        "fixture must stage exactly one placement"
+    );
+
+    // Force the regression precondition: presentational state out of sync
+    // with the timer. This simulates the AUDIT-1392-P01 silent-no-op
+    // scenario; the timer says we have not submitted yet, but the button
+    // somehow reads `Inactive`.
+    *app.world_mut()
+        .get_mut::<HandSubmitInteractionState>(submit)
+        .expect("submit button must have HandSubmitInteractionState") =
+        HandSubmitInteractionState::Inactive;
+    assert!(
+        !app.world().resource::<PlacementTimer>().submitted,
+        "PlacementTimer::submitted must remain false before the click"
+    );
+
+    click_submit(&mut app);
+
+    let outbound = &app
+        .world()
+        .resource::<HandUiOutboundMessages>()
+        .submit_placements;
+    assert_eq!(
+        outbound.len(),
+        1,
+        "click with timer.submitted=false MUST queue one C2SSubmitPlacement \
+         even when HandSubmitInteractionState is Inactive (PROMPT 1399 \
+         silent-no-op repair); got {} submissions",
+        outbound.len()
+    );
+    assert_eq!(
+        outbound[0].placements.len(),
+        1,
+        "queued submission must carry the one staged placement"
+    );
+    assert!(
+        app.world().resource::<PlacementTimer>().submitted,
+        "successful send must flip placement_timer.submitted=true"
+    );
+    assert_eq!(
+        app.world().get::<HandSubmitInteractionState>(submit),
+        Some(&HandSubmitInteractionState::Inactive),
+        "submit button stays Inactive after send (now its terminal state)"
+    );
+    assert_eq!(text(&app, submit), "Submitted");
+}
+
+// PROMPT 1399 — companion duplicate-prevention coverage. The repair drops
+// the interaction-state gate but keeps `placement_timer.submitted` as the
+// duplicate guard. A second click after a successful send must NOT
+// produce a second wire message regardless of how the presentational
+// flags look in the intervening time.
+#[test]
+fn hu_26_second_click_after_send_is_suppressed_by_placement_timer_submitted() {
+    let mut app = app_with_hand_ui_in_session();
+    set_economy(&mut app, 10, 10);
+    set_hand(&mut app, [CardId(501)]);
+    set_phase(&mut app, RoundPhase::Placement);
+    app.update();
+
+    let slot = fan_slot(&mut app, 0);
+    app.world_mut().write_message(HandUiPlacementDropResolved {
+        card: slot,
+        owner_id: PlayerId(7),
+        target: Some(PlayTarget::BoardCell { lane: 1, cell: 4 }),
+    });
+    app.update();
+
+    // First click — should send exactly one C2SSubmitPlacement.
+    click_submit(&mut app);
+    assert_eq!(
+        app.world()
+            .resource::<HandUiOutboundMessages>()
+            .submit_placements
+            .len(),
+        1,
+        "first click must queue one submission"
+    );
+    assert!(
+        app.world().resource::<PlacementTimer>().submitted,
+        "first send must set placement_timer.submitted=true"
+    );
+
+    // Second click — placement_timer.submitted=true now, so the call must
+    // short-circuit at the timer gate and NOT enqueue a duplicate.
+    click_submit(&mut app);
+    assert_eq!(
+        app.world()
+            .resource::<HandUiOutboundMessages>()
+            .submit_placements
+            .len(),
+        1,
+        "second click must be suppressed by placement_timer.submitted=true"
+    );
+
+    // Even an artificially re-promoted Active state must not bypass the
+    // timer gate: this is the scenario the previous interaction-state
+    // gate was nominally protecting against, and the new timer-only gate
+    // continues to protect against it.
+    let submit = submit_button(&mut app);
+    *app.world_mut()
+        .get_mut::<HandSubmitInteractionState>(submit)
+        .expect("submit button must have HandSubmitInteractionState") =
+        HandSubmitInteractionState::Active;
+    click_submit(&mut app);
+    assert_eq!(
+        app.world()
+            .resource::<HandUiOutboundMessages>()
+            .submit_placements
+            .len(),
+        1,
+        "click with Active state but placement_timer.submitted=true must \
+         still be suppressed (timer is the authoritative duplicate guard)"
+    );
+}
+
 fn app_with_hand_ui_in_session() -> App {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins);
@@ -198,6 +363,12 @@ fn set_phase(app: &mut App, phase: RoundPhase) {
 
 fn set_hand<const N: usize>(app: &mut App, cards: [CardId; N]) {
     app.world_mut().resource_mut::<HandContents>().cards = cards.to_vec();
+}
+
+fn set_economy(app: &mut App, current_mana: u32, reserve_mana: u32) {
+    let mut economy = app.world_mut().resource_mut::<PlayerEconomyView>();
+    economy.current_mana = current_mana;
+    economy.reserve_mana = reserve_mana;
 }
 
 fn click_submit(app: &mut App) {
