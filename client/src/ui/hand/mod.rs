@@ -22,7 +22,7 @@ use crate::asset_wiring::{
 use crate::card_animations::{
     cancel_tween_anim_in_place, make_tween_anim, replace_tweenable, HandCard, HandDragSprite,
 };
-use crate::presentation::board_rendering::PlayerTeamMap;
+use crate::presentation::board_rendering::{BoardEnvelope, PlayerTeamMap};
 use crate::presentation::{PlayerEconomyView, PresentationGameSnapshotMessage};
 use crate::state::{ClientPhaseView, ClientSessionIdentity, ClientState, CurrentClientPhase};
 use crate::ui::design_tokens::card_slot::{
@@ -2903,15 +2903,17 @@ pub fn handle_placement_cursor_moved_system(
     board_layout: Option<Res<BoardLayout>>,
 ) {
     for cursor_move in moves.read() {
-        let resolved_board_cell = board_layout
+        let board_hit = board_layout
             .as_deref()
             .zip(cursor_move.world_position)
-            .and_then(|(layout, cursor)| cursor_to_lane_cell(cursor, layout));
+            .map(|(layout, cursor)| cursor_board_hit_diagnostic(cursor, layout));
+        let resolved_board_cell = board_hit.and_then(|hit| hit.resolved_cell);
         tracing::debug!(
             target: "client::ui::hand::placement_cursor_move",
             cursor_world_position = ?cursor_move.world_position,
             cursor_screen_position = ?cursor_move.screen_position,
             resolved_board_cell = ?resolved_board_cell,
+            board_hit = ?board_hit,
             active_drag_is_active = active_drag.is_active(),
             active_drag_card = ?active_drag.card,
             "placement cursor move"
@@ -3013,6 +3015,10 @@ pub fn handle_placement_drag_ended_system(
                     owner_id = ?owner_id,
                     cursor_world_position = ?active_drag.cursor_world_position,
                     cursor_screen_position = ?active_drag.cursor_screen_position,
+                    board_hit = ?board_layout
+                        .as_deref()
+                        .zip(active_drag.cursor_world_position)
+                        .map(|(layout, cursor)| cursor_board_hit_diagnostic(cursor, layout)),
                     target = ?target,
                     "placement drop resolved"
                 );
@@ -5603,18 +5609,85 @@ fn val_px(value: Val) -> Option<f32> {
 }
 
 fn cursor_to_lane_cell(cursor: Vec2, layout: &BoardLayout) -> Option<(u8, u8)> {
+    cursor_board_hit_diagnostic(cursor, layout).resolved_cell
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct CursorBoardHitDiagnostic {
+    resolved_cell: Option<(u8, u8)>,
+    nearest_cell: (u8, u8),
+    nearest_cell_world_center: Vec2,
+    board_world_min: Vec2,
+    board_world_max: Vec2,
+    board_world_center: Vec2,
+    reject_reason: CursorBoardRejectReason,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum CursorBoardRejectReason {
+    Hit,
+    InvalidCellSize,
+    OutsideBoardEnvelope,
+}
+
+fn cursor_board_hit_diagnostic(cursor: Vec2, layout: &BoardLayout) -> CursorBoardHitDiagnostic {
+    let envelope = BoardEnvelope::from_layout(layout);
+    let nearest_cell = nearest_lane_cell(cursor, layout);
+    let nearest_cell_world_center = layout.cell_to_world(nearest_cell.0, nearest_cell.1);
+    let board_world_min = envelope.world_min();
+    let board_world_max = envelope.world_max();
+
     if layout.cell_width <= 0.0 || layout.lane_height <= 0.0 {
-        return None;
+        return CursorBoardHitDiagnostic {
+            resolved_cell: None,
+            nearest_cell,
+            nearest_cell_world_center,
+            board_world_min,
+            board_world_max,
+            board_world_center: envelope.world_center,
+            reject_reason: CursorBoardRejectReason::InvalidCellSize,
+        };
     }
     let cell = ((cursor.x - layout.board_origin.x) / layout.cell_width).round() as i32 + 1;
     let lane = ((layout.board_origin.y - cursor.y) / layout.lane_height).round() as i32 + 1;
-    if (1..=i32::from(BOARD_LANE_COUNT)).contains(&lane)
+    let resolved_cell = if (1..=i32::from(BOARD_LANE_COUNT)).contains(&lane)
         && (1..=i32::from(BOARD_CELL_COUNT)).contains(&cell)
     {
         Some((lane as u8, cell as u8))
     } else {
         None
+    };
+
+    CursorBoardHitDiagnostic {
+        resolved_cell,
+        nearest_cell,
+        nearest_cell_world_center,
+        board_world_min,
+        board_world_max,
+        board_world_center: envelope.world_center,
+        reject_reason: if resolved_cell.is_some() {
+            CursorBoardRejectReason::Hit
+        } else {
+            CursorBoardRejectReason::OutsideBoardEnvelope
+        },
     }
+}
+
+fn nearest_lane_cell(cursor: Vec2, layout: &BoardLayout) -> (u8, u8) {
+    let raw_cell = if layout.cell_width > 0.0 {
+        ((cursor.x - layout.board_origin.x) / layout.cell_width).round() as i32 + 1
+    } else {
+        1
+    };
+    let raw_lane = if layout.lane_height > 0.0 {
+        ((layout.board_origin.y - cursor.y) / layout.lane_height).round() as i32 + 1
+    } else {
+        1
+    };
+    (
+        raw_lane.clamp(1, i32::from(BOARD_LANE_COUNT)) as u8,
+        raw_cell.clamp(1, i32::from(BOARD_CELL_COUNT)) as u8,
+    )
 }
 
 fn sync_target_unit_highlights(
