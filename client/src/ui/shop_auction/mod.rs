@@ -76,12 +76,15 @@ pub const DRAFT_INITIAL_GRID_TOP_PX: f32 = spacing::SPACING_XL + spacing::SPACIN
 pub const AUCTION_BID_TARGET_WIDTH_PX: f32 = 108.0;
 pub const AUCTION_BID_TARGET_HEIGHT_PX: f32 = 44.0;
 pub const AUCTION_BID_FOCUS_RING_WIDTH_PX: f32 = 2.0;
+pub const AUCTION_READABILITY_CARD_LEFT_PX: f32 = 112.0;
+pub const AUCTION_READABILITY_INFO_LEFT_PX: f32 = 552.0;
+pub const AUCTION_READABILITY_INFO_WIDTH_PX: f32 = 468.0;
+pub const AUCTION_READABILITY_CONTROL_GAP_PX: f32 = spacing::SPACING_MD;
 pub const AUCTION_FREE_GOLD_COUNTER_COUNT: usize = 2;
-pub const AUCTION_FREE_GOLD_COUNTER_ANCHOR_LEFT_PERCENT: f32 = 52.0;
+pub const AUCTION_FREE_GOLD_COUNTER_ANCHOR_LEFT_PERCENT: f32 = 0.0;
 pub const AUCTION_FREE_GOLD_COUNTER_LEFT_GAP_PX: f32 = spacing::SPACING_MD;
-pub const AUCTION_FREE_GOLD_COUNTER_LEFT_OFFSET_PX: f32 =
-    AUCTION_BID_TARGET_WIDTH_PX + AUCTION_FREE_GOLD_COUNTER_LEFT_GAP_PX;
-pub const AUCTION_FREE_GOLD_COUNTER_BOTTOM_PX: f32 = 70.0;
+pub const AUCTION_FREE_GOLD_COUNTER_LEFT_OFFSET_PX: f32 = AUCTION_READABILITY_INFO_LEFT_PX;
+pub const AUCTION_FREE_GOLD_COUNTER_BOTTOM_PX: f32 = 132.0;
 pub const AUCTION_FREE_GOLD_COUNTER_GROUP_WIDTH_PX: f32 = 240.0;
 pub const AUCTION_FREE_GOLD_COUNTER_GROUP_HEIGHT_PX: f32 = 48.0;
 pub const AUCTION_FREE_GOLD_COUNTER_WIDTH_PX: f32 = 104.0;
@@ -4085,7 +4088,7 @@ pub fn sync_auction_panel_system(
             let active_countdown = auction_state.panel_state
                 == ShopAuctionAuctionPanelState::Active
                 && auction_state.timer_duration_ms > 0;
-            let target_width = if active_countdown {
+            let target_width_percent = if active_countdown {
                 auction_timer_width_percent(
                     auction_state.timer_remaining_ms,
                     auction_state.timer_duration_ms,
@@ -4094,7 +4097,7 @@ pub fn sync_auction_panel_system(
                 100.0
             };
 
-            node.width = Val::Percent(target_width);
+            node.width = Val::Px(AUCTION_READABILITY_INFO_WIDTH_PX * target_width_percent / 100.0);
             *state = AuctionTimerBarState {
                 greyed: !active_countdown,
                 countdown_active: active_countdown,
@@ -5981,10 +5984,10 @@ fn auction_featured_card_node() -> Node {
     // matrix (`docs/ux/global-ui-design-spec.md` §8).
     Node {
         position_type: PositionType::Absolute,
-        left: Val::Percent(50.0),
+        left: Val::Px(AUCTION_READABILITY_CARD_LEFT_PX),
         top: Val::Percent(50.0),
         margin: UiRect {
-            left: Val::Px(-AUCTION_FEATURED_CARD_WIDTH_PX / 2.0),
+            left: Val::Px(0.0),
             right: Val::Px(0.0),
             top: Val::Px(-AUCTION_FEATURED_CARD_HEIGHT_PX / 2.0),
             bottom: Val::Px(0.0),
@@ -6108,9 +6111,9 @@ fn auction_status_text_node() -> Node {
     // content) is unchanged; only the absolute offset moves.
     Node {
         position_type: PositionType::Absolute,
-        left: Val::Percent(34.0),
+        left: Val::Px(AUCTION_READABILITY_INFO_LEFT_PX),
         top: Val::Px(spacing::SPACING_XL),
-        width: Val::Px(360.0),
+        width: Val::Px(AUCTION_READABILITY_INFO_WIDTH_PX),
         height: Val::Px(32.0),
         ..default()
     }
@@ -6122,8 +6125,9 @@ fn auction_timer_bar_node() -> Node {
     // unchanged; only the absolute offset moves.
     Node {
         position_type: PositionType::Absolute,
-        left: Val::Percent(34.0),
+        left: Val::Px(AUCTION_READABILITY_INFO_LEFT_PX),
         top: Val::Px(spacing::SPACING_XL + spacing::SPACING_XL + spacing::SPACING_MD),
+        width: Val::Px(AUCTION_READABILITY_INFO_WIDTH_PX),
         height: Val::Px(10.0),
         ..default()
     }
@@ -6136,9 +6140,9 @@ fn auction_bid_status_text_node() -> Node {
     // only the absolute offset moves.
     Node {
         position_type: PositionType::Absolute,
-        left: Val::Percent(34.0),
+        left: Val::Px(AUCTION_READABILITY_INFO_LEFT_PX),
         bottom: Val::Px(24.0),
-        width: Val::Px(360.0),
+        width: Val::Px(AUCTION_READABILITY_INFO_WIDTH_PX),
         height: Val::Px(40.0),
         ..default()
     }
@@ -6212,7 +6216,10 @@ fn auction_bid_button_node(index: usize) -> Node {
     // (story 011) are unchanged; only the absolute offset moves.
     Node {
         position_type: PositionType::Absolute,
-        left: Val::Percent(34.0 + index as f32 * 9.0),
+        left: Val::Px(
+            AUCTION_READABILITY_INFO_LEFT_PX
+                + index as f32 * (AUCTION_BID_TARGET_WIDTH_PX + AUCTION_READABILITY_CONTROL_GAP_PX),
+        ),
         bottom: Val::Px(72.0),
         width: Val::Px(AUCTION_BID_TARGET_WIDTH_PX),
         height: Val::Px(AUCTION_BID_TARGET_HEIGHT_PX),
@@ -6227,7 +6234,10 @@ fn auction_pass_button_node() -> Node {
     // [Bid +1] [Bid +3] [Bid +5] [Pass] in left-to-right scan order.
     Node {
         position_type: PositionType::Absolute,
-        left: Val::Percent(34.0 + 3.0 * 9.0),
+        left: Val::Px(
+            AUCTION_READABILITY_INFO_LEFT_PX
+                + 3.0 * (AUCTION_BID_TARGET_WIDTH_PX + AUCTION_READABILITY_CONTROL_GAP_PX),
+        ),
         bottom: Val::Px(72.0),
         width: Val::Px(AUCTION_BID_TARGET_WIDTH_PX),
         height: Val::Px(AUCTION_BID_TARGET_HEIGHT_PX),

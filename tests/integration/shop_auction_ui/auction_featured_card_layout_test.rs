@@ -26,6 +26,7 @@ use client::ui::shop_auction::{
     AuctionFeaturedCardKeyword, AuctionFeaturedCardStats, ShopAuctionCardCatalog,
     ShopAuctionUiEntities, ShopAuctionUiPlugin, AUCTION_FEATURED_CARD_FRAME_THICKNESS_PX,
     AUCTION_FEATURED_CARD_HEIGHT_PX, AUCTION_FEATURED_CARD_WIDTH_PX,
+    AUCTION_READABILITY_CARD_LEFT_PX,
 };
 use shared::card::{CardData, CardId, CardType, ClassId, Rarity, UnitType};
 
@@ -174,7 +175,7 @@ fn ac2_featured_card_carries_unique_frame_marker() {
 /// resolved at layout time. Story 016 §"Acceptance Criteria"
 /// line 194-197.
 #[test]
-fn ac3_featured_card_centered_on_panel_via_percent_anchor() {
+fn ac3_featured_card_anchored_in_left_readability_lane() {
     test_helpers::init_test_tracing();
     let app = app_in_session();
     let entities = app.world().resource::<ShopAuctionUiEntities>().clone();
@@ -187,18 +188,18 @@ fn ac3_featured_card_centered_on_panel_via_percent_anchor() {
     assert_eq!(featured_node.position_type, PositionType::Absolute);
     assert_eq!(
         featured_node.left,
-        Val::Percent(50.0),
-        "featured card left must anchor at 50% of panel width",
+        Val::Px(AUCTION_READABILITY_CARD_LEFT_PX),
+        "featured card left must anchor to the fixed product lane",
     );
     assert_eq!(
         featured_node.top,
         Val::Percent(50.0),
-        "featured card top must anchor at 50% of panel height",
+        "featured card top must remain vertically centered in the panel",
     );
     assert_eq!(
         featured_node.margin.left,
-        Val::Px(-AUCTION_FEATURED_CARD_WIDTH_PX / 2.0),
-        "featured card margin.left must cancel half its width so the geometric center sits at 50%",
+        Val::Px(0.0),
+        "featured card margin.left must not pull it back into the right-lane controls",
     );
     assert_eq!(
         featured_node.margin.top,
