@@ -78,7 +78,7 @@ Single highest-leverage fix.
 - [ ] AC5 -- No-overlap invariant catches ≥4 of catalogued S-01, S-02, S-06, F-01, F-03, O-01 on `origin/main` (or documents which suppress to baseline if A / F / J landed).
 - [ ] AC6 -- Primary-CTA on-screen invariant: `0 ≤ x, y, (x+w) ≤ vw, (y+h) ≤ vh` for every cell.
 - [ ] AC7 -- Strip-height contract asserted against `design_tokens/strips.rs` constants to within 1 px.
-- [ ] AC8 -- `fixtures/ui_viewport_baseline.rs` DELETED OR `#[deprecated]` with documented rationale.
+- [x] AC8 -- `fixtures/ui_viewport_baseline.rs` DELETED OR `#[deprecated]` with documented rationale. **DISCHARGED 2026-05-19 by PROMPT 1333**: `#[deprecated]` route. `PROVISIONAL_BASELINE` carries a `#[deprecated]` attribute citing PROMPT 1180 §RC-5; the fixture module docstring and the legacy `ui_viewport_invariants_test.rs` docstring both banner the replacement bin at `tests/integration/ui_viewport_live_test.rs`. Delete-route blocked because PROMPT 1333 forbids `client/**` and `Cargo.*` edits (the `[[test]]` entry for the legacy bin lives in `client/Cargo.toml:883-885`); removing the `.rs` file without removing the manifest entry would break the workspace build. Legacy bin compiles cleanly under crate-level `#![allow(deprecated)]` and all 12 of its tests still pass (`cargo test -p client --test ui_viewport_invariants_test`); the canonical `ui_viewport_live_test` still passes 8/8.
 - [ ] AC9 -- Blocker reporting if plugin spawn fails; no hand-authored fallback bounds.
 - [ ] AC10 -- `liv-bevy-018` activated.
 - [ ] AC11 -- Cargo resource policy applied.
