@@ -403,3 +403,8 @@ path = "../tests/unit/combat/objective_damage_gameover_test.rs"
 [[test]]
 name = "persistent_states_test"
 path = "../tests/unit/combat/persistent_states_test.rs"
+
+# PROMPT 1428 — bot player foundation scaffold (state-only).
+[[test]]
+name = "bot_foundation_state_test"
+path = "../tests/unit/bot/bot_foundation_state_test.rs"
