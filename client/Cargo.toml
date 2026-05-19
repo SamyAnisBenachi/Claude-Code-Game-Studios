@@ -472,6 +472,25 @@ path = "../tests/integration/qa_snapshot/layout_field_coverage_test.rs"
 name = "qa_snapshot_placement_auction_state_field_coverage_test"
 path = "../tests/integration/qa_snapshot/placement_auction_state_field_coverage_test.rs"
 
+# PROMPT 1347 / S18-AUCTION-WON-CARD-DISPOSITION-001 (AC11 + AC16) —
+# locks the top-level `auction_won_pending` JSON block against the
+# `client::presentation::qa_snapshot` schema. Asserts the block is
+# absent on non-winner / Case-B / non-Placement / submit / phase-exit
+# states and present-with-correct-fields on the winner-in-Placement
+# state. Additive `[[test]]` block only.
+[[test]]
+name = "qa_snapshot_auction_won_pending_test"
+path = "../tests/unit/qa_snapshot/auction_won_pending_test.rs"
+
+# PROMPT 1347 / S18-AUCTION-WON-CARD-DISPOSITION-001 (AC14 + AC15) —
+# client-side integration coverage for the auction-won card disposition
+# UI lifecycle: AC4 banner spawn at PLACEMENT entry, AC5 hand marker
+# attachment, AC6 same-card_id binding, AC9 phase-exit + no-reappear
+# guards, AC14 drag-stage clearing, AC15 opponent-toast price copy.
+[[test]]
+name = "shop_auction_ui_auction_won_card_disposition_test"
+path = "../tests/integration/shop_auction_ui/auction_won_card_disposition_test.rs"
+
 # S17-UI-QA-SNAPSHOT-MARKER-SPLIT-001 — per-sub-surface marker split,
 # visibility-aware UI counts, and session-id-prefixed snapshot directory
 # names (SOURCE-1077-08 + SOURCE-1077-09 + SOURCE-1077-16). Covers ACs

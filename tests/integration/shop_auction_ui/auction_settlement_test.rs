@@ -108,9 +108,15 @@ fn sau_007_opponent_and_no_bid_settlement_skip_local_card_feedback() {
         0
     );
     assert!(read_messages::<CardAcquiredAnimReady>(&opponent_app).is_empty());
+    // PROMPT 1347 / AC7 — loser-side toast now names the price. The
+    // pre-PROMPT-1347 copy was "Opponent won the auction"; the new copy
+    // surfaces the bid commitment so the loser sees what the opponent
+    // paid. Static helper `ShopAuctionSettlementState::overlay_text()`
+    // still returns the legacy copy; `dynamic_overlay_text()` is the new
+    // source-of-truth and is what `sync_settlement_overlay_system` renders.
     assert_eq!(
         settlement_overlay_text(&opponent_app),
-        "Opponent won the auction"
+        "Opponent won for 8g"
     );
 
     let mut no_bid_app = app_in_active_auction(4, 20_000);

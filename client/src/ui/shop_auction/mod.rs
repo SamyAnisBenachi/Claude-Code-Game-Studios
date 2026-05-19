@@ -1,3 +1,4 @@
+use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 use lightyear::prelude::{MessageReceiver, MessageSender};
 use shared::card::{CardCatalog, CardData, CardId, CardType, Rarity};
@@ -24,6 +25,12 @@ use crate::ui::design_tokens::card_slot::{
 use crate::ui::design_tokens::{overlays, spacing, typography, z_layers};
 use crate::ui::hud::{HudGoldBroadcastMessage, HudPlayerIds, PhaseTimerState};
 use crate::ui::settings::AccessibilityPreferences;
+// PROMPT 1347 / S18-AUCTION-WON-CARD-DISPOSITION-001 — disposition state
+// reads from the hand-side PlacementTimer + PendingPlacements + FanSlot
+// queries so the AC4 banner + AC5 marker + AC11 snapshot lifecycle stays
+// in sync with the existing drag/stage/submit pipeline. No reverse
+// coupling: hand_ui still does not import from shop_auction.
+use crate::ui::hand::{FanSlotIndex, HandSlotCard, PendingPlacements, PlacementTimer};
 
 pub const SHOP_AUCTION_UI_PANEL_ROOT_COUNT: usize = 6;
 pub const SHOP_AUCTION_UI_DRAFT_INITIAL_SLOT_COUNT: usize = 9;
@@ -586,6 +593,111 @@ impl ShopAuctionSettlementState {
             None => "",
         }
     }
+
+    /// PROMPT 1347 / AC7 — dynamic overlay text that names the price for
+    /// the loser-side toast. The static [`Self::overlay_text`] is preserved
+    /// for callers that prefer the price-free string; the dynamic variant
+    /// is rendered by [`sync_settlement_overlay_system`] so the loser sees
+    /// the bid commitment alongside the outcome.
+    ///
+    /// Card-name resolution is deferred to the caller (which has the
+    /// catalog handy); this method returns price-aware copy for every
+    /// outcome and the caller decorates with the card name when known.
+    pub fn dynamic_overlay_text(&self) -> String {
+        match self.outcome {
+            Some(ShopAuctionSettlementOutcome::LocalWinner) => {
+                "Auction won - card moving to hand".to_string()
+            }
+            Some(ShopAuctionSettlementOutcome::OpponentWinner) => {
+                format!("Opponent won for {}g", self.amount)
+            }
+            Some(ShopAuctionSettlementOutcome::NoBid) => "No bids - card returned".to_string(),
+            None => String::new(),
+        }
+    }
+}
+
+/// PROMPT 1347 / S18-AUCTION-WON-CARD-DISPOSITION-001 AC4 / AC5 / AC9 /
+/// AC11 — client-side, presentation-only state that records the
+/// most-recent auction the local player won and tracks its disposition
+/// across the auction-followup PLACEMENT window. Drives:
+///
+/// - AC4: the "Auction won" affordance banner during PLACEMENT.
+/// - AC5: the newly-acquired hand-fan marker.
+/// - AC11: the QA snapshot `auction_won_pending` block.
+///
+/// Not authoritative. The server-side disposition contract
+/// (`server/src/feature/auction/system.rs` `award_auction_card` →
+/// `S2CCardAcquired { source: CardSource::AuctionWon }`) is unchanged.
+/// This resource exists only so the client can render discoverability and
+/// snapshot the disposition for observability. ADR-002 + ADR-013 are
+/// preserved (AC21).
+#[derive(Resource, Default, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AuctionWonPending {
+    pub state: Option<AuctionWonPendingState>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AuctionWonPendingState {
+    /// Card ID of the auction-won card (one-shot per auction settle; the
+    /// same `card_id` may appear again later in the same hand from a
+    /// non-auction source — that does NOT re-engage this state).
+    pub card_id: CardId,
+    /// `phase_view.round_number` captured at auction settle. Surfaced on
+    /// the snapshot block for cross-correlation with server logs.
+    pub settle_round: u32,
+    /// `true` once the won card appears in `PendingPlacements` for the
+    /// current PLACEMENT phase. Drives AC4 banner + AC5 marker hide; the
+    /// snapshot block continues to surface this flag until the state
+    /// clears.
+    pub staged_yet: bool,
+    /// `true` once `PlacementTimer::submitted` has fired while the won
+    /// card was staged. The state clears (becomes `None`) on the same
+    /// frame the submit lands so the AC11 block becomes absent per the
+    /// "submit clears the block" rule.
+    pub submitted_yet: bool,
+}
+
+impl AuctionWonPending {
+    /// AC4 / AC5: visible UI affordance gate. Banner + marker render only
+    /// while the won card is in the hand AND has not yet been staged AND
+    /// the local player is in the auction-followup PLACEMENT phase.
+    pub fn affordance_visible(self, current_phase: RoundPhase) -> bool {
+        matches!(current_phase, RoundPhase::Placement)
+            && self
+                .state
+                .map(|s| !s.staged_yet)
+                .unwrap_or(false)
+    }
+
+    /// AC11: snapshot-block gate. The block is emitted while the
+    /// disposition is pending AND the local player is in PLACEMENT. The
+    /// block reflects `staged_yet` / `submitted_yet` inside itself but
+    /// does NOT depend on them for presence.
+    pub fn snapshot_block_active(self, current_phase: RoundPhase) -> bool {
+        matches!(current_phase, RoundPhase::Placement) && self.state.is_some()
+    }
+
+    pub fn card_id(self) -> Option<CardId> {
+        self.state.map(|s| s.card_id)
+    }
+
+    /// Sets a fresh pending state on auction settle. Overwrites any prior
+    /// pending state — the contract is one-shot-per-settle.
+    pub fn arm(&mut self, card_id: CardId, settle_round: u32) {
+        self.state = Some(AuctionWonPendingState {
+            card_id,
+            settle_round,
+            staged_yet: false,
+            submitted_yet: false,
+        });
+    }
+
+    /// One-shot clear. After clearing the marker does NOT re-appear in a
+    /// later PLACEMENT phase even if the same card is re-staged (AC9).
+    pub fn clear(&mut self) {
+        self.state = None;
+    }
 }
 
 #[derive(Resource, Default, Debug, Clone, Copy, PartialEq, Eq)]
@@ -1012,6 +1124,35 @@ pub struct AuctionToastText;
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct AuctionSettlementOverlayText;
 
+/// PROMPT 1347 / S18-AUCTION-WON-CARD-DISPOSITION-001 AC4 — marker placed on
+/// the post-settle "Auction won: <card-name>" banner spawned during the
+/// auction-followup PLACEMENT window. Spawned lazily by
+/// [`sync_auction_won_affordance_system`] when [`AuctionWonPending`] is
+/// `Pending` and the current phase is `Placement`; despawned when the won
+/// card is staged via drag-drop, the PLACEMENT phase ends, or
+/// [`AuctionWonPending`] otherwise transitions back to `Idle`.
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AuctionWonAffordanceBanner;
+
+/// PROMPT 1347 / S18-AUCTION-WON-CARD-DISPOSITION-001 AC4 — marker placed on
+/// the child text entity inside [`AuctionWonAffordanceBanner`]. Separating
+/// the marker from the parent lets the sync system update text without
+/// re-querying the banner root.
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AuctionWonAffordanceText;
+
+/// PROMPT 1347 / S18-AUCTION-WON-CARD-DISPOSITION-001 AC5 — newly-acquired
+/// visual marker attached as a child of the hand-fan slot whose
+/// [`crate::ui::hand::HandSlotCard`] matches the [`AuctionWonPending`] card.
+/// Spawned lazily by [`sync_auction_won_hand_marker_system`] when the won
+/// card is in the fan during the auction-followup PLACEMENT window;
+/// despawned on stage / phase-end / `Idle` transition. One-shot per auction
+/// settle: once cleared by [`AuctionWonPending::clear`], the marker does
+/// NOT re-appear even if the same card is re-staged in a later PLACEMENT
+/// phase (AC9).
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AuctionWonHandMarker;
+
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct DraftInitialSlotIndex(pub u8);
 
@@ -1390,6 +1531,12 @@ impl Plugin for ShopAuctionUiPlugin {
             .init_resource::<ShopAuctionLocalGoldView>()
             .init_resource::<AuctionTimerTargetFill>()
             .init_resource::<ShopAuctionToastState>()
+            // PROMPT 1347 / S18-AUCTION-WON-CARD-DISPOSITION-001 — presentation-
+            // layer state for AC4 banner + AC5 hand-fan marker + AC11 snapshot
+            // block. Not authoritative; derived from the existing
+            // `S2CAuctionSettled` + `S2CCardAcquired { source: AuctionWon }`
+            // wire-level pair (which is unchanged by this row).
+            .init_resource::<AuctionWonPending>()
             .init_resource::<ShopAuctionRefreshConfig>()
             .init_resource::<AuctionBidKeyboardFocus>()
             .init_resource::<AuctionLocallyPassed>()
@@ -1502,6 +1649,13 @@ impl Plugin for ShopAuctionUiPlugin {
                         sync_auction_panel_system,
                         sync_settlement_overlay_system,
                         sync_auction_toast_system,
+                        // PROMPT 1347 / AC4 + AC5 + AC9 — disposition state
+                        // update must run before the affordance + marker
+                        // sync systems so staged_yet / submitted_yet / phase-
+                        // exit clearing reflects the current frame.
+                        update_auction_won_pending_system,
+                        sync_auction_won_affordance_system,
+                        sync_auction_won_hand_marker_system,
                     )
                         .chain()
                         .in_set(ShopAuctionUiSystemSet::StateSync),
@@ -2016,6 +2170,20 @@ pub fn handle_auction_bid_rejected_system(
     }
 }
 
+/// PROMPT 1347 — SystemParam bundle for the three optional Messages
+/// resources written by [`handle_auction_settled_system`]. Bevy 0.18
+/// caps system arity at 16 SystemParams; adding `AuctionWonPending` would
+/// push the function to 17. Bundling the optional Messages resources
+/// preserves the existing 16-param ceiling without changing what is
+/// written.
+#[derive(SystemParam)]
+pub struct AuctionSettledAnimMessages<'w> {
+    pub card_acquired_anim: Option<ResMut<'w, Messages<CardAcquiredAnimReady>>>,
+    pub settlement_overlay: Option<ResMut<'w, Messages<SettlementOverlayRequested>>>,
+    pub panel_transition: Option<ResMut<'w, Messages<AuctionPanelTransitionRequested>>>,
+}
+
+#[allow(clippy::too_many_arguments)]
 pub fn handle_auction_settled_system(
     player_ids: Option<Res<HudPlayerIds>>,
     local_gold: Res<ShopAuctionLocalGoldView>,
@@ -2030,9 +2198,8 @@ pub fn handle_auction_settled_system(
     mut mode: ResMut<ShopAuctionUiMode>,
     mut toast_state: ResMut<ShopAuctionToastState>,
     mut timer_target: ResMut<AuctionTimerTargetFill>,
-    mut card_anim_messages: Option<ResMut<Messages<CardAcquiredAnimReady>>>,
-    mut overlay_messages: Option<ResMut<Messages<SettlementOverlayRequested>>>,
-    mut panel_transition_messages: Option<ResMut<Messages<AuctionPanelTransitionRequested>>>,
+    mut auction_won_pending: ResMut<AuctionWonPending>,
+    mut anim_messages: AuctionSettledAnimMessages,
 ) {
     let local_player_id = player_ids
         .as_deref()
@@ -2066,14 +2233,30 @@ pub fn handle_auction_settled_system(
 
         if local_card_feedback {
             hand_view.hand_size = hand_view.hand_size.saturating_add(1).min(10);
-            if let Some(messages) = card_anim_messages.as_deref_mut() {
+            if let Some(messages) = anim_messages.card_acquired_anim.as_deref_mut() {
                 messages.write(CardAcquiredAnimReady);
             }
+            // PROMPT 1347 / AC4 / AC5 / AC11 — arm the auction-won
+            // disposition state so the affordance banner, hand-fan marker,
+            // and QA snapshot block become active when the auction-followup
+            // PLACEMENT phase begins. `auction_state.card_id` is the won
+            // card (the auction state still holds the card at this point;
+            // it is cleared shortly after by `enter_settling`). One-shot
+            // per auction settle.
+            if let Some(card_id) = auction_state.card_id {
+                auction_won_pending.arm(card_id, phase_view.round_number);
+                tracing::info!(
+                    target: "client::ui::shop_auction",
+                    card_id = ?card_id,
+                    settle_round = phase_view.round_number,
+                    "auction_won_pending: armed for AC4/AC5/AC11"
+                );
+            }
         }
-        if let Some(messages) = overlay_messages.as_deref_mut() {
+        if let Some(messages) = anim_messages.settlement_overlay.as_deref_mut() {
             messages.write(SettlementOverlayRequested);
         }
-        if let Some(messages) = panel_transition_messages.as_deref_mut() {
+        if let Some(messages) = anim_messages.panel_transition.as_deref_mut() {
             messages.write(AuctionPanelTransitionRequested);
         }
 
@@ -4112,7 +4295,10 @@ pub fn sync_settlement_overlay_system(
     if let Ok(mut text) = texts.get_mut(entities.settlement_overlay_text) {
         text.0.clear();
         if visible {
-            text.0.push_str(settlement_state.overlay_text());
+            // PROMPT 1347 / AC7 — loser-side toast names the price. The
+            // dynamic copy includes `for {amount}g` for OpponentWinner so
+            // the loser sees the bid commitment.
+            text.0.push_str(&settlement_state.dynamic_overlay_text());
         }
     }
 
@@ -6631,5 +6817,317 @@ fn set_visibility(
 ) {
     if let Ok(mut current_visibility) = visibility.get_mut(entity) {
         *current_visibility = target_visibility;
+    }
+}
+
+// =========================================================================
+// PROMPT 1347 — S18-AUCTION-WON-CARD-DISPOSITION-001
+//
+// Disposition contract: auction-won card → winner hand on settle → manual
+// placement during the auction-followup PLACEMENT phase → persists if not
+// staged. The wire-level contract is unchanged (server is the only writer
+// of `PlayerHands` and `S2CCardAcquired { source: AuctionWon }`); the
+// presentation layer below adds discoverability + observability per
+// AUDIT-1131-02 (Lane B1 + B2 + Lane D3).
+// =========================================================================
+
+/// PROMPT 1347 — AC4 affordance banner copy. The implementing worker chose
+/// a stable English string for the banner: "Auction won — place your
+/// new card!" The copy avoids naming a specific card (the card name lives
+/// on the hand fan via the existing card display art surface; the banner
+/// is the discoverability prompt). Localisable: callers can swap this
+/// const for a token lookup once the localisation pipeline lands; the
+/// AC4 contract names "or equivalent localizable token" explicitly.
+pub const AUCTION_WON_AFFORDANCE_TEXT: &str = "Auction won — place your new card!";
+
+fn auction_won_affordance_root_node() -> Node {
+    // PROMPT 1347 / AC4 — top-anchored banner that sits above the hand
+    // bar so the winner sees it without competing for attention with the
+    // shop / auction panels (both hidden during PLACEMENT). The 1366×768
+    // minimum-supported viewport puts this band well clear of both the
+    // hand fan strip (260px from bottom) and the HUD header.
+    Node {
+        position_type: PositionType::Absolute,
+        left: Val::Percent(28.0),
+        right: Val::Percent(28.0),
+        top: Val::Px(96.0),
+        height: Val::Px(56.0),
+        padding: UiRect::all(Val::Px(12.0)),
+        border: UiRect::all(Val::Px(2.0)),
+        align_items: AlignItems::Center,
+        justify_content: JustifyContent::Center,
+        ..default()
+    }
+}
+
+fn auction_won_affordance_text_node() -> Node {
+    Node {
+        position_type: PositionType::Relative,
+        ..default()
+    }
+}
+
+fn auction_won_hand_marker_node() -> Node {
+    // PROMPT 1347 / AC5 — overlay child sized to the parent fan slot's
+    // intrinsic bounds. The amber border + ambient glow signal "newly
+    // acquired" without changing the underlying chrome layout — the
+    // existing drag-state and idle-playable overlays continue to layer
+    // on top.
+    Node {
+        position_type: PositionType::Absolute,
+        left: Val::Px(-4.0),
+        right: Val::Px(-4.0),
+        top: Val::Px(-4.0),
+        bottom: Val::Px(-4.0),
+        border: UiRect::all(Val::Px(3.0)),
+        ..default()
+    }
+}
+
+/// PROMPT 1347 / AC4 / AC5 / AC9 / AC11 — single-source-of-truth update
+/// for the auction-won disposition state. Runs every frame in the
+/// `StateSync` system set so banner / marker / snapshot derivations are
+/// consistent within a frame.
+///
+/// State machine:
+/// - `None` (Idle): no auction has been won, or the previous one was
+///   cleared. Stays here until [`handle_auction_settled_system`] arms a
+///   fresh `Some(_)` for the LocalWinner outcome.
+/// - `Some(_)`: armed. Each frame:
+///   - On phase change to `Resolution` / `GameOver` / `Lobby` /
+///     `Handshaking`: clear to `None`.
+///   - Else, recompute `staged_yet` from `PendingPlacements` and
+///     `submitted_yet` from `PlacementTimer.submitted` (only if previously
+///     staged). On `submitted_yet`, clear to `None` (AC11: block becomes
+///     absent on submit).
+///
+/// AC9 binding: once cleared, the marker does NOT re-arm even if the same
+/// card is re-staged in a future PLACEMENT phase, because `arm()` is only
+/// called from `handle_auction_settled_system` on a fresh
+/// `S2CAuctionSettled { winner: Some(local), .. }` (one-shot per settle).
+pub fn update_auction_won_pending_system(
+    current: Res<CurrentClientPhase>,
+    pending_placements: Option<Res<PendingPlacements>>,
+    placement_timer: Option<Res<PlacementTimer>>,
+    mut auction_won_pending: ResMut<AuctionWonPending>,
+) {
+    let Some(state) = auction_won_pending.state else {
+        return;
+    };
+
+    // AC9 + AC11 first half: clear on phase exit. The auction-followup
+    // PLACEMENT is the only PLACEMENT scoped to this state (since arm()
+    // happens during DRAFT_AUCTION → PLACEMENT). Any later PLACEMENT in
+    // the same session re-uses the same `AuctionWonPending` only if a
+    // fresh auction is won (arm() is the only writer of `Some`).
+    match current.phase {
+        RoundPhase::Resolution
+        | RoundPhase::GameOver
+        | RoundPhase::Lobby
+        | RoundPhase::Handshaking => {
+            tracing::info!(
+                target: "client::ui::shop_auction",
+                phase = ?current.phase,
+                card_id = ?state.card_id,
+                "auction_won_pending: clearing on phase exit (AC9 / AC11)"
+            );
+            auction_won_pending.clear();
+            return;
+        }
+        RoundPhase::DraftInitial
+        | RoundPhase::DraftShop
+        | RoundPhase::DraftAuction
+        | RoundPhase::Placement => {}
+    }
+
+    // AC4 / AC5: staged_yet derived from PendingPlacements. The won card
+    // is uniquely identified by `card_id`; PendingPlacements may stage
+    // other cards in parallel — only the won card's stage affects this
+    // flag.
+    let pending_has_won_card = pending_placements
+        .as_deref()
+        .map(|p| {
+            p.placements
+                .iter()
+                .any(|placement| placement.card_id == state.card_id)
+        })
+        .unwrap_or(false);
+
+    // AC11 second half: submitted_yet derived from PlacementTimer once
+    // the won card has been staged. Without the stage gate a different
+    // submit (e.g. submitting an empty batch) could incorrectly clear
+    // this state.
+    let timer_submitted = placement_timer
+        .as_deref()
+        .map(|t| t.submitted)
+        .unwrap_or(false);
+    let submitted_yet = state.submitted_yet || (state.staged_yet && timer_submitted);
+
+    let new_state = AuctionWonPendingState {
+        card_id: state.card_id,
+        settle_round: state.settle_round,
+        staged_yet: state.staged_yet || pending_has_won_card,
+        submitted_yet,
+    };
+
+    if submitted_yet {
+        // AC11: clear immediately on submit so the snapshot block becomes
+        // absent on the same frame. AC4 / AC5 are already cleared via
+        // `staged_yet` rendering rule one frame earlier.
+        tracing::info!(
+            target: "client::ui::shop_auction",
+            card_id = ?state.card_id,
+            "auction_won_pending: clearing on successful submit (AC11)"
+        );
+        auction_won_pending.clear();
+        return;
+    }
+
+    if new_state != state {
+        auction_won_pending.state = Some(new_state);
+    }
+}
+
+/// PROMPT 1347 / AC4 / AC9 — spawn-or-despawn the "Auction won" affordance
+/// banner. One-shot per pending state: at most one banner exists at any
+/// time. The banner is a top-level UI entity (no ChildOf) so it survives
+/// the per-phase visibility flips on `ShopAuctionUiRoot`.
+pub fn sync_auction_won_affordance_system(
+    current: Res<CurrentClientPhase>,
+    auction_won_pending: Res<AuctionWonPending>,
+    catalog: Res<ShopAuctionCardCatalog>,
+    mut commands: Commands,
+    banners: Query<Entity, With<AuctionWonAffordanceBanner>>,
+    mut texts: Query<&mut Text, With<AuctionWonAffordanceText>>,
+) {
+    let should_be_visible = auction_won_pending.affordance_visible(current.phase);
+    let banner_count = banners.iter().count();
+
+    if should_be_visible && banner_count == 0 {
+        let card_name = auction_won_pending
+            .card_id()
+            .and_then(|card_id| catalog.cards.get(&card_id).map(|c| c.name_en.clone()));
+        let text = match card_name {
+            Some(name) => format!("Auction won — place {name}!"),
+            None => AUCTION_WON_AFFORDANCE_TEXT.to_string(),
+        };
+        let banner = commands
+            .spawn((
+                Name::new("Shop Auction — Auction Won Affordance Banner"),
+                AuctionWonAffordanceBanner,
+                auction_won_affordance_root_node(),
+                BackgroundColor(Color::srgba(0.10, 0.07, 0.04, 0.92)),
+                BorderColor::all(Color::srgb(0.95, 0.66, 0.18)),
+                Visibility::Visible,
+                z_layers::UI_OVERLAY,
+            ))
+            .id();
+        commands.spawn((
+            Name::new("Shop Auction — Auction Won Affordance Text"),
+            AuctionWonAffordanceText,
+            Text::new(text),
+            shop_auction_text_font(typography::H3),
+            TextColor(Color::srgb(0.98, 0.94, 0.78)),
+            TextLayout::new_with_justify(Justify::Center),
+            auction_won_affordance_text_node(),
+            Visibility::Inherited,
+            ChildOf(banner),
+        ));
+        tracing::info!(
+            target: "client::ui::shop_auction",
+            card_id = ?auction_won_pending.card_id(),
+            "auction_won_affordance: banner spawned (AC4)"
+        );
+        return;
+    }
+
+    if !should_be_visible && banner_count > 0 {
+        for entity in &banners {
+            commands.entity(entity).despawn();
+        }
+        tracing::info!(
+            target: "client::ui::shop_auction",
+            card_id = ?auction_won_pending.card_id(),
+            phase = ?current.phase,
+            "auction_won_affordance: banner despawned (AC4 / AC9)"
+        );
+        return;
+    }
+
+    // Banner already exists and should remain — refresh the text in case
+    // the catalog populated between spawn and this frame.
+    if should_be_visible && banner_count > 0 {
+        if let Some(card_id) = auction_won_pending.card_id() {
+            if let Some(card) = catalog.cards.get(&card_id) {
+                let new_text = format!("Auction won — place {}!", card.name_en);
+                for mut text in &mut texts {
+                    if text.0 != new_text {
+                        text.0 = new_text.clone();
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// PROMPT 1347 / AC5 / AC9 — spawn-or-despawn the newly-acquired marker
+/// child on the hand fan slot whose `HandSlotCard` matches the pending
+/// won card. The marker is a child of the fan slot so it inherits the
+/// slot's transform and visibility — when the slot is hidden by the hand
+/// layout (e.g. mode transitions), the marker is invisible without
+/// requiring its own visibility flip.
+pub fn sync_auction_won_hand_marker_system(
+    current: Res<CurrentClientPhase>,
+    auction_won_pending: Res<AuctionWonPending>,
+    mut commands: Commands,
+    fan_slots: Query<(Entity, &HandSlotCard), With<FanSlotIndex>>,
+    existing_markers: Query<(Entity, &ChildOf), With<AuctionWonHandMarker>>,
+) {
+    let should_be_visible = auction_won_pending.affordance_visible(current.phase);
+    let target_card_id = auction_won_pending.card_id();
+
+    // Determine which fan slot (if any) should host the marker this frame.
+    let target_slot = if should_be_visible {
+        target_card_id.and_then(|card_id| {
+            fan_slots
+                .iter()
+                .find(|(_, slot_card)| slot_card.0 == card_id)
+                .map(|(entity, _)| entity)
+        })
+    } else {
+        None
+    };
+
+    // Remove markers that no longer belong on their parent slot. Tolerate
+    // the case where a marker's parent slot got despawned by the hand
+    // layout (Bevy auto-despawns the child).
+    for (entity, child_of) in &existing_markers {
+        if Some(child_of.parent()) != target_slot {
+            commands.entity(entity).despawn();
+        }
+    }
+
+    // Spawn the marker on the target slot if one is needed and none
+    // exists yet.
+    let already_attached = existing_markers
+        .iter()
+        .any(|(_, child_of)| Some(child_of.parent()) == target_slot);
+    if let Some(slot) = target_slot {
+        if !already_attached {
+            commands.spawn((
+                Name::new("Hand Fan Slot — Auction Won Newly-Acquired Marker"),
+                AuctionWonHandMarker,
+                auction_won_hand_marker_node(),
+                BackgroundColor(Color::srgba(0.95, 0.66, 0.18, 0.08)),
+                BorderColor::all(Color::srgb(0.98, 0.78, 0.30)),
+                Visibility::Inherited,
+                ChildOf(slot),
+            ));
+            tracing::info!(
+                target: "client::ui::shop_auction",
+                card_id = ?target_card_id,
+                "auction_won_hand_marker: marker spawned (AC5)"
+            );
+        }
     }
 }
