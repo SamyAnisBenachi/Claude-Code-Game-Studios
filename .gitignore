@@ -25,6 +25,14 @@ production/session-logs/
 # === Octogent local orchestration state ===
 .octogent/
 
+# === Dev-only asset packs (ADR-025 boundary) ===
+# Krosmaga-derived visual references (and any other dev-only proxy pack)
+# live under dev-assets/ on a developer workstation and must never enter
+# the repo. See:
+#   docs/architecture/adr-025-asset-pack-provenance-architecture.md
+#   design/assets/provenance/schema.md
+dev-assets/
+
 # === Worker report mirrors (3-step report-back protocol) ===
 # Workers write their full final output to reports/<terminalId>.md as
 # Step 2 of the report-back protocol. These are transient per-session
