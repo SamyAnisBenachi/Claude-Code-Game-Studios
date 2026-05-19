@@ -83,8 +83,13 @@
 //!   surface, `BoardStagedGhost` board surface) are migrated by the
 //!   Sprint 16+ `S16-UI-CARD-SLOT-MIGRATION-*` follow-on family.
 
+use bevy::color::Color;
+use bevy::ecs::component::Component;
 use bevy::prelude::default;
-use bevy::ui::{Display, FlexDirection, GlobalZIndex, Node, PositionType, UiRect, Val};
+use bevy::ui::widget::{ImageNode, NodeImageMode};
+use bevy::ui::{
+    Display, FlexDirection, GlobalZIndex, Node, Overflow, PositionType, UiRect, Val,
+};
 
 use crate::ui::design_tokens::z_layers;
 
@@ -739,6 +744,240 @@ pub fn card_slot_text_inset_node(kind: CardSlotKind) -> (Node, GlobalZIndex) {
         },
         geometry.z_layer,
     )
+}
+
+// ---------------------------------------------------------------------------
+// Sprint 18 — S18-UI-CARD-ART-AND-LABEL-STRIP-001
+// Card-art image-mode policy + opaque label-strip primitive
+// ---------------------------------------------------------------------------
+//
+// PROMPT 1180 §2 RC-3 / §6 Lane C surfaced two structural defects in the
+// per-surface card composition that the Sprint 16 story 009 primitive did
+// NOT yet prevent:
+//
+//   * **RC-3 image-mode default**: every card-art `ImageNode` spawned by
+//     `client/src/asset_wiring.rs::apply_card_display_art` or by a hand /
+//     draft / auction consumer site landed without an explicit
+//     `image_mode` set. Bevy 0.18's `NodeImageMode` enum has no `Fit`
+//     variant — the valid modes are `Auto`, `Stretch`, `Sliced`, and
+//     `Tiled`. `ImageNode::new(handle)` defaults to `Auto`, which sizes
+//     the image to the source dimensions while honouring layout
+//     constraints; `Stretch` ignores the source aspect ratio. The
+//     symptom audited as UI-1129-05 (banner-stretched portraits in the
+//     hand fan and shop / auction surfaces) was downstream of consumer
+//     sites that constrained the `ImageNode` to a fixed-size parent
+//     without an explicit `Auto` policy — the implicit default flowed
+//     from `ImageNode::new` and any future revision that swapped that
+//     default would silently re-create the banner-stretch defect.
+//
+//   * **S-04 / UI-1129-02 label overlay**: the auction featured card
+//     and (to a lesser degree) the hand fan slot overlaid title /
+//     rarity / cost / stat text directly on the card chrome without an
+//     opaque label background. Readability dropped to near-zero when
+//     the underlying art was bright or noisy.
+//
+// This Sprint 18 row promotes both rules from per-surface conventions
+// into structural primitives:
+//
+//   * [`CardSlotArtImage`] marker — applied to the card-art child entity
+//     spawned inside a card-slot's image-inset rectangle. Pairs with the
+//     [`card_slot_art_image_node`] / [`card_slot_art_image_mode`] /
+//     [`card_slot_art_image_component`] builders so the per-kind art
+//     child always carries `NodeImageMode::Auto` (AC2 of story-022:
+//     `NodeImageMode::Fit` does not exist in Bevy 0.18, so the
+//     justified mapping is `Auto` per the AC2 "or Auto with
+//     justification" clause).
+//
+//   * [`CardSlotLabelStrip`] marker — applied to the opaque text-label
+//     band spawned inside a card-slot's text-inset rectangle. Pairs
+//     with the [`card_slot_label_strip_node`] /
+//     [`card_slot_label_strip_background_color`] builders so the strip
+//     always carries an opaque `BackgroundColor` (alpha ≥
+//     [`CARD_SLOT_LABEL_STRIP_BG_ALPHA`] satisfying AC3 ≥ 0.85), a
+//     `min_width` clamp ([`CARD_SLOT_LABEL_STRIP_MIN_WIDTH_PX`]), and
+//     [`Overflow::clip_x()`] to bound horizontal overflow.
+//
+// **Friend-game scope boundary preserved.** This primitive does NOT
+// claim release readiness, `QA-COND-0005` Standard-tier accessibility,
+// `QA-COND-0006` playtest validation, or `PAW-TD-*-a` placeholder-art
+// accept-risk closure. The chrome-preservation rule from PROMPT 1117
+// (kept behavioural in `asset_wiring.rs::apply_card_display_art`)
+// stays in place — the per-surface migration sites now attach the
+// `ImageNode` to the `CardSlotArtImage` CHILD entity instead of the
+// slot root, leaving the spawn-time chrome ImageNode on the slot root
+// untouched.
+
+/// Marker component tagged onto the **card-art child entity** spawned
+/// inside a card slot's image-inset rectangle.
+///
+/// The child entity carries the per-card `ImageNode` (sourced via the
+/// shared `apply_card_display_art` helper) and an explicit
+/// [`NodeImageMode::Auto`] policy. Bevy 0.18's `NodeImageMode` enum has
+/// no `Fit` variant — story-022 AC2 explicitly allows `Auto` "with
+/// justification". The justification is the Bevy 0.18 API surface:
+/// `Auto` is the closest semantic to a "fit-to-layout while respecting
+/// the source aspect ratio" mode, and it is the only non-stretching
+/// per-side resize policy the engine ships at this version.
+///
+/// Consumers spawn the card-art child via [`card_slot_art_image_node`]
+/// + [`card_slot_art_image_component`]:
+///
+/// ```rust,ignore
+/// use bevy::prelude::*;
+/// use client::ui::design_tokens::card_slot::{
+///     card_slot_art_image_component, card_slot_art_image_node,
+///     CardSlotArtImage, CardSlotKind,
+/// };
+///
+/// fn spawn_art_child(commands: &mut Commands, slot: Entity) {
+///     let (art_node, art_z) = card_slot_art_image_node(CardSlotKind::HandFan);
+///     commands.spawn((
+///         CardSlotArtImage,
+///         art_node,
+///         art_z,
+///         card_slot_art_image_component(),
+///         ChildOf(slot),
+///     ));
+/// }
+/// ```
+#[derive(Component, Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub struct CardSlotArtImage;
+
+/// Marker component tagged onto the **opaque label-strip child entity**
+/// spawned inside a card slot's text-inset rectangle.
+///
+/// The strip carries an opaque [`BackgroundColor`] (alpha ≥
+/// [`CARD_SLOT_LABEL_STRIP_BG_ALPHA`], satisfying AC3 ≥ 0.85), a
+/// `min_width` floor of [`CARD_SLOT_LABEL_STRIP_MIN_WIDTH_PX`], and
+/// [`Overflow::clip_x()`] so long card names cannot bleed past the
+/// strip's horizontal bounds (AC3).
+///
+/// The strip is the canonical parent for the per-card title / rarity /
+/// cost / stat text children of a featured-card or hand-fan surface.
+/// AC9 of story-022 asserts the four featured-card text children
+/// reparent into the strip.
+#[derive(Component, Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub struct CardSlotLabelStrip;
+
+// ---------------------------------------------------------------------------
+// Sprint 18 story-022 — per-kind label-strip and art-image constants
+// ---------------------------------------------------------------------------
+
+/// Label-strip horizontal `min_width` floor — `24.0 px`. Satisfies AC3
+/// of story-022 (label strip carries a `min_width` clamp). The value
+/// is small enough to fit inside the narrowest card-slot text inset
+/// (the `HandFan` text band is `96 - 4 - 4 = 88 px` wide) and large
+/// enough that a single glyph cannot collapse the strip to a sliver.
+pub const CARD_SLOT_LABEL_STRIP_MIN_WIDTH_PX: f32 = 24.0;
+
+/// Label-strip opaque-background alpha — `0.92`. Satisfies AC3 (alpha
+/// ≥ 0.85). Slightly translucent so a faint card-art tint bleeds
+/// through behind the strip without compromising text legibility —
+/// matches the `PLACEMENT_ACTION_PANEL_BACKGROUND` /
+/// `HAND_CARD_SLOT_BACKGROUND` opacity used elsewhere in the
+/// client's `SURFACE_ELEVATED` chrome.
+pub const CARD_SLOT_LABEL_STRIP_BG_ALPHA: f32 = 0.92;
+
+/// Label-strip opaque-background RGB red component — `0.086`. Matches
+/// the `SURFACE_ELEVATED` token used by `lobby.rs::class_picker_panel`
+/// and `hand/mod.rs::PLACEMENT_ACTION_PANEL_BACKGROUND`.
+pub const CARD_SLOT_LABEL_STRIP_BG_R: f32 = 0.086;
+
+/// Label-strip opaque-background RGB green component — `0.106`.
+pub const CARD_SLOT_LABEL_STRIP_BG_G: f32 = 0.106;
+
+/// Label-strip opaque-background RGB blue component — `0.153`.
+pub const CARD_SLOT_LABEL_STRIP_BG_B: f32 = 0.153;
+
+/// Canonical card-art [`NodeImageMode`] — `NodeImageMode::Auto`.
+///
+/// Bevy 0.18 ships `Auto` / `Stretch` / `Sliced` / `Tiled` (see
+/// `bevy_ui::widget::image::NodeImageMode`). `Stretch` ignores the
+/// source aspect ratio (UI-1129-05); `Sliced` and `Tiled` are
+/// nine-slice / repeat policies not applicable to card art. `Auto` is
+/// the closest semantic to a "fit-to-layout while respecting the
+/// source aspect ratio" mode that the engine ships at this version,
+/// and is the justified mapping for story-022 AC2 (which names
+/// `NodeImageMode::Fit` — a variant that does not exist in Bevy 0.18 —
+/// or `Auto` with justification).
+pub const CARD_SLOT_ART_IMAGE_MODE: NodeImageMode = NodeImageMode::Auto;
+
+// ---------------------------------------------------------------------------
+// Sprint 18 story-022 — builders for the art child and label strip child
+// ---------------------------------------------------------------------------
+
+/// Returns the canonical opaque-background [`Color`] for a
+/// [`CardSlotLabelStrip`]. Composed from
+/// [`CARD_SLOT_LABEL_STRIP_BG_R`] / `_G` / `_B` /
+/// [`CARD_SLOT_LABEL_STRIP_BG_ALPHA`] so the alpha contract is read
+/// from a single named constant.
+pub const fn card_slot_label_strip_background_color() -> Color {
+    Color::srgba(
+        CARD_SLOT_LABEL_STRIP_BG_R,
+        CARD_SLOT_LABEL_STRIP_BG_G,
+        CARD_SLOT_LABEL_STRIP_BG_B,
+        CARD_SLOT_LABEL_STRIP_BG_ALPHA,
+    )
+}
+
+/// Canonical card-art [`NodeImageMode`] accessor — returns
+/// [`CARD_SLOT_ART_IMAGE_MODE`]. Provided as a function so the
+/// per-surface migration sites read the policy from one place rather
+/// than re-authoring `NodeImageMode::Auto` per spawn.
+pub const fn card_slot_art_image_mode() -> NodeImageMode {
+    CARD_SLOT_ART_IMAGE_MODE
+}
+
+/// Builds the per-kind **card-art image child** Node for a card slot.
+///
+/// Returns a `(Node, GlobalZIndex)` bundle identical in shape to
+/// [`card_slot_image_inset_node`] — the art child reuses the image
+/// inset rectangle so its outer edges match the canonical art region
+/// inside the slot. Consumers attach an [`ImageNode`] carrying the
+/// per-card art handle and an explicit
+/// [`NodeImageMode::Auto`] policy via
+/// [`card_slot_art_image_component`].
+pub fn card_slot_art_image_node(kind: CardSlotKind) -> (Node, GlobalZIndex) {
+    card_slot_image_inset_node(kind)
+}
+
+/// Builds the canonical card-art [`ImageNode`] **component** — empty
+/// image handle plus [`NodeImageMode::Auto`]. Consumers replace the
+/// image handle via the shared
+/// `client::asset_wiring::apply_card_display_art` helper, which
+/// preserves the `image_mode` field on every refresh per the
+/// chrome-preservation contract from PROMPT 1117.
+pub fn card_slot_art_image_component() -> ImageNode {
+    ImageNode {
+        image_mode: CARD_SLOT_ART_IMAGE_MODE,
+        ..default()
+    }
+}
+
+/// Builds the per-kind **label-strip child** Node for a card slot.
+///
+/// Returns a `(Node, GlobalZIndex)` bundle. The Node is
+/// [`PositionType::Absolute`] anchored to the canonical text inset
+/// rectangle from [`card_slot_text_inset_node`], with two additional
+/// structural overrides:
+///   * `min_width: Val::Px(CARD_SLOT_LABEL_STRIP_MIN_WIDTH_PX)` —
+///     the strip cannot collapse below the canonical floor (AC3).
+///   * `overflow: Overflow::clip_x()` — long text children cannot
+///     bleed past the strip's horizontal bounds (AC3).
+///
+/// Consumers attach a [`BackgroundColor`] from
+/// [`card_slot_label_strip_background_color`] so the strip paints
+/// opaque (AC3 alpha ≥ 0.85). The 4-child contract (title / rarity /
+/// cost / stat) is reach-through to AC9 of story-022 — the strip is
+/// the canonical parent for those text children.
+pub fn card_slot_label_strip_node(kind: CardSlotKind) -> (Node, GlobalZIndex) {
+    let (text_node, z) = card_slot_text_inset_node(kind);
+    let strip_node = Node {
+        min_width: Val::Px(CARD_SLOT_LABEL_STRIP_MIN_WIDTH_PX),
+        overflow: Overflow::clip_x(),
+        ..text_node
+    };
+    (strip_node, z)
 }
 
 // ---------------------------------------------------------------------------
