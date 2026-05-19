@@ -5,11 +5,13 @@ use std::path::{Path, PathBuf};
 use bevy::prelude::*;
 use bevy::state::app::StatesPlugin;
 use client::presentation::result_screen::{
-    build_result_objective_summary, result_screen_motion_state, result_screen_outcome_copy,
-    ResultObjectiveIdentity, ResultObjectiveState, ResultScreenFocusIndicator,
-    ResultScreenFocusOrder, ResultScreenHeadline, ResultScreenMotionState,
-    ResultScreenOutboundMessages, ResultScreenPlugin, ResultScreenRematchButton,
-    ResultScreenReturnToLobbyButton, ResultScreenRoot, ResultScreenSummaryText,
+    build_result_objective_summary, result_screen_class_persona_label, result_screen_motion_state,
+    result_screen_outcome_copy, ResultObjectiveIdentity, ResultObjectiveState,
+    ResultScreenAccountingPanel, ResultScreenClassPersona, ResultScreenContinueButton,
+    ResultScreenEntities, ResultScreenFocusIndicator, ResultScreenFocusOrder, ResultScreenHeadline,
+    ResultScreenHeroPanel, ResultScreenMotionState, ResultScreenOutboundMessages,
+    ResultScreenPlugin, ResultScreenRematchButton, ResultScreenReturnToLobbyButton,
+    ResultScreenRoot, ResultScreenStep, ResultScreenStepState, ResultScreenSummaryText,
     ResultScreenViewState,
 };
 use client::presentation::PresentationGameSnapshotMessage;
@@ -121,8 +123,8 @@ fn overlay_renders_game_over_result_and_hides_rematch() {
     assert_eq!(focus_indicator_count(&mut app), 1);
     assert_eq!(
         app.world().resource::<ResultScreenFocusOrder>().len(),
-        1,
-        "return to lobby is the only MVP focus target"
+        2,
+        "hero step focuses both Continue and Return CTAs"
     );
     assert_eq!(
         query_count::<ResultScreenRematchButton>(&mut app),
@@ -130,6 +132,11 @@ fn overlay_renders_game_over_result_and_hides_rematch() {
         "rematch is out of MVP scope and should not be spawned"
     );
     assert_eq!(return_button_count(&mut app), 1);
+    assert_eq!(
+        query_count::<ResultScreenContinueButton>(&mut app),
+        1,
+        "two-step reveal mounts a Continue CTA on the hero step"
+    );
 }
 
 #[test]
@@ -139,14 +146,33 @@ fn snapshot_only_game_over_uses_pending_fallback_and_return_action() {
     open_result_screen(&mut app, None);
 
     assert_eq!(headline(&mut app), "RESULT PENDING");
+    assert_eq!(
+        current_step(&app),
+        ResultScreenStep::Hero,
+        "screen always opens on the hero step"
+    );
 
     press_key(&mut app, KeyCode::Escape);
     assert_eq!(
         app.world().resource::<State<ClientState>>().get(),
         &ClientState::InSession,
-        "escape focuses the return action, it does not exit the result screen"
+        "escape resets focus to the primary CTA, it does not exit the result screen"
     );
 
+    // First Enter advances through the two-step reveal (Hero → Accounting).
+    press_key(&mut app, KeyCode::Enter);
+    app.update();
+    assert_eq!(current_step(&app), ResultScreenStep::Accounting);
+    assert_eq!(
+        app.world()
+            .resource::<ResultScreenOutboundMessages>()
+            .acknowledgements
+            .len(),
+        0,
+        "advancing to accounting must not send the result acknowledgement"
+    );
+
+    // Second Enter on the accounting step commits the return-to-lobby path.
     press_key(&mut app, KeyCode::Enter);
     app.update();
 
@@ -212,6 +238,174 @@ fn result_screen_has_single_game_over_receiver_and_no_snapshot_receiver() {
         !result_screen_src.contains("MessageReceiver<S2CGameSnapshot>"),
         "result screen must consume the presentation snapshot fanout, not add a second S2CGameSnapshot drain"
     );
+}
+
+#[test]
+fn test_result_screen_two_step_opens_on_hero_with_distinct_panel_markers() {
+    // Arrange
+    test_helpers::init_test_tracing();
+    let mut app = result_screen_app();
+
+    // Act
+    open_result_screen(
+        &mut app,
+        Some(result(Some(player(2)), GameOverReason::ObjectivesDestroyed)),
+    );
+
+    // Assert: hero + accounting panels are distinct entities with their own
+    // marker components, and the screen opens on the hero step.
+    assert_eq!(
+        query_count::<ResultScreenHeroPanel>(&mut app),
+        1,
+        "two-step reveal must spawn exactly one hero panel marker"
+    );
+    assert_eq!(
+        query_count::<ResultScreenAccountingPanel>(&mut app),
+        1,
+        "two-step reveal must spawn exactly one accounting panel marker"
+    );
+    assert_eq!(current_step(&app), ResultScreenStep::Hero);
+
+    let entities = *app.world().resource::<ResultScreenEntities>();
+    assert_eq!(
+        node_display(&mut app, entities.hero_panel),
+        Display::Flex,
+        "hero panel is mounted on the hero step"
+    );
+    assert_eq!(
+        node_display(&mut app, entities.accounting_panel),
+        Display::None,
+        "accounting panel stays hidden until the user advances"
+    );
+    assert_eq!(
+        node_display(&mut app, entities.continue_button),
+        Display::Flex,
+        "continue CTA is visible on the hero step"
+    );
+    // Return-to-lobby CTA stays accessible on both steps per V-P1-05.
+    assert_eq!(return_button_count(&mut app), 1);
+}
+
+#[test]
+fn test_result_screen_two_step_continue_transitions_hero_to_accounting() {
+    // Arrange
+    test_helpers::init_test_tracing();
+    let mut app = result_screen_app();
+    open_result_screen(
+        &mut app,
+        Some(result(Some(player(2)), GameOverReason::ObjectivesDestroyed)),
+    );
+    let entities = *app.world().resource::<ResultScreenEntities>();
+    assert_eq!(current_step(&app), ResultScreenStep::Hero);
+    assert_eq!(
+        node_display(&mut app, entities.accounting_panel),
+        Display::None
+    );
+
+    // Act: press Enter once — this is the keyboard equivalent of the
+    // Continue CTA on the hero step.
+    press_key(&mut app, KeyCode::Enter);
+    app.update();
+
+    // Assert: step state advanced and the panels swap; Continue CTA
+    // disappears from the action row while Return-to-Lobby stays.
+    assert_eq!(current_step(&app), ResultScreenStep::Accounting);
+    assert_eq!(
+        node_display(&mut app, entities.hero_panel),
+        Display::None,
+        "hero panel hides after advancing to accounting"
+    );
+    assert_eq!(
+        node_display(&mut app, entities.accounting_panel),
+        Display::Flex,
+        "accounting panel mounts on step 2"
+    );
+    assert_eq!(
+        node_display(&mut app, entities.continue_button),
+        Display::None,
+        "continue CTA is hidden once the user has advanced"
+    );
+    assert_eq!(
+        app.world().resource::<ResultScreenFocusOrder>().len(),
+        1,
+        "only Return-to-Lobby remains in the focus order on the accounting step"
+    );
+    // Acknowledgement must NOT have been sent by the advance step.
+    assert_eq!(
+        app.world()
+            .resource::<ResultScreenOutboundMessages>()
+            .acknowledgements
+            .len(),
+        0
+    );
+    // Layout bounds: panel children stay within the bounded panel's max
+    // height (set via Val::Percent(92.0) at spawn), so the swap never adds
+    // unbounded clipping.
+    assert_eq!(
+        app.world().resource::<State<ClientState>>().get(),
+        &ClientState::InSession,
+        "advancing through the reveal does not leave the in-session state"
+    );
+}
+
+#[test]
+fn test_result_screen_two_step_class_persona_label_uses_snapshot_class() {
+    // Arrange
+    test_helpers::init_test_tracing();
+    let local = player(1);
+    let snapshot = game_over_snapshot();
+
+    // Act
+    let label = result_screen_class_persona_label(Some(&snapshot), Some(local))
+        .expect("snapshot carries a class for the local player");
+
+    // Assert
+    assert!(
+        label.contains("Iop"),
+        "class persona label surfaces the snapshot's ClassId for the local player: got {label}"
+    );
+}
+
+#[test]
+fn test_result_screen_two_step_class_persona_label_absent_without_snapshot() {
+    // Arrange + Act
+    test_helpers::init_test_tracing();
+    let label = result_screen_class_persona_label(None, None);
+
+    // Assert: no snapshot ⇒ no invented value; caller hides the row.
+    assert!(label.is_none());
+}
+
+#[test]
+fn test_result_screen_two_step_class_persona_text_rendered_on_hero_panel() {
+    // Arrange
+    test_helpers::init_test_tracing();
+    let mut app = result_screen_app();
+
+    // Act
+    open_result_screen(
+        &mut app,
+        Some(result(Some(player(2)), GameOverReason::ObjectivesDestroyed)),
+    );
+
+    // Assert: class persona text picked up from the snapshot and rendered
+    // into the dedicated text entity on the hero panel.
+    let rendered = text_with::<ResultScreenClassPersona>(&mut app);
+    assert!(
+        rendered.contains("Iop"),
+        "class persona text should surface the snapshot's class label on the hero panel: got {rendered}"
+    );
+}
+
+fn current_step(app: &App) -> ResultScreenStep {
+    app.world().resource::<ResultScreenStepState>().current
+}
+
+fn node_display(app: &mut App, entity: Entity) -> Display {
+    app.world_mut()
+        .get::<Node>(entity)
+        .expect("result screen entity must have a Node")
+        .display
 }
 
 fn result_screen_app() -> App {
