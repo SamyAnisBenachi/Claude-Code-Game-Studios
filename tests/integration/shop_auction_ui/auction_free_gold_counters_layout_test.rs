@@ -26,7 +26,7 @@ use client::ui::shop_auction::{
     AUCTION_FREE_GOLD_COUNTER_KINDS, AUCTION_FREE_GOLD_COUNTER_LABEL_FONT_PX,
     AUCTION_FREE_GOLD_COUNTER_LEFT_GAP_PX, AUCTION_FREE_GOLD_COUNTER_LEFT_OFFSET_PX,
     AUCTION_FREE_GOLD_COUNTER_PADDING_PX, AUCTION_FREE_GOLD_COUNTER_VALUE_FONT_PX,
-    AUCTION_FREE_GOLD_COUNTER_WIDTH_PX,
+    AUCTION_FREE_GOLD_COUNTER_WIDTH_PX, AUCTION_READABILITY_INFO_LEFT_PX,
 };
 use shared::card::{CardData, CardId, CardType, ClassId, Rarity, UnitType};
 use shared::protocol::{RoundPhase, S2CGoldBroadcast};
@@ -121,18 +121,18 @@ fn ac2_counter_group_is_adjacent_to_bid_cluster_with_documented_gap() {
     for viewport in [VIEWPORT_1366, VIEWPORT_1920] {
         let layout = auction_layout_rects(&app, viewport);
         let expected_gap = spacing::SPACING_MD;
-        let actual_gap = layout.free_gold_group.left - layout.bid_cluster.right;
+        let actual_gap = layout.bid_cluster.top - layout.free_gold_group.bottom;
         assert_close(
             actual_gap,
             expected_gap,
             ADJACENCY_TOLERANCE_PX,
-            "free-gold group must sit one SPACING_MD token to the right of the bid cluster",
+            "free-gold group must sit one SPACING_MD token above the bid cluster",
         );
         assert_close(
-            layout.free_gold_group.center_y(),
-            layout.bid_cluster.center_y(),
+            layout.free_gold_group.left,
+            AUCTION_READABILITY_INFO_LEFT_PX,
             ADJACENCY_TOLERANCE_PX,
-            "free-gold group and bid cluster should share the same vertical decision row",
+            "free-gold group must align with the right-lane control column",
         );
 
         let expected_left = viewport.0 * (AUCTION_FREE_GOLD_COUNTER_ANCHOR_LEFT_PERCENT / 100.0)
@@ -375,10 +375,6 @@ struct Rect {
 }
 
 impl Rect {
-    fn center_y(self) -> f32 {
-        (self.top + self.bottom) / 2.0
-    }
-
     fn intersects(self, other: Self) -> bool {
         self.left < other.right
             && self.right > other.left

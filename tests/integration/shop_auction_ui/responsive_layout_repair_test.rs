@@ -28,11 +28,13 @@ use bevy::time::TimeUpdateStrategy;
 use client::presentation::PlayerEconomyView;
 use client::state::{ClientPhaseView, ClientState, CurrentClientPhase};
 use client::ui::shop_auction::{
-    AuctionFeaturedCardPriceLabel, AuctionFeaturedCardTimerLabel, ShopAuctionAuctionCardReceived,
-    ShopAuctionCardCatalog, ShopAuctionUiEntities, ShopAuctionUiPlugin,
-    AUCTION_BID_TARGET_HEIGHT_PX, AUCTION_BID_TARGET_WIDTH_PX,
-    AUCTION_FREE_GOLD_COUNTER_ANCHOR_LEFT_PERCENT, AUCTION_FREE_GOLD_COUNTER_GROUP_HEIGHT_PX,
-    AUCTION_FREE_GOLD_COUNTER_GROUP_WIDTH_PX, AUCTION_FREE_GOLD_COUNTER_LEFT_OFFSET_PX,
+    AuctionBidButton, AuctionFeaturedCardPriceLabel, AuctionFeaturedCardTimerLabel,
+    ShopAuctionAuctionCardReceived, ShopAuctionCardCatalog, ShopAuctionUiEntities,
+    ShopAuctionUiPlugin, AUCTION_BID_TARGET_HEIGHT_PX, AUCTION_BID_TARGET_WIDTH_PX,
+    AUCTION_FREE_GOLD_COUNTER_ANCHOR_LEFT_PERCENT, AUCTION_FREE_GOLD_COUNTER_BOTTOM_PX,
+    AUCTION_FREE_GOLD_COUNTER_GROUP_HEIGHT_PX, AUCTION_FREE_GOLD_COUNTER_GROUP_WIDTH_PX,
+    AUCTION_FREE_GOLD_COUNTER_LEFT_OFFSET_PX, AUCTION_READABILITY_CONTROL_GAP_PX,
+    AUCTION_READABILITY_INFO_LEFT_PX, AUCTION_READABILITY_INFO_WIDTH_PX,
 };
 use shared::card::{CardData, CardId, CardType, ClassId, Rarity, UnitType};
 use shared::protocol::RoundPhase;
@@ -215,8 +217,8 @@ fn prompt_1182_auction_action_band_fits_min_viewport() {
 
     // Bid buttons — anchored at `left: 34% + idx * 9%`, width 108, bottom 72.
     for index in 0..3 {
-        let left_percent = 34.0 + (index as f32) * 9.0;
-        let left_px = MIN_VIEWPORT_WIDTH * left_percent / 100.0;
+        let left_px = AUCTION_READABILITY_INFO_LEFT_PX
+            + (index as f32) * (AUCTION_BID_TARGET_WIDTH_PX + AUCTION_READABILITY_CONTROL_GAP_PX);
         let right_edge = left_px + AUCTION_BID_TARGET_WIDTH_PX;
         assert!(
             right_edge <= MIN_VIEWPORT_WIDTH,
@@ -227,7 +229,8 @@ fn prompt_1182_auction_action_band_fits_min_viewport() {
 
     // Pass button — at `left: 34 + 3*9 = 61%`, width 108, bottom 72.
     {
-        let left_px = MIN_VIEWPORT_WIDTH * 0.61;
+        let left_px = AUCTION_READABILITY_INFO_LEFT_PX
+            + 3.0 * (AUCTION_BID_TARGET_WIDTH_PX + AUCTION_READABILITY_CONTROL_GAP_PX);
         let right_edge = left_px + AUCTION_BID_TARGET_WIDTH_PX;
         assert!(
             right_edge <= MIN_VIEWPORT_WIDTH,
@@ -247,7 +250,8 @@ fn prompt_1182_auction_action_band_fits_min_viewport() {
             "free-gold counter group right edge {right_edge:.1}px exceeds \
              min viewport width {MIN_VIEWPORT_WIDTH:.1}px",
         );
-        let group_bottom = 70.0 + AUCTION_FREE_GOLD_COUNTER_GROUP_HEIGHT_PX;
+        let group_bottom =
+            AUCTION_FREE_GOLD_COUNTER_BOTTOM_PX + AUCTION_FREE_GOLD_COUNTER_GROUP_HEIGHT_PX;
         assert!(
             group_bottom <= MIN_VIEWPORT_HEIGHT,
             "free-gold counter group anchored-from-bottom column \
@@ -261,6 +265,7 @@ fn prompt_1182_auction_action_band_fits_min_viewport() {
     // viewport-fit regression.
     assert_eq!(AUCTION_BID_TARGET_WIDTH_PX, 108.0);
     assert_eq!(AUCTION_BID_TARGET_HEIGHT_PX, 44.0);
+    assert!(AUCTION_READABILITY_INFO_WIDTH_PX >= 4.0 * AUCTION_BID_TARGET_WIDTH_PX);
 }
 
 #[test]
@@ -375,6 +380,95 @@ fn prompt_1182_timer_bar_and_numeric_label_both_visible_during_active() {
     );
 }
 
+#[test]
+fn prompt_1462_auction_readability_lanes_do_not_overlap_card_or_confuse_chips() {
+    test_helpers::init_test_tracing();
+    let mut app = app_in_session(/* gold */ 10);
+    set_phase(&mut app, RoundPhase::DraftAuction, 30_000);
+    send_auction_card(&mut app, CardId(1), /* starting_price */ 3, 30_000);
+
+    let entities = *app.world().resource::<ShopAuctionUiEntities>();
+    const MIN_VIEWPORT_WIDTH: f32 = 1280.0;
+    const MIN_PANEL_HEIGHT: f32 = 720.0;
+
+    let featured = rect_from_node(
+        app.world()
+            .get::<Node>(entities.auction_featured_card)
+            .expect("featured card must carry Node"),
+        MIN_VIEWPORT_WIDTH,
+        MIN_PANEL_HEIGHT,
+    );
+    let readable_surfaces = [
+        ("status", entities.auction_status_text),
+        ("timer", entities.auction_timer_bar),
+        ("bid status", entities.auction_bid_status_text),
+        (
+            "free-gold counters",
+            entities.auction_free_gold_counter_group,
+        ),
+    ];
+    for (label, entity) in readable_surfaces {
+        let rect = rect_from_node(
+            app.world()
+                .get::<Node>(entity)
+                .unwrap_or_else(|| panic!("{label} must carry Node")),
+            MIN_VIEWPORT_WIDTH,
+            MIN_PANEL_HEIGHT,
+        );
+        assert_no_overlap(rect, featured, label);
+        assert!(
+            rect.right <= MIN_VIEWPORT_WIDTH,
+            "{label} right edge must stay inside the min viewport: {rect:?}",
+        );
+    }
+
+    for (index, entity) in entities
+        .auction_bid_buttons
+        .into_iter()
+        .chain([entities.auction_pass_button])
+        .enumerate()
+    {
+        let rect = rect_from_node(
+            app.world()
+                .get::<Node>(entity)
+                .expect("auction control must carry Node"),
+            MIN_VIEWPORT_WIDTH,
+            MIN_PANEL_HEIGHT,
+        );
+        assert_no_overlap(rect, featured, "auction control");
+        if entity == entities.auction_pass_button {
+            assert!(
+                app.world().get::<Button>(entity).is_some(),
+                "auction pass control must be semantically marked as a Button",
+            );
+        } else {
+            assert!(
+                app.world().get::<AuctionBidButton>(entity).is_some(),
+                "auction bid control {index} must carry the bid-button marker",
+            );
+            assert!(
+                app.world().get::<Interaction>(entity).is_some(),
+                "auction bid control {index} must carry Interaction for click handling",
+            );
+        }
+        let background = app
+            .world()
+            .get::<BackgroundColor>(entity)
+            .expect("auction control must have visible fill");
+        assert!(
+            background.0.alpha() > 0.10,
+            "auction control {index} must read as a button, not an info chip",
+        );
+    }
+
+    assert!(
+        app.world()
+            .get::<Button>(entities.auction_status_text)
+            .is_none(),
+        "auction status text must remain an info label, not a clickable button",
+    );
+}
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -463,4 +557,77 @@ fn run_update(app: &mut App) {
     *app.world_mut().resource_mut::<TimeUpdateStrategy>() =
         TimeUpdateStrategy::ManualDuration(Duration::ZERO);
     app.update();
+}
+
+#[derive(Debug, Clone, Copy)]
+struct Rect {
+    left: f32,
+    top: f32,
+    right: f32,
+    bottom: f32,
+}
+
+impl Rect {
+    fn intersects(self, other: Self) -> bool {
+        self.left < other.right
+            && self.right > other.left
+            && self.top < other.bottom
+            && self.bottom > other.top
+    }
+}
+
+fn rect_from_node(node: &Node, parent_width: f32, parent_height: f32) -> Rect {
+    let width = size_px(node.width, parent_width);
+    let height = size_px(node.height, parent_height);
+    let left = position_px(node.left, parent_width) + margin_px(node.margin.left);
+    let top = match node.top {
+        Val::Px(_) | Val::Percent(_) => {
+            position_px(node.top, parent_height) + margin_px(node.margin.top)
+        }
+        _ => {
+            parent_height
+                - position_px(node.bottom, parent_height)
+                - height
+                - margin_px(node.margin.bottom)
+        }
+    };
+
+    Rect {
+        left,
+        top,
+        right: left + width,
+        bottom: top + height,
+    }
+}
+
+fn size_px(value: Val, parent: f32) -> f32 {
+    match value {
+        Val::Px(v) => v,
+        Val::Percent(p) => parent * p / 100.0,
+        other => panic!("expected size Val::Px/Percent, got {other:?}"),
+    }
+}
+
+fn position_px(value: Val, parent: f32) -> f32 {
+    match value {
+        Val::Px(v) => v,
+        Val::Percent(p) => parent * p / 100.0,
+        Val::Auto => 0.0,
+        other => panic!("unexpected position value {other:?}"),
+    }
+}
+
+fn margin_px(value: Val) -> f32 {
+    match value {
+        Val::Px(v) => v,
+        Val::Auto => 0.0,
+        other => panic!("expected margin Val::Px/Auto, got {other:?}"),
+    }
+}
+
+fn assert_no_overlap(left: Rect, right: Rect, label: &str) {
+    assert!(
+        !left.intersects(right),
+        "{label} must not overlap the featured card: left={left:?}, right={right:?}",
+    );
 }

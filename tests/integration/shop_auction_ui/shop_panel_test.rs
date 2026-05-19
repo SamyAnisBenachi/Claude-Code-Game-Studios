@@ -158,6 +158,51 @@ fn sau_003_renders_three_server_supplied_shop_slots_and_empty_state() {
 }
 
 #[test]
+fn prompt_1462_shop_slots_are_visible_button_wells_with_separate_affordance_copy() {
+    test_helpers::init_test_tracing();
+    let app = active_shop_app(
+        5,
+        true,
+        vec![Some(CardId(1)), Some(CardId(2)), Some(CardId(3))],
+    );
+    let entities = *app.world().resource::<ShopAuctionUiEntities>();
+
+    for (index, slot) in entities.shop_slots.into_iter().enumerate() {
+        assert_eq!(
+            app.world().get::<Visibility>(slot).copied(),
+            Some(Visibility::Visible),
+            "shop slot {index} must remain visible after S2CShopSlots"
+        );
+        assert!(
+            app.world().get::<Button>(slot).is_some(),
+            "shop slot {index} must be semantically clickable"
+        );
+        let background = app
+            .world()
+            .get::<BackgroundColor>(slot)
+            .expect("shop slot must carry a readable background");
+        assert!(
+            background.0.alpha() > 0.80,
+            "shop slot {index} needs an opaque well so offers are not lost on panel chrome"
+        );
+
+        let affordance = entities.shop_slot_affordance_labels[index];
+        assert!(
+            app.world().get::<Button>(affordance).is_none(),
+            "shop slot {index} affordance copy must remain an info label, not a nested button"
+        );
+        let affordance_text = app
+            .world()
+            .get::<Text>(affordance)
+            .map(|text| text.0.as_str());
+        assert!(
+            affordance_text.is_some_and(|text| text.starts_with("BUY")),
+            "shop slot {index} affordance must expose the buy cost; got {affordance_text:?}"
+        );
+    }
+}
+
+#[test]
 fn sau_asset_loop_shop_slots_resolve_display_art_or_text_fallback() {
     test_helpers::init_test_tracing();
     // CardId(99) is intentionally absent from the test catalog (1..=6); the
