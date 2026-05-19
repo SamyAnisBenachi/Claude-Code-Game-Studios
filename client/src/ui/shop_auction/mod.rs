@@ -17,7 +17,10 @@ use crate::card_animations::{
 };
 use crate::presentation::{PlayerEconomyView, PresentationGameSnapshotMessage};
 use crate::state::{ClientPhaseView, ClientState, CurrentClientPhase};
-use crate::ui::design_tokens::card_slot::{card_slot_node, CardSlotKind};
+use crate::ui::design_tokens::card_slot::{
+    card_slot_art_image_component, card_slot_art_image_node, card_slot_label_strip_background_color,
+    card_slot_label_strip_node, card_slot_node, CardSlotArtImage, CardSlotKind, CardSlotLabelStrip,
+};
 use crate::ui::design_tokens::{overlays, spacing, typography, z_layers};
 use crate::ui::hud::{HudGoldBroadcastMessage, HudPlayerIds, PhaseTimerState};
 use crate::ui::settings::AccessibilityPreferences;
@@ -676,6 +679,14 @@ pub struct ShopAuctionUiEntities {
     pub auction_panel: Entity,
     pub auction_featured_card: Entity,
     pub auction_featured_card_frame: Entity,
+    /// Sprint 18 story-022 — canonical `CardSlotArtImage` child of the
+    /// featured card. The per-card art handle binds onto this entity
+    /// (via `apply_card_display_art`) instead of the slot root.
+    pub auction_featured_card_art: Entity,
+    /// Sprint 18 story-022 — canonical `CardSlotLabelStrip` child of
+    /// the featured card. Parent of the four text readouts (stats /
+    /// keyword / price / timer) per AC9.
+    pub auction_featured_card_label_strip: Entity,
     pub auction_featured_card_stats: Entity,
     pub auction_featured_card_keyword: Entity,
     /// PROMPT 1085 — explicit current-price readout on the featured card.
@@ -1003,6 +1014,19 @@ pub struct AuctionSettlementOverlayText;
 
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct DraftInitialSlotIndex(pub u8);
+
+/// Sprint 18 story-022 (`S18-UI-CARD-ART-AND-LABEL-STRIP-001`) —
+/// stable reference from a `DraftInitialSlotIndex` slot to its
+/// per-slot [`CardSlotArtImage`] child entity.
+///
+/// `handle_draft_offering_system` attaches per-card art via
+/// `apply_card_display_art` against the art child (not the slot
+/// root) so the chrome-preservation contract from PROMPT 1117 keeps
+/// the slot's spawn-time `BackgroundColor` intact while the per-card
+/// `ImageNode` swaps on the child instead. The component therefore
+/// stores the [`Entity`] published when the slot is spawned.
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct DraftInitialSlotArt(pub Entity);
 
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct DraftInitialSlotCard(pub CardId);
@@ -2178,10 +2202,11 @@ pub fn handle_draft_offering_system(
     mut draft_state: ResMut<ShopAuctionDraftInitialState>,
     mut commands: Commands,
     mut draft_ui: ParamSet<(
-        // p0: slot container — index + text-child link + visibility
+        // p0: slot container — index + text-child link + art-child link + visibility
         Query<(
             &DraftInitialSlotIndex,
             &DraftInitialSlotText,
+            &DraftInitialSlotArt,
             &mut Visibility,
         )>,
         // p1: bought overlays
@@ -2208,13 +2233,19 @@ pub fn handle_draft_offering_system(
         {
             let mut slots = draft_ui.p0();
             for slot_entity in entities.draft_initial_slots {
-                let Ok((slot_index, slot_text, mut visibility)) = slots.get_mut(slot_entity) else {
+                let Ok((slot_index, slot_text, slot_art, mut visibility)) =
+                    slots.get_mut(slot_entity)
+                else {
                     continue;
                 };
                 let text_entity = slot_text.0;
+                let art_entity = slot_art.0;
 
                 let Some(card_id) = sorted_card_ids.get(slot_index.0 as usize).copied() else {
-                    // Clear: hide slot, wipe text child, remove state components.
+                    // Clear: hide slot, wipe text child, drop the art handle on
+                    // the `CardSlotArtImage` child (story-022 AC5 / AC7), and
+                    // remove state components.
+                    clear_card_display_art(&mut commands, art_entity);
                     clear_draft_initial_slot(
                         &mut commands,
                         slot_entity,
@@ -2253,7 +2284,9 @@ pub fn handle_draft_offering_system(
                     DraftInitialSlotRarity(rarity),
                     DraftInitialSlotState::Available,
                 ));
-                apply_card_display_art(&mut commands, slot_entity, card, asset_server.as_deref());
+                // Sprint 18 story-022 AC5: per-card art now binds onto the
+                // `CardSlotArtImage` child instead of the slot root.
+                apply_card_display_art(&mut commands, art_entity, card, asset_server.as_deref());
                 *visibility = visibility_for(draft_initial_active(&mode, &draft_state));
             }
         }
@@ -3714,9 +3747,17 @@ pub fn sync_auction_panel_system(
             text.0.clear();
             if let Some(card_id) = auction_state.card_id {
                 let card = catalog.cards.get(&card_id);
+                // Sprint 18 story-022 (AC6 / AC9): per-card art binds onto
+                // the `CardSlotArtImage` child entity (16 / 16 / 16 / 96
+                // image-inset rectangle of the 380 × 280 card) instead
+                // of the slot root. The slot root preserves its
+                // spawn-time `BackgroundColor` floor without an
+                // `ImageNode` overlay; the art child carries
+                // `NodeImageMode::Auto` so the source aspect ratio is
+                // honoured (UI-1129-05 resolved).
                 apply_card_display_art(
                     &mut commands,
-                    entities.auction_featured_card,
+                    entities.auction_featured_card_art,
                     card,
                     asset_server.as_deref(),
                 );
@@ -3736,7 +3777,7 @@ pub fn sync_auction_panel_system(
                     .unwrap_or("Unknown card");
                 text.0.push_str(name);
             } else {
-                clear_card_display_art(&mut commands, entities.auction_featured_card);
+                clear_card_display_art(&mut commands, entities.auction_featured_card_art);
             }
         }
 
@@ -4248,6 +4289,8 @@ pub fn spawn_shop_auction_ui(
     let AuctionContents {
         featured_card: auction_featured_card,
         featured_card_frame: auction_featured_card_frame,
+        featured_card_art: auction_featured_card_art,
+        featured_card_label_strip: auction_featured_card_label_strip,
         featured_card_stats: auction_featured_card_stats,
         featured_card_keyword: auction_featured_card_keyword,
         featured_card_price_label: auction_featured_card_price_label,
@@ -4331,6 +4374,8 @@ pub fn spawn_shop_auction_ui(
         auction_panel,
         auction_featured_card,
         auction_featured_card_frame,
+        auction_featured_card_art,
+        auction_featured_card_label_strip,
         auction_featured_card_stats,
         auction_featured_card_keyword,
         auction_featured_card_price_label,
@@ -4524,7 +4569,35 @@ fn spawn_draft_initial_grid(
             ))
             .id();
 
-        // Child text entity — holds card name + cost display.
+        // Sprint 18 story-022 — card-art child sized to the canonical
+        // `CardSlotKind::DraftGrid` image inset. Carries the
+        // `CardSlotArtImage` marker so the per-card art handle binds
+        // here (via `apply_card_display_art` in
+        // `handle_draft_offering_system`) rather than on the slot root,
+        // structurally enforcing the PROMPT 1117 chrome-preservation
+        // contract (AC4 / AC5 / AC7).
+        let (art_node, art_z) = card_slot_art_image_node(CardSlotKind::DraftGrid);
+        let art_entity = commands
+            .spawn((
+                Name::new(format!("Shop Auction Draft Slot {index} Art")),
+                ShopAuctionUiEntity,
+                CardSlotArtImage,
+                art_node,
+                art_z,
+                card_slot_art_image_component(),
+                Visibility::Inherited,
+                ChildOf(slot),
+            ))
+            .id();
+
+        // Child text entity — holds card name + cost display. Sprint
+        // 18 story-022 leaves this child parented to the slot directly
+        // (not under a `CardSlotLabelStrip`) because the draft grid
+        // slot is the simplest case: the slot already paints an
+        // opaque dark `BackgroundColor`, the text already sits in
+        // legible contrast against it, and the `CardSlotKind::DraftGrid`
+        // text-inset rectangle is in the right-half landscape region
+        // where the existing default-flex Node places the text.
         let text_entity = commands
             .spawn((
                 Name::new(format!("Shop Auction Draft Slot {index} Text")),
@@ -4538,9 +4611,10 @@ fn spawn_draft_initial_grid(
             .id();
 
         // Store the text child's id on the slot so systems can reach it directly.
-        commands
-            .entity(slot)
-            .insert(DraftInitialSlotText(text_entity));
+        commands.entity(slot).insert((
+            DraftInitialSlotText(text_entity),
+            DraftInitialSlotArt(art_entity),
+        ));
 
         let overlay = commands
             .spawn((
@@ -4941,6 +5015,53 @@ fn spawn_auction_contents(
         ))
         .id();
 
+    // Sprint 18 story-022 (`S18-UI-CARD-ART-AND-LABEL-STRIP-001`) —
+    // canonical card-art child sized to
+    // `CardSlotKind::AuctionFeatured` image inset (16 / 16 / 16 / 96).
+    // Carries the `CardSlotArtImage` marker so the per-card art handle
+    // binds onto this child (via `apply_card_display_art` in the
+    // `S2CAuctionCard` handler) instead of the slot root. Empty image
+    // handle at spawn time keeps the chrome-preservation contract
+    // intact; `NodeImageMode::Auto` (from
+    // `card_slot_art_image_component`) prevents the UI-1129-05
+    // banner-stretch defect.
+    let (art_node, art_z) = card_slot_art_image_node(CardSlotKind::AuctionFeatured);
+    let featured_card_art = commands
+        .spawn((
+            Name::new("Shop Auction Featured Card Art"),
+            ShopAuctionUiEntity,
+            CardSlotArtImage,
+            art_node,
+            art_z,
+            card_slot_art_image_component(),
+            Visibility::Inherited,
+            ChildOf(featured_card),
+        ))
+        .id();
+
+    // Sprint 18 story-022 (AC3 / AC9): opaque label strip sized to the
+    // `CardSlotKind::AuctionFeatured` text inset (16 / 16 / 200 / 16).
+    // Carries the `CardSlotLabelStrip` marker, an opaque
+    // `BackgroundColor` (alpha ≥ 0.85), a `min_width` clamp, and
+    // `Overflow::clip_x()`. The four featured-card text children
+    // (stats / keyword / price / timer) re-parent into the strip so
+    // the per-card readouts paint against an opaque label background
+    // rather than the underlying card art (UI-1129-02 / S-04 closed
+    // structurally).
+    let (strip_node, strip_z) = card_slot_label_strip_node(CardSlotKind::AuctionFeatured);
+    let featured_card_label_strip = commands
+        .spawn((
+            Name::new("Shop Auction Featured Card Label Strip"),
+            ShopAuctionUiEntity,
+            CardSlotLabelStrip,
+            strip_node,
+            strip_z,
+            BackgroundColor(card_slot_label_strip_background_color()),
+            Visibility::Inherited,
+            ChildOf(featured_card),
+        ))
+        .id();
+
     // Sprint 14 story 016 AC4: typography hierarchy markers. The stats
     // and keyword readouts carry `H2` and `BODY` font sizes so that the
     // numeric hierarchy assertion (name `H1` > stats `H2` > keyword
@@ -4948,6 +5069,12 @@ fn spawn_auction_contents(
     // hidden sub-nodes (test-observable UI state) — story 016 is
     // layout / composition / hierarchy scope only and does not author
     // new visible content; future content rows may set their `Text`.
+    //
+    // Sprint 18 story-022 AC9: stats / keyword / price / timer reparent
+    // from `featured_card` to `featured_card_label_strip`. Their
+    // absolute-position offsets now resolve against the strip's
+    // rectangle (the bottom text band of the card), keeping all four
+    // readouts inside the opaque strip background.
     let featured_card_stats = commands
         .spawn((
             Name::new("Shop Auction Featured Card Stats"),
@@ -4958,7 +5085,7 @@ fn spawn_auction_contents(
             TextColor(Color::srgb(0.92, 0.94, 0.96)),
             auction_featured_card_stats_node(),
             Visibility::Hidden,
-            ChildOf(featured_card),
+            ChildOf(featured_card_label_strip),
         ))
         .id();
 
@@ -4972,12 +5099,14 @@ fn spawn_auction_contents(
             TextColor(Color::srgb(0.86, 0.90, 0.96)),
             auction_featured_card_keyword_node(),
             Visibility::Hidden,
-            ChildOf(featured_card),
+            ChildOf(featured_card_label_strip),
         ))
         .id();
 
     // PROMPT 1085 — current-price + numeric time-left readouts anchored
     // inside the featured card so the bid economics are always legible.
+    // Sprint 18 story-022 AC9: re-parented under the canonical
+    // `CardSlotLabelStrip` child alongside `stats` / `keyword`.
     let featured_card_price_label = commands
         .spawn((
             Name::new("Shop Auction Featured Card Price"),
@@ -4988,7 +5117,7 @@ fn spawn_auction_contents(
             TextColor(Color::srgb(0.98, 0.93, 0.40)),
             auction_featured_card_price_label_node(),
             Visibility::Inherited,
-            ChildOf(featured_card),
+            ChildOf(featured_card_label_strip),
         ))
         .id();
 
@@ -5002,7 +5131,7 @@ fn spawn_auction_contents(
             TextColor(Color::srgb(0.86, 0.90, 0.96)),
             auction_featured_card_timer_label_node(),
             Visibility::Inherited,
-            ChildOf(featured_card),
+            ChildOf(featured_card_label_strip),
         ))
         .id();
 
@@ -5125,6 +5254,8 @@ fn spawn_auction_contents(
     AuctionContents {
         featured_card,
         featured_card_frame,
+        featured_card_art,
+        featured_card_label_strip,
         featured_card_stats,
         featured_card_keyword,
         featured_card_price_label,
@@ -5145,9 +5276,16 @@ fn spawn_auction_contents(
 /// [`spawn_auction_contents`]. Replaced the previous 13-tuple return so
 /// new sub-nodes (price / timer labels) can land without churning every
 /// caller.
+///
+/// Sprint 18 story-022 (`S18-UI-CARD-ART-AND-LABEL-STRIP-001`) adds
+/// `featured_card_art` and `featured_card_label_strip` to the bundle
+/// so the runtime per-card art-binding system can target the
+/// `CardSlotArtImage` child instead of the slot root.
 struct AuctionContents {
     featured_card: Entity,
     featured_card_frame: Entity,
+    featured_card_art: Entity,
+    featured_card_label_strip: Entity,
     featured_card_stats: Entity,
     featured_card_keyword: Entity,
     featured_card_price_label: Entity,

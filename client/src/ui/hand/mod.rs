@@ -19,6 +19,9 @@ use crate::asset_wiring::{
     apply_card_display_art, clear_card_display_art, default_client_card_catalog,
     insert_placeholder_assets, CardDisplayArtFallback, PlaceholderAssets,
 };
+use crate::ui::design_tokens::card_slot::{
+    card_slot_art_image_component, card_slot_art_image_node, CardSlotArtImage, CardSlotKind,
+};
 use crate::card_animations::{
     cancel_tween_anim_in_place, make_tween_anim, replace_tweenable, HandCard, HandDragSprite,
 };
@@ -81,7 +84,12 @@ pub const HAND_UI_ENTITY_COUNT: usize = HAND_FAN_SLOT_COUNT
     + HAND_FAN_SLOT_COUNT * 2
     + 1
     + 4
-    + HAND_FAN_SLOT_COUNT * 2;
+    + HAND_FAN_SLOT_COUNT * 2
+    // Sprint 18 story-022 (S18-UI-CARD-ART-AND-LABEL-STRIP-001):
+    // per-fan-slot `CardSlotArtImage` child. The child is parented
+    // into the existing pre-pooled `FanSlotIndex` entity (ADR-021 Impl
+    // Guideline 5 preserved — no new top-level pre-pool entries).
+    + HAND_FAN_SLOT_COUNT;
 const HAND_CARD_DISPLAY_WIDTH_PX: f32 = 96.0;
 const HAND_CARD_DISPLAY_HEIGHT_PX: f32 = 136.0;
 const HAND_DRAFT_GRID_CARD_WIDTH_PX: f32 = 120.0;
@@ -900,6 +908,18 @@ pub struct PlacementActionPanelRoot;
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FanSlotIndex(pub u8);
 
+/// Sprint 18 story-022 (`S18-UI-CARD-ART-AND-LABEL-STRIP-001`) —
+/// stable reference from a `FanSlotIndex` slot to its per-slot
+/// [`CardSlotArtImage`] child entity.
+///
+/// `sync_hand_fan_card_art_system` attaches per-card art via
+/// `apply_card_display_art` against the art child (not the slot
+/// root) so the PROMPT 1117 chrome-preservation contract keeps the
+/// slot's spawn-time `BackgroundColor` intact while the per-card
+/// `ImageNode` swaps onto the dedicated child.
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct FanSlotArt(pub Entity);
+
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct GridSlotIndex(pub u8);
 
@@ -1684,17 +1704,27 @@ pub fn sync_hand_fan_card_art_system(
     catalog: Res<HandCardCatalog>,
     asset_server: Option<Res<AssetServer>>,
     mut commands: Commands,
-    fan_slots: Query<(Entity, Option<&HandSlotCard>), With<FanSlotIndex>>,
+    fan_slots: Query<(Option<&HandSlotCard>, &FanSlotArt), With<FanSlotIndex>>,
 ) {
-    for (entity, card) in &fan_slots {
+    // Sprint 18 story-022 (AC4) — per-card art binds onto the
+    // `CardSlotArtImage` child entity (sized to the
+    // `CardSlotKind::HandFan` image-inset rectangle) rather than the
+    // slot root. The slot root keeps its spawn-time
+    // `HAND_CARD_SLOT_BACKGROUND` floor untouched; the art ImageNode
+    // attaches to the child via `apply_card_display_art`, which
+    // already produces `ImageNode::new(handle)` with
+    // `NodeImageMode::Auto` (UI-1129-05 banner-stretch resolved
+    // structurally).
+    for (card, art) in &fan_slots {
+        let art_entity = art.0;
         let Some(card) = card else {
-            clear_card_display_art(&mut commands, entity);
+            clear_card_display_art(&mut commands, art_entity);
             continue;
         };
 
         apply_card_display_art(
             &mut commands,
-            entity,
+            art_entity,
             catalog.cards.get(&card.0),
             asset_server.as_deref(),
         );
@@ -2315,6 +2345,7 @@ pub fn handle_card_acquired_system(
             &mut Transform,
             &mut Node,
             Option<&mut TweenAnim>,
+            &FanSlotArt,
         ),
         (With<FanSlotIndex>, Without<GridSlotIndex>),
     >,
@@ -2369,7 +2400,7 @@ pub fn handle_card_acquired_system(
         if hand_count > 0 {
             let fan_index = hand_count - 1;
             let fan_entity = entities.fan_slots[fan_index];
-            if let Ok((mut visibility, mut transform, mut node, animator)) =
+            if let Ok((mut visibility, mut transform, mut node, animator, fan_art)) =
                 fan_slots.get_mut(fan_entity)
             {
                 let metrics = config.metrics_for_viewport(*viewport);
@@ -2383,9 +2414,11 @@ pub fn handle_card_acquired_system(
                     commands
                         .entity(fan_entity)
                         .insert(HandSlotCard(acquisition.card_id));
+                    // Sprint 18 story-022 (AC4): per-card art binds onto
+                    // the `CardSlotArtImage` child, not the slot root.
                     apply_card_display_art(
                         &mut commands,
-                        fan_entity,
+                        fan_art.0,
                         catalog.cards.get(&acquisition.card_id),
                         asset_server.as_deref(),
                     );
@@ -3694,6 +3727,31 @@ pub fn spawn_hand_ui(
                 ChildOf(fan_root),
             ))
             .id();
+
+        // Sprint 18 story-022 (`S18-UI-CARD-ART-AND-LABEL-STRIP-001`) —
+        // canonical `CardSlotArtImage` child sized to
+        // `CardSlotKind::HandFan` image inset (4 / 4 / 4 / 28). The
+        // per-card art handle binds onto this child (via
+        // `sync_hand_fan_card_art_system`) instead of the slot root,
+        // structurally enforcing PROMPT 1117 chrome preservation; the
+        // attached `ImageNode` carries `NodeImageMode::Auto`
+        // (UI-1129-05 banner-stretch resolved). Child of the
+        // pre-pooled `FanSlotIndex` entity (ADR-021 Impl Guideline 5
+        // preserved — no new top-level pre-pool entry).
+        let (art_node, art_z) = card_slot_art_image_node(CardSlotKind::HandFan);
+        let art_entity = commands
+            .spawn((
+                Name::new(format!("Fan Slot {index} Card Art")),
+                HandUiEntity,
+                CardSlotArtImage,
+                art_node,
+                art_z,
+                card_slot_art_image_component(),
+                Visibility::Inherited,
+                ChildOf(slot),
+            ))
+            .id();
+        commands.entity(slot).insert(FanSlotArt(art_entity));
 
         // Chrome children — PAW-002 (sized + positioned absolutely within the
         // fan slot's local box; see HU-card-slot-chrome-layout story for the
