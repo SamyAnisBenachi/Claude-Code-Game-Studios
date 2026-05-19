@@ -62,6 +62,9 @@ pub const LOBBY_CLASS_PICKER_CELL_HEIGHT_PX: f32 = 132.0;
 pub const LOBBY_CLASS_PICKER_CELL_PADDING_PX: f32 = 6.0;
 pub const LOBBY_CLASS_PICKER_PORTRAIT_WIDTH_PX: f32 = 64.0;
 pub const LOBBY_CLASS_PICKER_PORTRAIT_HEIGHT_PX: f32 = 80.0;
+pub const LOBBY_SELECTED_CLASS_PANEL_HEIGHT_PX: f32 = 76.0;
+pub const LOBBY_SELECTED_CLASS_PORTRAIT_WIDTH_PX: f32 = 56.0;
+pub const LOBBY_SELECTED_CLASS_PORTRAIT_HEIGHT_PX: f32 = 64.0;
 
 /// PROMPT 1138 — pixel size of the class-distinct emblem overlay composited
 /// on top of each picker tile portrait. The emblem is sourced from
@@ -262,6 +265,15 @@ pub struct LobbyClassPickerHeading;
 #[derive(Component)]
 pub struct LobbyClassPickerGrid;
 
+#[derive(Component)]
+pub struct LobbySelectedClassIdentityPanel;
+
+#[derive(Component)]
+pub struct LobbySelectedClassIdentityPortrait;
+
+#[derive(Component)]
+pub struct LobbySelectedClassIdentityText;
+
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct LobbyClassPickerCell {
     pub class_id: ClassId,
@@ -384,6 +396,8 @@ enum LobbyDynamicText {
     /// PROMPT 1160 — empty-state label that renders when the room list is
     /// empty, so the panel never appears as a blank slab.
     RoomListEmpty,
+    /// PROMPT 1487 — selected-class identity panel copy.
+    SelectedClassIdentity,
 }
 
 pub fn drain_lobby_s2c_system(
@@ -1234,493 +1248,549 @@ fn spawn_lobby_ui_system(
                         },
                     ))
                     .with_children(|panel| {
-                // Section 1 — status banner + room-code chip (read-order
-                // top-of-panel per AC3(e) "status / room-code -> ...").
-                panel.spawn((
-                    LobbyStatusText,
-                    Text::new(lobby_status_copy(&lobby, &input)),
-                    lobby_text_font(typography::H3),
-                    TextColor(Color::srgb(0.92, 0.95, 0.98)),
-                ));
-
-                panel
-                    .spawn((
-                        LobbyRoomCodeChip,
-                        // PROMPT 1398 — the room-code chip is a read-only
-                        // status label (not a Button). Mark it explicitly
-                        // with the canonical `StatusChip` token so QA
-                        // queries can distinguish chips from primary
-                        // buttons at runtime.
-                        StatusChip,
-                        Name::new("Lobby Room Code Chip"),
-                        Node {
-                            width: Val::Px(LOBBY_ROOM_CODE_CHIP_WIDTH_PX),
-                            height: Val::Px(LOBBY_ROOM_CODE_CHIP_HEIGHT_PX),
-                            align_items: AlignItems::Center,
-                            justify_content: JustifyContent::Center,
-                            ..default()
-                        },
-                        ImageNode::new(asset_server.load(LOBBY_ROOM_CODE_CHIP_ASSET)),
-                    ))
-                    .with_children(|chip| {
-                        let room_code =
-                            lobby.room_code.as_deref().unwrap_or("--------").to_string();
-                        chip.spawn((
-                            Text::new(room_code),
-                            lobby_text_font(typography::BODY),
+                        // Section 1 — status banner + room-code chip (read-order
+                        // top-of-panel per AC3(e) "status / room-code -> ...").
+                        panel.spawn((
+                            LobbyStatusText,
+                            Text::new(lobby_status_copy(&lobby, &input)),
+                            lobby_text_font(typography::H3),
                             TextColor(Color::srgb(0.92, 0.95, 0.98)),
                         ));
-                    });
 
-                // PROMPT 1178 — section separator 1 (the SPACING_XL gap
-                // between the status/room-code group and the create-join
-                // row) is removed. The default `row_gap: SPACING_MD`
-                // panel rule still gives an air-gap between sections, and
-                // the saved 16 px of vertical real-estate buys part of
-                // the budget needed to keep the Confirm CTA inside the
-                // viewport at 1280×720 after the PROMPT 1160 existing-
-                // room browser landed.
-
-                // Section 2 — create / join row + room-code input.
-                panel.spawn((
-                    LobbyRoomCodeField,
-                    LobbyDynamicText::RoomCode,
-                    Button,
-                    Interaction::None,
-                    Text::new(lobby_dynamic_copy(
-                        LobbyDynamicText::RoomCode,
-                        &lobby,
-                        &input,
-                    )),
-                    lobby_text_font(typography::BODY),
-                    TextColor(Color::srgb(0.90, 0.96, 1.0)),
-                    lobby_button_node(
-                        Val::Percent(LOBBY_ROOM_CODE_FIELD_WIDTH_PERCENT),
-                        LOBBY_ROOM_CODE_FIELD_HEIGHT_PX,
-                    ),
-                    BackgroundColor(Color::srgba(0.11, 0.15, 0.19, 0.95)),
-                    BorderColor::all(Color::srgb(0.33, 0.52, 0.68)),
-                ));
-
-                panel.spawn((lobby_row_node(),)).with_children(|row| {
-                    row.spawn((
-                        LobbyCreateRoomButton,
-                        LobbyDynamicText::Create,
-                        Button,
-                        Interaction::None,
-                        Text::new(lobby_dynamic_copy(LobbyDynamicText::Create, &lobby, &input)),
-                        lobby_text_font(typography::BODY),
-                        TextColor(Color::srgb(0.98, 0.93, 0.72)),
-                        lobby_button_node(
-                            Val::Px(LOBBY_CREATE_BUTTON_WIDTH_PX),
-                            LOBBY_CREATE_BUTTON_HEIGHT_PX,
-                        ),
-                        BackgroundColor(Color::srgba(0.17, 0.18, 0.14, 0.95)),
-                        BorderColor::all(Color::srgb(0.65, 0.53, 0.24)),
-                    ));
-                    row.spawn((
-                        LobbyJoinRoomButton,
-                        LobbyDynamicText::Join,
-                        Button,
-                        Interaction::None,
-                        Text::new(lobby_dynamic_copy(LobbyDynamicText::Join, &lobby, &input)),
-                        lobby_text_font(typography::BODY),
-                        TextColor(Color::srgb(0.82, 0.95, 1.0)),
-                        lobby_button_node(
-                            Val::Px(LOBBY_JOIN_BUTTON_WIDTH_PX),
-                            LOBBY_JOIN_BUTTON_HEIGHT_PX,
-                        ),
-                        BackgroundColor(Color::srgba(0.11, 0.15, 0.20, 0.95)),
-                        BorderColor::all(Color::srgb(0.28, 0.56, 0.72)),
-                    ));
-                });
-
-                // PROMPT 1160 / PROMPT 1178 — existing-room browser section.
-                // Visible only before the local client has an active
-                // `session_id`. Once the player has joined or created a
-                // room, the browser becomes irrelevant: it can only list
-                // OTHER joinable rooms (the server filters out the local
-                // player's own room), and clicking another row at that
-                // point would race the `S2CJoinAck`. Hiding it post-join
-                // also reclaims ~84 px of panel content height (heading
-                // row 30 + intra-block row_gap SPACING_SM + room-list row
-                // 30 + the panel-level row_gap SPACING_MD before/after),
-                // which is part of the budget that keeps the Confirm CTA
-                // visible at the minimum 1280×720 viewport.
-                if lobby.session_id.is_none() {
-                    panel
-                        .spawn((
-                            Name::new("Lobby Existing Rooms Block"),
-                            Node {
-                                width: Val::Percent(100.0),
-                                flex_direction: FlexDirection::Column,
-                                row_gap: Val::Px(SPACING_SM),
-                                ..default()
-                            },
-                        ))
-                        .with_children(|block| {
-                            block.spawn((lobby_row_node(),)).with_children(|row| {
-                                row.spawn((
-                                    Text::new("Existing rooms"),
-                                    lobby_text_font(typography::H3),
+                        panel
+                            .spawn((
+                                LobbyRoomCodeChip,
+                                // PROMPT 1398 — the room-code chip is a read-only
+                                // status label (not a Button). Mark it explicitly
+                                // with the canonical `StatusChip` token so QA
+                                // queries can distinguish chips from primary
+                                // buttons at runtime.
+                                StatusChip,
+                                Name::new("Lobby Room Code Chip"),
+                                Node {
+                                    width: Val::Px(LOBBY_ROOM_CODE_CHIP_WIDTH_PX),
+                                    height: Val::Px(LOBBY_ROOM_CODE_CHIP_HEIGHT_PX),
+                                    align_items: AlignItems::Center,
+                                    justify_content: JustifyContent::Center,
+                                    ..default()
+                                },
+                                ImageNode::new(asset_server.load(LOBBY_ROOM_CODE_CHIP_ASSET)),
+                            ))
+                            .with_children(|chip| {
+                                let room_code =
+                                    lobby.room_code.as_deref().unwrap_or("--------").to_string();
+                                chip.spawn((
+                                    Text::new(room_code),
+                                    lobby_text_font(typography::BODY),
                                     TextColor(Color::srgb(0.92, 0.95, 0.98)),
                                 ));
-                                row.spawn((
-                                    LobbyRefreshRoomsButton,
-                                    LobbyDynamicText::Refresh,
-                                    Button,
-                                    Interaction::None,
-                                    Text::new(lobby_dynamic_copy(
-                                        LobbyDynamicText::Refresh,
-                                        &lobby,
-                                        &input,
-                                    )),
-                                    lobby_text_font(typography::BODY),
-                                    TextColor(Color::srgb(0.82, 0.95, 1.0)),
-                                    lobby_button_node(
-                                        Val::Px(LOBBY_JOIN_BUTTON_WIDTH_PX),
-                                        LOBBY_JOIN_BUTTON_HEIGHT_PX,
-                                    ),
-                                    BackgroundColor(Color::srgba(0.11, 0.15, 0.20, 0.95)),
-                                    BorderColor::all(Color::srgb(0.28, 0.56, 0.72)),
-                                ));
                             });
-                            block.spawn((
-                                LobbyRoomListContainer,
-                                Name::new("Lobby Room List Container"),
+
+                        // PROMPT 1178 — section separator 1 (the SPACING_XL gap
+                        // between the status/room-code group and the create-join
+                        // row) is removed. The default `row_gap: SPACING_MD`
+                        // panel rule still gives an air-gap between sections, and
+                        // the saved 16 px of vertical real-estate buys part of
+                        // the budget needed to keep the Confirm CTA inside the
+                        // viewport at 1280×720 after the PROMPT 1160 existing-
+                        // room browser landed.
+
+                        // Section 2 — create / join row + room-code input.
+                        panel.spawn((
+                            LobbyRoomCodeField,
+                            LobbyDynamicText::RoomCode,
+                            Button,
+                            Interaction::None,
+                            Text::new(lobby_dynamic_copy(
+                                LobbyDynamicText::RoomCode,
+                                &lobby,
+                                &input,
+                            )),
+                            lobby_text_font(typography::BODY),
+                            TextColor(Color::srgb(0.90, 0.96, 1.0)),
+                            lobby_button_node(
+                                Val::Percent(LOBBY_ROOM_CODE_FIELD_WIDTH_PERCENT),
+                                LOBBY_ROOM_CODE_FIELD_HEIGHT_PX,
+                            ),
+                            BackgroundColor(Color::srgba(0.11, 0.15, 0.19, 0.95)),
+                            BorderColor::all(Color::srgb(0.33, 0.52, 0.68)),
+                        ));
+
+                        panel.spawn((lobby_row_node(),)).with_children(|row| {
+                            row.spawn((
+                                LobbyCreateRoomButton,
+                                LobbyDynamicText::Create,
+                                Button,
+                                Interaction::None,
+                                Text::new(lobby_dynamic_copy(
+                                    LobbyDynamicText::Create,
+                                    &lobby,
+                                    &input,
+                                )),
+                                lobby_text_font(typography::BODY),
+                                TextColor(Color::srgb(0.98, 0.93, 0.72)),
+                                lobby_button_node(
+                                    Val::Px(LOBBY_CREATE_BUTTON_WIDTH_PX),
+                                    LOBBY_CREATE_BUTTON_HEIGHT_PX,
+                                ),
+                                BackgroundColor(Color::srgba(0.17, 0.18, 0.14, 0.95)),
+                                BorderColor::all(Color::srgb(0.65, 0.53, 0.24)),
+                            ));
+                            row.spawn((
+                                LobbyJoinRoomButton,
+                                LobbyDynamicText::Join,
+                                Button,
+                                Interaction::None,
+                                Text::new(lobby_dynamic_copy(
+                                    LobbyDynamicText::Join,
+                                    &lobby,
+                                    &input,
+                                )),
+                                lobby_text_font(typography::BODY),
+                                TextColor(Color::srgb(0.82, 0.95, 1.0)),
+                                lobby_button_node(
+                                    Val::Px(LOBBY_JOIN_BUTTON_WIDTH_PX),
+                                    LOBBY_JOIN_BUTTON_HEIGHT_PX,
+                                ),
+                                BackgroundColor(Color::srgba(0.11, 0.15, 0.20, 0.95)),
+                                BorderColor::all(Color::srgb(0.28, 0.56, 0.72)),
+                            ));
+                        });
+
+                        // PROMPT 1160 / PROMPT 1178 — existing-room browser section.
+                        // Visible only before the local client has an active
+                        // `session_id`. Once the player has joined or created a
+                        // room, the browser becomes irrelevant: it can only list
+                        // OTHER joinable rooms (the server filters out the local
+                        // player's own room), and clicking another row at that
+                        // point would race the `S2CJoinAck`. Hiding it post-join
+                        // also reclaims ~84 px of panel content height (heading
+                        // row 30 + intra-block row_gap SPACING_SM + room-list row
+                        // 30 + the panel-level row_gap SPACING_MD before/after),
+                        // which is part of the budget that keeps the Confirm CTA
+                        // visible at the minimum 1280×720 viewport.
+                        if lobby.session_id.is_none() {
+                            panel
+                                .spawn((
+                                    Name::new("Lobby Existing Rooms Block"),
+                                    Node {
+                                        width: Val::Percent(100.0),
+                                        flex_direction: FlexDirection::Column,
+                                        row_gap: Val::Px(SPACING_SM),
+                                        ..default()
+                                    },
+                                ))
+                                .with_children(|block| {
+                                    block.spawn((lobby_row_node(),)).with_children(|row| {
+                                        row.spawn((
+                                            Text::new("Existing rooms"),
+                                            lobby_text_font(typography::H3),
+                                            TextColor(Color::srgb(0.92, 0.95, 0.98)),
+                                        ));
+                                        row.spawn((
+                                            LobbyRefreshRoomsButton,
+                                            LobbyDynamicText::Refresh,
+                                            Button,
+                                            Interaction::None,
+                                            Text::new(lobby_dynamic_copy(
+                                                LobbyDynamicText::Refresh,
+                                                &lobby,
+                                                &input,
+                                            )),
+                                            lobby_text_font(typography::BODY),
+                                            TextColor(Color::srgb(0.82, 0.95, 1.0)),
+                                            lobby_button_node(
+                                                Val::Px(LOBBY_JOIN_BUTTON_WIDTH_PX),
+                                                LOBBY_JOIN_BUTTON_HEIGHT_PX,
+                                            ),
+                                            BackgroundColor(Color::srgba(0.11, 0.15, 0.20, 0.95)),
+                                            BorderColor::all(Color::srgb(0.28, 0.56, 0.72)),
+                                        ));
+                                    });
+                                    block.spawn((
+                                        LobbyRoomListContainer,
+                                        Name::new("Lobby Room List Container"),
+                                        Node {
+                                            width: Val::Percent(100.0),
+                                            flex_direction: FlexDirection::Column,
+                                            row_gap: Val::Px(SPACING_SM),
+                                            ..default()
+                                        },
+                                    ));
+                                });
+                        }
+
+                        // PROMPT 1178 — `Requested slot` label + slot buttons are a
+                        // manual-typed-Join seat preference, NOT a primary
+                        // progression path after the player joined a room (either
+                        // via the browser row click or via `Create Room`). They
+                        // are now visible only when `session_id` is `None`, so
+                        // they appear next to the typed-Join controls instead of
+                        // squatting between the browser and the class picker
+                        // after join — which read as "still need to pick a slot"
+                        // and obscured the actual next step (Confirm class). When
+                        // present, the row stays keyboard-reachable via the
+                        // existing digit-key handlers and is consumed by
+                        // `C2SJoinRoom { requested_slot }` for manual typed
+                        // joins. Hiding this section post-join also reclaims
+                        // ~81 px of panel content height, which restores
+                        // Confirm-CTA visibility at the minimum 1280×720
+                        // viewport.
+                        if lobby.session_id.is_none() {
+                            // Sprint 14 story 003 AC6: lobby labels are at least as
+                            // large as the data they describe.
+                            //
+                            // PROMPT 1398 — make the leading word render as
+                            // helper copy ("Pick a slot for manual join") so it
+                            // reads as instructional text, NOT as a heading
+                            // that competes with the gold Confirm CTA for the
+                            // user's attention. AUDIT-1392-P04 noted that the
+                            // legacy "Requested slot" label phrased like a
+                            // button label even though the row's actual
+                            // affordance is the four slot buttons immediately
+                            // below it.
+                            panel.spawn((
+                                LobbyRequestedSlotLabel,
+                                Text::new("Manual join seat preference:"),
+                                lobby_text_font(typography::CAPTION),
+                                TextColor(Color::srgba(0.78, 0.84, 0.92, 0.86)),
+                            ));
+                            panel.spawn((lobby_row_node(),)).with_children(|row| {
+                                for slot in 0..=3 {
+                                    row.spawn((
+                                        LobbyRequestedSlotButton { slot },
+                                        LobbyDynamicText::Slot(slot),
+                                        Button,
+                                        Interaction::None,
+                                        Text::new(lobby_dynamic_copy(
+                                            LobbyDynamicText::Slot(slot),
+                                            &lobby,
+                                            &input,
+                                        )),
+                                        lobby_text_font(typography::BODY),
+                                        TextColor(Color::srgb(0.92, 0.95, 0.98)),
+                                        lobby_button_node(
+                                            Val::Px(LOBBY_REQUESTED_SLOT_BUTTON_WIDTH_PX),
+                                            LOBBY_REQUESTED_SLOT_BUTTON_HEIGHT_PX,
+                                        ),
+                                        BackgroundColor(Color::srgba(0.10, 0.13, 0.17, 0.95)),
+                                        BorderColor::all(Color::srgb(0.30, 0.38, 0.48)),
+                                    ));
+                                }
+                            });
+                        }
+
+                        // PROMPT 1178 — section separator 2 (between the (now
+                        // session-gated) Requested-slot row and the class picker)
+                        // is removed. With both the browser and the slot picker
+                        // hidden post-join, an extra SPACING_XL air-gap before
+                        // the class picker would only widen the space the
+                        // Confirm CTA still needs to fit inside.
+
+                        // Section 3 -- class picker.
+                        // Story 025 replaces the independent portrait/button rows
+                        // with one hierarchy: heading -> fixed grid -> paired
+                        // portrait/button cells. Neutral remains in the same block
+                        // as a non-selectable portrait reconciliation cell.
+                        panel
+                            .spawn((
+                                LobbyClassPickerBlock,
+                                Name::new("Lobby Class Picker"),
                                 Node {
                                     width: Val::Percent(100.0),
                                     flex_direction: FlexDirection::Column,
                                     row_gap: Val::Px(SPACING_SM),
                                     ..default()
                                 },
-                            ));
-                        });
-                }
-
-                // PROMPT 1178 — `Requested slot` label + slot buttons are a
-                // manual-typed-Join seat preference, NOT a primary
-                // progression path after the player joined a room (either
-                // via the browser row click or via `Create Room`). They
-                // are now visible only when `session_id` is `None`, so
-                // they appear next to the typed-Join controls instead of
-                // squatting between the browser and the class picker
-                // after join — which read as "still need to pick a slot"
-                // and obscured the actual next step (Confirm class). When
-                // present, the row stays keyboard-reachable via the
-                // existing digit-key handlers and is consumed by
-                // `C2SJoinRoom { requested_slot }` for manual typed
-                // joins. Hiding this section post-join also reclaims
-                // ~81 px of panel content height, which restores
-                // Confirm-CTA visibility at the minimum 1280×720
-                // viewport.
-                if lobby.session_id.is_none() {
-                    // Sprint 14 story 003 AC6: lobby labels are at least as
-                    // large as the data they describe.
-                    //
-                    // PROMPT 1398 — make the leading word render as
-                    // helper copy ("Pick a slot for manual join") so it
-                    // reads as instructional text, NOT as a heading
-                    // that competes with the gold Confirm CTA for the
-                    // user's attention. AUDIT-1392-P04 noted that the
-                    // legacy "Requested slot" label phrased like a
-                    // button label even though the row's actual
-                    // affordance is the four slot buttons immediately
-                    // below it.
-                    panel.spawn((
-                        LobbyRequestedSlotLabel,
-                        Text::new("Pick a slot for manual join (0–3):"),
-                        lobby_text_font(typography::CAPTION),
-                        TextColor(Color::srgba(0.78, 0.84, 0.92, 0.86)),
-                    ));
-                    panel.spawn((lobby_row_node(),)).with_children(|row| {
-                        for slot in 0..=3 {
-                            row.spawn((
-                                LobbyRequestedSlotButton { slot },
-                                LobbyDynamicText::Slot(slot),
-                                Button,
-                                Interaction::None,
-                                Text::new(lobby_dynamic_copy(
-                                    LobbyDynamicText::Slot(slot),
-                                    &lobby,
-                                    &input,
-                                )),
-                                lobby_text_font(typography::BODY),
-                                TextColor(Color::srgb(0.92, 0.95, 0.98)),
-                                lobby_button_node(
-                                    Val::Px(LOBBY_REQUESTED_SLOT_BUTTON_WIDTH_PX),
-                                    LOBBY_REQUESTED_SLOT_BUTTON_HEIGHT_PX,
-                                ),
-                                BackgroundColor(Color::srgba(0.10, 0.13, 0.17, 0.95)),
-                                BorderColor::all(Color::srgb(0.30, 0.38, 0.48)),
-                            ));
-                        }
-                    });
-                }
-
-                // PROMPT 1178 — section separator 2 (between the (now
-                // session-gated) Requested-slot row and the class picker)
-                // is removed. With both the browser and the slot picker
-                // hidden post-join, an extra SPACING_XL air-gap before
-                // the class picker would only widen the space the
-                // Confirm CTA still needs to fit inside.
-
-                // Section 3 -- class picker.
-                // Story 025 replaces the independent portrait/button rows
-                // with one hierarchy: heading -> fixed grid -> paired
-                // portrait/button cells. Neutral remains in the same block
-                // as a non-selectable portrait reconciliation cell.
-                panel
-                    .spawn((
-                        LobbyClassPickerBlock,
-                        Name::new("Lobby Class Picker"),
-                        Node {
-                            width: Val::Percent(100.0),
-                            flex_direction: FlexDirection::Column,
-                            row_gap: Val::Px(SPACING_SM),
-                            ..default()
-                        },
-                    ))
-                    .with_children(|class_picker| {
-                        class_picker.spawn((
-                            LobbyClassPickerHeading,
-                            Text::new("Class"),
-                            lobby_text_font(typography::H3),
-                            TextColor(Color::srgb(0.92, 0.95, 0.98)),
-                        ));
-
-                        class_picker
-                            .spawn((
-                                LobbyClassPickerGrid,
-                                Name::new("Lobby Class Picker Grid"),
-                                Node {
-                                    width: Val::Percent(100.0),
-                                    flex_direction: FlexDirection::Row,
-                                    flex_wrap: FlexWrap::NoWrap,
-                                    column_gap: Val::Px(SPACING_SM),
-                                    align_items: AlignItems::Center,
-                                    justify_content: JustifyContent::Center,
-                                    ..default()
-                                },
                             ))
-                            .with_children(|grid| {
-                                for class_id in lobby_class_options() {
-                                    let (background, border) = lobby_class_picker_cell_colors(
-                                        class_id,
-                                        input.selected_class,
-                                        true,
-                                        lobby.locked_class,
-                                    );
-                                    grid.spawn((
-                                        LobbyClassPickerCell {
-                                            class_id,
-                                            selectable: true,
-                                        },
-                                        Name::new(format!("Lobby Class Cell {:?}", class_id)),
-                                        lobby_class_picker_cell_node(),
-                                        background,
-                                        border,
+                            .with_children(|class_picker| {
+                                class_picker.spawn((
+                                    LobbyClassPickerHeading,
+                                    Text::new("Choose your class"),
+                                    lobby_text_font(typography::H3),
+                                    TextColor(Color::srgb(0.92, 0.95, 0.98)),
+                                ));
+
+                                class_picker
+                                    .spawn((
+                                        LobbySelectedClassIdentityPanel,
+                                        StatusChip,
+                                        Name::new("Lobby Selected Class Identity"),
+                                        lobby_selected_class_identity_panel_node(),
+                                        BackgroundColor(Color::srgba(0.12, 0.15, 0.18, 0.96)),
+                                        BorderColor::all(Color::srgb(0.72, 0.60, 0.28)),
                                     ))
-                                    .with_children(|cell| {
-                                        cell.spawn((
-                                            LobbyClassPortrait { class_id },
-                                            Name::new(format!("Lobby Portrait {:?}", class_id)),
-                                            lobby_class_portrait_node(),
+                                    .with_children(|identity| {
+                                        identity.spawn((
+                                            LobbySelectedClassIdentityPortrait,
+                                            Name::new("Lobby Selected Class Portrait"),
+                                            lobby_selected_class_portrait_node(),
                                             ImageNode::new(
-                                                asset_server.load(lobby_portrait_asset(class_id)),
+                                                asset_server.load(lobby_portrait_asset(
+                                                    input.selected_class,
+                                                )),
                                             ),
-                                        ))
-                                        .with_children(
-                                            |portrait| {
-                                                portrait.spawn((
-                                                    LobbyClassPickerEmblem { class_id },
-                                                    Name::new(format!(
-                                                        "Lobby Class Emblem {:?}",
-                                                        class_id
-                                                    )),
-                                                    lobby_class_picker_emblem_node(),
-                                                    ImageNode::new(
-                                                        asset_server
-                                                            .load(class_type_icon_asset(class_id)),
-                                                    ),
-                                                ));
-                                            },
-                                        );
-                                        cell.spawn((
-                                            LobbyClassButton { class_id },
-                                            LobbyDynamicText::Class(class_id),
-                                            Button,
-                                            Interaction::None,
+                                        ));
+                                        identity.spawn((
+                                            LobbySelectedClassIdentityText,
+                                            LobbyDynamicText::SelectedClassIdentity,
                                             Text::new(lobby_dynamic_copy(
-                                                LobbyDynamicText::Class(class_id),
+                                                LobbyDynamicText::SelectedClassIdentity,
                                                 &lobby,
                                                 &input,
                                             )),
                                             lobby_text_font(typography::BODY),
-                                            TextColor(Color::srgb(0.92, 0.95, 0.98)),
-                                            lobby_button_node(
-                                                Val::Px(LOBBY_CLASS_PICKER_BUTTON_WIDTH_PX),
-                                                LOBBY_CLASS_PICKER_BUTTON_HEIGHT_PX,
-                                            ),
-                                            BackgroundColor(Color::srgba(0.10, 0.13, 0.17, 0.95)),
-                                            BorderColor::all(Color::srgb(0.30, 0.38, 0.48)),
+                                            TextColor(Color::srgb(0.98, 0.94, 0.78)),
                                         ));
                                     });
-                                }
 
-                                for class_id in lobby_all_class_ids() {
-                                    if lobby_class_options().contains(&class_id) {
-                                        continue;
-                                    }
-                                    let (background, border) = lobby_class_picker_cell_colors(
-                                        class_id,
-                                        input.selected_class,
-                                        false,
-                                        lobby.locked_class,
-                                    );
-                                    grid.spawn((
-                                        LobbyClassPickerCell {
-                                            class_id,
-                                            selectable: false,
+                                class_picker
+                                    .spawn((
+                                        LobbyClassPickerGrid,
+                                        Name::new("Lobby Class Picker Grid"),
+                                        Node {
+                                            width: Val::Percent(100.0),
+                                            flex_direction: FlexDirection::Row,
+                                            flex_wrap: FlexWrap::NoWrap,
+                                            column_gap: Val::Px(SPACING_SM),
+                                            align_items: AlignItems::Center,
+                                            justify_content: JustifyContent::Center,
+                                            ..default()
                                         },
-                                        Name::new(format!("Lobby Class Cell {:?}", class_id)),
-                                        lobby_class_picker_cell_node(),
-                                        background,
-                                        border,
                                     ))
-                                    .with_children(|cell| {
-                                        cell.spawn((
-                                            LobbyClassPortrait { class_id },
-                                            Name::new(format!("Lobby Portrait {:?}", class_id)),
-                                            lobby_class_portrait_node(),
-                                            ImageNode::new(
-                                                asset_server.load(lobby_portrait_asset(class_id)),
-                                            ),
-                                        ))
-                                        .with_children(
-                                            |portrait| {
-                                                portrait.spawn((
-                                                    LobbyClassPickerEmblem { class_id },
+                                    .with_children(|grid| {
+                                        for class_id in lobby_class_options() {
+                                            let (background, border) =
+                                                lobby_class_picker_cell_colors(
+                                                    class_id,
+                                                    input.selected_class,
+                                                    true,
+                                                    lobby.locked_class,
+                                                );
+                                            grid.spawn((
+                                                LobbyClassPickerCell {
+                                                    class_id,
+                                                    selectable: true,
+                                                },
+                                                Name::new(format!(
+                                                    "Lobby Class Cell {:?}",
+                                                    class_id
+                                                )),
+                                                lobby_class_picker_cell_node(),
+                                                background,
+                                                border,
+                                            ))
+                                            .with_children(|cell| {
+                                                cell.spawn((
+                                                    LobbyClassPortrait { class_id },
                                                     Name::new(format!(
-                                                        "Lobby Class Emblem {:?}",
+                                                        "Lobby Portrait {:?}",
                                                         class_id
                                                     )),
-                                                    lobby_class_picker_emblem_node(),
+                                                    lobby_class_portrait_node(),
                                                     ImageNode::new(
                                                         asset_server
-                                                            .load(class_type_icon_asset(class_id)),
+                                                            .load(lobby_portrait_asset(class_id)),
                                                     ),
+                                                ))
+                                                .with_children(|portrait| {
+                                                    portrait.spawn((
+                                                        LobbyClassPickerEmblem { class_id },
+                                                        Name::new(format!(
+                                                            "Lobby Class Emblem {:?}",
+                                                            class_id
+                                                        )),
+                                                        lobby_class_picker_emblem_node(),
+                                                        ImageNode::new(
+                                                            asset_server.load(
+                                                                class_type_icon_asset(class_id),
+                                                            ),
+                                                        ),
+                                                    ));
+                                                });
+                                                cell.spawn((
+                                                    LobbyClassButton { class_id },
+                                                    LobbyDynamicText::Class(class_id),
+                                                    Button,
+                                                    Interaction::None,
+                                                    Text::new(lobby_dynamic_copy(
+                                                        LobbyDynamicText::Class(class_id),
+                                                        &lobby,
+                                                        &input,
+                                                    )),
+                                                    lobby_text_font(typography::BODY),
+                                                    TextColor(Color::srgb(0.92, 0.95, 0.98)),
+                                                    lobby_button_node(
+                                                        Val::Px(LOBBY_CLASS_PICKER_BUTTON_WIDTH_PX),
+                                                        LOBBY_CLASS_PICKER_BUTTON_HEIGHT_PX,
+                                                    ),
+                                                    BackgroundColor(Color::srgba(
+                                                        0.10, 0.13, 0.17, 0.95,
+                                                    )),
+                                                    BorderColor::all(Color::srgb(0.30, 0.38, 0.48)),
                                                 ));
-                                            },
-                                        );
-                                        cell.spawn((
-                                            Text::new(format!("{class_id:?}")),
-                                            lobby_text_font(typography::CAPTION),
-                                            TextColor(Color::srgba(0.74, 0.80, 0.86, 0.74)),
-                                        ));
+                                            });
+                                        }
+
+                                        for class_id in lobby_all_class_ids() {
+                                            if lobby_class_options().contains(&class_id) {
+                                                continue;
+                                            }
+                                            let (background, border) =
+                                                lobby_class_picker_cell_colors(
+                                                    class_id,
+                                                    input.selected_class,
+                                                    false,
+                                                    lobby.locked_class,
+                                                );
+                                            grid.spawn((
+                                                LobbyClassPickerCell {
+                                                    class_id,
+                                                    selectable: false,
+                                                },
+                                                Name::new(format!(
+                                                    "Lobby Class Cell {:?}",
+                                                    class_id
+                                                )),
+                                                lobby_class_picker_cell_node(),
+                                                background,
+                                                border,
+                                            ))
+                                            .with_children(|cell| {
+                                                cell.spawn((
+                                                    LobbyClassPortrait { class_id },
+                                                    Name::new(format!(
+                                                        "Lobby Portrait {:?}",
+                                                        class_id
+                                                    )),
+                                                    lobby_class_portrait_node(),
+                                                    ImageNode::new(
+                                                        asset_server
+                                                            .load(lobby_portrait_asset(class_id)),
+                                                    ),
+                                                ))
+                                                .with_children(|portrait| {
+                                                    portrait.spawn((
+                                                        LobbyClassPickerEmblem { class_id },
+                                                        Name::new(format!(
+                                                            "Lobby Class Emblem {:?}",
+                                                            class_id
+                                                        )),
+                                                        lobby_class_picker_emblem_node(),
+                                                        ImageNode::new(
+                                                            asset_server.load(
+                                                                class_type_icon_asset(class_id),
+                                                            ),
+                                                        ),
+                                                    ));
+                                                });
+                                                cell.spawn((
+                                                    Text::new(format!("{class_id:?}")),
+                                                    lobby_text_font(typography::CAPTION),
+                                                    TextColor(Color::srgba(0.74, 0.80, 0.86, 0.74)),
+                                                ));
+                                            });
+                                        }
                                     });
-                                }
                             });
-                    });
 
-                // Section 4 — slot panels (PAW-006-b). Per AC3(e) the slot
-                // panels MUST render above the confirm CTA so the player's
-                // attention reaches the seating affordance before the
-                // primary action button.
-                //
-                // PROMPT 1138 — the slot panel asset is a generic blue chip
-                // (`ui_player_slot_panel.png` placeholder) shared by both
-                // slots. Without text overlays the two chips read as a pair
-                // of unidentified card placeholders (AUDIT-1129-08). The
-                // inline labels turn them into informative status panels:
-                // "You · {class} · slot N" / "Opp · {class or unknown}".
-                //
-                // PROMPT 1178 — the `ImageNode.color` field tints the panel
-                // asset down to a low-saturation greyish-blue so the chip
-                // reads as informational status, not as a primary click
-                // target. The two panels carry NO `Button` / `Interaction`
-                // markers (they have not in any prior revision either) so
-                // they remain non-interactive at the ECS level; the tint
-                // closes the visual gap. The PROMPT 1138 chrome-wiring
-                // contract (non-default `ImageNode.image` handle sourced
-                // from `LOBBY_PLAYER_SLOT_PANEL_ASSET`) is preserved.
-                panel.spawn((lobby_row_node(),)).with_children(|row| {
-                    row.spawn((
-                        LobbyOwnSlotPanel,
-                        // PROMPT 1398 — the slot panel is a read-only
-                        // status chip that announces "you · class · slot
-                        // N". The visible glyph reads like the gold CTA
-                        // when the user scans the panel from the top
-                        // (AUDIT-1392-P04 "you are slot 1 looks like a
-                        // button"); the `StatusChip` marker codifies the
-                        // read-only role at the ECS level so QA queries
-                        // and accessibility tooling can distinguish it
-                        // from primary actions.
-                        StatusChip,
-                        Name::new("Lobby Own Slot Panel"),
-                        Node {
-                            width: Val::Px(LOBBY_SLOT_PANEL_WIDTH_PX),
-                            height: Val::Px(LOBBY_SLOT_PANEL_HEIGHT_PX),
-                            align_items: AlignItems::Center,
-                            justify_content: JustifyContent::Center,
-                            padding: UiRect::horizontal(Val::Px(SPACING_SM)),
-                            ..default()
-                        },
-                        lobby_slot_chip_image_node(
-                            asset_server.load(LOBBY_PLAYER_SLOT_PANEL_ASSET),
-                        ),
-                    ))
-                    .with_children(|own| {
-                        own.spawn((
-                            LobbyOwnSlotLabel,
-                            LobbyDynamicText::OwnSlot,
-                            Text::new(lobby_dynamic_copy(
-                                LobbyDynamicText::OwnSlot,
-                                &lobby,
-                                &input,
-                            )),
-                            // PROMPT 1398 — drop slot-panel text to
-                            // `CAPTION` so it reads as a secondary label
-                            // (paired with the muted tint), not a
-                            // button-sized headline. Friend-game scope:
-                            // the slot chip is informational only.
-                            lobby_text_font(typography::CAPTION),
-                            TextColor(Color::srgb(0.95, 0.97, 1.0)),
-                        ));
-                    });
-                    row.spawn((
-                        LobbyOpponentSlotPanel,
-                        // PROMPT 1398 — opponent-slot status chip; see
-                        // own-slot panel for rationale.
-                        StatusChip,
-                        Name::new("Lobby Opponent Slot Panel"),
-                        Node {
-                            width: Val::Px(LOBBY_SLOT_PANEL_WIDTH_PX),
-                            height: Val::Px(LOBBY_SLOT_PANEL_HEIGHT_PX),
-                            align_items: AlignItems::Center,
-                            justify_content: JustifyContent::Center,
-                            padding: UiRect::horizontal(Val::Px(SPACING_SM)),
-                            ..default()
-                        },
-                        lobby_slot_chip_image_node(
-                            asset_server.load(LOBBY_PLAYER_SLOT_PANEL_ASSET),
-                        ),
-                    ))
-                    .with_children(|opp| {
-                        opp.spawn((
-                            LobbyOpponentSlotLabel,
-                            LobbyDynamicText::OpponentSlot,
-                            Text::new(lobby_dynamic_copy(
-                                LobbyDynamicText::OpponentSlot,
-                                &lobby,
-                                &input,
-                            )),
-                            lobby_text_font(typography::CAPTION),
-                            TextColor(Color::srgb(0.86, 0.90, 0.96)),
-                        ));
-                    });
-                });
-
+                        // Section 4 — slot panels (PAW-006-b). Per AC3(e) the slot
+                        // panels MUST render above the confirm CTA so the player's
+                        // attention reaches the seating affordance before the
+                        // primary action button.
+                        //
+                        // PROMPT 1138 — the slot panel asset is a generic blue chip
+                        // (`ui_player_slot_panel.png` placeholder) shared by both
+                        // slots. Without text overlays the two chips read as a pair
+                        // of unidentified card placeholders (AUDIT-1129-08). The
+                        // inline labels turn them into informative status panels:
+                        // "You · {class} · slot N" / "Opp · {class or unknown}".
+                        //
+                        // PROMPT 1178 — the `ImageNode.color` field tints the panel
+                        // asset down to a low-saturation greyish-blue so the chip
+                        // reads as informational status, not as a primary click
+                        // target. The two panels carry NO `Button` / `Interaction`
+                        // markers (they have not in any prior revision either) so
+                        // they remain non-interactive at the ECS level; the tint
+                        // closes the visual gap. The PROMPT 1138 chrome-wiring
+                        // contract (non-default `ImageNode.image` handle sourced
+                        // from `LOBBY_PLAYER_SLOT_PANEL_ASSET`) is preserved.
+                        panel.spawn((lobby_row_node(),)).with_children(|row| {
+                            row.spawn((
+                                LobbyOwnSlotPanel,
+                                // PROMPT 1398 — the slot panel is a read-only
+                                // status chip that announces "you · class · slot
+                                // N". The visible glyph reads like the gold CTA
+                                // when the user scans the panel from the top
+                                // (AUDIT-1392-P04 "you are slot 1 looks like a
+                                // button"); the `StatusChip` marker codifies the
+                                // read-only role at the ECS level so QA queries
+                                // and accessibility tooling can distinguish it
+                                // from primary actions.
+                                StatusChip,
+                                Name::new("Lobby Own Slot Panel"),
+                                Node {
+                                    width: Val::Px(LOBBY_SLOT_PANEL_WIDTH_PX),
+                                    height: Val::Px(LOBBY_SLOT_PANEL_HEIGHT_PX),
+                                    align_items: AlignItems::Center,
+                                    justify_content: JustifyContent::Center,
+                                    padding: UiRect::horizontal(Val::Px(SPACING_SM)),
+                                    ..default()
+                                },
+                                lobby_slot_chip_image_node(
+                                    asset_server.load(LOBBY_PLAYER_SLOT_PANEL_ASSET),
+                                ),
+                            ))
+                            .with_children(|own| {
+                                own.spawn((
+                                    LobbyOwnSlotLabel,
+                                    LobbyDynamicText::OwnSlot,
+                                    Text::new(lobby_dynamic_copy(
+                                        LobbyDynamicText::OwnSlot,
+                                        &lobby,
+                                        &input,
+                                    )),
+                                    // PROMPT 1398 — drop slot-panel text to
+                                    // `CAPTION` so it reads as a secondary label
+                                    // (paired with the muted tint), not a
+                                    // button-sized headline. Friend-game scope:
+                                    // the slot chip is informational only.
+                                    lobby_text_font(typography::CAPTION),
+                                    TextColor(Color::srgb(0.95, 0.97, 1.0)),
+                                ));
+                            });
+                            row.spawn((
+                                LobbyOpponentSlotPanel,
+                                // PROMPT 1398 — opponent-slot status chip; see
+                                // own-slot panel for rationale.
+                                StatusChip,
+                                Name::new("Lobby Opponent Slot Panel"),
+                                Node {
+                                    width: Val::Px(LOBBY_SLOT_PANEL_WIDTH_PX),
+                                    height: Val::Px(LOBBY_SLOT_PANEL_HEIGHT_PX),
+                                    align_items: AlignItems::Center,
+                                    justify_content: JustifyContent::Center,
+                                    padding: UiRect::horizontal(Val::Px(SPACING_SM)),
+                                    ..default()
+                                },
+                                lobby_slot_chip_image_node(
+                                    asset_server.load(LOBBY_PLAYER_SLOT_PANEL_ASSET),
+                                ),
+                            ))
+                            .with_children(|opp| {
+                                opp.spawn((
+                                    LobbyOpponentSlotLabel,
+                                    LobbyDynamicText::OpponentSlot,
+                                    Text::new(lobby_dynamic_copy(
+                                        LobbyDynamicText::OpponentSlot,
+                                        &lobby,
+                                        &input,
+                                    )),
+                                    lobby_text_font(typography::CAPTION),
+                                    TextColor(Color::srgb(0.86, 0.90, 0.96)),
+                                ));
+                            });
+                        });
                     });
 
                 // Section 5 — confirm CTA. Last DIRECT child of the
@@ -1787,6 +1857,7 @@ fn spawn_lobby_ui_system(
 
 fn refresh_lobby_ui_system(
     mut commands: Commands,
+    asset_server: Res<AssetServer>,
     lobby: Res<LobbyViewState>,
     input: Res<LobbyInputState>,
     mut texts: Query<&mut Text, With<LobbyStatusText>>,
@@ -1796,6 +1867,7 @@ fn refresh_lobby_ui_system(
         &mut BackgroundColor,
         &mut BorderColor,
     )>,
+    mut selected_portraits: Query<&mut ImageNode, With<LobbySelectedClassIdentityPortrait>>,
     room_list_container: Query<Entity, With<LobbyRoomListContainer>>,
 ) {
     if !lobby.is_changed() && !input.is_changed() {
@@ -1823,6 +1895,10 @@ fn refresh_lobby_ui_system(
         *border = next_border;
     }
 
+    for mut portrait in &mut selected_portraits {
+        portrait.image = asset_server.load(lobby_portrait_asset(input.selected_class));
+    }
+
     if lobby.is_changed() {
         for container in &room_list_container {
             rebuild_room_list_rows(&mut commands, container, &lobby);
@@ -1847,7 +1923,7 @@ fn rebuild_room_list_rows(
         commands.entity(container_entity).with_children(|parent| {
             parent.spawn((
                 LobbyDynamicText::RoomListEmpty,
-                Text::new("No joinable rooms — press Create to start one"),
+                Text::new("No joinable rooms. Create a room to host."),
                 lobby_text_font(typography::BODY),
                 TextColor(Color::srgba(0.78, 0.84, 0.92, 0.86)),
             ));
@@ -1895,9 +1971,13 @@ fn rebuild_room_list_rows(
 /// "ABCDEF · OneVOne · 1/2". The leading code matches the typed-Join surface so
 /// the player can correlate browser rows with the room-code chip.
 pub fn format_room_list_row_label(entry: &RoomListEntry) -> String {
+    let seat = entry
+        .first_open_slot
+        .map(|slot| format!("seat {slot} open"))
+        .unwrap_or_else(|| "full".to_string());
     format!(
-        "{} · {:?} · {}/{}",
-        entry.room_code, entry.mode, entry.slots_filled, entry.slots_max
+        "Join {} - {:?} - {}/{} players - {}",
+        entry.room_code, entry.mode, entry.slots_filled, entry.slots_max, seat
     )
 }
 
@@ -1975,13 +2055,13 @@ fn lobby_dynamic_copy(
             } else {
                 code
             };
-            format!("Room code: {rendered_code} ({focus})")
+            format!("Type room code: {rendered_code} - {focus}")
         }
         LobbyDynamicText::Slot(slot) => {
             if input.requested_slot == slot {
-                format!("Slot {slot} *")
+                format!("Seat {slot} *")
             } else {
-                format!("Slot {slot}")
+                format!("Seat {slot}")
             }
         }
         LobbyDynamicText::Class(class_id) => {
@@ -2000,14 +2080,15 @@ fn lobby_dynamic_copy(
         LobbyDynamicText::Confirm => lobby_confirm_button_text(lobby, input),
         LobbyDynamicText::OwnSlot => lobby_own_slot_label_text(lobby, input),
         LobbyDynamicText::OpponentSlot => lobby_opponent_slot_label_text(lobby),
-        LobbyDynamicText::Refresh => "Refresh".to_string(),
+        LobbyDynamicText::Refresh => "Refresh Rooms".to_string(),
         LobbyDynamicText::RoomListEmpty => {
             if lobby.room_list.is_empty() {
-                "No joinable rooms — press Create to start one".to_string()
+                "No joinable rooms. Create a room to host.".to_string()
             } else {
                 String::new()
             }
         }
+        LobbyDynamicText::SelectedClassIdentity => lobby_selected_class_identity_text(lobby, input),
     }
 }
 
@@ -2045,9 +2126,14 @@ pub fn lobby_own_slot_label_text(lobby: &LobbyViewState, input: &LobbyInputState
                 .map(|s| s.slot)
         })
         .unwrap_or(input.requested_slot);
+    let confirm_state = if lobby.locked_class.is_some() {
+        "confirmed"
+    } else {
+        "not confirmed"
+    };
     format!(
-        "You · {:?}{} · slot {}",
-        input.selected_class, confirmed_marker, slot_index
+        "You - {:?}{} - slot {} - {}",
+        input.selected_class, confirmed_marker, slot_index, confirm_state
     )
 }
 
@@ -2064,8 +2150,29 @@ pub fn lobby_opponent_slot_label_text(lobby: &LobbyViewState) -> String {
         .find(|(player_id, _)| Some(*player_id) != lobby.local_player_id)
         .map(|(_, class_id)| format!("{:?}", class_id));
     match opponent_class {
-        Some(class) => format!("Opp · {}", class),
-        None => "Opp · waiting".to_string(),
+        Some(class) => format!("Opponent - {class}"),
+        None => "Opponent - waiting for player".to_string(),
+    }
+}
+
+pub fn lobby_selected_class_identity_text(
+    lobby: &LobbyViewState,
+    input: &LobbyInputState,
+) -> String {
+    if let Some(locked_class) = lobby.locked_class {
+        return format!("Confirmed: {locked_class:?}\nWaiting for opponent");
+    }
+
+    if lobby.session_id.is_none() {
+        format!(
+            "Selected: {:?}\nCreate or join a room, then confirm",
+            input.selected_class
+        )
+    } else {
+        format!(
+            "Selected: {:?}\nConfirm this class to continue",
+            input.selected_class
+        )
     }
 }
 
@@ -2185,6 +2292,31 @@ fn lobby_class_portrait_node() -> Node {
         // Relative so an absolutely-positioned emblem child anchors
         // against the portrait's bounding box.
         position_type: PositionType::Relative,
+        ..default()
+    }
+}
+
+fn lobby_selected_class_identity_panel_node() -> Node {
+    Node {
+        width: Val::Percent(100.0),
+        height: Val::Px(LOBBY_SELECTED_CLASS_PANEL_HEIGHT_PX),
+        flex_direction: FlexDirection::Row,
+        column_gap: Val::Px(SPACING_MD),
+        padding: UiRect::all(Val::Px(SPACING_SM)),
+        border: UiRect::all(Val::Px(2.0)),
+        border_radius: BorderRadius::all(Val::Px(6.0)),
+        align_items: AlignItems::Center,
+        justify_content: JustifyContent::FlexStart,
+        flex_shrink: 0.0,
+        ..default()
+    }
+}
+
+fn lobby_selected_class_portrait_node() -> Node {
+    Node {
+        width: Val::Px(LOBBY_SELECTED_CLASS_PORTRAIT_WIDTH_PX),
+        height: Val::Px(LOBBY_SELECTED_CLASS_PORTRAIT_HEIGHT_PX),
+        flex_shrink: 0.0,
         ..default()
     }
 }
