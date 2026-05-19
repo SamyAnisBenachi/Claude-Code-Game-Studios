@@ -2,12 +2,14 @@
 
 > **Epic**: Presentation Asset Wiring
 > **Story ID**: `S18-PAW-KROSMAGA-DEV-PROXY-PACK-BOUNDARY-001`
-> **Status**: Draft -- future Sprint 18 prerequisite candidate; NOT activated
+> **Status**: Implementation complete on `work/s18-paw-krosmaga-dev-proxy-boundary-1369` (PROMPT 1369, 2026-05-19). NOT a sprint-row activation, NOT a story-done closure, NOT a release approval — see Status / No-Claim Banner below.
 > **Layer**: Presentation asset wiring / provenance governance
 > **Type**: Docs + tooling + dev-only pack boundary
-> **Sprint**: Future Sprint 18 candidate; should land before any story wires Krosmaga-derived proxy rows
+> **Sprint**: Future Sprint 18 candidate; lands before any story wires Krosmaga-derived proxy rows
 > **Authored**: 2026-05-18 by PROMPT 1280
+> **Implemented**: 2026-05-19 by PROMPT 1369 from `origin/main@daa7759`
 > **Authoring source-of-truth**: local `HEAD@051b59d`; workspace had unrelated dirty code/runtime files that were not touched
+> **Implementation source-of-truth**: `origin/main@daa7759` fetched and branched cleanly
 > **Source reports**: PROMPT 1257, 1258, 1265, 1266, 1267
 > **Estimated effort**: ~0.5d
 
@@ -15,11 +17,16 @@
 
 ## Status / No-Claim Banner
 
-This story is authoring-only. It does not activate Sprint 18, does not modify
-`production/sprint-status.yaml`, does not create a release approval, and does
-not copy or import Krosmaga assets.
+PROMPT 1280 performed story-authoring. PROMPT 1369 performed the implementation
+on `work/s18-paw-krosmaga-dev-proxy-boundary-1369`. Neither prompt activated
+Sprint 18, modified `production/sprint-status.yaml`, modified
+`production/sprints/**`, modified `production/stage.txt`, modified
+`production/qa/**`, modified `production/gate-checks/**`, ran `/story-done`,
+ran smoke/gate-check, created a release approval, or copied a Krosmaga file
+into `assets/**` or anywhere else in the repo.
 
-The future implementation of this story must preserve these claims:
+PROMPT 1369's implementation preserves every claim below; any future story
+that consumes the boundary must continue to preserve them:
 
 - Krosmaga proxy rows remain `source_class=licensed_krosmaga_dev_proxy`.
 - Krosmaga proxy rows remain `workflow_status=needed`.
@@ -29,9 +36,8 @@ The future implementation of this story must preserve these claims:
 - No final-art / asset-production accept-risk row (`PAW-TD-*-a`) is closed.
 - No public release, RC readiness, full-game completion, playtest validation, or
   Standard-tier accessibility completion is claimed.
-
-PROMPT 1280 performed story-authoring only. The implementation described below
-is future work.
+- No Sprint 18 Must Have row is expanded; Sprint 19 is not activated.
+- No Polish → Release retry is claimed.
 
 ---
 
@@ -112,42 +118,91 @@ targeting-marker proxy candidates.
 
 ## Acceptance Criteria
 
-- [ ] **AC1 -- ADR/provenance doc exists**: A repository document defines
-  `workflow_status`, `source_class`, `release_class`, logical asset IDs, pack
-  selection/materialization, and release-gate rules.
-- [ ] **AC2 -- Asset-manifest appendix exists**: `design/assets/asset-manifest.md`
-  has a concise appendix introducing the provenance fields without a noisy
-  whole-file rewrite.
-- [ ] **AC3 -- Logical asset schema/index exists**: `design/assets/provenance/`
-  contains a schema and minimal logical ID index for current presentation
-  surfaces.
-- [ ] **AC4 -- Krosmaga proxy classification is explicit**: Any example or
-  seed Krosmaga row uses exactly `source_class=licensed_krosmaga_dev_proxy`,
-  `workflow_status=needed`, and `release_class=dev_only`.
-- [ ] **AC5 -- Dev pack stays outside runtime assets**: The story implementation
-  either creates no Krosmaga pack files or creates only untracked/gitignored
-  `dev-assets/krosmaga-proxy/**` metadata. It does not write Krosmaga material
-  under `assets/**`.
-- [ ] **AC6 -- Release scan blocks dev proxies**: A test/tool fails if a release
-  package resolves a logical asset to a Krosmaga proxy, non-approved workflow
-  status, non-release-allowed release class, missing approval evidence, or a
-  `dev-assets/**` path.
-- [ ] **AC7 -- Presentation boundary preserved**: ADR-021 remains the Bevy UI
-  / world-space rendering boundary; the new pack layer does not change gameplay
-  logic or UI call-site ownership.
-- [ ] **AC8 -- No source asset copy**: `git diff -- assets/` is empty except for
-  any intentional non-Krosmaga metadata explicitly approved in the story branch.
-- [ ] **AC9 -- No release claim**: Completion notes repeat that Krosmaga proxy
-  assets are not release-approved and do not close `PAW-TD-*-a`.
+- [x] **AC1 -- ADR/provenance doc exists**: `docs/architecture/adr-025-asset-pack-provenance-architecture.md`
+  defines `workflow_status`, `source_class`, `release_class`, logical asset IDs,
+  pack selection/materialization, and release-gate rules. (PROMPT 1369 — the
+  original story text suggested ADR-022 but that slot is already
+  `adr-022-keyword-observer-architecture.md` and ADR-023/024 are also taken;
+  the next free slot ADR-025 is used.)
+- [x] **AC2 -- Asset-manifest appendix exists**: `design/assets/asset-manifest.md`
+  carries `Appendix A — Provenance Fields (added 2026-05-19, PROMPT 1369)`
+  introducing the three-axis taxonomy and the defaults for the existing 296
+  rows without rewriting any individual row.
+- [x] **AC3 -- Logical asset schema/index exists**: `design/assets/provenance/`
+  contains `README.md`, `schema.md`, `logical-id-index.md`, and
+  `dev-pack-example.toml`. The logical-ID index covers card, hand stat/cost,
+  HUD class figurine, HUD objective dot, board cell, board unit base, overlay
+  targeting marker, result panel chrome, and shared placeholder surfaces.
+- [x] **AC4 -- Krosmaga proxy classification is explicit**: ADR-025 §1,
+  `design/assets/provenance/schema.md` § Three-Axis Taxonomy,
+  `design/assets/provenance/dev-pack-example.toml` `[pack]`, and the manifest
+  appendix all state Krosmaga proxy rows carry exactly
+  `source_class=licensed_krosmaga_dev_proxy`, `workflow_status=needed`,
+  `release_class=dev_only`. No other combination is permitted.
+- [x] **AC5 -- Dev pack stays outside runtime assets**: `.gitignore` excludes
+  `dev-assets/`. No Krosmaga file is committed to the repo. The only
+  Krosmaga-mentioning artefacts are documentation (ADR-025, schema,
+  logical-ID index, `dev-pack-example.toml`) and the validator fixtures
+  (which contain only string identifiers, no payload).
+- [x] **AC6 -- Release scan blocks dev proxies**: `tools/asset-provenance/check_release.py`
+  implements the six release-gate rules. `tools/asset-provenance/test_check_release.py`
+  exercises every rule (27 tests; passing case + 6 failure modes covered).
+  Run from worktree root: `python -m unittest tools/asset-provenance/test_check_release.py`.
+- [x] **AC7 -- Presentation boundary preserved**: ADR-021 is unmodified except
+  for a single Related-Decisions link to ADR-025. No code under `client/**`,
+  `server/**`, or `shared/**` is touched. The bevy_ui / world-space rendering
+  boundary, `CardAtlas` / `BoardLayout` resource ownership, and PresentationSet
+  ordering are unaffected.
+- [x] **AC8 -- No source asset copy**: `git diff origin/main..HEAD -- assets/`
+  is empty for the PROMPT 1369 branch. No file under `assets/**` is added,
+  removed, modified, or renamed.
+- [x] **AC9 -- No release claim**: This story file's Status / No-Claim Banner
+  and ADR-025's Non-Claims section both state that Krosmaga proxy assets are
+  not release-approved and that no `PAW-TD-*-a` row is closed by this
+  implementation.
 
 ---
 
 ## Worker Contract
 
-1. Worktree slug: `work/s18-paw-krosmaga-dev-proxy-pack-boundary`.
+1. Worktree slug: `work/s18-paw-krosmaga-dev-proxy-pack-boundary` (PROMPT
+   1369 used `work/s18-paw-krosmaga-dev-proxy-boundary-1369` to keep the
+   branch name PROMPT-tagged; this satisfies the slug intent).
 2. Read PROMPT 1257, 1258, 1265, 1266, and 1267 before implementation.
 3. Keep the change docs/tooling only; do not copy Krosmaga assets.
 4. If a validation test touches Rust/Bevy code, activate `liv-bevy-018`.
 5. Run only targeted validation/tooling checks needed for AC6.
 6. Push the worker branch only; do not commit to `main`.
+
+## PROMPT 1369 Implementation Notes
+
+- Branch: `work/s18-paw-krosmaga-dev-proxy-boundary-1369` off
+  `origin/main@daa7759`.
+- Worktree: `D:/_DEV/claude-code-game-studios-worktrees/paw-krosmaga-dev-proxy-1369`.
+- No Cargo was invoked. Cargo policy was therefore not applied. The
+  validator is pure Python 3 stdlib (no third-party deps), invoked via
+  `python -m unittest`.
+- Files added: `docs/architecture/adr-025-asset-pack-provenance-architecture.md`,
+  `design/assets/provenance/README.md`,
+  `design/assets/provenance/schema.md`,
+  `design/assets/provenance/logical-id-index.md`,
+  `design/assets/provenance/dev-pack-example.toml`,
+  `tools/asset-provenance/README.md`,
+  `tools/asset-provenance/check_release.py`,
+  `tools/asset-provenance/test_check_release.py`,
+  `tools/asset-provenance/fixtures/release-manifest-{clean,krosmaga-leak,dev-path,unapproved}.json`.
+- Files edited (small additions only): `.gitignore`,
+  `design/assets/asset-manifest.md`,
+  `docs/architecture/adr-021-presentation-layer-architecture.md`
+  (one Related-Decisions bullet — no rendering-boundary content changed),
+  `production/epics/presentation-asset-wiring/EPIC.md`,
+  this story file.
+- Validator unit test result: 27/27 passing.
+- `git diff origin/main -- assets/` is empty.
+- No file under `client/`, `server/`, or `shared/` was touched.
+- No `production/sprint-status.yaml`, `production/sprints/**`,
+  `production/stage.txt`, `production/qa/**`, or
+  `production/gate-checks/**` file was touched.
+- No story-done paperwork, smoke check, gate-check, or QA sign-off was
+  performed by this prompt.
 

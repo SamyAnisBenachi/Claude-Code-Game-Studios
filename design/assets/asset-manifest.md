@@ -443,3 +443,76 @@ Remaining work: production art review, final delivery evidence, approval/sign-of
 | ASSET-240 | Card Illustration: neutral_paddock_bruiser_106 | Card Illustration | Generated Placeholder | design/assets/specs/hand-ui-assets.md |
 | ASSET-241 | Card Illustration: neutral_vault_sentry_107 | Card Illustration | Generated Placeholder | design/assets/specs/hand-ui-assets.md |
 | ASSET-242 | Card Illustration: neutral_crowned_mercenary_108 | Card Illustration | Generated Placeholder | design/assets/specs/hand-ui-assets.md |
+
+---
+
+## Appendix A — Provenance Fields (added 2026-05-19, PROMPT 1369)
+
+Introduced by [ADR-025: Asset-Pack Provenance Architecture and Dev-Only
+Krosmaga Proxy Boundary](../../docs/architecture/adr-025-asset-pack-provenance-architecture.md).
+The full schema lives in `design/assets/provenance/schema.md`; this
+appendix is a quick reference so a reader of the manifest can interpret a
+row without leaving the file.
+
+Every logical asset (and, by extension, every concrete file that resolves
+a logical asset) is described by three independent axes:
+
+- **`workflow_status`** — production readiness.
+  - `needed`, `in_progress`, `done`, `approved`, `blocked`.
+- **`source_class`** — file provenance.
+  - `studio_original`, `licensed_external_release`,
+    `licensed_krosmaga_dev_proxy`, `unknown_provenance`.
+- **`release_class`** — packaging permission.
+  - `release_allowed`, `dev_only`, `internal_only`.
+
+A row is **release-eligible** only when **all three** of the following hold:
+`workflow_status == approved`, `source_class ∈ {studio_original,
+licensed_external_release}`, and `release_class == release_allowed`. Any
+other combination is rejected by the release-scan validator under
+`tools/asset-provenance/`.
+
+### Defaults for Existing Rows
+
+The 296 rows already catalogued above did not encode the new axes
+explicitly. Their default classification (until a row opts into a
+different `source_class` or `release_class` via the logical-ID index) is:
+
+- **`workflow_status`**: derived from the existing **Status** column.
+  - `Needed`, `Placeholder`, `File Present Placeholder`, `Generated
+    Placeholder` → `needed`.
+  - `In Progress` → `in_progress`.
+  - `Done` → `done`.
+  - `Approved` → `approved`.
+  - `Blocked` → `blocked`.
+- **`source_class`**: `studio_original`. No existing row is a Krosmaga
+  proxy. Krosmaga proxy classification is opt-in via the
+  `design/assets/provenance/logical-id-index.md` entries.
+- **`release_class`**: `release_allowed`. Existing rows are studio-owned
+  and shippable once `workflow_status` reaches `approved`.
+
+### Krosmaga Proxy Rows
+
+When a Krosmaga-derived dev-only proxy is mapped to a logical asset ID, the
+mapping carries **exactly**:
+
+- `source_class = licensed_krosmaga_dev_proxy`.
+- `workflow_status = needed`.
+- `release_class = dev_only`.
+
+These rows are not promoted to `Done` or `Approved` in this manifest; they
+are visual references for the developer workstation only and resolve
+through the dev-only pack at `dev-assets/krosmaga-proxy/`. The pack and its
+payload are gitignored. The release-scan validator hard-fails any
+packaged build that resolves a logical ID through a Krosmaga proxy.
+
+### Cross-References
+
+- ADR-025 § Decision — full schema, dev-pack convention, release-gate
+  rules.
+- `design/assets/provenance/schema.md` — canonical schema with value
+  enumerations and YAML examples.
+- `design/assets/provenance/logical-id-index.md` — current logical-asset
+  IDs across card, hand, board, HUD, overlay, and result surfaces.
+- `design/assets/provenance/dev-pack-example.toml` — example dev-pack
+  manifest (no Krosmaga payload).
+- `tools/asset-provenance/check_release.py` — release-scan validator.
