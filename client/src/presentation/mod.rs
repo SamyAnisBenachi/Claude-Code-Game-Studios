@@ -83,6 +83,13 @@ impl Plugin for PresentationPlugin {
         app.add_plugins(ClientIdempotencyPlugin);
         app.add_plugins(CardAnimationsPlugin);
         app.add_plugins(BoardRenderingPlugin);
+        // Sprint 18 story 020 (S18-UI-PLAY-AREA-CONTAINER-001) — `PlayArea`
+        // is the canonical flex parent for the in-session middle band.
+        // Registered ahead of `HandUiPlugin` / `ShopAuctionUiPlugin` so the
+        // `PlayAreaRoot` resource is inserted at `OnEnter(InSession)`
+        // before consumer spawn systems run; consumer plugins chain their
+        // spawn systems with `.after(PlayAreaSpawnSet)`.
+        app.add_plugins(crate::ui::PlayAreaPlugin);
         app.add_plugins(HandUiPlugin);
         app.add_plugins(HudPlugin);
         app.add_plugins(ShopAuctionUiPlugin);
