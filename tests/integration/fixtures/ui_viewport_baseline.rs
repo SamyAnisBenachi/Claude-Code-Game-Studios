@@ -1,5 +1,31 @@
 //! Sprint 14 / Story 005 — viewport-invariant baseline fixture.
 //!
+//! # DEPRECATED — superseded by live-spawn harness
+//!
+//! **Status**: DEPRECATED as of Sprint 18 / PROMPT 1333 (S18-UI-VIEWPORT-
+//! INVARIANT-LIVE-HARNESS-001 AC8 discharge).
+//!
+//! **Replacement**: `tests/integration/ui_viewport_live_test.rs` — the
+//! live-spawn harness landed by PROMPT 1185 builds a production-faithful
+//! Bevy `App` with `LobbyUiPlugin` + `bevy::ui::UiPlugin`, drives ≥3
+//! layout-convergence ticks, and queries real `(GlobalTransform,
+//! ComputedNode)` against the camera viewport across the canonical
+//! 7-entry matrix. That harness is the authoritative regression guard.
+//!
+//! **Why deprecated, not deleted**: PROMPT 1180 §RC-5 audit ("the
+//! harness reads a hand-authored `PROVISIONAL_BASELINE` fixture and
+//! asserts the baseline against itself - it cannot detect the live
+//! overlaps that the 2026-05-18 snapshot batch shows") flagged this
+//! fixture as the load-bearing piece of the false-confidence loop. The
+//! file is preserved (not deleted) so the legacy
+//! `ui_viewport_invariants_test.rs` bin keeps compiling as a fixture-
+//! parser sanity check until the `[[test]]` entry in `client/Cargo.toml`
+//! can be removed in a follow-on prompt (PROMPT 1333 forbidden list:
+//! `client/**`, `Cargo.*`). Direct dependency on these constants from
+//! new code is gated by `#[deprecated]` so any fresh `use` statement
+//! against `PROVISIONAL_BASELINE` produces a compiler warning that
+//! routes the reader to `ui_viewport_live_test.rs`.
+//!
 //! Records the expected anchor position, kind, z-layer, and per-viewport
 //! bounding rectangle for every UI surface tested by
 //! `tests/integration/ui_viewport_invariants_test.rs`. The fixture is
@@ -507,6 +533,16 @@ const SURFACES: [SurfaceBaseline; 9] = [
 
 /// The canonical baseline consumed by the integration test bin. Holds
 /// every surface entry referenced by story 005's AC1 surface list.
+///
+/// **DEPRECATED**: hand-authored fixture superseded by the live-spawn
+/// harness at `tests/integration/ui_viewport_live_test.rs`. See module
+/// docstring for the AC8 discharge rationale (PROMPT 1180 §RC-5 audit).
+#[deprecated(
+    since = "Sprint 18",
+    note = "Hand-authored fixture is asserted against itself (PROMPT 1180 §RC-5). \
+            Use `tests/integration/ui_viewport_live_test.rs` for live-spawn \
+            (GlobalTransform, ComputedNode) viewport-invariant coverage."
+)]
 pub const PROVISIONAL_BASELINE: ViewportBaseline = ViewportBaseline {
     surfaces: &SURFACES,
 };

@@ -1,5 +1,28 @@
 //! Sprint 14 / Story 005 — automated UI viewport-invariant test bin.
 //!
+//! # DEPRECATED — superseded by live-spawn harness
+//!
+//! **Status**: DEPRECATED as of Sprint 18 / PROMPT 1333 (S18-UI-VIEWPORT-
+//! INVARIANT-LIVE-HARNESS-001 AC8 discharge).
+//!
+//! **Replacement**: `tests/integration/ui_viewport_live_test.rs`
+//! (PROMPT 1185). The replacement builds a production-faithful Bevy
+//! `App` with `LobbyUiPlugin` + `bevy::ui::UiPlugin`, drives ≥3 layout-
+//! convergence ticks, and queries real `(GlobalTransform, ComputedNode)`
+//! against the camera viewport across the canonical 7-entry matrix.
+//! That bin is the authoritative regression guard.
+//!
+//! **Why this bin is preserved**: PROMPT 1333 is forbidden from editing
+//! `client/Cargo.toml`; the `[[test]]` entry for this bin lives there.
+//! Removing the bin without removing the manifest entry would break the
+//! workspace build. The bin therefore stays as a fixture-parser sanity
+//! check exercising the deprecated `PROVISIONAL_BASELINE` constant; the
+//! crate-level `#![allow(deprecated)]` below acknowledges that its only
+//! consumer of the deprecated fixture is this legacy bin itself. Any
+//! NEW consumer that adds a fresh `use` against `PROVISIONAL_BASELINE`
+//! from outside this bin will receive a `deprecated` warning routing
+//! them to `ui_viewport_live_test.rs`.
+//!
 //! Story file: `production/epics/ui-clean-pass/story-005-ui-viewport-invariant-tests.md`
 //! Story ID: `S11-TD-UI-VIEWPORT-INVARIANT-TESTS` (Sprint 14 Tier 0 rank 4).
 //!
@@ -60,6 +83,15 @@
 //!   No optimistic client-side authority introduced.
 //! - **ADR-021 Presentation Layer Architecture**: defers to story 002
 //!   named [`bevy::ui::GlobalZIndex`] hierarchy for paint ordering.
+
+// AC8 (PROMPT 1333): the entire `ui_viewport_baseline` module + the
+// `PROVISIONAL_BASELINE` constant consumed below carry `#[deprecated]`
+// attributes documenting the live-spawn replacement at
+// `tests/integration/ui_viewport_live_test.rs`. This legacy bin remains
+// a fixture-parser sanity check (see crate docstring). Silence the
+// resulting `deprecated` warnings here ONLY — fresh consumers from
+// other test bins will still see the warning at their `use` site.
+#![allow(deprecated)]
 
 use bevy::prelude::*;
 
