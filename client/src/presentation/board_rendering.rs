@@ -148,6 +148,12 @@ pub struct BoardUnit {
     pub unit_id: EntityId,
 }
 
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BoardUnitRenderSource {
+    AuthoritativeSnapshot,
+    PlacementReveal,
+}
+
 // PROMPT 1231: minimal kill/removal feedback marker. Spawned by
 // `emit_resolution_combat_feedback` when a `UnitDied` / `UnitRemoved`
 // resolution event is consumed, and despawned either by TTL
@@ -1139,12 +1145,14 @@ pub fn apply_ghost_placement_changed_system(
 pub fn drain_placement_reveal_system(
     mut commands: Commands,
     mut receivers: Query<&mut MessageReceiver<S2CPlacementReveal>>,
+    render_resources: BoardSnapshotRenderResources,
     local_player: Res<BoardLocalPlayer>,
     current_phase: Res<CurrentClientPhase>,
     mut idempotency: ResMut<ClientIdempotencyState>,
     mut collect_state: ResMut<PlacementRevealCollectState>,
     mut reveal_wait: ResMut<ResolutionRevealWait>,
     mut render_state: ResMut<BoardRenderState>,
+    existing_units: Query<(&BoardUnitOwner, &BoardUnitCard, &LaneCell), With<BoardUnit>>,
     ghost_units: Query<(Entity, &GhostUnit)>,
     lane_washes: Query<(Entity, &LaneGhostWash)>,
     target_markers: Query<(Entity, &TargetUnitGhost, Option<&BoardGhostPickable>)>,
@@ -1177,9 +1185,161 @@ pub fn drain_placement_reveal_system(
         warn!("Board Rendering: placement reveal received before local player id was known");
     }
 
+    spawn_revealed_placement_units(&mut commands, &render_resources, &existing_units, &reveals);
     collect_state.start_from_reveals(&reveals, local_player.player_id);
     reveal_wait.start();
     *render_state = BoardRenderState::ResolutionReveal;
+}
+
+fn spawn_revealed_placement_units(
+    commands: &mut Commands,
+    render_resources: &BoardSnapshotRenderResources,
+    existing_units: &Query<(&BoardUnitOwner, &BoardUnitCard, &LaneCell), With<BoardUnit>>,
+    reveals: &[S2CPlacementReveal],
+) {
+    let Some(board_layout) = render_resources.board_layout.as_deref() else {
+        warn!(
+            "Board Rendering: placement reveal unit spawn skipped because BoardLayout is missing"
+        );
+        return;
+    };
+    let Some(card_atlas) = render_resources.card_atlas.as_deref() else {
+        warn!("Board Rendering: placement reveal unit spawn skipped because CardAtlas is missing");
+        return;
+    };
+
+    for reveal in reveals {
+        for placement in &reveal.placements {
+            let PlayTarget::BoardCell { lane, cell } = placement.target else {
+                continue;
+            };
+            if !in_board_bounds(lane, cell) {
+                warn!(
+                    owner_id = ?placement.owner_id,
+                    card_id = ?placement.card_id,
+                    lane,
+                    cell,
+                    "Board Rendering: placement reveal unit spawn skipped for out-of-range cell"
+                );
+                continue;
+            }
+            if rendered_unit_exists(
+                existing_units,
+                placement.owner_id,
+                placement.card_id,
+                lane,
+                cell,
+            ) {
+                continue;
+            }
+
+            let unit =
+                revealed_placement_unit_state(placement.owner_id, placement.card_id, lane, cell);
+            spawn_revealed_placement_unit(
+                commands,
+                board_layout,
+                card_atlas,
+                render_resources.board_assets.as_deref(),
+                render_resources.placeholder_assets.as_deref(),
+                &render_resources.config,
+                &unit,
+            );
+        }
+    }
+}
+
+fn rendered_unit_exists(
+    existing_units: &Query<(&BoardUnitOwner, &BoardUnitCard, &LaneCell), With<BoardUnit>>,
+    owner_id: PlayerId,
+    card_id: CardId,
+    lane: u8,
+    cell: u8,
+) -> bool {
+    existing_units.iter().any(|(owner, card, lane_cell)| {
+        owner.0 == owner_id
+            && card.card_id == Some(card_id)
+            && lane_cell.lane == lane
+            && lane_cell.cell == cell
+    })
+}
+
+pub fn revealed_placement_unit_state(
+    owner_id: PlayerId,
+    card_id: CardId,
+    lane: u8,
+    cell: u8,
+) -> UnitBoardState {
+    UnitBoardState {
+        unit_id: synthetic_reveal_unit_id(owner_id, card_id, lane, cell),
+        owner_id,
+        location: UnitBoardLocation::BoardCell { lane, cell },
+        card_id: Some(card_id),
+        stats: None,
+        source_class: None,
+    }
+}
+
+fn synthetic_reveal_unit_id(owner_id: PlayerId, card_id: CardId, lane: u8, cell: u8) -> EntityId {
+    const SYNTHETIC_REVEAL_UNIT_ID_TAG: u64 = 0xF000_0000_0000_0000;
+    SYNTHETIC_REVEAL_UNIT_ID_TAG
+        | ((owner_id.0 & 0xFFFF) << 40)
+        | ((u64::from(card_id.0) & 0xFFFF_FF) << 16)
+        | (u64::from(lane) << 8)
+        | u64::from(cell)
+}
+
+fn spawn_revealed_placement_unit(
+    commands: &mut Commands,
+    board_layout: &BoardLayout,
+    card_atlas: &CardAtlas,
+    board_assets: Option<&BoardRuntimeAssets>,
+    placeholder_assets: Option<&PlaceholderAssets>,
+    config: &BoardRenderingConfig,
+    unit: &UnitBoardState,
+) {
+    let Some((lane, cell)) = visible_unit_cell(unit, unit.owner_id) else {
+        return;
+    };
+    let stats = board_unit_stats(unit, card_atlas);
+    let (frame_index, used_missing_art_fallback) = unit_frame_index(unit, card_atlas);
+    let world_xy = board_layout.cell_to_world(lane, cell);
+
+    let unit_entity = commands
+        .spawn((
+            BoardRenderingEntity,
+            BoardSnapshotEntity,
+            BoardUnit {
+                unit_id: unit.unit_id,
+            },
+            BoardUnitRenderSource::PlacementReveal,
+            BoardUnitOwner(unit.owner_id),
+            BoardUnitCard {
+                card_id: unit.card_id,
+                frame_index,
+                used_missing_art_fallback,
+            },
+            stats,
+            LaneCell { lane, cell },
+            StatusEffectsList::default(),
+            unit_sprite(
+                card_atlas,
+                board_assets,
+                frame_index,
+                unit.source_class,
+                placeholder_assets,
+            ),
+            Transform::from_xyz(world_xy.x, world_xy.y, rendering_constants::Z_UNITS),
+        ))
+        .id();
+
+    spawn_hp_bar_children(
+        commands,
+        unit_entity,
+        card_atlas,
+        board_assets,
+        stats,
+        config,
+    );
 }
 
 /// Idempotent dedupe filter for `S2CPlacementReveal` per
@@ -1822,7 +1982,7 @@ fn remove_board_rendering_session_resources(
 }
 
 #[derive(SystemParam)]
-struct BoardSnapshotRenderResources<'w> {
+pub struct BoardSnapshotRenderResources<'w> {
     board_layout: Option<Res<'w, BoardLayout>>,
     card_atlas: Option<Res<'w, CardAtlas>>,
     board_assets: Option<Res<'w, BoardRuntimeAssets>>,
@@ -2151,6 +2311,7 @@ fn spawn_snapshot_unit(
             BoardUnit {
                 unit_id: unit.unit_id,
             },
+            BoardUnitRenderSource::AuthoritativeSnapshot,
             BoardUnitOwner(unit.owner_id),
             BoardUnitCard {
                 card_id: unit.card_id,

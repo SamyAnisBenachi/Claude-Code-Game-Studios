@@ -99,9 +99,9 @@ use serde::Serialize;
 
 use crate::presentation::board_rendering::{
     BoardEnvelope, BoardLocalPlayer, BoardRenderState, BoardUnit, BoardUnitCard, BoardUnitOwner,
-    BoardUnitStats, ObjectiveArtKind, SourceCardLink, StandingObjective, StandingObjectiveArt,
-    StandingObjectiveHp, TargetingDimWash, TargetingEndpointRing, TargetingInvalidMarker,
-    TargetingOverlayState, TargetingValidRing,
+    BoardUnitRenderSource, BoardUnitStats, ObjectiveArtKind, SourceCardLink, StandingObjective,
+    StandingObjectiveArt, StandingObjectiveHp, TargetingDimWash, TargetingEndpointRing,
+    TargetingInvalidMarker, TargetingOverlayState, TargetingValidRing,
 };
 use crate::presentation::shared::economy_view::{PlayerEconomyView, PlayerEconomyViewUpdateSource};
 use crate::state::{
@@ -1417,6 +1417,7 @@ pub struct BoardSnapshot {
 pub struct BoardUnitSnapshot {
     pub entity: String,
     pub unit_id: u64,
+    pub render_source: Option<String>,
     pub owner_id: String,
     pub lane: Option<u8>,
     pub cell: Option<u8>,
@@ -1605,6 +1606,7 @@ pub struct ExtrasBoardInputs<'w, 's> {
             Option<&'static LaneCell>,
             Option<&'static Visibility>,
             Option<&'static Transform>,
+            Option<&'static BoardUnitRenderSource>,
         ),
     >,
     pub objectives: Query<
@@ -2325,7 +2327,7 @@ fn build_board_snapshot(inputs: &ExtrasBoardInputs<'_, '_>) -> BoardSnapshot {
     let mut units = Vec::new();
     let mut units_truncated = false;
     let mut visible_rendered_unit_count = 0usize;
-    for (entity, board_unit, owner, card, stats, lane_cell, visibility, transform) in
+    for (entity, board_unit, owner, card, stats, lane_cell, visibility, transform, source) in
         inputs.units.iter()
     {
         if units.len() >= MAX_BOARD_ENTITIES_PER_KIND {
@@ -2339,6 +2341,7 @@ fn build_board_snapshot(inputs: &ExtrasBoardInputs<'_, '_>) -> BoardSnapshot {
         units.push(BoardUnitSnapshot {
             entity: format!("{:?}", entity),
             unit_id: board_unit.unit_id,
+            render_source: source.map(|source| format!("{:?}", source)),
             owner_id: format!("{:?}", owner.0),
             lane: lane_cell.map(|c| c.lane),
             cell: lane_cell.map(|c| c.cell),
