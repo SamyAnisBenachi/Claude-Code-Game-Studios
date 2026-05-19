@@ -8,8 +8,9 @@ use client::ui::settings::{
     SettingsControlAction, SettingsEntities, SettingsEntrySource, SettingsFocusOrder,
     SettingsFooterAction, SettingsHudUiScaleControl, SettingsMenuScaleApplied,
     SettingsMenuUiScaleControl, SettingsOpenRequested, SettingsPanel, SettingsReducedMotionToggle,
-    SettingsStatusFooter, SettingsTimerSelector, SETTINGS_PANEL_BASE_WIDTH_PX,
-    SETTINGS_PANEL_MIN_WIDTH_PX, UI_SCALE_MAX_PERCENT, UI_SCALE_MIN_PERCENT,
+    SettingsScaledDimensions, SettingsStatusFooter, SettingsTimerSelector,
+    SETTINGS_PANEL_BASE_WIDTH_PX, SETTINGS_PANEL_MIN_WIDTH_PX, UI_SCALE_MAX_PERCENT,
+    UI_SCALE_MIN_PERCENT,
 };
 use shared::protocol::RoundPhase;
 
@@ -292,6 +293,181 @@ fn test_settings_focus_order_traverses_flex_hierarchy_in_documented_order() {
         .resource::<SettingsFocusOrder>()
         .entities
         .is_empty());
+}
+
+#[test]
+fn test_settings_inner_controls_scale_with_menu_ui_scale_at_75_and_150_percent() {
+    // Arrange.
+    test_helpers::init_test_tracing();
+    let mut app = app_with_open_settings();
+    let entities = *app.world().resource::<SettingsEntities>();
+
+    // Act + Assert: every fixed-px inner row/control re-applies the
+    // menu factor in lockstep with the panel. At 75% scale the header
+    // and footer chrome must shrink alongside the narrower panel; at
+    // 150% the same chrome must grow so the visual proportions match
+    // the wider panel and labels are not clipped against tight padding.
+    for percent in [UI_SCALE_MIN_PERCENT, 100, UI_SCALE_MAX_PERCENT] {
+        app.world_mut()
+            .resource_mut::<AccessibilityPreferences>()
+            .set_menu_ui_scale_percent(percent);
+        app.update();
+
+        let factor = f32::from(percent) / 100.0;
+
+        for (label, entity) in scaled_inner_entities(&entities) {
+            let dims = *app
+                .world()
+                .get::<SettingsScaledDimensions>(entity)
+                .unwrap_or_else(|| {
+                    panic!("{label}: scaled inner control must carry SettingsScaledDimensions")
+                });
+            let node = app
+                .world()
+                .get::<Node>(entity)
+                .unwrap_or_else(|| panic!("{label}: scaled inner control must carry a Node"));
+
+            if let Some(base) = dims.base_width_px {
+                assert_eq!(
+                    node.width,
+                    Val::Px(base * factor),
+                    "{label} at {percent}%: width must equal base ({base}) × factor"
+                );
+            }
+            if let Some(base) = dims.base_height_px {
+                assert_eq!(
+                    node.height,
+                    Val::Px(base * factor),
+                    "{label} at {percent}%: height must equal base ({base}) × factor"
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn test_settings_inner_controls_do_not_use_position_absolute_at_75_or_150() {
+    // Arrange.
+    test_helpers::init_test_tracing();
+    let mut app = app_with_open_settings();
+    let entities = *app.world().resource::<SettingsEntities>();
+
+    // Act + Assert: the deepening must not regress the flex-layout
+    // contract — no inner control may switch to PositionType::Absolute
+    // at the extreme scale steps when the sync system re-applies sizes.
+    for percent in [UI_SCALE_MIN_PERCENT, UI_SCALE_MAX_PERCENT] {
+        app.world_mut()
+            .resource_mut::<AccessibilityPreferences>()
+            .set_menu_ui_scale_percent(percent);
+        app.update();
+
+        for (label, entity) in scaled_inner_entities(&entities) {
+            let node = app
+                .world()
+                .get::<Node>(entity)
+                .unwrap_or_else(|| panic!("{label}: scaled inner control must carry a Node"));
+            assert_ne!(
+                node.position_type,
+                PositionType::Absolute,
+                "{label} at {percent}%: must not switch to PositionType::Absolute"
+            );
+        }
+    }
+}
+
+#[test]
+fn test_settings_timer_options_row_total_width_fits_panel_at_75_percent() {
+    // Arrange.
+    test_helpers::init_test_tracing();
+    let mut app = app_with_open_settings();
+    app.world_mut()
+        .resource_mut::<AccessibilityPreferences>()
+        .set_menu_ui_scale_percent(UI_SCALE_MIN_PERCENT);
+    app.update();
+    let entities = *app.world().resource::<SettingsEntities>();
+    let factor = f32::from(UI_SCALE_MIN_PERCENT) / 100.0;
+
+    // Act: sum the scaled-pixel widths of the four timer chips.
+    let mut total_chip_width = 0.0;
+    for entity in entities.timer_options {
+        let dims = app
+            .world()
+            .get::<SettingsScaledDimensions>(entity)
+            .expect("timer option must carry SettingsScaledDimensions");
+        let base = dims.base_width_px.expect("timer option must scale width");
+        total_chip_width += base * factor;
+    }
+
+    // Assert: the four scaled chips do not exceed the scaled panel
+    // base width minus the category column gutter and padding. The
+    // flex_wrap fallback keeps everything reachable even when this
+    // budget is tight, but the budget itself must remain plausible at
+    // 75% so the wrap is the exception, not the rule.
+    let scaled_panel = SETTINGS_PANEL_BASE_WIDTH_PX * factor;
+    let scaled_category_gutter = 170.0 * factor;
+    let scaled_padding = 24.0 * 2.0; // SPACING_LG * 2, panel padding
+    let scaled_pane_padding = 16.0 * 2.0; // SPACING_MD * 2, content padding
+    let budget = scaled_panel - scaled_category_gutter - scaled_padding - scaled_pane_padding;
+    assert!(
+        total_chip_width <= budget + 1.0,
+        "scaled timer chips total ({total_chip_width}) must fit inside scaled \
+         pane budget ({budget}) at 75% scale"
+    );
+}
+
+#[test]
+fn test_settings_status_footer_keeps_intrinsic_layout_at_extreme_scales() {
+    // Arrange.
+    test_helpers::init_test_tracing();
+    let mut app = app_with_open_settings();
+    let entities = *app.world().resource::<SettingsEntities>();
+
+    // Act + Assert: the status footer is intentionally NOT in the
+    // scaled-dimensions set — its width is driven by flex_grow inside
+    // the SpaceBetween footer row. The test guards against accidentally
+    // tagging it with SettingsScaledDimensions during refactors.
+    for percent in [UI_SCALE_MIN_PERCENT, UI_SCALE_MAX_PERCENT] {
+        app.world_mut()
+            .resource_mut::<AccessibilityPreferences>()
+            .set_menu_ui_scale_percent(percent);
+        app.update();
+
+        assert!(
+            app.world()
+                .get::<SettingsScaledDimensions>(entities.status_footer)
+                .is_none(),
+            "status footer must remain flex_grow-driven, not scaled-pixel"
+        );
+
+        let node = app
+            .world()
+            .get::<Node>(entities.status_footer)
+            .expect("status footer must carry a Node");
+        assert_eq!(node.display, Display::Flex);
+    }
+}
+
+fn scaled_inner_entities(entities: &SettingsEntities) -> Vec<(&'static str, Entity)> {
+    let mut list = vec![
+        ("back_close_button", entities.back_close_button),
+        ("category_accessibility", entities.category_accessibility),
+        ("colorblind_selector", entities.colorblind_selector),
+        ("reduced_motion_toggle", entities.reduced_motion_toggle),
+        ("effective_timer_text", entities.effective_timer_text),
+        ("menu_scale_control", entities.menu_scale_control),
+        ("hud_scale_control", entities.hud_scale_control),
+        ("footer_close_button", entities.footer_close_button),
+    ];
+    for (index, entity) in entities.timer_options.iter().copied().enumerate() {
+        let label: &'static str = match index {
+            0 => "timer_option_0",
+            1 => "timer_option_1",
+            2 => "timer_option_2",
+            _ => "timer_option_3",
+        };
+        list.push((label, entity));
+    }
+    list
 }
 
 fn app_with_open_settings() -> App {
