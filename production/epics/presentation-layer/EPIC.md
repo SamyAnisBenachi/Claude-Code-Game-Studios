@@ -4,7 +4,7 @@
 > **GDD**: ADR-021 cross-epic infrastructure and Sprint 6 accessibility gate control
 > **Architecture Module**: `client/src/presentation/` - `PresentationPlugin`
 > **Status**: Ready
-> **Stories**: 5 shared prerequisite/control/accessibility/result stories
+> **Stories**: 6 shared prerequisite/control/accessibility/result/overlay stories
 
 ## Overview
 
@@ -45,6 +45,7 @@ implementation evidence later shows a route-blocking polish split is needed.
 | S6-04 / QA-COND-0005 | Standard-tier accessibility gaps must be implemented/evidenced, accepted risk with producer signoff, reclassified out of the Production -> Polish gate, or explicitly dependency-blocked before QA-COND-0005 closure can be considered | ADR-023, ADR-021 |
 | A11Y-ST-02 / QA-COND-0005 | Card cost, ATK, HP, and keyword text floors must be verified with final browser/WASM evidence across the Hand UI and Shop/Auction UI card surfaces implemented by their split A11Y-ST-02 stories | ADR-021, ADR-002 |
 | Result Screen UX | GAME_OVER result overlay displays server-authoritative win/loss/draw/no-result copy, objective summary with Unknown fallbacks, frozen HUD/background behavior, Return to Lobby, rematch disabled/hidden unless scoped, keyboard focus, reduced-motion behavior, viewport stability, and no public/full-QA/full-game claims | ADR-021, ADR-002, ADR-008, ADR-011 |
+| PROMPT 1265 / 1266 / 1267 overlay findings | Result and DraftInitial decision overlays use Krosmaga-style chrome as composition reference only: stronger modal hierarchy, large cards, CTA below content, no mulligan/progression semantic drift, no Krosmaga asset release claim | ADR-021, ADR-002 |
 
 ## Traceability Notes
 
@@ -103,6 +104,7 @@ This epic is complete when:
 | 003 | [S6 Accessibility Disposition and Evidence Register](story-003-s6-accessibility-disposition-and-evidence-register.md) | Config/Data | Ready | S6-04 / QA-COND-0005 | ADR-023, ADR-021, ADR-002 |
 | 005 | [A11Y-ST-02 Cross-Surface Browser/WASM Evidence](story-005-card-text-stat-keyword-accessibility.md) | UI | Ready | A11Y-ST-02 / QA-COND-0005 | ADR-021, ADR-002, ADR-013, ADR-015, ADR-019 |
 | 006 | [Result Screen MVP](story-006-result-screen-mvp.md) | UI | Ready | Result Screen UX / TR-NP-001 / TR-RSM-008 / TR-HUD-009 | ADR-021, ADR-002, ADR-008, ADR-011 |
+| 007 | [Result + Mulligan-Style Overlay Chrome](story-007-krosmaga-result-mulligan-overlay-chrome.md) | UI + Integration + Visual Evidence | Draft -- future Sprint 19 candidate (`S19-PRES-RESULT-MULLIGAN-OVERLAY-CHROME-001`; PROMPT 1280 Krosmaga-style implementation wave), NOT activated | PROMPT 1265 / 1266 / 1267 overlay findings | ADR-021, ADR-002, ADR-008, ADR-011 |
 
 ## Next Step
 
