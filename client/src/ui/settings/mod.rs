@@ -472,6 +472,19 @@ pub struct SettingsMenuScaleApplied {
     pub factor: f32,
 }
 
+// Stamped on every inner row/control node carrying a fixed-px width or
+// height so `sync_settings_shell_visibility_system` can re-apply the
+// menu UI-scale factor each frame. PROMPT 1407 V-P1-09 deepening:
+// header/footer chrome, the category column, the four timer chips, and
+// the body controls all scale with the panel instead of standing fixed
+// at their 100% pixel sizes while the panel shrinks (75%) or stretches
+// (150%) around them.
+#[derive(Component, Debug, Clone, Copy, PartialEq)]
+pub struct SettingsScaledDimensions {
+    pub base_width_px: Option<f32>,
+    pub base_height_px: Option<f32>,
+}
+
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct SettingsTimerOption {
     pub multiplier: PlacementTimerMultiplier,
@@ -595,6 +608,9 @@ pub fn spawn_settings_shell(
         SettingsControlAction::Close,
         back_close_node(),
     );
+    commands
+        .entity(back_close_button)
+        .insert(back_close_scaled_dimensions());
 
     let body_row = commands
         .spawn((
@@ -607,6 +623,7 @@ pub fn spawn_settings_shell(
         .spawn((
             Name::new("Settings Category Column"),
             settings_category_column_node(),
+            category_column_scaled_dimensions(),
             ChildOf(body_row),
         ))
         .id();
@@ -619,6 +636,9 @@ pub fn spawn_settings_shell(
         SettingsControlAction::SelectCategory(SettingsCategory::Accessibility),
         category_node(),
     );
+    commands
+        .entity(category_accessibility)
+        .insert(category_scaled_dimensions());
     let content_pane = commands
         .spawn((
             Name::new("Settings Accessibility Content Pane"),
@@ -641,6 +661,9 @@ pub fn spawn_settings_shell(
         SettingsControlAction::CycleColorblindMode,
         control_node(),
     );
+    commands
+        .entity(colorblind_selector)
+        .insert(control_scaled_dimensions());
     let reduced_motion_toggle = spawn_text_control(
         &mut commands,
         content_pane,
@@ -650,6 +673,9 @@ pub fn spawn_settings_shell(
         SettingsControlAction::ToggleReducedMotion,
         control_node(),
     );
+    commands
+        .entity(reduced_motion_toggle)
+        .insert(control_scaled_dimensions());
     let timer_options_row = commands
         .spawn((
             Name::new("Settings Timer Options Row"),
@@ -670,7 +696,10 @@ pub fn spawn_settings_shell(
         );
         commands
             .entity(entity)
-            .insert(SettingsTimerOption { multiplier });
+            .insert((
+                SettingsTimerOption { multiplier },
+                timer_option_scaled_dimensions(),
+            ));
         entity
     });
     let effective_timer_text = commands
@@ -683,6 +712,7 @@ pub fn spawn_settings_shell(
             settings_text_font(typography::BODY),
             TextColor(Color::srgb(0.82, 0.88, 0.94)),
             effective_timer_node(),
+            effective_timer_scaled_dimensions(),
             Visibility::Hidden,
             ChildOf(content_pane),
         ))
@@ -696,6 +726,9 @@ pub fn spawn_settings_shell(
         SettingsControlAction::CycleMenuUiScale,
         control_node(),
     );
+    commands
+        .entity(menu_scale_control)
+        .insert(control_scaled_dimensions());
     let hud_scale_control = spawn_text_control(
         &mut commands,
         content_pane,
@@ -705,6 +738,9 @@ pub fn spawn_settings_shell(
         SettingsControlAction::CycleHudUiScale,
         control_node(),
     );
+    commands
+        .entity(hud_scale_control)
+        .insert(control_scaled_dimensions());
 
     let footer_row = commands
         .spawn((
@@ -734,6 +770,9 @@ pub fn spawn_settings_shell(
         SettingsControlAction::Close,
         footer_close_node(),
     );
+    commands
+        .entity(footer_close_button)
+        .insert(footer_close_scaled_dimensions());
     // Silence unused-variable warning for the category column wrapper;
     // it exists only as a flex layout parent and has no marker query.
     let _ = category_column;
@@ -920,6 +959,10 @@ pub fn sync_settings_shell_visibility_system(
     mut focus_order: ResMut<SettingsFocusOrder>,
     mut visibility: Query<&mut Visibility>,
     mut panels: Query<(&mut Node, &mut SettingsMenuScaleApplied), With<SettingsPanel>>,
+    mut scaled_dims: Query<
+        (&mut Node, &SettingsScaledDimensions),
+        (Without<SettingsPanel>, Without<SettingsMenuScaleApplied>),
+    >,
 ) {
     let Some(entities) = entities else {
         return;
@@ -954,8 +997,9 @@ pub fn sync_settings_shell_visibility_system(
         focus_order.set_entities(Vec::new());
     }
 
+    let factor = menu_ui_scale_factor(preferences.menu_ui_scale_percent);
+
     if let Ok((mut node, mut applied)) = panels.get_mut(entities.panel) {
-        let factor = menu_ui_scale_factor(preferences.menu_ui_scale_percent);
         // Width scales with UI-scale; max_width clamp keeps the panel inside
         // the viewport at 150% on narrow displays. Height is content-driven
         // inside max_height: Percent(92), and the panel scrolls vertically
@@ -969,6 +1013,21 @@ pub fn sync_settings_shell_visibility_system(
         node.max_height = Val::Percent(92.0);
         applied.percent = preferences.menu_ui_scale_percent;
         applied.factor = factor;
+    }
+
+    // Re-apply the menu factor to every inner row/control carrying a base
+    // pixel dimension. PROMPT 1407 V-P1-09: at 150% scale a fixed 36 px
+    // header button is visually undersized against the wider panel and
+    // text padding collides; at 75% scale the same fixed-px controls
+    // overflow the narrower body — both fixed by uniformly scaling
+    // alongside the panel.
+    for (mut node, dims) in &mut scaled_dims {
+        if let Some(base_width) = dims.base_width_px {
+            node.width = Val::Px(base_width * factor);
+        }
+        if let Some(base_height) = dims.base_height_px {
+            node.height = Val::Px(base_height * factor);
+        }
     }
 }
 
@@ -1388,5 +1447,64 @@ fn footer_close_node() -> Node {
         justify_content: JustifyContent::Center,
         flex_shrink: 0.0,
         ..default()
+    }
+}
+
+// Base pixel dimensions stamped on inner row/control nodes. The sync
+// system multiplies these by the menu UI-scale factor so 75 % / 150 %
+// scale never leaves chrome at its 100 % size while the panel resizes
+// around it.
+
+fn back_close_scaled_dimensions() -> SettingsScaledDimensions {
+    SettingsScaledDimensions {
+        base_width_px: Some(136.0),
+        base_height_px: Some(36.0),
+    }
+}
+
+fn footer_close_scaled_dimensions() -> SettingsScaledDimensions {
+    SettingsScaledDimensions {
+        base_width_px: Some(124.0),
+        base_height_px: Some(36.0),
+    }
+}
+
+fn category_scaled_dimensions() -> SettingsScaledDimensions {
+    // Width stays Percent(100) — only the fixed pixel height tracks the
+    // menu factor so the category button rides the row alongside the
+    // scaled content pane.
+    SettingsScaledDimensions {
+        base_width_px: None,
+        base_height_px: Some(40.0),
+    }
+}
+
+fn category_column_scaled_dimensions() -> SettingsScaledDimensions {
+    // Column width must scale or the 170 px gutter eats the content pane
+    // at 75 % and looks too thin at 150 %.
+    SettingsScaledDimensions {
+        base_width_px: Some(170.0),
+        base_height_px: None,
+    }
+}
+
+fn control_scaled_dimensions() -> SettingsScaledDimensions {
+    SettingsScaledDimensions {
+        base_width_px: None,
+        base_height_px: Some(38.0),
+    }
+}
+
+fn timer_option_scaled_dimensions() -> SettingsScaledDimensions {
+    SettingsScaledDimensions {
+        base_width_px: Some(72.0),
+        base_height_px: Some(34.0),
+    }
+}
+
+fn effective_timer_scaled_dimensions() -> SettingsScaledDimensions {
+    SettingsScaledDimensions {
+        base_width_px: None,
+        base_height_px: Some(28.0),
     }
 }
