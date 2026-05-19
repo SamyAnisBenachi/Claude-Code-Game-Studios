@@ -4,7 +4,7 @@ use client::state::{ClientState, CurrentClientPhase};
 use client::ui::hand::{
     compute_fan_slot_layout, FanLayoutMetrics, FanSlotIndex, HandContents, HandFanLayoutConfig,
     HandFanLayoutState, HandFanViewport, HandSubmitInteractionState, HandUiEntities, HandUiPlugin,
-    HAND_FAN_SLOT_COUNT,
+    ReserveStripForFanSlot, HAND_FAN_SLOT_COUNT, HAND_FAN_STRIP_HEIGHT_PX,
 };
 use shared::card::CardId;
 use shared::protocol::RoundPhase;
@@ -109,6 +109,50 @@ fn layout_system_applies_formula_to_visible_pooled_slots() {
             Visibility::Hidden
         };
         assert_eq!(app.world().get::<Visibility>(entity), Some(&expected));
+    }
+}
+
+#[test]
+fn reserve_strip_uses_hand_fan_local_coordinates_above_card() {
+    let mut app = app_with_hand_ui_in_session(5);
+    app.update();
+
+    let slot = fan_slot_entity(&mut app, 0);
+    let slot_node = app
+        .world()
+        .get::<Node>(slot)
+        .expect("fan slot should have a node");
+    let slot_top = expect_px(slot_node.top);
+    let slot_left = expect_px(slot_node.left);
+    let reserve = reserve_strip_entity(&mut app, 0);
+    let reserve_node = app
+        .world()
+        .get::<Node>(reserve)
+        .expect("reserve strip should have a node");
+
+    assert_approx(expect_px(reserve_node.left), slot_left);
+    assert_approx(
+        expect_px(reserve_node.bottom),
+        HAND_FAN_STRIP_HEIGHT_PX - slot_top + 10.0,
+    );
+    assert!(
+        expect_px(reserve_node.bottom) < HAND_FAN_STRIP_HEIGHT_PX,
+        "reserve strip bottom must stay in HandFanRoot-local space, not viewport space"
+    );
+}
+
+fn reserve_strip_entity(app: &mut App, index: u8) -> Entity {
+    let mut query = app.world_mut().query::<(Entity, &ReserveStripForFanSlot)>();
+    query
+        .iter(app.world())
+        .find_map(|(entity, reserve_slot)| (reserve_slot.0 == index).then_some(entity))
+        .expect("reserve strip should exist")
+}
+
+fn expect_px(value: Val) -> f32 {
+    match value {
+        Val::Px(px) => px,
+        other => panic!("expected Val::Px, got {other:?}"),
     }
 }
 
