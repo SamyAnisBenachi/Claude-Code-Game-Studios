@@ -17,10 +17,11 @@
 
 use client::presentation::qa_snapshot::{
     build_auction_state_snapshot, build_placement_state_snapshot, build_snapshot,
-    build_snapshot_with_extras, AuctionPanelSnapshot, AuctionStateSnapshot, AuctionTimerSnapshot,
-    DragSnapshot, ExtrasSnapshot, HandSnapshot, LocalGoldViewSnapshot, PhaseTimerSnapshot,
-    PlacementStateSnapshot, PlacementTimerSnapshot, PlayerResourcesSnapshot, ScreenshotInfo,
-    ShopAuctionExtrasSnapshot, TimersSnapshot, UiCounts, QA_SCREENSHOT_FILENAME,
+    build_snapshot_with_extras, build_snapshot_with_extras_and_layout, ActiveTargetingSnapshot,
+    AuctionPanelSnapshot, AuctionStateSnapshot, AuctionTimerSnapshot, BoardTargetingSnapshot,
+    DragSnapshot, ExtrasSnapshot, HandSnapshot, LayoutSnapshot, LocalGoldViewSnapshot,
+    PhaseTimerSnapshot, PlacementStateSnapshot, PlacementTimerSnapshot, PlayerResourcesSnapshot,
+    ScreenshotInfo, ShopAuctionExtrasSnapshot, TimersSnapshot, UiCounts, QA_SCREENSHOT_FILENAME,
     QA_SCREENSHOT_FORMAT, SCREENSHOT_STATUS_PENDING,
 };
 
@@ -563,5 +564,101 @@ fn test_auction_state_timer_remaining_ms_agrees_with_extras_auction_timer() {
     assert_eq!(
         state.timer_remaining_ms, extras_remaining,
         "top-level auction_state.timer_remaining_ms must agree with extras.timers.auction_timer.remaining_ms"
+    );
+}
+
+#[test]
+fn test_snapshot_extras_include_pointer_lifecycle_and_debug_grid_blocks() {
+    let extras = ExtrasSnapshot {
+        timers: TimersSnapshot {
+            placement_timer: Some(PlacementTimerSnapshot {
+                remaining_ms: 1_200,
+                urgency_fired: false,
+                in_grace_window: false,
+                grace_remaining_ms: 0,
+                submitted: true,
+            }),
+            ..TimersSnapshot::default()
+        },
+        hand: Some(HandSnapshot {
+            mode: Some("Placement".to_string()),
+            disclosure_step: Some("Correction(OccupiedCell)".to_string()),
+            hand_count: 1,
+            cards: Vec::new(),
+            pending_placements: Vec::new(),
+            staged_count: 1,
+        }),
+        drag: DragSnapshot {
+            placement_drag_active: true,
+            placement_drag_card_id: Some(99),
+            placement_drag_card_entity: Some("1v1#42".to_string()),
+            placement_drag_cursor_world: Some([12.5, -4.0]),
+            placement_drag_target_kind: Some("Minion".to_string()),
+            ..DragSnapshot::default()
+        },
+        shop_auction: Some(ShopAuctionExtrasSnapshot {
+            bid_keyboard_focus: Some("1v1#77".to_string()),
+            ..ShopAuctionExtrasSnapshot::default()
+        }),
+        ..ExtrasSnapshot::default()
+    };
+    let board_targeting = BoardTargetingSnapshot {
+        active_targeting: Some(ActiveTargetingSnapshot {
+            card_id: 99,
+            target_kind: "board_cell".to_string(),
+            endpoint_cell: Some([2, 3]),
+            endpoint_invalid: false,
+            valid_cell_count: 4,
+        }),
+        ..BoardTargetingSnapshot::default()
+    };
+
+    let snapshot = build_snapshot_with_extras_and_layout(
+        7,
+        1_700_000_000_000,
+        placeholder_screenshot(1_700_000_000_000),
+        None,
+        None,
+        None,
+        None,
+        None,
+        UiCounts::default(),
+        extras,
+        LayoutSnapshot::default(),
+        board_targeting,
+    );
+    let value = serde_json::to_value(&snapshot).expect("snapshot serialises");
+    let extras = &value["extras"];
+
+    assert!(extras.get("debug_grid").is_some());
+    assert!(extras["debug_grid"]["enabled"].is_null());
+    assert_eq!(extras["debug_grid"]["line_count"], 0);
+    assert!(extras.get("placement_lifecycle").is_some());
+    assert_eq!(extras["placement_lifecycle"]["pending_ghost_visible"], true);
+    assert_eq!(
+        extras["placement_lifecycle"]["pending_ghost_source"],
+        "active_placement_drag"
+    );
+    assert_eq!(extras["placement_lifecycle"]["submitted"], true);
+    assert!(extras["placement_lifecycle"]["accepted"].is_null());
+    assert_eq!(extras["placement_lifecycle"]["rejected"], true);
+    assert_eq!(
+        extras["placement_lifecycle"]["last_rejection_reason"],
+        "OccupiedCell"
+    );
+    assert_eq!(extras["input"]["last_pointer_world"][0], 12.5);
+    assert_eq!(extras["input"]["hovered_board_cell"][0], 2);
+    assert_eq!(extras["input"]["hovered_board_cell"][1], 3);
+    assert_eq!(
+        extras["input"]["focused_semantic_target"],
+        "auction_bid_button:1v1#77"
+    );
+    assert_eq!(
+        extras["input"]["pressed_semantic_target"],
+        "placement_drag_card:1v1#42"
+    );
+    assert_eq!(
+        extras["input"]["last_hit_test_source"],
+        "board_targeting_overlay"
     );
 }
