@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 use lightyear::prelude::{MessageReceiver, MessageSender};
+use shared::card::ClassId;
 use shared::protocol::{
     C2SAcknowledgeResult, GameOverReason, ObjectiveSnapshot, OpponentObjectiveSnapshot,
     ReliableChannel, RoundPhase, S2CGameOver, S2CGameSnapshot,
@@ -31,12 +32,14 @@ impl Plugin for ResultScreenPlugin {
             .init_resource::<ResultScreenFocusOrder>()
             .init_resource::<ResultScreenMotionState>()
             .init_resource::<ResultScreenOutboundMessages>()
+            .init_resource::<ResultScreenStepState>()
             // S13-LATE-MSG-DEDUPE-001: ensure the dedupe ring exists even when
             // tests load this plugin in isolation (PresentationPlugin would
             // normally install ClientIdempotencyPlugin first).
             .init_resource::<ClientIdempotencyState>()
             .add_message::<PresentationGameSnapshotMessage>()
             .add_message::<ResultScreenActionRequest>()
+            .add_message::<ResultScreenStepActionRequest>()
             .add_systems(OnEnter(ClientState::InSession), spawn_result_screen_system)
             .add_systems(OnExit(ClientState::InSession), despawn_result_screen_system)
             .add_systems(
@@ -52,6 +55,9 @@ impl Plugin for ResultScreenPlugin {
                         .after(super::game_snapshot_sink_system),
                     result_screen_button_interaction_system,
                     result_screen_keyboard_input_system,
+                    handle_result_screen_step_actions_system
+                        .in_set(PresentationSet::StateSync)
+                        .before(handle_result_screen_actions_system),
                     handle_result_screen_actions_system
                         .in_set(PresentationSet::StateSync)
                         .before(sync_result_screen_ui_system),
@@ -164,14 +170,54 @@ pub enum ResultScreenActionRequest {
     ReturnToLobby,
 }
 
+/// Two-step reveal action (V-P1-05): advance from the hero/outcome panel to
+/// the accounting/details panel. Triggered by the Continue CTA or by Enter /
+/// Space while the screen is on [`ResultScreenStep::Hero`].
+#[derive(Message, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ResultScreenStepActionRequest {
+    AdvanceToAccounting,
+}
+
+/// Which step of the two-step result reveal is currently presented.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum ResultScreenStep {
+    /// Step 1: hero panel with the outcome title and class/persona line.
+    #[default]
+    Hero,
+    /// Step 2: accounting panel with the round/resource/objective breakdown.
+    Accounting,
+}
+
+/// Persisted step state for the two-step result reveal. Reset to
+/// [`ResultScreenStep::Hero`] each time the result screen is spawned, so a
+/// fresh session always opens on the hero panel.
+#[derive(Resource, Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct ResultScreenStepState {
+    pub current: ResultScreenStep,
+}
+
+impl ResultScreenStepState {
+    pub fn reset_for_session(&mut self) {
+        *self = Self::default();
+    }
+
+    pub fn advance_to_accounting(&mut self) {
+        self.current = ResultScreenStep::Accounting;
+    }
+}
+
 #[derive(Resource, Debug, Clone, Copy)]
 pub struct ResultScreenEntities {
     pub root: Entity,
+    pub hero_panel: Entity,
+    pub accounting_panel: Entity,
     pub headline: Entity,
+    pub class_persona: Entity,
     pub cause: Entity,
     pub summary: Entity,
     pub own_rows: [Entity; OBJECTIVE_LANES],
     pub opponent_rows: [Entity; OBJECTIVE_LANES],
+    pub continue_button: Entity,
     pub return_button: Entity,
 }
 
@@ -181,8 +227,22 @@ pub struct ResultScreenRoot;
 #[derive(Component, Debug, Clone, Copy)]
 pub struct ResultScreenPanel;
 
+/// Marker on the hero/outcome sub-panel rendered during
+/// [`ResultScreenStep::Hero`].
+#[derive(Component, Debug, Clone, Copy)]
+pub struct ResultScreenHeroPanel;
+
+/// Marker on the accounting/details sub-panel rendered during
+/// [`ResultScreenStep::Accounting`].
+#[derive(Component, Debug, Clone, Copy)]
+pub struct ResultScreenAccountingPanel;
+
 #[derive(Component, Debug, Clone, Copy)]
 pub struct ResultScreenHeadline;
+
+/// Marker on the class/persona text in the hero panel.
+#[derive(Component, Debug, Clone, Copy)]
+pub struct ResultScreenClassPersona;
 
 #[derive(Component, Debug, Clone, Copy)]
 pub struct ResultScreenCause;
@@ -202,6 +262,11 @@ pub struct ResultScreenOpponentObjectiveRow {
 
 #[derive(Component, Debug, Clone, Copy)]
 pub struct ResultScreenReturnToLobbyButton;
+
+/// Marker on the Continue CTA. Shown only during [`ResultScreenStep::Hero`];
+/// hidden when the screen has advanced to the accounting panel.
+#[derive(Component, Debug, Clone, Copy)]
+pub struct ResultScreenContinueButton;
 
 #[derive(Component, Debug, Clone, Copy)]
 pub struct ResultScreenFocusIndicator;
@@ -289,6 +354,34 @@ impl ResultObjectiveRow {
 pub struct ResultObjectiveSummary {
     pub own_rows: [ResultObjectiveRow; OBJECTIVE_LANES],
     pub opponent_rows: [ResultObjectiveRow; OBJECTIVE_LANES],
+}
+
+/// Display label for the local player's class on the hero panel. Returns
+/// `None` when no snapshot has cached a class for the local player; the hero
+/// panel hides the class line in that case rather than inventing a value.
+pub fn result_screen_class_persona_label(
+    snapshot: Option<&S2CGameSnapshot>,
+    local_player_id: Option<PlayerId>,
+) -> Option<String> {
+    let snapshot = snapshot?;
+    let local = local_player_id.unwrap_or(snapshot.recipient_player_id);
+    let player = snapshot
+        .players
+        .iter()
+        .find(|player| player.player_id == local)?;
+    Some(format!("Class: {}", class_id_label(player.class_id)))
+}
+
+fn class_id_label(class: ClassId) -> &'static str {
+    match class {
+        ClassId::Iop => "Iop",
+        ClassId::Cra => "Cra",
+        ClassId::Sacrier => "Sacrier",
+        ClassId::Xelor => "Xelor",
+        ClassId::Ecaflip => "Ecaflip",
+        ClassId::Sadida => "Sadida",
+        ClassId::Neutral => "Neutral",
+    }
 }
 
 pub fn result_screen_outcome_copy(
@@ -496,8 +589,10 @@ pub fn result_screen_motion_state(
 fn spawn_result_screen_system(
     mut commands: Commands,
     mut return_state: ResMut<ResultScreenReturnToLobbyState>,
+    mut step_state: ResMut<ResultScreenStepState>,
 ) {
     return_state.reset_for_session();
+    step_state.reset_for_session();
 
     let root = commands
         .spawn((
@@ -548,26 +643,66 @@ fn spawn_result_screen_system(
         ))
         .id();
 
+    // Step 1: hero/outcome sub-panel — large title + class/persona line + cause.
+    let hero_panel = commands
+        .spawn((
+            Name::new("Result hero panel"),
+            ResultScreenHeroPanel,
+            ChildOf(panel),
+            Node {
+                display: Display::Flex,
+                flex_direction: FlexDirection::Column,
+                row_gap: Val::Px(10.0),
+                width: Val::Percent(100.0),
+                ..default()
+            },
+        ))
+        .id();
+
     let headline = spawn_result_text(
         &mut commands,
-        panel,
+        hero_panel,
         "RESULT PENDING",
         typography::H1,
         Color::srgb(0.96, 0.97, 0.99),
         Some(ResultScreenHeadline),
     );
+    let class_persona = spawn_result_text(
+        &mut commands,
+        hero_panel,
+        "",
+        typography::H2,
+        Color::srgb(0.91, 0.93, 0.96),
+        Some(ResultScreenClassPersona),
+    );
     let cause = spawn_result_text(
         &mut commands,
-        panel,
+        hero_panel,
         "Result data is unavailable. No winner or reason was declared.",
         typography::H3,
         Color::srgb(0.82, 0.86, 0.9),
         Some(ResultScreenCause),
     );
 
+    // Step 2: accounting sub-panel — summary line + own/opponent objective rows.
+    let accounting_panel = commands
+        .spawn((
+            Name::new("Result accounting panel"),
+            ResultScreenAccountingPanel,
+            ChildOf(panel),
+            Node {
+                display: Display::None,
+                flex_direction: FlexDirection::Column,
+                row_gap: Val::Px(12.0),
+                width: Val::Percent(100.0),
+                ..default()
+            },
+        ))
+        .id();
+
     let summary = spawn_result_text(
         &mut commands,
-        panel,
+        accounting_panel,
         "Round Unknown | Resources Unknown | Objectives Unknown",
         typography::BODY,
         Color::srgb(0.74, 0.79, 0.84),
@@ -577,7 +712,7 @@ fn spawn_result_screen_system(
     let objective_grid = commands
         .spawn((
             Name::new("Result objective grid"),
-            ChildOf(panel),
+            ChildOf(accounting_panel),
             Node {
                 display: Display::Flex,
                 flex_direction: FlexDirection::Row,
@@ -631,11 +766,52 @@ fn spawn_result_screen_system(
         ))
         .id();
 
-    let return_button = commands
+    let continue_button = spawn_result_cta_button(
+        &mut commands,
+        actions,
+        ResultScreenContinueButton,
+        "Continue",
+        Color::srgb(0.18, 0.27, 0.36),
+    );
+
+    // Return-to-Lobby CTA stays mounted in the actions row across both steps
+    // so the dismiss path is always reachable per the V-P1-05 constraint
+    // ("keep the return/dismiss CTA accessible and visible").
+    let return_button = spawn_result_cta_button(
+        &mut commands,
+        actions,
+        ResultScreenReturnToLobbyButton,
+        "Return to Lobby",
+        Color::srgb(0.14, 0.22, 0.31),
+    );
+
+    commands.insert_resource(ResultScreenEntities {
+        root,
+        hero_panel,
+        accounting_panel,
+        headline,
+        class_persona,
+        cause,
+        summary,
+        own_rows,
+        opponent_rows,
+        continue_button,
+        return_button,
+    });
+}
+
+fn spawn_result_cta_button<M: Component>(
+    commands: &mut Commands,
+    parent: Entity,
+    marker: M,
+    label: &str,
+    background: Color,
+) -> Entity {
+    commands
         .spawn((
-            Name::new("Return to lobby button"),
-            ResultScreenReturnToLobbyButton,
-            ChildOf(actions),
+            Name::new(format!("Result CTA {label}")),
+            marker,
+            ChildOf(parent),
             Button,
             Interaction::None,
             Node {
@@ -653,26 +829,16 @@ fn spawn_result_screen_system(
                 border_radius: BorderRadius::all(Val::Px(6.0)),
                 ..default()
             },
-            BackgroundColor(Color::srgb(0.14, 0.22, 0.31)),
+            BackgroundColor(background),
             BorderColor::all(IDLE_BORDER),
-            Text::new("Return to Lobby"),
+            Text::new(label),
             TextFont {
                 font_size: typography::H3,
                 ..default()
             },
             TextColor(Color::srgb(0.96, 0.97, 0.99)),
         ))
-        .id();
-
-    commands.insert_resource(ResultScreenEntities {
-        root,
-        headline,
-        cause,
-        summary,
-        own_rows,
-        opponent_rows,
-        return_button,
-    });
+        .id()
 }
 
 fn despawn_result_screen_system(
@@ -680,6 +846,7 @@ fn despawn_result_screen_system(
     entities: Option<Res<ResultScreenEntities>>,
     mut view_state: ResMut<ResultScreenViewState>,
     mut focus_order: ResMut<ResultScreenFocusOrder>,
+    mut step_state: ResMut<ResultScreenStepState>,
 ) {
     if let Some(entities) = entities {
         commands.entity(entities.root).despawn();
@@ -687,6 +854,7 @@ fn despawn_result_screen_system(
     }
     view_state.clear_for_lobby();
     focus_order.set_entities(Vec::new());
+    step_state.reset_for_session();
 }
 
 fn drain_result_screen_game_over_receiver_system(
@@ -777,19 +945,33 @@ fn result_screen_phase_transition_system(
 
 fn result_screen_button_interaction_system(
     view_state: Res<ResultScreenViewState>,
+    step_state: Res<ResultScreenStepState>,
     mut actions: MessageWriter<ResultScreenActionRequest>,
-    interactions: Query<
+    mut step_actions: MessageWriter<ResultScreenStepActionRequest>,
+    return_interactions: Query<
         &Interaction,
         (Changed<Interaction>, With<ResultScreenReturnToLobbyButton>),
+    >,
+    continue_interactions: Query<
+        &Interaction,
+        (Changed<Interaction>, With<ResultScreenContinueButton>),
     >,
 ) {
     if !view_state.visible {
         return;
     }
 
-    for interaction in &interactions {
+    for interaction in &return_interactions {
         if *interaction == Interaction::Pressed {
             actions.write(ResultScreenActionRequest::ReturnToLobby);
+        }
+    }
+
+    if step_state.current == ResultScreenStep::Hero {
+        for interaction in &continue_interactions {
+            if *interaction == Interaction::Pressed {
+                step_actions.write(ResultScreenStepActionRequest::AdvanceToAccounting);
+            }
         }
     }
 }
@@ -797,8 +979,10 @@ fn result_screen_button_interaction_system(
 fn result_screen_keyboard_input_system(
     input: Option<Res<ButtonInput<KeyCode>>>,
     view_state: Res<ResultScreenViewState>,
+    step_state: Res<ResultScreenStepState>,
     mut focus_order: ResMut<ResultScreenFocusOrder>,
     mut actions: MessageWriter<ResultScreenActionRequest>,
+    mut step_actions: MessageWriter<ResultScreenStepActionRequest>,
 ) {
     if !view_state.visible {
         return;
@@ -817,7 +1001,35 @@ fn result_screen_keyboard_input_system(
     }
 
     if input.just_pressed(KeyCode::Enter) || input.just_pressed(KeyCode::Space) {
-        actions.write(ResultScreenActionRequest::ReturnToLobby);
+        match step_state.current {
+            ResultScreenStep::Hero => {
+                step_actions.write(ResultScreenStepActionRequest::AdvanceToAccounting);
+            }
+            ResultScreenStep::Accounting => {
+                actions.write(ResultScreenActionRequest::ReturnToLobby);
+            }
+        }
+    }
+}
+
+fn handle_result_screen_step_actions_system(
+    mut step_actions: MessageReader<ResultScreenStepActionRequest>,
+    mut step_state: ResMut<ResultScreenStepState>,
+) {
+    let mut advance_requested = false;
+    for action in step_actions.read() {
+        if *action == ResultScreenStepActionRequest::AdvanceToAccounting {
+            advance_requested = true;
+        }
+    }
+
+    if advance_requested && step_state.current == ResultScreenStep::Hero {
+        step_state.advance_to_accounting();
+        tracing::info!(
+            from = "Hero",
+            to = "Accounting",
+            "result_screen_step_transition"
+        );
     }
 }
 
@@ -870,9 +1082,11 @@ fn sync_result_screen_ui_system(
     mut commands: Commands,
     entities: Option<Res<ResultScreenEntities>>,
     view_state: Res<ResultScreenViewState>,
+    step_state: Res<ResultScreenStepState>,
     identity: Res<ClientSessionIdentity>,
     mut focus_order: ResMut<ResultScreenFocusOrder>,
     mut visibility_query: Query<&mut Visibility>,
+    mut node_query: Query<&mut Node>,
     mut text_query: Query<&mut Text>,
     mut border_query: Query<&mut BorderColor>,
     focused_query: Query<Entity, With<ResultScreenFocusIndicator>>,
@@ -907,10 +1121,29 @@ fn sync_result_screen_ui_system(
         view_state.cached_result.as_ref(),
         view_state.cached_snapshot.as_ref(),
     );
+    let class_persona =
+        result_screen_class_persona_label(view_state.cached_snapshot.as_ref(), local_player_id);
 
     set_text(&mut text_query, entities.headline, &copy.headline);
     set_text(&mut text_query, entities.cause, &copy.cause);
     set_text(&mut text_query, entities.summary, &summary_text);
+    set_text(
+        &mut text_query,
+        entities.class_persona,
+        class_persona.as_deref().unwrap_or(""),
+    );
+
+    // Hide the class line when the snapshot has not yet provided a class
+    // rather than rendering a blank row.
+    set_node_display(
+        &mut node_query,
+        entities.class_persona,
+        if class_persona.is_some() {
+            Display::Flex
+        } else {
+            Display::None
+        },
+    );
 
     for (entity, row) in entities.own_rows.iter().zip(summary.own_rows.iter()) {
         set_text(&mut text_query, *entity, &row.label());
@@ -923,13 +1156,43 @@ fn sync_result_screen_ui_system(
         set_text(&mut text_query, *entity, &row.label());
     }
 
-    focus_order.set_entities(vec![entities.return_button]);
+    // Toggle which sub-panel is mounted in the layout flow and which CTAs
+    // appear in the action row based on the current step.
+    let (hero_display, accounting_display, continue_display, focus_targets) =
+        match step_state.current {
+            ResultScreenStep::Hero => (
+                Display::Flex,
+                Display::None,
+                Display::Flex,
+                vec![entities.continue_button, entities.return_button],
+            ),
+            ResultScreenStep::Accounting => (
+                Display::None,
+                Display::Flex,
+                Display::None,
+                vec![entities.return_button],
+            ),
+        };
+
+    set_node_display(&mut node_query, entities.hero_panel, hero_display);
+    set_node_display(&mut node_query, entities.accounting_panel, accounting_display);
+    set_node_display(&mut node_query, entities.continue_button, continue_display);
+
+    focus_order.set_entities(focus_targets);
     sync_focus_indicator(
         &mut commands,
         focused_query,
         &mut border_query,
         focus_order.focused_entity(),
     );
+}
+
+fn set_node_display(query: &mut Query<&mut Node>, entity: Entity, display: Display) {
+    if let Ok(mut node) = query.get_mut(entity) {
+        if node.display != display {
+            node.display = display;
+        }
+    }
 }
 
 fn spawn_result_text<M: Component>(
