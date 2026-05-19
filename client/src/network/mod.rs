@@ -5,8 +5,9 @@ use bevy::prelude::*;
 use lightyear::prelude::client::*;
 use lightyear::prelude::*;
 use shared::protocol::{
-    self, C2SHeartbeat, C2SHello, ProtocolChannel, ProtocolDirection, ProtocolRegistry,
-    ReliableChannel, UnreliableChannel,
+    self, BotKind, C2SAddBot, C2SCreateBotRoom, C2SHeartbeat, C2SHello, C2SRemoveBot, GameMode,
+    ProtocolChannel, ProtocolDirection, ProtocolRegistry, ReliableChannel, S2CBotActionRejected,
+    UnreliableChannel,
 };
 
 pub struct ClientNetworkPlugin;
@@ -149,4 +150,42 @@ pub fn heartbeat_due_after_tick(timer: &mut ClientHeartbeatTimer, delta: Duratio
 fn _heartbeat_sender_compile_proof(mut sender: MessageSender<C2SHeartbeat>) {
     tracing::info!(msg_type = "C2SHeartbeat", "c2s_send: enter (compile_proof)");
     sender.send::<UnreliableChannel>(C2SHeartbeat {});
+}
+
+#[allow(dead_code)]
+fn _bot_protocol_sender_compile_proof(
+    mut create_bot_room: MessageSender<C2SCreateBotRoom>,
+    mut add_bot: MessageSender<C2SAddBot>,
+    mut remove_bot: MessageSender<C2SRemoveBot>,
+) {
+    tracing::info!(
+        msg_type = "C2SCreateBotRoom",
+        "c2s_send: enter (compile_proof)"
+    );
+    create_bot_room.send::<ReliableChannel>(C2SCreateBotRoom {
+        mode: GameMode::OneVOne,
+        bot_kind: BotKind::Default,
+    });
+
+    tracing::info!(msg_type = "C2SAddBot", "c2s_send: enter (compile_proof)");
+    add_bot.send::<ReliableChannel>(C2SAddBot {
+        slot: 1,
+        bot_kind: BotKind::Default,
+    });
+
+    tracing::info!(msg_type = "C2SRemoveBot", "c2s_send: enter (compile_proof)");
+    remove_bot.send::<ReliableChannel>(C2SRemoveBot { slot: 1 });
+}
+
+#[allow(dead_code)]
+fn _bot_action_rejected_receiver_compile_proof(
+    mut receiver: MessageReceiver<S2CBotActionRejected>,
+) {
+    for msg in receiver.receive() {
+        tracing::info!(
+            msg_type = "S2CBotActionRejected",
+            reason = ?msg.reason,
+            "s2c_recv: enter (compile_proof)"
+        );
+    }
 }

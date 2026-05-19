@@ -309,6 +309,7 @@ fn ac4_refresh_repaints_enabled_when_session_arrives() {
                 player_id: Some(shared::session::PlayerId(1)),
                 class_id: None,
                 class_confirmed: false,
+                is_bot: false,
             },
             SessionSlot {
                 slot: 1,
@@ -316,6 +317,7 @@ fn ac4_refresh_repaints_enabled_when_session_arrives() {
                 player_id: Some(shared::session::PlayerId(2)),
                 class_id: None,
                 class_confirmed: false,
+                is_bot: false,
             },
         ];
     }

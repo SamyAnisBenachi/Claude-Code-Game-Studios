@@ -56,6 +56,9 @@ pub fn register_protocol(registry: &mut impl ProtocolRegistry) {
 
     register_c2s::<C2SHello>(registry, ProtocolChannel::Reliable);
     register_c2s::<C2SCreateRoom>(registry, ProtocolChannel::Reliable);
+    register_c2s::<C2SCreateBotRoom>(registry, ProtocolChannel::Reliable);
+    register_c2s::<C2SAddBot>(registry, ProtocolChannel::Reliable);
+    register_c2s::<C2SRemoveBot>(registry, ProtocolChannel::Reliable);
     register_c2s::<C2SJoinRoom>(registry, ProtocolChannel::Reliable);
     register_c2s::<C2SListRooms>(registry, ProtocolChannel::Reliable);
     register_c2s::<C2SClassChoice>(registry, ProtocolChannel::Reliable);
@@ -97,6 +100,7 @@ pub fn register_protocol(registry: &mut impl ProtocolRegistry) {
     register_s2c::<S2COpponentReconnected>(registry, ProtocolChannel::Reliable);
     register_s2c::<S2CRoomCreated>(registry, ProtocolChannel::Reliable);
     register_s2c::<S2CCreateRoomRejected>(registry, ProtocolChannel::Reliable);
+    register_s2c::<S2CBotActionRejected>(registry, ProtocolChannel::Reliable);
     register_s2c::<S2CRoomList>(registry, ProtocolChannel::Reliable);
     register_s2c::<S2CJoinAck>(registry, ProtocolChannel::Reliable);
     register_s2c::<S2CJoinRejected>(registry, ProtocolChannel::Reliable);
@@ -247,6 +251,32 @@ pub enum JoinRejectedReason {
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum CreateRoomRejectedReason {
+    AlreadyInSession,
+    InvalidMode,
+}
+
+/// PROMPT 1430 (S19-BOT-PROTOCOL-FOUNDATIONS): bot flavour selector carried by
+/// `C2SCreateBotRoom` and `C2SAddBot`. Defaults to `Default` so the first wave
+/// of UI workers can ship without picking a flavour. Future flavours (e.g.
+/// Aggressive, Defensive) extend the enum without a wire-format revision.
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub enum BotKind {
+    #[default]
+    Default,
+}
+
+/// PROMPT 1430: reasons the server rejects `C2SCreateBotRoom`, `C2SAddBot`,
+/// or `C2SRemoveBot`. Mirrors `S2CJoinRejected` ergonomics so the client can
+/// surface a corrective lobby UI state.
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum BotActionRejectedReason {
+    NotOwner,
+    SlotOccupied,
+    SlotNotBot,
+    InvalidSlot,
+    UnknownSession,
+    SessionNotJoinable,
+    BotCapReached,
     AlreadyInSession,
     InvalidMode,
 }
@@ -427,6 +457,12 @@ pub struct SessionSlot {
     pub player_id: Option<PlayerId>,
     pub class_id: Option<ClassId>,
     pub class_confirmed: bool,
+    /// PROMPT 1430 (S19-BOT-PROTOCOL-FOUNDATIONS): true when this slot is held
+    /// by a server-authored bot rather than a remote human peer. Server-only
+    /// authority; the client treats this field as read-only. Existing
+    /// human-only rooms serialize this as `false`.
+    #[serde(default)]
+    pub is_bot: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -438,6 +474,36 @@ pub struct C2SHello {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct C2SCreateRoom {
     pub mode: GameMode,
+}
+
+/// PROMPT 1430 (S19-BOT-PROTOCOL-FOUNDATIONS): host requests a fresh room
+/// pre-seeded with a bot in the first opposing-team slot. Mirrors
+/// `C2SCreateRoom` so the lobby UX can offer a "Play vs Bot" CTA without a
+/// follow-up Add Bot round-trip. Server is authoritative — if the caller is
+/// already in a session the request is rejected via `S2CBotActionRejected`
+/// rather than `S2CCreateRoomRejected`, so the client can distinguish the
+/// botted entry point from the human-only path.
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct C2SCreateBotRoom {
+    pub mode: GameMode,
+    pub bot_kind: BotKind,
+}
+
+/// PROMPT 1430: room owner requests that a bot occupy a specific empty slot.
+/// Server validates ownership + slot before mutating room state and emits an
+/// `S2CSlotUpdated` to the room or `S2CBotActionRejected` to the caller.
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct C2SAddBot {
+    pub slot: u8,
+    pub bot_kind: BotKind,
+}
+
+/// PROMPT 1430: room owner requests that the bot in `slot` be removed and the
+/// seat re-opened. Rejection is unicast to the caller; success broadcasts
+/// `S2CSlotUpdated` to the room.
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct C2SRemoveBot {
+    pub slot: u8,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -650,6 +716,15 @@ pub struct S2CCreateRoomRejected {
     pub reason: CreateRoomRejectedReason,
 }
 
+/// PROMPT 1430 (S19-BOT-PROTOCOL-FOUNDATIONS): unicast feedback when the
+/// server refuses a `C2SCreateBotRoom`, `C2SAddBot`, or `C2SRemoveBot`.
+/// The reason variants mirror `JoinRejectedReason` semantics so the lobby UI
+/// can render a single corrective message.
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct S2CBotActionRejected {
+    pub reason: BotActionRejectedReason,
+}
+
 /// One joinable room in the lobby browser. See `S2CRoomList` for filters/order.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct RoomListEntry {
@@ -658,12 +733,30 @@ pub struct RoomListEntry {
     /// Mode determines `slots_max` (2 for OneVOne, 4 for TwoVTwo).
     pub mode: GameMode,
     /// Number of slots already filled. Includes the owner. <= `slots_max`.
+    /// PROMPT 1430: bot-occupied slots count toward `slots_filled` so a fully
+    /// botted room is not surfaced as joinable.
     pub slots_filled: u8,
     /// Total slots in this room (2 for OneVOne, 4 for TwoVTwo).
     pub slots_max: u8,
     /// First slot index whose `player` is `None`. `None` only appears for
     /// transient cases — `S2CRoomList` itself filters out fully occupied rooms.
     pub first_open_slot: Option<u8>,
+    /// PROMPT 1430: number of slots in this room currently held by bots.
+    /// Existing human-only rooms serialize this as `0`.
+    #[serde(default)]
+    pub bot_count: u8,
+    /// PROMPT 1430: `true` when at least one non-owner slot is either empty
+    /// or held by a remote human peer. Lets the lobby browser flag rooms that
+    /// are effectively single-player practice (owner + bots only).
+    #[serde(default = "default_has_human_opponent")]
+    pub has_human_opponent: bool,
+}
+
+/// `has_human_opponent` defaults to `true` when deserializing legacy payloads
+/// so older snapshots that pre-date PROMPT 1430 keep their previous semantics
+/// (no bots present means a human opponent is at least possible).
+fn default_has_human_opponent() -> bool {
+    true
 }
 
 /// Response to `C2SListRooms`. Only rooms in `LobbyState::LobbyWaiting` with at
@@ -1050,6 +1143,149 @@ mod tests {
             )),
             "S2CRoomList must be registered ServerToClient/Reliable"
         );
+    }
+
+    #[test]
+    fn bot_protocol_messages_are_registered_reliable() {
+        let mut registry = RecordingRegistry::default();
+        register_protocol(&mut registry);
+
+        for name in [
+            std::any::type_name::<C2SCreateBotRoom>(),
+            std::any::type_name::<C2SAddBot>(),
+            std::any::type_name::<C2SRemoveBot>(),
+        ] {
+            let entry = registry.messages.iter().find(|(n, _, _)| *n == name);
+            assert_eq!(
+                entry,
+                Some(&(
+                    name,
+                    ProtocolDirection::ClientToServer,
+                    ProtocolChannel::Reliable
+                )),
+                "{name} must be registered ClientToServer/Reliable"
+            );
+        }
+
+        let s2c_name = std::any::type_name::<S2CBotActionRejected>();
+        let entry = registry.messages.iter().find(|(n, _, _)| *n == s2c_name);
+        assert_eq!(
+            entry,
+            Some(&(
+                s2c_name,
+                ProtocolDirection::ServerToClient,
+                ProtocolChannel::Reliable,
+            )),
+            "S2CBotActionRejected must be registered ServerToClient/Reliable"
+        );
+    }
+
+    #[test]
+    fn session_slot_serializes_is_bot_and_defaults_to_false_on_missing() {
+        let slot = SessionSlot {
+            slot: 1,
+            team: 1,
+            player_id: Some(crate::session::PlayerId(42)),
+            class_id: None,
+            class_confirmed: false,
+            is_bot: true,
+        };
+        let value = serde_json::to_value(&slot).expect("session slot should serialize");
+        assert_eq!(
+            value.get("is_bot").and_then(|v| v.as_bool()),
+            Some(true),
+            "is_bot must be present on wire when bot-occupied"
+        );
+
+        let human = SessionSlot {
+            slot: 0,
+            team: 0,
+            player_id: None,
+            class_id: None,
+            class_confirmed: false,
+            is_bot: false,
+        };
+        let human_value = serde_json::to_value(&human).expect("session slot should serialize");
+        assert_eq!(
+            human_value.get("is_bot").and_then(|v| v.as_bool()),
+            Some(false),
+            "is_bot must serialize as false for human-only / empty slots"
+        );
+
+        // Legacy payload — no is_bot — must deserialize to is_bot=false.
+        let legacy = serde_json::json!({
+            "slot": 0,
+            "team": 0,
+            "player_id": null,
+            "class_id": null,
+            "class_confirmed": false,
+        });
+        let decoded: SessionSlot =
+            serde_json::from_value(legacy).expect("legacy SessionSlot must decode");
+        assert!(
+            !decoded.is_bot,
+            "legacy SessionSlot payloads default to is_bot=false"
+        );
+    }
+
+    #[test]
+    fn room_list_entry_serializes_bot_count_and_has_human_opponent_with_safe_defaults() {
+        let entry = RoomListEntry {
+            room_code: "ABCDEF".to_string(),
+            mode: GameMode::OneVOne,
+            slots_filled: 2,
+            slots_max: 2,
+            first_open_slot: None,
+            bot_count: 1,
+            has_human_opponent: false,
+        };
+        let value = serde_json::to_value(&entry).expect("entry should serialize");
+        assert_eq!(
+            value.get("bot_count").and_then(|v| v.as_u64()),
+            Some(1),
+            "bot_count must serialize on wire"
+        );
+        assert_eq!(
+            value.get("has_human_opponent").and_then(|v| v.as_bool()),
+            Some(false),
+            "has_human_opponent must serialize on wire"
+        );
+
+        // Legacy payload without the new fields decodes safely: bot_count=0,
+        // has_human_opponent=true (the previous implicit semantic).
+        let legacy = serde_json::json!({
+            "room_code": "XYZ123",
+            "mode": "OneVOne",
+            "slots_filled": 1,
+            "slots_max": 2,
+            "first_open_slot": 1,
+        });
+        let decoded: RoomListEntry =
+            serde_json::from_value(legacy).expect("legacy RoomListEntry must decode");
+        assert_eq!(decoded.bot_count, 0);
+        assert!(decoded.has_human_opponent);
+    }
+
+    #[test]
+    fn bot_kind_default_is_default_variant_and_round_trips() {
+        assert_eq!(BotKind::default(), BotKind::Default);
+
+        let payload = C2SCreateBotRoom {
+            mode: GameMode::OneVOne,
+            bot_kind: BotKind::Default,
+        };
+        let json = serde_json::to_value(&payload).expect("C2SCreateBotRoom should serialize");
+        assert_eq!(json["mode"], serde_json::json!("OneVOne"));
+        assert_eq!(json["bot_kind"], serde_json::json!("Default"));
+    }
+
+    #[test]
+    fn bot_action_rejected_payload_round_trips() {
+        let payload = S2CBotActionRejected {
+            reason: BotActionRejectedReason::NotOwner,
+        };
+        let value = serde_json::to_value(&payload).expect("rejection should serialize");
+        assert_eq!(value["reason"], serde_json::json!("NotOwner"));
     }
 
     #[test]

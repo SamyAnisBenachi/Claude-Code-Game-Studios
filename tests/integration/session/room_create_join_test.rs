@@ -1,9 +1,12 @@
 use server::core::session::{
-    create_room, join_room, normalise_room_code, room_code_from_bytes, ActiveSessions,
-    CreateRoomOutcome, JoinRoomOutcome, LobbyDeadline, LobbyState, RoomCode, RoomSessions,
-    SessionId, ROOM_CODE_LEN,
+    add_bot_to_room, create_bot_room, create_room, join_room, normalise_room_code,
+    remove_bot_from_room, room_code_from_bytes, ActiveSessions, BotSlotActionOutcome,
+    CreateBotRoomOutcome, CreateRoomOutcome, JoinRoomOutcome, LobbyDeadline, LobbyState, RoomCode,
+    RoomSessions, SessionId, ROOM_CODE_LEN,
 };
-use shared::protocol::{CreateRoomRejectedReason, GameMode, JoinRejectedReason, S2CRoomCreated};
+use shared::protocol::{
+    BotActionRejectedReason, CreateRoomRejectedReason, GameMode, JoinRejectedReason, S2CRoomCreated,
+};
 use shared::session::PlayerId;
 use uuid::Uuid;
 
@@ -135,6 +138,193 @@ fn test_idempotent_create_returns_existing_lobby_waiting_room() {
     assert_eq!(second.room_code, "ABCDEF");
     assert_eq!(rooms.len(), 1);
     assert_eq!(active.0.get(&owner), Some(&first_id));
+}
+
+#[test]
+fn test_create_bot_room_seats_synthetic_bot_in_first_opposing_slot() {
+    test_helpers::init_test_tracing();
+    let mut rooms = RoomSessions::default();
+    let mut active = ActiveSessions::default();
+    let owner = player(1);
+    let id = session_id(101);
+
+    let created = create_bot_room(
+        &mut rooms,
+        &mut active,
+        owner,
+        GameMode::OneVOne,
+        5.0,
+        90,
+        id,
+        RoomCode("BOT001".to_string()),
+    );
+
+    let message = match created {
+        CreateBotRoomOutcome::Created(message) => message,
+        CreateBotRoomOutcome::Rejected(rejection) => {
+            panic!("create_bot_room should succeed, got {:?}", rejection.reason)
+        }
+    };
+
+    assert_eq!(message.session_id, id.0.to_string());
+    assert_eq!(message.room_code, "BOT001");
+    assert_eq!(message.slots.len(), 2);
+    assert_eq!(message.slots[0].player_id, Some(owner));
+    assert!(!message.slots[0].is_bot);
+    assert!(message.slots[1].is_bot);
+    let bot_player = message.slots[1]
+        .player_id
+        .expect("bot slot must carry a synthetic player id");
+    assert!(
+        bot_player.0 >= (1_u64 << 63),
+        "bot ids reserve the high-bit range so fresh human ids do not collide"
+    );
+
+    let session = rooms.get(id).expect("created bot room exists");
+    assert_eq!(session.slots.0[1].player, Some(bot_player));
+    assert!(session.slots.0[1].is_bot);
+    assert_eq!(session.heartbeats.0.get(&owner), Some(&5.0));
+    assert!(
+        !session.heartbeats.0.contains_key(&bot_player),
+        "bot rooms do not fake a network heartbeat for the bot"
+    );
+    assert_eq!(active.0.get(&owner), Some(&id));
+    assert_eq!(active.0.get(&bot_player), Some(&id));
+}
+
+#[test]
+fn test_create_bot_room_rejects_active_player_with_bot_rejection() {
+    test_helpers::init_test_tracing();
+    let mut rooms = RoomSessions::default();
+    let mut active = ActiveSessions::default();
+    let owner = player(1);
+
+    create_fixed_room(&mut rooms, &mut active, owner, session_id(1), "ABCDEF", 1.0);
+
+    let rejected = create_bot_room(
+        &mut rooms,
+        &mut active,
+        owner,
+        GameMode::OneVOne,
+        2.0,
+        90,
+        session_id(2),
+        RoomCode("BOT001".to_string()),
+    );
+
+    match rejected {
+        CreateBotRoomOutcome::Rejected(rejection) => {
+            assert_eq!(rejection.reason, BotActionRejectedReason::AlreadyInSession);
+        }
+        CreateBotRoomOutcome::Created(_) => {
+            panic!("active player must not create a bot room")
+        }
+    }
+}
+
+#[test]
+fn test_owner_adds_and_removes_bot_slot_then_human_can_join_it() {
+    test_helpers::init_test_tracing();
+    let mut rooms = RoomSessions::default();
+    let mut active = ActiveSessions::default();
+    let owner = player(1);
+    let teammate = player(2);
+    let joiner = player(3);
+    let id = session_id(202);
+
+    match create_room(
+        &mut rooms,
+        &mut active,
+        owner,
+        GameMode::TwoVTwo,
+        1.0,
+        90,
+        id,
+        RoomCode("BOT2V2".to_string()),
+    ) {
+        CreateRoomOutcome::Created(_) => {}
+        CreateRoomOutcome::Rejected(rejection) => {
+            panic!("room creation should succeed, got {:?}", rejection.reason)
+        }
+    }
+    assert!(matches!(
+        join_room(&mut rooms, &mut active, teammate, "BOT2V2", 1, 2.0),
+        JoinRoomOutcome::Joined { .. }
+    ));
+
+    match add_bot_to_room(&mut rooms, &mut active, teammate, 2, 2.5) {
+        BotSlotActionOutcome::Rejected(rejection) => {
+            assert_eq!(rejection.reason, BotActionRejectedReason::NotOwner);
+        }
+        BotSlotActionOutcome::Updated { .. } => {
+            panic!("non-owner must not add a bot")
+        }
+    }
+
+    let updated = add_bot_to_room(&mut rooms, &mut active, owner, 2, 3.0);
+    let (slot_update, recipients) = match updated {
+        BotSlotActionOutcome::Updated {
+            slot_update,
+            slot_update_recipients,
+        } => (slot_update, slot_update_recipients),
+        BotSlotActionOutcome::Rejected(rejection) => {
+            panic!("owner add bot should succeed, got {:?}", rejection.reason)
+        }
+    };
+    assert_eq!(recipients, vec![owner, teammate]);
+    let bot_slot = slot_update
+        .slots
+        .iter()
+        .find(|slot| slot.slot == 2)
+        .expect("slot 2 must be present");
+    assert!(bot_slot.is_bot);
+    let bot_player = bot_slot.player_id.expect("bot slot must be occupied");
+    assert_eq!(active.0.get(&bot_player), Some(&id));
+
+    let occupied = join_room(&mut rooms, &mut active, joiner, "BOT2V2", 2, 3.5);
+    assert_join_rejection(occupied, JoinRejectedReason::SlotOccupied);
+
+    let removed = remove_bot_from_room(&mut rooms, &mut active, owner, 2);
+    let (slot_update, recipients) = match removed {
+        BotSlotActionOutcome::Updated {
+            slot_update,
+            slot_update_recipients,
+        } => (slot_update, slot_update_recipients),
+        BotSlotActionOutcome::Rejected(rejection) => {
+            panic!(
+                "owner remove bot should succeed, got {:?}",
+                rejection.reason
+            )
+        }
+    };
+    assert_eq!(recipients, vec![owner, teammate]);
+    let reopened = slot_update
+        .slots
+        .iter()
+        .find(|slot| slot.slot == 2)
+        .expect("slot 2 must be present");
+    assert_eq!(reopened.player_id, None);
+    assert!(!reopened.is_bot);
+    assert_eq!(active.0.get(&bot_player), None);
+
+    let joined = join_room(&mut rooms, &mut active, joiner, "BOT2V2", 2, 4.0);
+    match joined {
+        JoinRoomOutcome::Joined { ack, .. } => {
+            let joined_slot = ack
+                .slots
+                .iter()
+                .find(|slot| slot.slot == 2)
+                .expect("slot 2 must be present");
+            assert_eq!(joined_slot.player_id, Some(joiner));
+            assert!(!joined_slot.is_bot);
+        }
+        JoinRoomOutcome::Rejected(rejection) => {
+            panic!(
+                "human should join reopened bot slot, got {:?}",
+                rejection.reason
+            )
+        }
+    }
 }
 
 #[test]

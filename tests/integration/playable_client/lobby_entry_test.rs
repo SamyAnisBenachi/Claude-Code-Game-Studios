@@ -238,6 +238,7 @@ fn slot(
         player_id,
         class_id,
         class_confirmed,
+        is_bot: false,
     }
 }
 
