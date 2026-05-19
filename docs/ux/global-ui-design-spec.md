@@ -910,6 +910,11 @@ Related artifacts:
 
 - `docs/ux/ui-clean-pass-roadmap.md` — Sprint 14+ pull-in sequence and
   sequencing rules (rank 6 is this spec).
+- `docs/ux/global-ui-layout-contract.md` — structural-invariant /
+  layout-contract complement to this spec; ratifies the geometric
+  invariants (root-anchor budget, viewport floor, padding consistency,
+  centered-overlay viewport-fit, button-vs-chip dichotomy) that the
+  tokens in this spec must compose into.
 - `production/epics/ui-clean-pass/EPIC.md` — epic-level UI clean-pass
   charter.
 - `production/epics/ui-clean-pass/story-007-global-ui-design-spec.md` —
