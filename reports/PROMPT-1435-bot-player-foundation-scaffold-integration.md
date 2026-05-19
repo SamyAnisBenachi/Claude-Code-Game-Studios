@@ -25,10 +25,9 @@ Status: `READY_FOR_MAIN_LAND`.
 - Worktree:
   `D:\_DEV\claude-code-game-studios-worktrees\bot-player-foundation-scaffold-integration-1435`
 - Branch: `integrate/bot-player-foundation-scaffold-1435`.
-- Integration commit after rebase:
+- Scaffold integration commit after rebase:
   `9807c1d9c8a2bab2f7c25d34509999d54a9ad1f3`.
-- Report commit: pending at report creation; final branch head is recorded in
-  the relay/final response after commit.
+- Report commit was added on the same branch after verification.
 
 ## Changed files
 
@@ -93,9 +92,11 @@ Notes:
 
 ## Push and main status
 
-Branch push is pending at report creation. Main was not pushed from this worker.
-This branch is intended for orchestrator main-land after review:
-`READY_FOR_MAIN_LAND`.
+Branch push succeeded:
+
+- Remote branch: `origin/integrate/bot-player-foundation-scaffold-1435`
+- Main was not pushed from this worker.
+- Main-land status: `READY_FOR_MAIN_LAND`.
 
 ## Next unblocked bot work
 
