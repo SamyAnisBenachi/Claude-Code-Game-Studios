@@ -3,6 +3,7 @@ pub mod design_tokens;
 pub mod hand;
 pub mod hud;
 pub mod lobby;
+pub mod phase_banner;
 pub mod photosensitivity_warning;
 pub mod settings;
 pub mod shared;
@@ -18,3 +19,14 @@ pub use crate::card_animations as anim;
 // `PlayAreaRoot` resource and parent into `PlayArea` instead of their
 // historical full-viewport parent.
 pub use design_tokens::play_area::{PlayArea, PlayAreaPlugin, PlayAreaRoot, PlayAreaSpawnSet};
+
+// PROMPT 1404 / `S19-UI-PHASE-CHANGE-BANNER-001` — transient centered
+// banner painted on every major `RoundPhase` transition. Re-exported here
+// so `PresentationPlugin` registers it with one
+// `app.add_plugins(crate::ui::PhaseBannerPlugin)` line alongside the other
+// in-session UI plugins.
+pub use phase_banner::{
+    phase_banner_label_for, PhaseBannerLabel, PhaseBannerPanel, PhaseBannerPlugin,
+    PhaseBannerRoot, PHASE_BANNER_LIFETIME, PHASE_BANNER_MAX_WIDTH_PERCENT,
+    PHASE_BANNER_MAX_WIDTH_PX,
+};
