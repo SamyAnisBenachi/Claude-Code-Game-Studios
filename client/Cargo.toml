@@ -705,6 +705,16 @@ path = "../tests/integration/playable_client/lobby_button_dimensions_test.rs"
 name = "playable_client_lobby_confirm_button_reachable_test"
 path = "../tests/integration/playable_client/lobby_confirm_button_reachable_test.rs"
 
+# PROMPT 1398 — S18-LOBBY-CONFIRM-CTA-VIEWPORT-REACHABILITY-001. Regression
+# guards that the Confirm CTA stays inside the visible viewport and clickable
+# at 1280×720, 1366×768, and 1920×1080. Asserts the LobbyPanelBody wrapper
+# absorbs body-region pressure, the CTA is sibling to it (not inside), the
+# slot panels carry the StatusChip marker, and the read-order keeps the
+# CTA as the LAST direct child of the panel.
+[[test]]
+name = "playable_client_lobby_confirm_cta_viewport_reachability_test"
+path = "../tests/integration/playable_client/lobby_confirm_cta_viewport_reachability_test.rs"
+
 # PROMPT 1081 — guards the lobby Confirm CTA against the AUDIT-1076-07
 # regression where the button rendered as a dim text band rather than a
 # real primary-action button. The test asserts seven distinct visual
