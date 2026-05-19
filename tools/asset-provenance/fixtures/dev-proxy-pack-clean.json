@@ -1,0 +1,44 @@
+{
+  "pack": {
+    "pack_id": "krosmaga-proxy-v1",
+    "dev_only": true,
+    "source_class": "licensed_krosmaga_dev_proxy",
+    "release_class": "dev_only"
+  },
+  "entries": [
+    {
+      "logical_id": "lid_card_frame_common",
+      "source_path": "D:/_GAMES/Ankama/Krosmaga/_extracted/_extracted/ui/card_frame_common.png",
+      "match_quality": "good",
+      "dev_only": true,
+      "source_class": "licensed_krosmaga_dev_proxy",
+      "release_class": "dev_only",
+      "workflow_status": "needed",
+      "license_provenance_warning": "Dev-only Krosmaga proxy; not release-approved.",
+      "expected_consumer_surface": "hand.card_frame"
+    },
+    {
+      "logical_id": "lid_board_cell_idle_32x32",
+      "source_path": "D:/_GAMES/Ankama/Krosmaga/_extracted/_extracted/board/cell_idle.png",
+      "match_quality": "needs_conversion",
+      "dev_only": true,
+      "source_class": "licensed_krosmaga_dev_proxy",
+      "release_class": "dev_only",
+      "workflow_status": "needed",
+      "license_provenance_warning": "Dev-only Krosmaga proxy; never release-safe.",
+      "expected_consumer_surface": "board.cell"
+    },
+    {
+      "logical_id": "lid_result_panel_chrome_win",
+      "source_path": null,
+      "match_quality": "missing",
+      "dev_only": true,
+      "source_class": "licensed_krosmaga_dev_proxy",
+      "release_class": "dev_only",
+      "workflow_status": "needed",
+      "license_provenance_warning": "Dev-only Krosmaga proxy row; not release-approved.",
+      "expected_consumer_surface": "result.panel",
+      "missing_handling": "Keep unresolved until original result chrome is authored."
+    }
+  ]
+}

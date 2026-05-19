@@ -1,0 +1,21 @@
+{
+  "pack": {
+    "pack_id": "krosmaga-proxy-v1",
+    "dev_only": true,
+    "source_class": "licensed_krosmaga_dev_proxy",
+    "release_class": "dev_only"
+  },
+  "entries": [
+    {
+      "logical_id": "lid_card_frame_common",
+      "source_path": "D:/_GAMES/Ankama/Krosmaga/_extracted/_extracted/ui/card_frame_common.png",
+      "match_quality": "good",
+      "dev_only": false,
+      "source_class": "studio_original",
+      "release_class": "release_allowed",
+      "workflow_status": "approved",
+      "license_provenance_warning": "Approved final art.",
+      "expected_consumer_surface": "hand.card_frame"
+    }
+  ]
+}
