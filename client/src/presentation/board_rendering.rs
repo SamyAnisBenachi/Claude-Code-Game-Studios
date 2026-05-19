@@ -26,6 +26,7 @@ use crate::state::{
     ClientGameSnapshotMessage, ClientIdempotencyState, ClientSessionIdentity, ClientState,
     CurrentClientPhase, PlacementRevealDedupeKey,
 };
+use crate::ui::design_tokens::{typography, z_layers};
 use crate::ui::hand::{
     GhostClickedEvent, GhostDragStartEvent, GhostPlacementChanged, LocalPlayerSpawnRangeChanged,
     ObjectiveCell, PlacementTargetUnit,
@@ -141,6 +142,15 @@ pub struct BoardCamera;
 pub struct BoardCellNode;
 
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct BoardGridOverlayLine;
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct BoardGridOverlayToggleRoot;
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct BoardGridOverlayToggleButton;
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct BoardSnapshotEntity;
 
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
@@ -152,6 +162,11 @@ pub struct BoardUnit {
 pub enum BoardUnitRenderSource {
     AuthoritativeSnapshot,
     PlacementReveal,
+}
+
+#[derive(Resource, Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct BoardGridOverlayState {
+    pub enabled: bool,
 }
 
 // PROMPT 1231: minimal kill/removal feedback marker. Spawned by
@@ -911,6 +926,7 @@ impl Plugin for BoardRenderingPlugin {
             .init_resource::<BoardRevealTimingConfig>()
             .init_resource::<BoardRenderState>()
             .init_resource::<BoardLocalPlayer>()
+            .init_resource::<BoardGridOverlayState>()
             .init_resource::<ObjectiveIdentityCache>()
             .init_resource::<PlayerTeamMap>()
             .init_resource::<StatusDisplayDefinitions>()
@@ -1010,6 +1026,16 @@ impl Plugin for BoardRenderingPlugin {
                 Update,
                 init_board_local_player_from_session_identity_system
                     .in_set(PresentationSet::PhaseTransition),
+            )
+            .add_systems(
+                Update,
+                (
+                    board_grid_overlay_toggle_button_system,
+                    sync_board_grid_overlay_system,
+                )
+                    .chain()
+                    .in_set(PresentationSet::StateSync)
+                    .run_if(in_state(ClientState::InSession)),
             )
             .add_systems(
                 Update,
@@ -1961,6 +1987,7 @@ fn insert_board_rendering_session_resources(
     } else {
         spawn_board_grid(&mut commands, &board_layout, None);
     }
+    spawn_board_grid_overlay_toggle_control(&mut commands);
 }
 
 fn remove_board_rendering_session_resources(
@@ -3103,6 +3130,158 @@ fn spawn_board_grid(
             spawn_cell_node(commands, board_layout, board_assets, lane, cell);
         }
     }
+}
+
+fn spawn_board_grid_overlay_toggle_control(commands: &mut Commands) {
+    let root = commands
+        .spawn((
+            BoardRenderingEntity,
+            BoardGridOverlayToggleRoot,
+            Name::new("QA Board Grid Overlay Root"),
+            Node {
+                position_type: PositionType::Absolute,
+                top: Val::Px(48.0),
+                right: Val::Px(8.0),
+                ..default()
+            },
+            z_layers::DEBUG,
+        ))
+        .id();
+
+    commands.spawn((
+        BoardRenderingEntity,
+        BoardGridOverlayToggleButton,
+        Name::new("QA Board Grid Overlay Toggle"),
+        ChildOf(root),
+        Button,
+        Interaction::None,
+        Text::new(board_grid_overlay_toggle_label(false)),
+        TextColor(Color::srgb(0.98, 0.96, 0.86)),
+        TextFont {
+            font_size: typography::BODY,
+            ..default()
+        },
+        Node {
+            width: Val::Px(176.0),
+            height: Val::Px(32.0),
+            align_items: AlignItems::Center,
+            justify_content: JustifyContent::Center,
+            border: UiRect::all(Val::Px(1.5)),
+            border_radius: BorderRadius::all(Val::Px(4.0)),
+            overflow: Overflow::clip(),
+            ..default()
+        },
+        BackgroundColor(board_grid_overlay_toggle_background(false)),
+        BorderColor::all(board_grid_overlay_toggle_border(false)),
+    ));
+}
+
+pub fn board_grid_overlay_toggle_button_system(
+    mut state: ResMut<BoardGridOverlayState>,
+    buttons: Query<&Interaction, (Changed<Interaction>, With<BoardGridOverlayToggleButton>)>,
+) {
+    for interaction in &buttons {
+        if *interaction != Interaction::Pressed {
+            continue;
+        }
+
+        state.enabled = !state.enabled;
+        tracing::info!(
+            target: "client::presentation::board_rendering::grid_overlay",
+            enabled = state.enabled,
+            "QA board grid overlay toggled"
+        );
+    }
+}
+
+pub fn sync_board_grid_overlay_system(
+    mut commands: Commands,
+    state: Res<BoardGridOverlayState>,
+    board_layout: Res<BoardLayout>,
+    overlay_lines: Query<Entity, With<BoardGridOverlayLine>>,
+    mut toggle_buttons: Query<
+        (&mut Text, &mut BackgroundColor, &mut BorderColor),
+        With<BoardGridOverlayToggleButton>,
+    >,
+) {
+    for (mut text, mut background, mut border) in &mut toggle_buttons {
+        text.0 = board_grid_overlay_toggle_label(state.enabled);
+        *background = BackgroundColor(board_grid_overlay_toggle_background(state.enabled));
+        *border = BorderColor::all(board_grid_overlay_toggle_border(state.enabled));
+    }
+
+    let has_overlay_lines = !overlay_lines.is_empty();
+    if !state.enabled {
+        for entity in &overlay_lines {
+            commands.entity(entity).despawn();
+        }
+        return;
+    }
+
+    if has_overlay_lines && !board_layout.is_changed() {
+        return;
+    }
+
+    for entity in &overlay_lines {
+        commands.entity(entity).despawn();
+    }
+    spawn_board_grid_overlay_lines(&mut commands, &board_layout);
+}
+
+fn board_grid_overlay_toggle_label(enabled: bool) -> String {
+    if enabled {
+        "QA Grid: ON".to_string()
+    } else {
+        "QA Grid: OFF".to_string()
+    }
+}
+
+fn board_grid_overlay_toggle_background(enabled: bool) -> Color {
+    if enabled {
+        Color::srgba(0.08, 0.26, 0.24, 0.94)
+    } else {
+        Color::srgba(0.10, 0.12, 0.16, 0.88)
+    }
+}
+
+fn board_grid_overlay_toggle_border(enabled: bool) -> Color {
+    if enabled {
+        Color::srgba(0.32, 1.0, 0.88, 1.0)
+    } else {
+        Color::srgba(0.62, 0.68, 0.74, 0.92)
+    }
+}
+
+fn spawn_board_grid_overlay_lines(commands: &mut Commands, board_layout: &BoardLayout) {
+    let left = board_layout.board_origin.x - board_layout.cell_width * 0.5;
+    let right =
+        board_layout.board_origin.x + board_layout.cell_width * (f32::from(BOARD_CELL_COUNT) - 0.5);
+    let top = board_layout.board_origin.y + board_layout.lane_height * 0.5;
+    let bottom = board_layout.board_origin.y
+        - board_layout.lane_height * (f32::from(BOARD_LANE_COUNT) - 0.5);
+    let width = right - left;
+    let height = top - bottom;
+    let center_x = (left + right) * 0.5;
+    let center_y = (top + bottom) * 0.5;
+
+    for index in 0..=BOARD_CELL_COUNT {
+        let x = left + board_layout.cell_width * f32::from(index);
+        spawn_board_grid_overlay_line(commands, Vec2::new(x, center_y), Vec2::new(2.0, height));
+    }
+
+    for index in 0..=BOARD_LANE_COUNT {
+        let y = top - board_layout.lane_height * f32::from(index);
+        spawn_board_grid_overlay_line(commands, Vec2::new(center_x, y), Vec2::new(width, 2.0));
+    }
+}
+
+fn spawn_board_grid_overlay_line(commands: &mut Commands, position: Vec2, size: Vec2) {
+    commands.spawn((
+        BoardRenderingEntity,
+        BoardGridOverlayLine,
+        Sprite::from_color(Color::srgba(0.20, 1.0, 0.92, 0.88), size),
+        Transform::from_xyz(position.x, position.y, rendering_constants::Z_GRID_OVERLAY),
+    ));
 }
 
 fn spawn_cell_node(

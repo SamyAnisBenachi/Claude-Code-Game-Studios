@@ -5,14 +5,16 @@ use std::path::Path;
 use bevy::prelude::*;
 use bevy::state::app::StatesPlugin;
 use client::presentation::board_rendering::rendering_constants::{
-    Z_BOARD_CAMERA, Z_CELL_NODES, Z_FIELD_WASH, Z_GHOST_UNIT, Z_HEALTH_BARS, Z_OBJECTIVES,
-    Z_TRAPS_STRUCTURES, Z_UNITS,
+    Z_BOARD_CAMERA, Z_CELL_NODES, Z_FIELD_WASH, Z_GHOST_UNIT, Z_GRID_OVERLAY, Z_HEALTH_BARS,
+    Z_OBJECTIVES, Z_TRAPS_STRUCTURES, Z_UNITS,
 };
 use client::presentation::board_rendering::{
-    BoardCamera, BoardCellNode, BoardRenderingPlugin, SpawnHighlightState,
+    BoardCamera, BoardCellNode, BoardGridOverlayLine, BoardGridOverlayState,
+    BoardGridOverlayToggleButton, BoardRenderingPlugin, SpawnHighlightState,
 };
 use client::presentation::{BoardLayout, LaneCell};
 use client::state::ClientState;
+use client::ui::shared::{BOARD_CELL_COUNT, BOARD_LANE_COUNT};
 use shared::session::PlayerId;
 
 #[test]
@@ -116,6 +118,77 @@ fn test_spawn_highlight_state_uses_cell_tint_not_extra_z_layer() {
 }
 
 #[test]
+fn qa_grid_overlay_toggle_spawns_visible_button_disabled_by_default() {
+    let mut app = app_in_session();
+    let world = app.world_mut();
+
+    assert!(
+        !world.resource::<BoardGridOverlayState>().enabled,
+        "QA grid overlay should default off"
+    );
+
+    let mut buttons =
+        world.query_filtered::<(&Text, &Interaction), With<BoardGridOverlayToggleButton>>();
+    let button_rows: Vec<_> = buttons.iter(world).collect();
+
+    assert_eq!(button_rows.len(), 1);
+    let (label, interaction) = button_rows[0];
+    assert_eq!(label.0, "QA Grid: OFF");
+    assert_eq!(*interaction, Interaction::None);
+}
+
+#[test]
+fn qa_grid_overlay_toggle_flips_state_and_renders_non_pickable_lines() {
+    let mut app = app_in_session();
+    let button = qa_grid_overlay_button_entity(&mut app);
+
+    set_button_interaction(&mut app, button, Interaction::Pressed);
+    app.update();
+
+    assert!(app.world().resource::<BoardGridOverlayState>().enabled);
+    let world = app.world_mut();
+    let mut lines =
+        world.query_filtered::<(&Transform, Option<&Pickable>), With<BoardGridOverlayLine>>();
+    let line_rows: Vec<_> = lines.iter(world).collect();
+
+    assert_eq!(
+        line_rows.len(),
+        usize::from(BOARD_CELL_COUNT + 1 + BOARD_LANE_COUNT + 1)
+    );
+    for (transform, pickable) in line_rows {
+        assert_eq!(transform.translation.z, Z_GRID_OVERLAY);
+        assert!(
+            pickable.is_none(),
+            "QA grid overlay lines must not participate in picking"
+        );
+    }
+
+    let mut labels = world.query_filtered::<&Text, With<BoardGridOverlayToggleButton>>();
+    let label = labels
+        .single(world)
+        .expect("QA grid toggle button should exist");
+    assert_eq!(label.0, "QA Grid: ON");
+}
+
+#[test]
+fn qa_grid_overlay_toggle_second_press_removes_lines() {
+    let mut app = app_in_session();
+    let button = qa_grid_overlay_button_entity(&mut app);
+
+    set_button_interaction(&mut app, button, Interaction::Pressed);
+    app.update();
+    set_button_interaction(&mut app, button, Interaction::None);
+    app.update();
+    set_button_interaction(&mut app, button, Interaction::Pressed);
+    app.update();
+
+    assert!(!app.world().resource::<BoardGridOverlayState>().enabled);
+    let world = app.world_mut();
+    let mut lines = world.query_filtered::<Entity, With<BoardGridOverlayLine>>();
+    assert_eq!(lines.iter(world).count(), 0);
+}
+
+#[test]
 fn test_board_z_layers_are_named_constants() {
     assert_eq!(Z_FIELD_WASH, 0.0);
     assert_eq!(Z_CELL_NODES, 1.0);
@@ -124,6 +197,7 @@ fn test_board_z_layers_are_named_constants() {
     assert_eq!(Z_UNITS, 3.0);
     assert_eq!(Z_HEALTH_BARS, 3.1);
     assert_eq!(Z_GHOST_UNIT, 3.5);
+    assert_eq!(Z_GRID_OVERLAY, 3.6);
 
     let source = fs::read_to_string(
         Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -175,6 +249,21 @@ fn app_in_session() -> App {
     app.update();
 
     app
+}
+
+fn qa_grid_overlay_button_entity(app: &mut App) -> Entity {
+    let world = app.world_mut();
+    let mut buttons = world.query_filtered::<Entity, With<BoardGridOverlayToggleButton>>();
+    buttons
+        .single(world)
+        .expect("QA board grid overlay toggle button should exist")
+}
+
+fn set_button_interaction(app: &mut App, button: Entity, interaction: Interaction) {
+    *app.world_mut()
+        .entity_mut(button)
+        .get_mut::<Interaction>()
+        .expect("QA grid toggle button should have Interaction") = interaction;
 }
 
 fn inline_z_literal_violations(source: &str) -> Vec<String> {
