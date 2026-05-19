@@ -593,6 +593,7 @@ impl Plugin for HudPlugin {
 pub fn hud_phase_transition_system(
     current: Res<CurrentClientPhase>,
     entities: Option<Res<HudEntities>>,
+    reveal: Res<HudClassReveal>,
     mut mode: ResMut<HudMode>,
     mut commands: Commands,
     mut visibility: Query<&mut Visibility>,
@@ -615,6 +616,11 @@ pub fn hud_phase_transition_system(
         return;
     };
 
+    // PROMPT 1400 — track once at phase-edge entry so all four
+    // `sync_gold_label_for_mode` call sites below honour the same reveal
+    // snapshot (AUDIT-1131-05).
+    let opponent_class_revealed = reveal.opponent.is_some();
+
     match current.phase {
         RoundPhase::Lobby | RoundPhase::Handshaking => {
             *mode = HudMode::Hidden;
@@ -631,6 +637,7 @@ pub fn hud_phase_transition_system(
                 entities.own_gold_span,
                 HudMode::EconomyBasic,
                 GoldLabelOwner::Local,
+                opponent_class_revealed,
                 &gold_states,
                 &mut gold_texts,
                 &mut gold_spans,
@@ -640,6 +647,7 @@ pub fn hud_phase_transition_system(
                 entities.opponent_gold_span,
                 HudMode::EconomyBasic,
                 GoldLabelOwner::Opponent,
+                opponent_class_revealed,
                 &gold_states,
                 &mut gold_texts,
                 &mut gold_spans,
@@ -653,6 +661,7 @@ pub fn hud_phase_transition_system(
                 entities.own_gold_span,
                 HudMode::EconomyAuction,
                 GoldLabelOwner::Local,
+                opponent_class_revealed,
                 &gold_states,
                 &mut gold_texts,
                 &mut gold_spans,
@@ -662,6 +671,7 @@ pub fn hud_phase_transition_system(
                 entities.opponent_gold_span,
                 HudMode::EconomyAuction,
                 GoldLabelOwner::Opponent,
+                opponent_class_revealed,
                 &gold_states,
                 &mut gold_texts,
                 &mut gold_spans,
@@ -688,6 +698,7 @@ pub fn hud_phase_transition_system(
                 entities.own_gold_span,
                 render_mode,
                 GoldLabelOwner::Local,
+                opponent_class_revealed,
                 &gold_states,
                 &mut gold_texts,
                 &mut gold_spans,
@@ -697,6 +708,7 @@ pub fn hud_phase_transition_system(
                 entities.opponent_gold_span,
                 render_mode,
                 GoldLabelOwner::Opponent,
+                opponent_class_revealed,
                 &gold_states,
                 &mut gold_texts,
                 &mut gold_spans,
@@ -1140,7 +1152,13 @@ fn spawn_gold_label(
     // matches the local "still loading" placeholder. A single-glyph "?"
     // clearly signals "hidden information" using existing text
     // primitives only.
-    let placeholder = unpopulated_gold_placeholder(owner);
+    // PROMPT 1400 — spawn-time placeholder is captured before any class
+    // reveal has landed (`HudClassReveal::default()` has `opponent = None`),
+    // so the cold-start placeholder for opponent stays "?" (PROMPT 1022
+    // disposition). Subsequent `sync_gold_text_system` ticks observe the
+    // resolved `HudClassReveal.opponent` and switch the placeholder to
+    // empty once class identity is known (AUDIT-1131-05 fix).
+    let placeholder = unpopulated_gold_placeholder(owner, false);
     let parent_entity = commands
         .spawn((
             Name::new(name),
@@ -2048,6 +2066,7 @@ fn mana_display_differs_from_view(
 
 pub fn sync_gold_text_system(
     mode: Res<HudMode>,
+    reveal: Res<HudClassReveal>,
     mut gold_labels: Query<(
         &GoldDisplayState,
         &GoldLabelOwner,
@@ -2058,13 +2077,22 @@ pub fn sync_gold_text_system(
     )>,
     mut spans: Query<&mut TextSpan>,
 ) {
+    // PROMPT 1400 (AUDIT-1131-05 / AUDIT-1392-P13) — `reveal.opponent`
+    // being `Some(_)` means `S2CClassesRevealed` (or the lobby-mirror /
+    // snapshot-rebuild equivalents) has resolved the opponent class.
+    // `sync_class_reveal_hud_system` rewrites the OPP prefix text to the
+    // class-extended form in the same `StateSync` set; the gold-value
+    // sibling has historically fallen back to "?", producing the visible
+    // `"OPP Iop ?"` trailing-glyph artefact. Suppressing the placeholder
+    // post-reveal closes that gap from this single write site.
+    let opponent_class_revealed = reveal.opponent.is_some();
     for (state, owner, mut target, mut text, children, animator) in &mut gold_labels {
         if !is_hud_tween_active(animator) {
             sync_gold_tween_target_to_authoritative(state, &mut target);
         }
 
         let display = gold_display_state_from_target(&target);
-        text.0 = format_gold_text(&display, *owner);
+        text.0 = format_gold_text(&display, *owner, opponent_class_revealed);
 
         if let Some(children) = children {
             for child in children.iter() {
@@ -2225,11 +2253,15 @@ fn compute_placement_drag_mana_preview(
     project_mana_preview(economy_view, card_def, staged_current, staged_reserve)
 }
 
-fn format_gold_text(state: &GoldDisplayState, owner: GoldLabelOwner) -> String {
+fn format_gold_text(
+    state: &GoldDisplayState,
+    owner: GoldLabelOwner,
+    opponent_class_revealed: bool,
+) -> String {
     if state.is_populated {
         format!("{}g", state.gold as u32)
     } else {
-        unpopulated_gold_placeholder(owner).to_string()
+        unpopulated_gold_placeholder(owner, opponent_class_revealed).to_string()
     }
 }
 
@@ -2239,10 +2271,35 @@ fn format_gold_text(state: &GoldDisplayState, owner: GoldLabelOwner) -> String {
 /// arrives). Opponent gold uses "?" to signal hidden information using
 /// existing text primitives only — PROMPT 1022 audit F-P3-13 / REPAIR-A3
 /// disposition.
-fn unpopulated_gold_placeholder(owner: GoldLabelOwner) -> &'static str {
+///
+/// PROMPT 1400 (S18-HUD-OPP-CLASS-MANA-MICROBADGE-POLISH-001 /
+/// AUDIT-1131-05 / AUDIT-1392-P13) — once `S2CClassesRevealed` lands,
+/// `sync_class_reveal_hud_system` rewrites the `opponent_gold_prefix`
+/// from the bare `"OPP"` literal to a class-extended form (e.g.
+/// `"OPP Iop"`). The opponent-gold *value* entity is a flex sibling of
+/// the prefix in the same `opponent_gold_pill`; if the gold value is
+/// still unpopulated at that point the historical `"?"` placeholder
+/// renders right after the class name, producing the visible
+/// `"OPP Iop ?"` artefact called out by AUDIT-1131-05 — the trailing
+/// `"?"` reads as part of the class label, not as "hidden information".
+/// After the opponent class has been revealed we suppress the
+/// placeholder to an empty string so the pill reads as `"OPP Iop"`
+/// until the first authoritative gold ever lands. Pre-reveal behaviour
+/// is unchanged: the `"?"` (PROMPT 1022 disposition) still surfaces
+/// before any class identity is known.
+fn unpopulated_gold_placeholder(
+    owner: GoldLabelOwner,
+    opponent_class_revealed: bool,
+) -> &'static str {
     match owner {
         GoldLabelOwner::Local => "--g",
-        GoldLabelOwner::Opponent => "?",
+        GoldLabelOwner::Opponent => {
+            if opponent_class_revealed {
+                ""
+            } else {
+                "?"
+            }
+        }
     }
 }
 
@@ -2337,7 +2394,12 @@ fn write_snapshot_gold_states(
         remove_hud_tween(commands, entity, animator);
 
         if let Ok(mut text) = texts.get_mut(entity) {
-            text.0 = format_gold_text(&state, *owner);
+            // PROMPT 1400 — snapshot rebuilds always set `is_populated = true`
+            // above, so the `class_revealed` branch is unreachable on this
+            // path. Pass `false` for clarity; the post-reveal placeholder
+            // suppression rides on `sync_gold_text_system` reading
+            // `HudClassReveal` directly.
+            text.0 = format_gold_text(&state, *owner, false);
         }
         if let Some(children) = children {
             for child in children.iter() {
@@ -2745,6 +2807,7 @@ fn sync_gold_label_for_mode(
     span: Entity,
     mode: HudMode,
     owner: GoldLabelOwner,
+    opponent_class_revealed: bool,
     gold_states: &Query<&GoldDisplayState>,
     gold_texts: &mut Query<&mut Text>,
     gold_spans: &mut Query<&mut TextSpan>,
@@ -2752,7 +2815,11 @@ fn sync_gold_label_for_mode(
     let state = gold_states.get(parent).ok();
 
     if let (Some(state), Ok(mut text)) = (state, gold_texts.get_mut(parent)) {
-        text.0 = format_gold_text(state, owner);
+        // PROMPT 1400 — phase-transition repaint honors the same class-
+        // reveal-aware placeholder rule as `sync_gold_text_system` so a
+        // mid-phase reveal that races a phase edge cannot leave the
+        // trailing "?" in place.
+        text.0 = format_gold_text(state, owner, opponent_class_revealed);
     }
 
     if let Ok(mut span_text) = gold_spans.get_mut(span) {
