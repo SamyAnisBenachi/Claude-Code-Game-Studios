@@ -1,0 +1,21 @@
+{
+  "pack": {
+    "pack_id": "krosmaga-proxy-v1",
+    "dev_only": true,
+    "source_class": "licensed_krosmaga_dev_proxy",
+    "release_class": "dev_only"
+  },
+  "entries": [
+    {
+      "logical_id": "lid_card_frame_common",
+      "source_path": "assets/art/ui/card/copied_krosmaga_frame.png",
+      "match_quality": "good",
+      "dev_only": true,
+      "source_class": "licensed_krosmaga_dev_proxy",
+      "release_class": "dev_only",
+      "workflow_status": "needed",
+      "license_provenance_warning": "Dev-only Krosmaga proxy; not release-approved.",
+      "expected_consumer_surface": "hand.card_frame"
+    }
+  ]
+}

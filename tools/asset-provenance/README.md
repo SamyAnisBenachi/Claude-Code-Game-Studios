@@ -1,19 +1,18 @@
-# Asset Provenance — Release-Scan Validator
+# Asset Provenance Validators
 
-> Tool implementing the release-gate rules defined in
-> [ADR-025](../../docs/architecture/adr-025-asset-pack-provenance-architecture.md)
+> Tools implementing the release-gate and dev-proxy metadata rules defined
+> in [ADR-025](../../docs/architecture/adr-025-asset-pack-provenance-architecture.md)
 > and [`design/assets/provenance/schema.md`](../../design/assets/provenance/schema.md).
 >
-> The tool is invocable today as a CLI. Wiring it into a CI release-packaging
-> pipeline is **deliberately out of scope** for this story — see ADR-025
-> "Consequences → Negative". When a CI release-packaging job is added, it
-> must call this validator and treat a non-zero exit as a hard failure.
+> The tools are invocable today as CLIs. Wiring the release validator into a
+> CI release-packaging pipeline is deliberately out of scope for this story.
+> When a CI release-packaging job is added, it must call the release validator
+> and treat a non-zero exit as a hard failure.
 
-## What the validator checks
+## Release-Scan Validator
 
-Given a release manifest (a YAML file describing the set of logical-asset
-mappings the release will package), the validator fails (non-zero exit) if
-**any** mapping satisfies any of these rules:
+Given a release manifest, `check_release.py` fails if any packaged mapping
+satisfies any of these rules:
 
 1. `source_class == licensed_krosmaga_dev_proxy`
 2. `source_class == unknown_provenance`
@@ -23,38 +22,38 @@ mappings the release will package), the validator fails (non-zero exit) if
 6. The resolved concrete `path` begins with `dev-assets/` or any descendant
 
 On success the validator emits nothing on stderr and exits zero. On failure
-the validator emits a JSON list of `{logical_id, rule, value, path}`
-records on stderr, then exits 1.
+it emits a JSON list of `{logical_id, rule, value, path}` records on stderr,
+then exits 1.
 
 ## Files
 
 | File | Purpose |
 |------|---------|
-| `check_release.py` | The validator. Pure Python 3 stdlib (no third-party deps). |
-| `test_check_release.py` | Self-contained unit test. Run with `python -m unittest`. |
-| `fixtures/release-manifest-clean.json` | Example PASS manifest (all rows release-eligible). |
-| `fixtures/release-manifest-krosmaga-leak.json` | Example FAIL manifest containing a Krosmaga-proxy row. |
-| `fixtures/release-manifest-dev-path.json` | Example FAIL manifest where a `path` begins with `dev-assets/`. |
-| `fixtures/release-manifest-unapproved.json` | Example FAIL manifest with `workflow_status` not `approved`. |
+| `check_release.py` | Release-scan validator. Pure Python 3 stdlib. |
+| `test_check_release.py` | Self-contained unit test for the release validator. |
+| `validate_dev_proxy_pack.py` | Dev-only Krosmaga proxy pack metadata validator. Pure Python 3 stdlib. |
+| `test_validate_dev_proxy_pack.py` | Self-contained unit test for the dev-proxy pack validator. |
+| `fixtures/release-manifest-clean.json` | Example PASS release manifest. |
+| `fixtures/release-manifest-krosmaga-leak.json` | Example FAIL release manifest containing a Krosmaga-proxy row. |
+| `fixtures/release-manifest-dev-path.json` | Example FAIL release manifest where a `path` begins with `dev-assets/`. |
+| `fixtures/release-manifest-unapproved.json` | Example FAIL release manifest with `workflow_status` not `approved`. |
+| `fixtures/dev-proxy-pack-clean.json` | Example PASS dev-proxy pack manifest containing no payload assets. |
+| `fixtures/dev-proxy-pack-release-claim.json` | Example FAIL manifest where a proxy row claims release-safe metadata. |
+| `fixtures/dev-proxy-pack-repo-assets-source.json` | Example FAIL manifest where a proxy source path points into `assets/**`. |
 
-## CLI usage
+## Release CLI Usage
 
 ```
 python tools/asset-provenance/check_release.py <release-manifest.json>
 ```
 
-The release manifest is JSON so the validator has no third-party
-dependencies. The human-authored `design/assets/provenance/logical-id-index.md`
-encoding is YAML for readability; a separate step (out of scope for this
-story) translates it to the JSON manifest format the validator consumes.
-
 Exit codes:
 
-- `0` — every row passes all six rules.
-- `1` — at least one row fails; JSON failure report on stderr.
-- `2` — manifest could not be parsed or required keys are missing.
+- `0`: every row passes all six release rules.
+- `1`: at least one row fails; JSON failure report on stderr.
+- `2`: manifest could not be parsed or required keys are missing.
 
-## Release manifest format
+Release manifest format:
 
 ```json
 {
@@ -71,13 +70,66 @@ Exit codes:
 }
 ```
 
-Required keys per row: `logical_id`, `workflow_status`, `source_class`,
-`release_class`, `path`. Optional: `approval_evidence` (required when
-`workflow_status == approved`).
+Required keys per release row: `logical_id`, `workflow_status`,
+`source_class`, `release_class`, `path`. Optional: `approval_evidence`
+(required when `workflow_status == approved`).
 
-## Non-claims
+## Dev-Proxy Pack Validator
 
-Running this validator does **not** approve any asset, does not flip
-`PAW-TD-*-a` rows, and does not constitute release sign-off. It is a
-necessary-but-not-sufficient gate: a manifest that passes the validator
-still needs the studio's release-management process (currently undefined).
+The dev-proxy pack validator checks future Krosmaga proxy pack metadata
+before any binding or materialization work consumes it. It validates metadata
+only. It does not copy Krosmaga payloads, scan extracted source banks, or
+write into `assets/**`.
+
+```
+python tools/asset-provenance/validate_dev_proxy_pack.py <dev-proxy-pack-manifest.json>
+```
+
+Exit codes:
+
+- `0`: every pack row satisfies the dev-only policy.
+- `1`: at least one row violates the policy; JSON failure report on stderr.
+- `2`: manifest could not be parsed or required keys are missing.
+
+Required top-level shape:
+
+```json
+{
+  "pack": {
+    "pack_id": "krosmaga-proxy-v1",
+    "dev_only": true,
+    "source_class": "licensed_krosmaga_dev_proxy",
+    "release_class": "dev_only"
+  },
+  "entries": []
+}
+```
+
+Required keys per entry: `logical_id`, `source_path`, `match_quality`,
+`dev_only`, `source_class`, `release_class`, `workflow_status`,
+`license_provenance_warning`, and `expected_consumer_surface`.
+
+Allowed `match_quality` values: `exact`, `good`, `needs_conversion`,
+`ambiguous`, `missing`, `no_art_needed`.
+
+The validator fails clearly when:
+
+- A row implies release-safe art (`dev_only=false`,
+  `source_class!=licensed_krosmaga_dev_proxy`, `release_class!=dev_only`, or
+  `workflow_status!=needed`).
+- A non-missing row has no `source_path`.
+- `source_path` points into repo `assets/**`, which would imply copied
+  Krosmaga content.
+- An `ambiguous` row lacks `manual_review_required=true` or
+  `ambiguity_notes`.
+- A `missing` or `no_art_needed` row names a source path or lacks
+  `missing_handling`.
+- The license/provenance warning does not state that the row is dev-only or
+  not release-approved.
+
+## Non-Claims
+
+Running these validators does not approve any asset, does not flip
+`PAW-TD-*-a` rows, and does not constitute release sign-off. They are
+necessary-but-not-sufficient gates: passing manifests still need the
+studio's release-management and art/legal approval process.
