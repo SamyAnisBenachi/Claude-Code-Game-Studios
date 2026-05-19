@@ -19,15 +19,15 @@ use crate::asset_wiring::{
     apply_card_display_art, clear_card_display_art, default_client_card_catalog,
     insert_placeholder_assets, CardDisplayArtFallback, PlaceholderAssets,
 };
-use crate::ui::design_tokens::card_slot::{
-    card_slot_art_image_component, card_slot_art_image_node, CardSlotArtImage, CardSlotKind,
-};
 use crate::card_animations::{
     cancel_tween_anim_in_place, make_tween_anim, replace_tweenable, HandCard, HandDragSprite,
 };
 use crate::presentation::board_rendering::PlayerTeamMap;
 use crate::presentation::{PlayerEconomyView, PresentationGameSnapshotMessage};
 use crate::state::{ClientPhaseView, ClientSessionIdentity, ClientState, CurrentClientPhase};
+use crate::ui::design_tokens::card_slot::{
+    card_slot_art_image_component, card_slot_art_image_node, CardSlotArtImage, CardSlotKind,
+};
 use crate::ui::design_tokens::{spacing, strips, typography, z_layers};
 use crate::ui::lobby::PlayerTeamMapUpdated;
 use crate::ui::shared::{BoardLayout, LaneCell, BOARD_CELL_COUNT, BOARD_LANE_COUNT};
@@ -1087,6 +1087,7 @@ impl Plugin for HandUiPlugin {
             .init_resource::<ActiveGhostUnstageDrag>()
             .init_resource::<PlacementDisclosureState>()
             .init_resource::<FanZoneBounds>()
+            .init_resource::<ButtonInput<MouseButton>>()
             .add_message::<HandFanCardClicked>()
             .add_message::<HandGridCardClicked>()
             .add_message::<HandUiDraftOfferingReceived>()
@@ -2610,12 +2611,15 @@ pub fn handle_ghost_drag_started_system(
 }
 
 pub fn handle_hand_control_interactions_system(
+    mode: Res<HandUiMode>,
+    board_view: Res<PlacementBoardView>,
     mut interactions: Query<
         (
             Entity,
             &Interaction,
             Option<&GridSlotIndex>,
             Option<&FanSlotIndex>,
+            Option<&FanSlotState>,
             Option<&HandSubmitButton>,
         ),
         (
@@ -2629,9 +2633,10 @@ pub fn handle_hand_control_interactions_system(
     >,
     mut grid_clicks: MessageWriter<HandGridCardClicked>,
     mut fan_clicks: MessageWriter<HandFanCardClicked>,
+    mut drag_starts: MessageWriter<HandUiPlacementDragStarted>,
     mut submit_clicks: MessageWriter<HandSubmitButtonClicked>,
 ) {
-    for (entity, interaction, grid_slot, fan_slot, submit) in &mut interactions {
+    for (entity, interaction, grid_slot, fan_slot, fan_state, submit) in &mut interactions {
         if *interaction != Interaction::Pressed {
             continue;
         }
@@ -2639,7 +2644,20 @@ pub fn handle_hand_control_interactions_system(
         if grid_slot.is_some() {
             grid_clicks.write(HandGridCardClicked { card: entity });
         } else if fan_slot.is_some() {
-            fan_clicks.write(HandFanCardClicked { card: entity });
+            if *mode == HandUiMode::Staging && fan_state == Some(&FanSlotState::Active) {
+                tracing::info!(
+                    target: "client::ui::hand::placement_drag_interaction_start",
+                    card_entity = ?entity,
+                    owner_id = ?board_view.local_player_id,
+                    "fan slot pressed starts placement drag"
+                );
+                drag_starts.write(HandUiPlacementDragStarted {
+                    card: entity,
+                    owner_id: board_view.local_player_id,
+                });
+            } else {
+                fan_clicks.write(HandFanCardClicked { card: entity });
+            }
         } else if submit.is_some() {
             submit_clicks.write(HandSubmitButtonClicked { button: entity });
         }
@@ -2882,12 +2900,18 @@ pub fn handle_placement_cursor_moved_system(
     mut moves: MessageReader<HandUiPlacementCursorMoved>,
     mut active_drag: ResMut<ActivePlacementDrag>,
     mut active_ghost_drag: ResMut<ActiveGhostUnstageDrag>,
+    board_layout: Option<Res<BoardLayout>>,
 ) {
     for cursor_move in moves.read() {
+        let resolved_board_cell = board_layout
+            .as_deref()
+            .zip(cursor_move.world_position)
+            .and_then(|(layout, cursor)| cursor_to_lane_cell(cursor, layout));
         tracing::debug!(
             target: "client::ui::hand::placement_cursor_move",
             cursor_world_position = ?cursor_move.world_position,
             cursor_screen_position = ?cursor_move.screen_position,
+            resolved_board_cell = ?resolved_board_cell,
             active_drag_is_active = active_drag.is_active(),
             active_drag_card = ?active_drag.card,
             "placement cursor move"
@@ -2983,6 +3007,15 @@ pub fn handle_placement_drag_ended_system(
             };
 
             if let (Some(card), Some(owner_id)) = (active_drag.card, active_drag.owner_id) {
+                tracing::info!(
+                    target: "client::ui::hand::placement_drop_resolved",
+                    card_entity = ?card,
+                    owner_id = ?owner_id,
+                    cursor_world_position = ?active_drag.cursor_world_position,
+                    cursor_screen_position = ?active_drag.cursor_screen_position,
+                    target = ?target,
+                    "placement drop resolved"
+                );
                 drops.write(HandUiPlacementDropResolved {
                     card,
                     owner_id,
@@ -3135,6 +3168,7 @@ pub fn produce_drag_cursor_moved_from_window_system(
 /// cell drops in a follow-up scope).
 pub fn produce_drag_ended_from_pointer_release_system(
     active_drag: Res<ActivePlacementDrag>,
+    mouse_buttons: Res<ButtonInput<MouseButton>>,
     mut releases: MessageReader<Pointer<Release>>,
     mut writer: MessageWriter<HandUiPlacementDragEnded>,
 ) {
@@ -3142,16 +3176,23 @@ pub fn produce_drag_ended_from_pointer_release_system(
         for _ in releases.read() {}
         return;
     }
-    let mut emitted = false;
+    let mut pointer_released = false;
     for ev in releases.read() {
         if ev.button != PointerButton::Primary {
             continue;
         }
-        if emitted {
-            continue;
-        }
+        pointer_released = true;
+    }
+
+    if pointer_released || mouse_buttons.just_released(MouseButton::Left) {
+        tracing::info!(
+            target: "client::ui::hand::placement_drag_release",
+            pointer_released,
+            mouse_just_released = mouse_buttons.just_released(MouseButton::Left),
+            active_drag_card = ?active_drag.card,
+            "placement drag release"
+        );
         writer.write(HandUiPlacementDragEnded);
-        emitted = true;
     }
 }
 
