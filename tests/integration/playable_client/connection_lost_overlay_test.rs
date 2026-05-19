@@ -16,15 +16,19 @@ use std::path::{Path, PathBuf};
 use bevy::ecs::system::RunSystemOnce;
 use bevy::prelude::*;
 use client::presentation::connection_lost_overlay::{
-    dismiss_overlay_on_game_over_system, handle_transport_connected_event,
-    handle_transport_disconnected_event, overlay_dismissed_by_phase,
-    should_show_overlay_for_client_state, ConnectionLostOverlayEntities,
-    ConnectionLostOverlayPlugin, ConnectionLostOverlayRoot, ConnectionLostOverlayState,
-    CONNECTION_LOST_OVERLAY_Z_INDEX,
+    connection_lost_overlay_copy, dismiss_overlay_on_game_over_system,
+    handle_transport_connected_event, handle_transport_disconnected_event,
+    overlay_dismissed_by_phase, should_show_overlay_for_client_state,
+    sync_connection_lost_overlay_from_opponent_connection_system, ConnectionLostOverlayCause,
+    ConnectionLostOverlayEntities, ConnectionLostOverlayPlugin, ConnectionLostOverlayRoot,
+    ConnectionLostOverlayState, CONNECTION_LOST_OVERLAY_Z_INDEX,
 };
-use client::state::{ClientState, CurrentClientPhase};
+use client::state::{
+    ClientState, CurrentClientPhase, OpponentConnectionView, OpponentDisconnectIndicator,
+};
 use client::ui::design_tokens::z_layers;
 use shared::protocol::RoundPhase;
+use shared::session::PlayerId;
 
 #[path = "../../test_helpers.rs"]
 mod test_helpers;
@@ -92,6 +96,14 @@ fn ac3_disconnect_handler_marks_overlay_visible_in_session() {
         state.visible,
         "transport disconnect during InSession must mark the overlay visible (AC3)"
     );
+    assert_eq!(
+        state.cause,
+        ConnectionLostOverlayCause::LocalTransportDisconnected
+    );
+    assert!(
+        state.input_blocking,
+        "local transport disconnect must explicitly mark input as blocked"
+    );
 }
 
 #[test]
@@ -106,12 +118,88 @@ fn ac3_disconnect_handler_does_not_mark_overlay_visible_in_lobby() {
 
 #[test]
 fn ac4_connected_handler_marks_overlay_hidden() {
-    let mut state = ConnectionLostOverlayState { visible: true };
+    let mut state = ConnectionLostOverlayState {
+        visible: true,
+        ..ConnectionLostOverlayState::default()
+    };
     handle_transport_connected_event(&mut state);
     assert!(
         !state.visible,
         "transport reconnect must dismiss the overlay within one frame (AC4)"
     );
+    assert_eq!(state.cause, ConnectionLostOverlayCause::None);
+    assert!(!state.input_blocking);
+}
+
+#[test]
+fn prompt1467_copy_distinguishes_local_blocking_disconnect() {
+    let mut state = ConnectionLostOverlayState::default();
+    handle_transport_disconnected_event(ClientState::InSession, &mut state);
+
+    let (headline, body) = connection_lost_overlay_copy(&state);
+
+    assert_eq!(headline, "Connection Interrupted");
+    assert!(body.contains("Your client is reconnecting"));
+    assert!(body.contains("input is blocked"));
+    assert!(body.contains("auction and shop state remains visible"));
+}
+
+#[test]
+fn prompt1467_opponent_disconnect_sets_nonblocking_grace_status() {
+    let mut world = World::new();
+    world.insert_resource(ConnectionLostOverlayState::default());
+    world.insert_resource(OpponentConnectionView {
+        disconnected: Some(OpponentDisconnectIndicator {
+            player_id: PlayerId(2),
+            grace_remaining_ms: 14_250,
+        }),
+    });
+
+    world
+        .run_system_once(sync_connection_lost_overlay_from_opponent_connection_system)
+        .unwrap();
+
+    let state = world.resource::<ConnectionLostOverlayState>();
+    assert!(state.visible);
+    assert_eq!(
+        state.cause,
+        ConnectionLostOverlayCause::OpponentDisconnected
+    );
+    assert_eq!(state.disconnected_player_id, Some(PlayerId(2)));
+    assert_eq!(state.grace_remaining_ms, Some(14_250));
+    assert!(
+        !state.input_blocking,
+        "opponent disconnect notice must not block local input"
+    );
+
+    let (headline, body) = connection_lost_overlay_copy(state);
+    assert_eq!(headline, "Opponent Reconnecting");
+    assert!(body.contains("PlayerId(2) disconnected"));
+    assert!(body.contains("local input is not blocked"));
+    assert!(body.contains("15s"));
+}
+
+#[test]
+fn prompt1467_opponent_reconnect_clears_nonblocking_status() {
+    let mut world = World::new();
+    world.insert_resource(ConnectionLostOverlayState {
+        visible: true,
+        cause: ConnectionLostOverlayCause::OpponentDisconnected,
+        disconnected_player_id: Some(PlayerId(2)),
+        grace_remaining_ms: Some(5_000),
+        input_blocking: false,
+    });
+    world.insert_resource(OpponentConnectionView { disconnected: None });
+
+    world
+        .run_system_once(sync_connection_lost_overlay_from_opponent_connection_system)
+        .unwrap();
+
+    let state = world.resource::<ConnectionLostOverlayState>();
+    assert!(!state.visible);
+    assert_eq!(state.cause, ConnectionLostOverlayCause::None);
+    assert!(state.disconnected_player_id.is_none());
+    assert!(state.grace_remaining_ms.is_none());
 }
 
 #[test]
@@ -124,7 +212,10 @@ fn ac4_connected_handler_is_idempotent_when_hidden() {
 #[test]
 fn ac5_dismiss_system_hides_overlay_when_phase_is_game_over() {
     let mut world = World::new();
-    world.insert_resource(ConnectionLostOverlayState { visible: true });
+    world.insert_resource(ConnectionLostOverlayState {
+        visible: true,
+        ..ConnectionLostOverlayState::default()
+    });
     world.insert_resource(CurrentClientPhase {
         phase: RoundPhase::GameOver,
         round: 4,
@@ -143,7 +234,10 @@ fn ac5_dismiss_system_hides_overlay_when_phase_is_game_over() {
 #[test]
 fn ac5_dismiss_system_is_noop_during_active_gameplay() {
     let mut world = World::new();
-    world.insert_resource(ConnectionLostOverlayState { visible: true });
+    world.insert_resource(ConnectionLostOverlayState {
+        visible: true,
+        ..ConnectionLostOverlayState::default()
+    });
     world.insert_resource(CurrentClientPhase {
         phase: RoundPhase::Placement,
         round: 3,

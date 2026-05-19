@@ -937,6 +937,11 @@ fn extras_snapshot_default_serialises_as_null_friendly_payload() {
     assert!(value["session_settings"].is_null());
     assert!(value["objective_identities"].is_array());
     assert!(value["opponent_connection"].is_null());
+    assert_eq!(value["connection_lost"]["visible"], false);
+    assert!(value["connection_lost"]["cause"].is_null());
+    assert!(value["connection_lost"]["disconnected_player_id"].is_null());
+    assert!(value["connection_lost"]["grace_remaining_ms"].is_null());
+    assert_eq!(value["connection_lost"]["blocking_input"], false);
     assert!(value["session_lifecycle"].is_null());
     assert!(value["outbound_intents"].is_object());
     assert_eq!(value["outbound_intents"]["hand_activate_cards"], 0);
@@ -1234,6 +1239,96 @@ fn extras_inputs_phase_timer_distinguishes_duration_from_remaining() {
     assert_eq!(phase_timer.remaining_ms, 17_500);
     assert_eq!(phase_timer.display_text, "18s");
     assert_eq!(phase_timer.timer_source, "hud_phase_timer_state");
+}
+
+#[test]
+fn prompt1467_connection_lost_snapshot_distinguishes_opponent_nonblocking_grace() {
+    use client::presentation::qa_snapshot::{
+        build_snapshot_with_extras, ExtrasSnapshot, OpponentConnectionSnapshot, UiCounts,
+    };
+
+    let snapshot = build_snapshot_with_extras(
+        1,
+        1_700_000_000_000,
+        placeholder_screenshot(1_700_000_000_000),
+        Some(ClientState::InSession),
+        Some(CurrentClientPhase {
+            phase: RoundPhase::DraftAuction,
+            round: 6,
+        }),
+        None,
+        Some(ClientSessionIdentity::default()),
+        None,
+        UiCounts {
+            connection_lost_overlay_visible: 1,
+            ..UiCounts::default()
+        },
+        ExtrasSnapshot {
+            opponent_connection: Some(OpponentConnectionSnapshot {
+                disconnected_player_id: Some("PlayerId(2)".to_string()),
+                grace_remaining_ms: Some(12_345),
+            }),
+            ..ExtrasSnapshot::default()
+        },
+    );
+
+    assert!(snapshot.extras.connection_lost.visible);
+    assert_eq!(
+        snapshot.extras.connection_lost.cause.as_deref(),
+        Some("opponent_disconnected")
+    );
+    assert_eq!(
+        snapshot
+            .extras
+            .connection_lost
+            .disconnected_player_id
+            .as_deref(),
+        Some("PlayerId(2)")
+    );
+    assert_eq!(
+        snapshot.extras.connection_lost.grace_remaining_ms,
+        Some(12_345)
+    );
+    assert_eq!(
+        snapshot.extras.connection_lost.local_is_disconnected,
+        Some(false)
+    );
+    assert!(!snapshot.extras.connection_lost.blocking_input);
+}
+
+#[test]
+fn prompt1467_connection_lost_snapshot_marks_local_transport_loss_blocking() {
+    use client::presentation::qa_snapshot::{build_snapshot_with_extras, ExtrasSnapshot, UiCounts};
+
+    let snapshot = build_snapshot_with_extras(
+        1,
+        1_700_000_000_000,
+        placeholder_screenshot(1_700_000_000_000),
+        Some(ClientState::InSession),
+        Some(CurrentClientPhase {
+            phase: RoundPhase::DraftAuction,
+            round: 6,
+        }),
+        None,
+        Some(ClientSessionIdentity::default()),
+        None,
+        UiCounts {
+            connection_lost_overlay_visible: 1,
+            ..UiCounts::default()
+        },
+        ExtrasSnapshot::default(),
+    );
+
+    assert!(snapshot.extras.connection_lost.visible);
+    assert_eq!(
+        snapshot.extras.connection_lost.cause.as_deref(),
+        Some("local_transport_disconnected")
+    );
+    assert_eq!(
+        snapshot.extras.connection_lost.local_is_disconnected,
+        Some(true)
+    );
+    assert!(snapshot.extras.connection_lost.blocking_input);
 }
 
 // ─────────────────────────────────────────────────────────────────────────

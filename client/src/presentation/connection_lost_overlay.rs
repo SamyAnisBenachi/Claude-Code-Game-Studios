@@ -18,12 +18,14 @@
 //! overlay; [`MODAL`](crate::ui::design_tokens::z_layers::MODAL) for the
 //! result screen).
 
+use bevy::picking::Pickable;
 use bevy::prelude::*;
 use bevy::ui::Overflow;
 use lightyear::prelude::{Connected, Disconnected};
 use shared::protocol::RoundPhase;
+use shared::session::PlayerId;
 
-use crate::state::{ClientState, CurrentClientPhase};
+use crate::state::{ClientState, CurrentClientPhase, OpponentConnectionView};
 use crate::ui::design_tokens::{typography, z_layers};
 
 /// Z-layer for this overlay. Resolved from the canonical
@@ -66,6 +68,18 @@ pub struct ConnectionLostOverlayPlugin;
 #[derive(Resource, Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct ConnectionLostOverlayState {
     pub visible: bool,
+    pub cause: ConnectionLostOverlayCause,
+    pub disconnected_player_id: Option<PlayerId>,
+    pub grace_remaining_ms: Option<u32>,
+    pub input_blocking: bool,
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub enum ConnectionLostOverlayCause {
+    #[default]
+    None,
+    LocalTransportDisconnected,
+    OpponentDisconnected,
 }
 
 #[derive(Resource, Debug, Clone, Copy)]
@@ -97,6 +111,9 @@ impl Plugin for ConnectionLostOverlayPlugin {
                 Update,
                 (
                     dismiss_overlay_on_game_over_system,
+                    sync_connection_lost_overlay_from_opponent_connection_system,
+                    sync_connection_lost_overlay_copy_system,
+                    sync_connection_lost_overlay_layout_system,
                     sync_connection_lost_overlay_visibility_system,
                 )
                     .chain(),
@@ -131,9 +148,15 @@ pub fn handle_transport_disconnected_event(
         tracing::info!(
             target: "client::presentation::connection_lost_overlay",
             lifecycle = ?lifecycle,
+            cause = ?ConnectionLostOverlayCause::LocalTransportDisconnected,
+            input_blocking = true,
             "transport_disconnected: overlay -> visible"
         );
         overlay.visible = true;
+        overlay.cause = ConnectionLostOverlayCause::LocalTransportDisconnected;
+        overlay.disconnected_player_id = None;
+        overlay.grace_remaining_ms = None;
+        overlay.input_blocking = true;
     } else {
         tracing::debug!(
             target: "client::presentation::connection_lost_overlay",
@@ -151,10 +174,39 @@ pub fn handle_transport_connected_event(overlay: &mut ConnectionLostOverlayState
     if overlay.visible {
         tracing::info!(
             target: "client::presentation::connection_lost_overlay",
+            cause = ?overlay.cause,
             "transport_connected: overlay -> hidden"
         );
     }
-    overlay.visible = false;
+    overlay.clear();
+}
+
+impl ConnectionLostOverlayState {
+    fn clear(&mut self) {
+        self.visible = false;
+        self.cause = ConnectionLostOverlayCause::None;
+        self.disconnected_player_id = None;
+        self.grace_remaining_ms = None;
+        self.input_blocking = false;
+    }
+
+    fn set_opponent_disconnected(&mut self, player_id: PlayerId, grace_remaining_ms: u32) {
+        self.visible = true;
+        self.cause = ConnectionLostOverlayCause::OpponentDisconnected;
+        self.disconnected_player_id = Some(player_id);
+        self.grace_remaining_ms = Some(grace_remaining_ms);
+        self.input_blocking = false;
+    }
+
+    pub fn cause_label(&self) -> &'static str {
+        match self.cause {
+            ConnectionLostOverlayCause::None => "none",
+            ConnectionLostOverlayCause::LocalTransportDisconnected => {
+                "local_transport_disconnected"
+            }
+            ConnectionLostOverlayCause::OpponentDisconnected => "opponent_disconnected",
+        }
+    }
 }
 
 pub fn on_transport_disconnected(
@@ -187,10 +239,156 @@ pub fn dismiss_overlay_on_game_over_system(
         tracing::info!(
             target: "client::presentation::connection_lost_overlay",
             phase = ?phase.phase,
+            cause = ?overlay.cause,
             "dismiss_overlay_on_game_over: overlay -> hidden"
         );
-        overlay.visible = false;
+        overlay.clear();
     }
+}
+
+pub fn sync_connection_lost_overlay_from_opponent_connection_system(
+    opponent: Option<Res<OpponentConnectionView>>,
+    mut overlay: ResMut<ConnectionLostOverlayState>,
+) {
+    if matches!(
+        overlay.cause,
+        ConnectionLostOverlayCause::LocalTransportDisconnected
+    ) {
+        return;
+    }
+
+    let Some(opponent) = opponent.as_deref() else {
+        return;
+    };
+    match opponent.disconnected {
+        Some(indicator) => {
+            let changed = overlay.cause != ConnectionLostOverlayCause::OpponentDisconnected
+                || overlay.disconnected_player_id != Some(indicator.player_id)
+                || overlay.grace_remaining_ms != Some(indicator.grace_remaining_ms)
+                || overlay.input_blocking;
+            if changed {
+                tracing::info!(
+                    target: "client::presentation::connection_lost_overlay",
+                    cause = ?ConnectionLostOverlayCause::OpponentDisconnected,
+                    player_id = ?indicator.player_id,
+                    grace_remaining_ms = indicator.grace_remaining_ms,
+                    input_blocking = false,
+                    "opponent_disconnected: overlay -> non_blocking_visible"
+                );
+            }
+            overlay.set_opponent_disconnected(indicator.player_id, indicator.grace_remaining_ms);
+        }
+        None if overlay.cause == ConnectionLostOverlayCause::OpponentDisconnected => {
+            tracing::info!(
+                target: "client::presentation::connection_lost_overlay",
+                cause = ?overlay.cause,
+                "opponent_reconnected: overlay -> hidden"
+            );
+            overlay.clear();
+        }
+        None => {}
+    }
+}
+
+pub fn connection_lost_overlay_copy(
+    overlay: &ConnectionLostOverlayState,
+) -> (&'static str, String) {
+    match overlay.cause {
+        ConnectionLostOverlayCause::LocalTransportDisconnected => (
+            "Connection Interrupted",
+            "Your client is reconnecting. Game input is blocked until the transport reconnects; auction and shop state remains visible behind this notice.".to_string(),
+        ),
+        ConnectionLostOverlayCause::OpponentDisconnected => {
+            let player = overlay
+                .disconnected_player_id
+                .map(|p| format!("{:?}", p))
+                .unwrap_or_else(|| "opponent".to_string());
+            let grace = overlay
+                .grace_remaining_ms
+                .map(|ms| format!(" Reconnect grace remaining: {}s.", (ms + 999) / 1000))
+                .unwrap_or_default();
+            (
+                "Opponent Reconnecting",
+                format!(
+                    "{player} disconnected. Your local input is not blocked.{grace} Auction and shop controls stay visible."
+                ),
+            )
+        }
+        ConnectionLostOverlayCause::None => ("Connection Status", String::new()),
+    }
+}
+
+pub fn sync_connection_lost_overlay_copy_system(
+    overlay: Res<ConnectionLostOverlayState>,
+    entities: Option<Res<ConnectionLostOverlayEntities>>,
+    mut text_query: Query<&mut Text>,
+) {
+    if !overlay.is_changed() {
+        return;
+    }
+    let Some(entities) = entities else {
+        return;
+    };
+    let (headline, body) = connection_lost_overlay_copy(&overlay);
+    if let Ok(mut text) = text_query.get_mut(entities.headline) {
+        text.0 = headline.to_string();
+    }
+    if let Ok(mut text) = text_query.get_mut(entities.body) {
+        text.0 = body;
+    }
+}
+
+pub fn sync_connection_lost_overlay_layout_system(
+    overlay: Res<ConnectionLostOverlayState>,
+    entities: Option<Res<ConnectionLostOverlayEntities>>,
+    mut roots: Query<
+        (&mut Node, &mut BackgroundColor, &mut Pickable),
+        With<ConnectionLostOverlayRoot>,
+    >,
+    mut panels: Query<
+        &mut Node,
+        (
+            With<ConnectionLostOverlayPanel>,
+            Without<ConnectionLostOverlayRoot>,
+        ),
+    >,
+) {
+    if !overlay.is_changed() {
+        return;
+    }
+    let Some(entities) = entities else {
+        return;
+    };
+    let Ok((mut root_node, mut root_bg, mut pickable)) = roots.get_mut(entities.root) else {
+        return;
+    };
+    let Ok(mut panel_node) = panels.get_mut(entities.panel) else {
+        return;
+    };
+
+    if overlay.input_blocking {
+        root_node.align_items = AlignItems::Center;
+        root_node.justify_content = JustifyContent::Center;
+        root_node.padding = UiRect::all(Val::Px(24.0));
+        panel_node.width = Val::Percent(60.0);
+        panel_node.max_width = Val::Px(520.0);
+        root_bg.0 = Color::srgba(0.02, 0.025, 0.035, 0.32);
+    } else {
+        root_node.align_items = AlignItems::FlexStart;
+        root_node.justify_content = JustifyContent::FlexEnd;
+        root_node.padding = UiRect {
+            left: Val::Px(24.0),
+            right: Val::Px(24.0),
+            top: Val::Px(84.0),
+            bottom: Val::Px(24.0),
+        };
+        panel_node.width = Val::Px(380.0);
+        panel_node.max_width = Val::Px(380.0);
+        root_bg.0 = Color::NONE;
+    }
+
+    pickable.should_block_lower = overlay.input_blocking;
+    pickable.is_hoverable = overlay.input_blocking;
 }
 
 pub fn sync_connection_lost_overlay_visibility_system(
@@ -243,6 +441,10 @@ fn spawn_connection_lost_overlay_system(mut commands: Commands) {
             BackgroundColor(Color::srgba(0.02, 0.025, 0.035, 0.32)),
             Visibility::Hidden,
             z_layers::UI_OVERLAY,
+            Pickable {
+                should_block_lower: false,
+                is_hoverable: false,
+            },
         ))
         .id();
 

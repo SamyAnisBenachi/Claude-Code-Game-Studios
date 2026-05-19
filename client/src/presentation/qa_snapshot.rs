@@ -1465,6 +1465,7 @@ pub struct OpponentConnectionSnapshot {
 #[derive(Debug, Clone, Default, Serialize)]
 pub struct ConnectionLostDiagnosticsSnapshot {
     pub visible: bool,
+    pub cause: Option<String>,
     pub disconnected_player_id: Option<String>,
     pub local_is_disconnected: Option<bool>,
     pub grace_remaining_ms: Option<u32>,
@@ -2439,14 +2440,25 @@ fn build_connection_lost_diagnostics_snapshot(
     opponent_connection: Option<&OpponentConnectionSnapshot>,
     lifecycle: Option<&SessionLifecycleSnapshot>,
 ) -> ConnectionLostDiagnosticsSnapshot {
+    let has_opponent_disconnect = opponent_connection
+        .and_then(|connection| connection.disconnected_player_id.as_ref())
+        .is_some();
+    let cause = if visible && has_opponent_disconnect {
+        Some("opponent_disconnected".to_string())
+    } else if visible {
+        Some("local_transport_disconnected".to_string())
+    } else {
+        None
+    };
     ConnectionLostDiagnosticsSnapshot {
         visible,
+        cause,
         disconnected_player_id: opponent_connection
             .and_then(|connection| connection.disconnected_player_id.clone()),
-        local_is_disconnected: None,
+        local_is_disconnected: visible.then_some(!has_opponent_disconnect),
         grace_remaining_ms: opponent_connection
             .and_then(|connection| connection.grace_remaining_ms),
-        blocking_input: visible,
+        blocking_input: visible && !has_opponent_disconnect,
         reason: lifecycle.and_then(|lifecycle| lifecycle.cancellation_reason.clone()),
     }
 }
