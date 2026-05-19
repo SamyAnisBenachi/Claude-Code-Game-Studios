@@ -346,13 +346,26 @@ path = "../tests/integration/hud/hud_opp_class_recipient_mismatch_test.rs"
 name = "hud_scoreboard_dot_image_refresh_test"
 path = "../tests/integration/hud/hud_scoreboard_dot_image_refresh_test.rs"
 
-# PROMPT 1228 / HUNT-1201-12: HUD mana label paints a projected
-# `current_mana - card.cost` / `reserve_mana - card.cost` readout while an
-# affordable placement drag is in flight, and reverts on drag clear. Display
-# only; never mutates `PlayerEconomyView` (ADR-002 preserved).
+# PROMPT 1336 (S18-UI-HAND-MANA-PREVIEW-DURING-DRAG-001 AC9): HUD mana label
+# paints a projected current/reserve readout while a `Phase::Placement` drag
+# holds an affordable Minion. Subtracts already-staged `PendingPlacements`
+# spend before applying the in-flight cost (AC6), suppresses non-Minion drags
+# (AC8), and surfaces a `preview_overdrawn` flag on `ManaDisplayState` when
+# the cost exceeds the post-staged baseline (AC5). Replaces the PROMPT 1228
+# bin under `tests/integration/hud/`; bin was deleted in the same commit to
+# conform to project-canonical `tests/integration/hand-ui/` layout.
 [[test]]
-name = "hud_mana_preview_during_drag_test"
-path = "../tests/integration/hud/hud_mana_preview_during_drag_test.rs"
+name = "mana_preview_during_drag_test"
+path = "../tests/integration/hand-ui/mana_preview_during_drag_test.rs"
+
+# PROMPT 1336 (AC10): pure projection arithmetic for
+# `client::ui::hud::project_mana_preview`. Exercises the six cases listed by
+# story-022 AC10 (zero-cost suppression, current-only spend, reserve
+# spillover, exact exhaustion, overdrawn true, staged multi-card baseline)
+# without booting `HudPlugin`.
+[[test]]
+name = "mana_preview_projection_test"
+path = "../tests/unit/hand-ui/mana_preview_projection_test.rs"
 
 [[test]]
 name = "card_animations_tween_lifecycle_test"

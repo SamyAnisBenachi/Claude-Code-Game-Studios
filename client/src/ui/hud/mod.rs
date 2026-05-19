@@ -13,17 +13,19 @@ use shared::protocol::{
 };
 use shared::session::PlayerId;
 
+pub mod mana_preview;
+
+pub use mana_preview::{project_mana_preview, ManaPreviewOutcome};
+
 use crate::asset_wiring::{
     hud_figurine_asset, hud_objective_dot_asset, ObjectiveDotState, PlaceholderAssets,
     HUD_OBJECTIVE_DOT_DESTROYED_ASSET, HUD_PHASE_TIMER_BAR_ASSET,
 };
 use crate::card_animations::cancel_tween_anim_in_place;
-use crate::presentation::{
-    project_mana_after_spend, PlayerEconomyView, PresentationGameSnapshotMessage,
-};
+use crate::presentation::{PlayerEconomyView, PresentationGameSnapshotMessage};
 use crate::state::{ClientPhaseView, ClientSessionIdentity, ClientState, CurrentClientPhase};
 use crate::ui::design_tokens::{overlays, spacing, strips, typography, z_layers};
-use crate::ui::hand::{ActivePlacementDrag, HandCardCatalog};
+use crate::ui::hand::{ActivePlacementDrag, HandCardCatalog, PendingPlacements};
 use crate::ui::lobby::LobbyViewState;
 use crate::ui::shared::{BoardLayout, HudObjectiveUpdate};
 
@@ -330,6 +332,16 @@ pub struct ManaDisplayState {
     pub mana_cap: u32,
     pub reserve_mana: u32,
     pub is_populated: bool,
+    /// PROMPT 1336 (S18-UI-HAND-MANA-PREVIEW-DURING-DRAG-001 AC5) — set by
+    /// [`sync_mana_text_system`] whenever the active placement-drag preview
+    /// detects that the dragged Minion's `cost` exceeds the post-staged
+    /// `current + reserve` baseline. Read by HUD colour-treatment hooks
+    /// (and by the AC5 integration assertion) to surface the negative
+    /// affordance signal on top of the clamped `"0 / cap"` paint.
+    /// Authoritative-write paths (`apply_player_economy_view`,
+    /// `write_snapshot_mana_state`) clear the flag back to `false` so a
+    /// stale overdraw never survives one frame past drag end.
+    pub preview_overdrawn: bool,
 }
 
 #[derive(Component, Debug, Clone, Copy, PartialEq)]
@@ -2067,11 +2079,13 @@ pub fn sync_gold_text_system(
 pub fn sync_mana_text_system(
     entities: Option<Res<HudEntities>>,
     economy_view: Res<PlayerEconomyView>,
+    current_phase: Res<CurrentClientPhase>,
     active_drag: Option<Res<ActivePlacementDrag>>,
     hand_catalog: Option<Res<HandCardCatalog>>,
+    pending_placements: Option<Res<PendingPlacements>>,
     mut mana_labels: Query<
         (
-            &ManaDisplayState,
+            &mut ManaDisplayState,
             &mut ManaTweenTarget,
             &mut Text,
             Option<&TweenAnim>,
@@ -2081,7 +2095,7 @@ pub fn sync_mana_text_system(
     mut reserve_labels: Query<&mut Text, (With<ReserveManaLabel>, Without<ManaLabel>)>,
     mut visibility: Query<&mut Visibility>,
 ) {
-    let Ok((state, mut target, mut mana_text, animator)) = mana_labels.single_mut() else {
+    let Ok((mut state, mut target, mut mana_text, animator)) = mana_labels.single_mut() else {
         return;
     };
     let Ok(mut reserve_text) = reserve_labels.single_mut() else {
@@ -2089,44 +2103,72 @@ pub fn sync_mana_text_system(
     };
 
     if !is_hud_tween_active(animator) {
-        sync_mana_tween_target_to_authoritative(state, &mut target);
+        sync_mana_tween_target_to_authoritative(&state, &mut target);
     }
 
     if !target.is_populated {
         mana_text.0 = "-- / --".to_string();
         reserve_text.0.clear();
+        if state.preview_overdrawn {
+            state.preview_overdrawn = false;
+        }
         set_reserve_mana_visibility(&entities, &mut visibility, Visibility::Hidden);
         return;
     }
 
-    // PROMPT 1228 / HUNT-1201-12 — paint a projected mana/reserve readout
-    // while an affordable placement drag is in flight so the player can see
-    // the post-drop economy impact before releasing the card. Display-only;
-    // never mutates `ManaDisplayState` or `ManaTweenTarget`, so the next
-    // frame after the drag clears reverts to the authoritative numbers
-    // automatically. Resource look-ups are `Option<Res<…>>` so HUD plugins
-    // running without `HandUiPlugin` (existing tests) continue to compile.
-    let preview = active_drag
-        .as_deref()
-        .zip(hand_catalog.as_deref())
-        .and_then(|(drag, catalog)| {
-            compute_placement_drag_mana_preview(drag, catalog, &economy_view)
-        });
+    // PROMPT 1336 — paint a projected mana/reserve readout while an active
+    // PLACEMENT drag holds a Minion card with `cost > 0`. Already-staged
+    // `PendingPlacements` spend is subtracted from the authoritative pool
+    // first (AC6) so the multi-card staging flow reports the correct
+    // remainder. Non-Minion drags and zero-cost drags are suppressed (AC8)
+    // because the server-side mana split only fires for Minions. When the
+    // post-staged baseline cannot cover the cost the outcome flags
+    // `overdrawn` (AC5) and the HUD paints clamped `"0 / cap"` + cleared
+    // reserve so the negative affordance is visible without leaving stale
+    // numbers on screen. Display-only — never mutates `PlayerEconomyView`
+    // (ADR-002 binding). Resource look-ups remain `Option<Res<…>>` so HUD
+    // plugins running without `HandUiPlugin` (existing tests) keep
+    // compiling.
+    // AC7 — preview is gated on `Phase::Placement`. The upstream drag
+    // pipeline already clears `ActivePlacementDrag` outside Placement, so
+    // this gate is defensive: it skips the projection entirely so neither
+    // the in-flight cost nor the staged-spend baseline subtracts from the
+    // authoritative readout in non-PLACEMENT phases.
+    let outcome = if matches!(current_phase.phase, RoundPhase::Placement) {
+        compute_placement_drag_mana_preview(
+            active_drag.as_deref(),
+            hand_catalog.as_deref(),
+            pending_placements.as_deref(),
+            &economy_view,
+        )
+    } else {
+        ManaPreviewOutcome::suppressed(economy_view.current_mana, economy_view.reserve_mana)
+    };
 
-    if let Some((preview_current, preview_reserve)) = preview {
+    if !outcome.suppressed {
+        if state.preview_overdrawn != outcome.overdrawn {
+            state.preview_overdrawn = outcome.overdrawn;
+        }
         mana_text.0 = format!(
             "{} / {}",
-            preview_current,
+            outcome.current,
             display_numeric_value(target.mana_cap)
         );
-        if preview_reserve > 0 {
-            reserve_text.0 = format!("+{} reserve", preview_reserve);
+        if outcome.reserve > 0 {
+            reserve_text.0 = format!("+{} reserve", outcome.reserve);
             set_reserve_mana_visibility(&entities, &mut visibility, Visibility::Visible);
         } else {
             reserve_text.0.clear();
             set_reserve_mana_visibility(&entities, &mut visibility, Visibility::Hidden);
         }
         return;
+    }
+
+    // Suppressed branch — fall through to the existing authoritative paint and
+    // clear any prior overdraw marker so the AC4 reset path leaves no stale
+    // flag one frame past drag end / cancel / drop.
+    if state.preview_overdrawn {
+        state.preview_overdrawn = false;
     }
 
     mana_text.0 = format!(
@@ -2145,29 +2187,42 @@ pub fn sync_mana_text_system(
     }
 }
 
-/// PROMPT 1228 — return `Some((preview_current, preview_reserve))` when the
-/// active placement drag identifies an affordable card in the local hand
-/// catalog. Returns `None` otherwise (no active drag, unknown card, or
-/// unaffordable cost). Affordability and spend split match the helper in
-/// `crate::presentation::project_mana_after_spend`.
+/// PROMPT 1336 — sum the already-staged `PendingPlacements` spend, resolve the
+/// dragged card's `CardData`, and delegate to [`project_mana_preview`]. Always
+/// returns a [`ManaPreviewOutcome`]; `suppressed` is set whenever the helper
+/// should fall through to the existing authoritative paint (no active drag,
+/// unknown card, non-Minion card, or zero-cost card). Display-only;
+/// `&PlayerEconomyView` is borrowed immutably so ADR-002 server authority is
+/// preserved.
 fn compute_placement_drag_mana_preview(
-    drag: &ActivePlacementDrag,
-    catalog: &HandCardCatalog,
+    drag: Option<&ActivePlacementDrag>,
+    catalog: Option<&HandCardCatalog>,
+    pending_placements: Option<&PendingPlacements>,
     economy_view: &PlayerEconomyView,
-) -> Option<(u32, u32)> {
-    if drag.card.is_none() || drag.target_kind.is_none() {
-        return None;
-    }
-    let card_id = drag.card_id?;
-    let card = catalog.cards.get(&card_id)?;
-    if card.cost == 0 {
-        return None;
-    }
-    project_mana_after_spend(
-        economy_view.current_mana,
-        economy_view.reserve_mana,
-        card.cost,
-    )
+) -> ManaPreviewOutcome {
+    let (staged_current, staged_reserve) = pending_placements
+        .map(|pending| {
+            let staged_current: u32 = pending
+                .placements
+                .iter()
+                .map(|placement| placement.current_mana_spend)
+                .sum();
+            let staged_reserve: u32 = pending
+                .placements
+                .iter()
+                .map(|placement| placement.reserve_mana_spend)
+                .sum();
+            (staged_current, staged_reserve)
+        })
+        .unwrap_or((0, 0));
+
+    let card_def = drag
+        .filter(|drag| drag.card.is_some() && drag.target_kind.is_some())
+        .and_then(|drag| drag.card_id)
+        .zip(catalog)
+        .and_then(|(card_id, catalog)| catalog.cards.get(&card_id));
+
+    project_mana_preview(economy_view, card_def, staged_current, staged_reserve)
 }
 
 fn format_gold_text(state: &GoldDisplayState, owner: GoldLabelOwner) -> String {
