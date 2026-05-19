@@ -58,6 +58,10 @@ mod test_helpers;
 const VIEWPORT_PHYSICAL_SIZE: UVec2 = UVec2::new(1280, 720);
 const TARGET_LANE: u8 = 2;
 const TARGET_CELL: u8 = 5;
+const FIRST_LANE: u8 = 1;
+const FIRST_CELL: u8 = 2;
+const SECOND_LANE: u8 = 3;
+const SECOND_CELL: u8 = 6;
 const LOCAL_PLAYER_ID: PlayerId = PlayerId(7);
 
 #[test]
@@ -201,6 +205,106 @@ fn no_cursor_during_drag_leaves_drop_target_none_so_click_fallback_can_take_over
     );
 }
 
+#[test]
+fn interaction_press_drag_tracks_window_cursor_cell_changes_and_drops_last_cell() {
+    test_helpers::init_test_tracing();
+
+    let (mut app, camera) = app_with_board_camera_and_window();
+    set_hand(&mut app, [CardId(100)]);
+    spawn_board_cells(&mut app);
+    app.update();
+
+    let slot = fan_slot(&mut app, 0);
+    let first_world = app
+        .world()
+        .resource::<BoardLayout>()
+        .cell_to_world(FIRST_LANE, FIRST_CELL);
+    let second_world = app
+        .world()
+        .resource::<BoardLayout>()
+        .cell_to_world(SECOND_LANE, SECOND_CELL);
+    let first_viewport = camera_world_to_viewport(&app, camera, first_world);
+    let second_viewport = camera_world_to_viewport(&app, camera, second_world);
+
+    let mut drop_cursor = drained_cursor::<HandUiPlacementDropResolved>(&app);
+    let mut cursor_moved_cursor = drained_cursor::<HandUiPlacementCursorMoved>(&app);
+
+    // Real UI clicks first surface as `Interaction::Pressed`, not always as a
+    // bevy_picking Pointer<Press>. In staging, that must begin a drag instead
+    // of immediately taking the default-click staging path.
+    press_fan_slot_interaction(&mut app, slot);
+    app.update();
+    assert!(
+        active_drag_active(&app),
+        "Interaction::Pressed on an active staging fan card must start ActivePlacementDrag",
+    );
+
+    set_window_cursor(&mut app, first_viewport);
+    app.update();
+    let first_drag = *app.world().resource::<ActivePlacementDrag>();
+    assert!(
+        (first_drag
+            .cursor_world_position
+            .expect("first cursor world")
+            - first_world)
+            .length()
+            < 0.5,
+        "first window cursor update must resolve to the first board cell",
+    );
+
+    set_window_cursor(&mut app, second_viewport);
+    app.update();
+    let second_drag = *app.world().resource::<ActivePlacementDrag>();
+    assert!(
+        (second_drag
+            .cursor_world_position
+            .expect("second cursor world")
+            - second_world)
+            .length()
+            < 0.5,
+        "second window cursor update must replace the first board-cell target",
+    );
+
+    let cursor_moves = messages_since(&app, &mut cursor_moved_cursor);
+    assert!(
+        cursor_moves.len() >= 2,
+        "window cursor movement during an Interaction-started drag must emit cursor-moved messages",
+    );
+    assert_eq!(
+        cursor_moves.last().and_then(|m| m.screen_position),
+        Some(second_viewport),
+        "the last cursor-moved message must carry the final screen position",
+    );
+
+    release_primary_mouse(&mut app);
+    app.update();
+
+    let drops: Vec<_> = messages_since(&app, &mut drop_cursor);
+    assert_eq!(
+        drops,
+        vec![HandUiPlacementDropResolved {
+            card: slot,
+            owner_id: LOCAL_PLAYER_ID,
+            target: Some(PlayTarget::BoardCell {
+                lane: SECOND_LANE,
+                cell: SECOND_CELL,
+            }),
+        }],
+        "mouse release must drop on the latest cursor-derived cell, not the default fallback",
+    );
+
+    let pending = &app.world().resource::<PendingPlacements>().placements;
+    assert_eq!(pending.len(), 1);
+    assert_eq!(
+        pending[0].target,
+        PlayTarget::BoardCell {
+            lane: SECOND_LANE,
+            cell: SECOND_CELL,
+        },
+        "staged placement must consume the latest cursor-derived cell",
+    );
+}
+
 // ── App / camera / window setup ──────────────────────────────────────────────
 
 fn app_with_board_camera_and_window() -> (App, Entity) {
@@ -256,6 +360,19 @@ fn set_window_cursor(app: &mut App, logical_position: Vec2) {
         .single_mut(app.world_mut())
         .expect("PrimaryWindow must exist before set_window_cursor is called");
     window.set_cursor_position(Some(logical_position));
+}
+
+fn press_fan_slot_interaction(app: &mut App, slot: Entity) {
+    *app.world_mut()
+        .entity_mut(slot)
+        .get_mut::<Interaction>()
+        .expect("fan slot must carry Interaction") = Interaction::Pressed;
+}
+
+fn release_primary_mouse(app: &mut App) {
+    let mut buttons = app.world_mut().resource_mut::<ButtonInput<MouseButton>>();
+    buttons.press(MouseButton::Left);
+    buttons.release(MouseButton::Left);
 }
 
 fn spawn_world_space_camera(app: &mut App, viewport_size: UVec2) -> Entity {
