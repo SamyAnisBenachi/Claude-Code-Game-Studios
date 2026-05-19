@@ -346,6 +346,36 @@ pub struct ShopAuctionAuctionState {
 }
 
 impl ShopAuctionAuctionState {
+    /// PROMPT 1397 / S18-AUCTION-LEADER-RESET-ON-CARD-001 (AUDIT-1392-P03).
+    /// Single chokepoint that ingests an incoming `S2CAuctionCard` and resets
+    /// every per-auction field that the previous auction's lifecycle may have
+    /// left non-default. The wire message itself carries only `card_id`,
+    /// `starting_price`, and `timer_duration_ms`; nothing on the wire clears
+    /// `current_leader` (it is set only by `S2CAuctionBidAccepted`). Without
+    /// an explicit local reset the previous winner's identity would leak into
+    /// the new auction's empty-bid window, painting "OPPONENT LEADING" /
+    /// "YOU ARE LEADING" before any bid lands (the bug PROMPT 1392's audit
+    /// observed across rounds R3 → R6 in the 2026-05-18 capture).
+    ///
+    /// Fields reset here:
+    /// - `card_id`, `starting_price`, `current_price` — bind to the new card.
+    /// - `current_leader = None` — the audit's "leader stickiness" closure.
+    /// - `timer_duration_ms` — new wall-clock budget for the countdown.
+    /// - `timer_remaining_ms = 0` — Preparing-state default; `enter_active`
+    ///   bumps this to `timer_duration_ms` when the live-bidding panel opens.
+    /// - `locally_expired_elapsed_ms = 0` — drops any prior local-expiry
+    ///   countup so the new auction starts unmarked.
+    /// - `clear_bid_resolution_state()` — drops `in_flight_bid_amount` /
+    ///   `pending_bid_accepted` / gold-broadcast gate counters so the prior
+    ///   auction's in-flight bid + opponent-bid-gate state cannot bleed
+    ///   into the new auction's bid-button decision logic.
+    ///
+    /// `AuctionFeaturedCardLeadLossState` is derived from `current_leader`
+    /// in [`auction_featured_card_lead_loss_state`], so clearing
+    /// `current_leader` here transitively resets the lead-loss colour band
+    /// before `sync_auction_panel_system` reads the resource. The
+    /// `MessageDrain` → `StateSync` set ordering in [`ShopAuctionUiPlugin`]
+    /// guarantees this happens in the same frame the card arrives.
     fn buffer_card(&mut self, message: &S2CAuctionCard) {
         self.card_id = Some(message.card_id);
         self.starting_price = message.starting_price;
