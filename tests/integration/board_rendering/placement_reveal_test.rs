@@ -6,9 +6,10 @@ use bevy::state::app::StatesPlugin;
 use bevy::time::TimeUpdateStrategy;
 use client::card_animations::{CardAnimationsPlugin, PlacementRevealAnimReady};
 use client::presentation::board_rendering::{
-    BoardRenderState, BoardRenderingPlugin, BoardRevealTimingConfig, BoardUnit, BoardUnitCard,
-    BoardUnitOwner, PendingResolutionScript, PlacementRevealCollectState, ResolutionRevealWait,
-    SnapshotRecoveryReason, SnapshotRecoveryRequested,
+    revealed_placement_unit_state, BoardRenderState, BoardRenderingPlugin, BoardRevealTimingConfig,
+    BoardUnit, BoardUnitCard, BoardUnitOwner, BoardUnitRenderSource, PendingResolutionScript,
+    PlacementRevealCollectState, ResolutionRevealWait, SnapshotRecoveryReason,
+    SnapshotRecoveryRequested,
 };
 use client::presentation::LaneCell;
 use client::state::ClientState;
@@ -132,6 +133,27 @@ fn test_pending_resolution_script_stuck_requests_snapshot_and_keeps_script() {
     );
 }
 
+#[test]
+fn test_placement_reveal_unit_state_is_visible_without_authoritative_snapshot() {
+    let unit = revealed_placement_unit_state(player(2), CardId(101), 3, 7);
+
+    assert_eq!(unit.owner_id, player(2));
+    assert_eq!(unit.card_id, Some(CardId(101)));
+    assert_eq!(
+        unit.location,
+        shared::protocol::UnitBoardLocation::BoardCell { lane: 3, cell: 7 }
+    );
+    assert_eq!(
+        unit.unit_id & 0xF000_0000_0000_0000,
+        0xF000_0000_0000_0000,
+        "placement-reveal fallback units use a deterministic synthetic id namespace"
+    );
+    assert!(
+        unit.stats.is_none(),
+        "S2CPlacementReveal carries accepted placement records, not authoritative stats"
+    );
+}
+
 fn app_in_session() -> App {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins);
@@ -167,6 +189,7 @@ fn spawn_board_unit(
     app.world_mut()
         .spawn((
             BoardUnit { unit_id },
+            BoardUnitRenderSource::AuthoritativeSnapshot,
             BoardUnitOwner(owner_id),
             BoardUnitCard {
                 card_id: Some(card_id),

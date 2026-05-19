@@ -99,9 +99,9 @@ use serde::Serialize;
 
 use crate::presentation::board_rendering::{
     BoardEnvelope, BoardLocalPlayer, BoardRenderState, BoardUnit, BoardUnitCard, BoardUnitOwner,
-    BoardUnitStats, ObjectiveArtKind, SourceCardLink, StandingObjective, StandingObjectiveArt,
-    StandingObjectiveHp, TargetingDimWash, TargetingEndpointRing, TargetingInvalidMarker,
-    TargetingOverlayState, TargetingValidRing,
+    BoardUnitRenderSource, BoardUnitStats, ObjectiveArtKind, SourceCardLink, StandingObjective,
+    StandingObjectiveArt, StandingObjectiveHp, TargetingDimWash, TargetingEndpointRing,
+    TargetingInvalidMarker, TargetingOverlayState, TargetingValidRing,
 };
 use crate::presentation::shared::economy_view::{PlayerEconomyView, PlayerEconomyViewUpdateSource};
 use crate::state::{
@@ -1345,6 +1345,7 @@ pub struct BoardSnapshot {
 pub struct BoardUnitSnapshot {
     pub entity: String,
     pub unit_id: u64,
+    pub render_source: Option<String>,
     pub owner_id: String,
     pub card_id: Option<u32>,
     pub frame_index: Option<usize>,
@@ -1478,6 +1479,7 @@ pub struct ExtrasBoardInputs<'w, 's> {
             &'static BoardUnitOwner,
             Option<&'static BoardUnitCard>,
             Option<&'static BoardUnitStats>,
+            Option<&'static BoardUnitRenderSource>,
         ),
     >,
     pub objectives: Query<
@@ -1978,18 +1980,14 @@ fn build_shop_auction_snapshot(
     // the top-level snapshot projection. Absent resource → None;
     // resource present but `Idle` (`state == None`) → also None so the
     // top-level block is correctly absent.
-    let auction_won_pending_state =
-        inputs
-            .auction_won_pending
-            .as_deref()
-            .and_then(|pending| {
-                pending.state.map(|s| AuctionWonPendingExtrasSnapshot {
-                    card_id: s.card_id.0,
-                    settle_round: s.settle_round,
-                    staged_yet: s.staged_yet,
-                    submitted_yet: s.submitted_yet,
-                })
-            });
+    let auction_won_pending_state = inputs.auction_won_pending.as_deref().and_then(|pending| {
+        pending.state.map(|s| AuctionWonPendingExtrasSnapshot {
+            card_id: s.card_id.0,
+            settle_round: s.settle_round,
+            staged_yet: s.staged_yet,
+            submitted_yet: s.submitted_yet,
+        })
+    });
 
     if ui_mode.is_none()
         && draft_initial_res.is_none()
@@ -2126,7 +2124,7 @@ fn build_board_snapshot(inputs: &ExtrasBoardInputs<'_, '_>) -> BoardSnapshot {
 
     let mut units = Vec::new();
     let mut units_truncated = false;
-    for (entity, board_unit, owner, card, stats) in inputs.units.iter() {
+    for (entity, board_unit, owner, card, stats, source) in inputs.units.iter() {
         if units.len() >= MAX_BOARD_ENTITIES_PER_KIND {
             units_truncated = true;
             break;
@@ -2134,6 +2132,7 @@ fn build_board_snapshot(inputs: &ExtrasBoardInputs<'_, '_>) -> BoardSnapshot {
         units.push(BoardUnitSnapshot {
             entity: format!("{:?}", entity),
             unit_id: board_unit.unit_id,
+            render_source: source.map(|source| format!("{:?}", source)),
             owner_id: format!("{:?}", owner.0),
             card_id: card.and_then(|c| c.card_id).map(|c| c.0),
             frame_index: card.map(|c| c.frame_index),
@@ -3404,8 +3403,7 @@ pub fn build_snapshot_with_extras_and_layout(
     // scoped to the auction-followup PLACEMENT window) AND a pending
     // disposition is armed. Absent otherwise (see
     // [`AuctionWonPendingSnapshot`]).
-    let auction_won_pending =
-        build_auction_won_pending_snapshot(&extras, &current_phase_info);
+    let auction_won_pending = build_auction_won_pending_snapshot(&extras, &current_phase_info);
 
     QASnapshotData {
         snapshot_id,
