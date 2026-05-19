@@ -1,6 +1,6 @@
 # PROMPT 1439 -- BOT-PLAYER-FOUNDATION-SCAFFOLD-MAIN-LAND-REFRESH
 
-Status: PENDING_MAIN_PUSH
+Status: LANDED
 
 ## Base
 
@@ -21,6 +21,7 @@ Status: PENDING_MAIN_PUSH
 - Worktree: `D:\Tmp\ccgs-prompt-1439`
 - Branch: `refresh/bot-player-foundation-scaffold-1439`
 - Scaffold refresh commit: `43981637`
+- Final report/status commit: `7ad9c086` was pushed, then this report was updated to record the successful main land.
 
 ## Changed Files
 
@@ -55,12 +56,14 @@ Cargo required sandbox escalation because the shared target directory lock file 
 
 ## Push Status
 
-- Main push not attempted yet at initial report authoring.
-- This report will be updated after the main-land attempt.
+- Main push succeeded.
+- Command: `git push origin HEAD:main`
+- Result: `77c5316e..7ad9c086  HEAD -> main`
+- Follow-up report correction commit records the landed state.
 
 ## Next Unblocked Bot Work
 
 - Build the first bot decision system on top of the server-only `BotState` and `BotPlayers` resources.
 - Keep protocol/networking untouched until a later story explicitly wires bot seats into multiplayer flow.
 
-Final line: `1439: BOT-PLAYER-FOUNDATION-SCAFFOLD-MAIN-LAND-REFRESH: PENDING_MAIN_PUSH`
+Final line: `1439: BOT-PLAYER-FOUNDATION-SCAFFOLD-MAIN-LAND-REFRESH: LANDED`
