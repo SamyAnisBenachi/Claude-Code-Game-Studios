@@ -25,6 +25,7 @@ use crate::ui::design_tokens::{
     },
     overlays,
     spacing::{SPACING_LG, SPACING_MD, SPACING_SM, SPACING_XL},
+    status_chip::StatusChip,
     typography, z_layers,
 };
 
@@ -229,6 +230,26 @@ pub struct LobbyRoot;
 /// (`width: 88%`, `max_width: 860 Px`, `max_height: 92%`) per PROMPT 933.
 #[derive(Component)]
 pub struct LobbyPanel;
+
+/// PROMPT 1398 (S18-LOBBY-CONFIRM-CTA-VIEWPORT-REACHABILITY-001) — body
+/// region that owns every panel child ABOVE the Confirm CTA (status banner,
+/// room-code chip, create/join row, optional existing-room browser, optional
+/// requested-slot row, class picker, slot status chips). The body region
+/// carries `flex_grow: 1.0`, `flex_shrink: 1.0`, `min_height: 0.0`, and
+/// `overflow: clip_y`, so when the cumulative body content exceeds the
+/// panel's `max_height: 92%` content area the body is the slot that
+/// absorbs the pressure — the Confirm CTA (the next sibling, with
+/// `flex_shrink: 0.0`) stays anchored to the panel's bottom edge and on
+/// every supported viewport (1280×720, 1366×768, 1920×1080).
+///
+/// AUDIT-1392-P04 / HUNT-1201-01: users could pick a class but never reach
+/// the Confirm CTA at 1280×720 because the body content silently overflowed
+/// past the panel clamp, pushing the CTA below the visible viewport. This
+/// wrapper structurally guarantees the CTA stays reachable regardless of
+/// how dense the body content becomes (room-list rows, slot panels, future
+/// additions).
+#[derive(Component)]
+pub struct LobbyPanelBody;
 
 /// Class-picker region container. Owns the region heading and the class grid
 /// so portraits and selectable controls no longer wrap as independent rows.
@@ -1189,6 +1210,30 @@ fn spawn_lobby_ui_system(
                 z_layers::MODAL,
             ))
             .with_children(|panel| {
+                // PROMPT 1398 — body region. Owns every panel child ABOVE
+                // the Confirm CTA so that when content density grows past
+                // the panel's `max_height: 92%` content area, the body
+                // (flex_grow:1, flex_shrink:1, min_height:0, overflow:
+                // clip_y) absorbs the pressure. The Confirm CTA is the
+                // next sibling at the panel level with `flex_shrink:0.0`,
+                // so it stays anchored to the panel's bottom edge on
+                // every supported viewport (1280×720, 1366×768, 1920×1080).
+                panel
+                    .spawn((
+                        LobbyPanelBody,
+                        Name::new("Lobby Panel Body"),
+                        Node {
+                            width: Val::Percent(100.0),
+                            flex_direction: FlexDirection::Column,
+                            flex_grow: 1.0,
+                            flex_shrink: 1.0,
+                            min_height: Val::Px(0.0),
+                            row_gap: Val::Px(SPACING_MD),
+                            overflow: Overflow::clip_y(),
+                            ..default()
+                        },
+                    ))
+                    .with_children(|panel| {
                 // Section 1 — status banner + room-code chip (read-order
                 // top-of-panel per AC3(e) "status / room-code -> ...").
                 panel.spawn((
@@ -1201,6 +1246,12 @@ fn spawn_lobby_ui_system(
                 panel
                     .spawn((
                         LobbyRoomCodeChip,
+                        // PROMPT 1398 — the room-code chip is a read-only
+                        // status label (not a Button). Mark it explicitly
+                        // with the canonical `StatusChip` token so QA
+                        // queries can distinguish chips from primary
+                        // buttons at runtime.
+                        StatusChip,
                         Name::new("Lobby Room Code Chip"),
                         Node {
                             width: Val::Px(LOBBY_ROOM_CODE_CHIP_WIDTH_PX),
@@ -1366,10 +1417,21 @@ fn spawn_lobby_ui_system(
                 if lobby.session_id.is_none() {
                     // Sprint 14 story 003 AC6: lobby labels are at least as
                     // large as the data they describe.
+                    //
+                    // PROMPT 1398 — make the leading word render as
+                    // helper copy ("Pick a slot for manual join") so it
+                    // reads as instructional text, NOT as a heading
+                    // that competes with the gold Confirm CTA for the
+                    // user's attention. AUDIT-1392-P04 noted that the
+                    // legacy "Requested slot" label phrased like a
+                    // button label even though the row's actual
+                    // affordance is the four slot buttons immediately
+                    // below it.
                     panel.spawn((
                         LobbyRequestedSlotLabel,
-                        Text::new("Requested slot (manual join)"),
-                        lobby_text_font(typography::BODY),
+                        Text::new("Pick a slot for manual join (0–3):"),
+                        lobby_text_font(typography::CAPTION),
+                        TextColor(Color::srgba(0.78, 0.84, 0.92, 0.86)),
                     ));
                     panel.spawn((lobby_row_node(),)).with_children(|row| {
                         for slot in 0..=3 {
@@ -1585,6 +1647,16 @@ fn spawn_lobby_ui_system(
                 panel.spawn((lobby_row_node(),)).with_children(|row| {
                     row.spawn((
                         LobbyOwnSlotPanel,
+                        // PROMPT 1398 — the slot panel is a read-only
+                        // status chip that announces "you · class · slot
+                        // N". The visible glyph reads like the gold CTA
+                        // when the user scans the panel from the top
+                        // (AUDIT-1392-P04 "you are slot 1 looks like a
+                        // button"); the `StatusChip` marker codifies the
+                        // read-only role at the ECS level so QA queries
+                        // and accessibility tooling can distinguish it
+                        // from primary actions.
+                        StatusChip,
                         Name::new("Lobby Own Slot Panel"),
                         Node {
                             width: Val::Px(LOBBY_SLOT_PANEL_WIDTH_PX),
@@ -1607,12 +1679,20 @@ fn spawn_lobby_ui_system(
                                 &lobby,
                                 &input,
                             )),
-                            lobby_text_font(typography::BODY),
+                            // PROMPT 1398 — drop slot-panel text to
+                            // `CAPTION` so it reads as a secondary label
+                            // (paired with the muted tint), not a
+                            // button-sized headline. Friend-game scope:
+                            // the slot chip is informational only.
+                            lobby_text_font(typography::CAPTION),
                             TextColor(Color::srgb(0.95, 0.97, 1.0)),
                         ));
                     });
                     row.spawn((
                         LobbyOpponentSlotPanel,
+                        // PROMPT 1398 — opponent-slot status chip; see
+                        // own-slot panel for rationale.
+                        StatusChip,
                         Name::new("Lobby Opponent Slot Panel"),
                         Node {
                             width: Val::Px(LOBBY_SLOT_PANEL_WIDTH_PX),
@@ -1635,30 +1715,20 @@ fn spawn_lobby_ui_system(
                                 &lobby,
                                 &input,
                             )),
-                            lobby_text_font(typography::BODY),
+                            lobby_text_font(typography::CAPTION),
                             TextColor(Color::srgb(0.86, 0.90, 0.96)),
                         ));
                     });
                 });
 
-                // Section separator before the confirm CTA (final section).
-                panel.spawn((
-                    Name::new("Lobby Section Separator 3"),
-                    Node {
-                        width: Val::Percent(100.0),
-                        height: Val::Px(0.0),
-                        margin: UiRect {
-                            top: Val::Px(SPACING_XL - SPACING_MD),
-                            ..default()
-                        },
-                        ..default()
-                    },
-                ));
+                    });
 
-                // Section 5 — confirm CTA. Last child per AC3(e) read
-                // order; PROMPT 802 §3.1 L4 "portraits / slot panels /
-                // room-code chip render below confirm" inversion is
-                // resolved by placing the CTA last in the panel.
+                // Section 5 — confirm CTA. Last DIRECT child of the
+                // panel per AC3(e) read order; PROMPT 802 §3.1 L4
+                // "portraits / slot panels / room-code chip render below
+                // confirm" inversion is resolved by placing the CTA last
+                // at the panel level (immediately after the
+                // [`LobbyPanelBody`] body region above).
                 //
                 // PROMPT 985: `flex_shrink: 0.0` keeps the CTA at its
                 // canonical 30 px even if other panel children expand
@@ -1671,6 +1741,16 @@ fn spawn_lobby_ui_system(
                 // matches the per-frame refresh — the button reads as
                 // a real primary CTA from frame 0, not as a dim text
                 // band waiting for the first interaction to repaint.
+                //
+                // PROMPT 1398: `margin.top = SPACING_XL - SPACING_MD`
+                // preserves the legacy "section separator" air-gap
+                // (`SPACING_XL` total cumulative gap counting the
+                // panel's `row_gap: SPACING_MD`) between the body
+                // region's last child and the CTA, without needing a
+                // zero-height separator entity. The pair (body region
+                // with `flex_grow: 1.0`, CTA with `flex_shrink: 0.0`)
+                // is what structurally anchors the CTA to the panel
+                // bottom — the margin is just the chrome.
                 let initial_state =
                     lobby_confirm_button_style_state(&lobby, &input, Interaction::None);
                 let (BackgroundColor(initial_bg), initial_border, initial_text_color) =
@@ -1689,6 +1769,10 @@ fn spawn_lobby_ui_system(
                     initial_text_color,
                     Node {
                         flex_shrink: 0.0,
+                        margin: UiRect {
+                            top: Val::Px(SPACING_XL - SPACING_MD),
+                            ..default()
+                        },
                         ..lobby_button_node(
                             Val::Percent(LOBBY_CONFIRM_BUTTON_WIDTH_PERCENT),
                             LOBBY_CONFIRM_BUTTON_HEIGHT_PX,

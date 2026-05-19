@@ -24,7 +24,7 @@ use client::ui::design_tokens::typography;
 use client::ui::lobby::{
     lobby_all_class_ids, lobby_class_options, LobbyClassButton, LobbyClassPickerBlock,
     LobbyClassPickerCell, LobbyClassPickerGrid, LobbyClassPickerHeading, LobbyClassPortrait,
-    LobbyInputState, LobbyPanel, LobbyUiPlugin, LOBBY_CLASS_PICKER_BUTTON_WIDTH_PX,
+    LobbyInputState, LobbyPanel, LobbyPanelBody, LobbyUiPlugin, LOBBY_CLASS_PICKER_BUTTON_WIDTH_PX,
     LOBBY_CLASS_PICKER_CELL_HEIGHT_PX, LOBBY_CLASS_PICKER_CELL_WIDTH_PX,
     LOBBY_CLASS_PICKER_GRID_COLUMNS, LOBBY_CLASS_PICKER_SELECTABLE_COUNT, LOBBY_PANEL_MAX_WIDTH_PX,
     LOBBY_PANEL_WIDTH_PERCENT,
@@ -132,9 +132,28 @@ fn ac1_class_picker_is_one_hierarchical_block() {
         "AC1: exactly one hierarchical class-picker block must exist"
     );
     let block_entity = block_entities[0];
+    // PROMPT 1398 — the class-picker block used to be a direct child of
+    // `LobbyPanel`; it is now a direct child of the [`LobbyPanelBody`]
+    // wrapper that the panel owns, which sits between the panel and
+    // the picker block so that body content can absorb overflow
+    // pressure without displacing the Confirm CTA. The block must
+    // still be a child of the body wrapper that itself is a direct
+    // child of the panel.
+    let body_entity = {
+        let mut bodies = world.query_filtered::<Entity, With<LobbyPanelBody>>();
+        bodies
+            .single(world)
+            .expect("AC1: single LobbyPanelBody exists after lobby spawn")
+    };
     assert!(
-        child_entities(world, panel_entity).contains(&block_entity),
-        "AC1: LobbyClassPickerBlock must be a direct child of LobbyPanel"
+        child_entities(world, panel_entity).contains(&body_entity),
+        "AC1: LobbyPanelBody must be a direct child of LobbyPanel \
+         (PROMPT 1398 body region wraps every non-CTA panel child)"
+    );
+    assert!(
+        child_entities(world, body_entity).contains(&block_entity),
+        "AC1: LobbyClassPickerBlock must be a direct child of \
+         LobbyPanelBody (post-PROMPT 1398 hierarchy)"
     );
 
     let block_children = child_entities(world, block_entity);
