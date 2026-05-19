@@ -86,6 +86,18 @@ $ScriptDir    = Split-Path -Parent $MyInvocation.MyCommand.Path
 $ToolsDir     = Split-Path -Parent $ScriptDir
 $LauncherRoot = Split-Path -Parent $ToolsDir
 
+# PROMPT 1402: load the build-provenance helper module so we can write a
+# build.json beside server.log/client_a.log/client_b.log. Failing to import
+# the helper must never block a launch -- we degrade to no-build.json.
+$BuildProvenanceModule = Join-Path $ScriptDir 'BuildProvenance.psm1'
+$BuildProvenanceLoaded = $false
+try {
+    Import-Module $BuildProvenanceModule -Force -ErrorAction Stop
+    $BuildProvenanceLoaded = $true
+} catch {
+    Write-Warning "BuildProvenance helper failed to import ($BuildProvenanceModule): $($_.Exception.Message). Continuing without build.json."
+}
+
 $DefaultPlayRoot = 'D:\_DEV\ccgs-play-main'
 $PlayRoot        = ''
 $PlayRootSource  = ''
@@ -207,6 +219,75 @@ Write-Host "Evidence dir: $evidenceDir"
 $serverLog  = Join-Path $evidenceDir 'server.log'
 $clientALog = Join-Path $evidenceDir 'client_a.log'
 $clientBLog = Join-Path $evidenceDir 'client_b.log'
+
+# ---- 5b. Build provenance (PROMPT 1402) ----------------------------------
+# Write `build.json` beside the log files so a captured test binary can be
+# tied back to a specific origin/main commit. If the helper module did not
+# load, or the evidence dir doesn't exist (DryRun), log the reason and
+# continue -- never block the launch on provenance failures.
+Write-Section "Build provenance"
+if (-not $BuildProvenanceLoaded) {
+    Write-Host "build.json: BuildProvenance helper not loaded -- skipped."
+} elseif ($DryRun) {
+    Write-Host "build.json: -DryRun in effect, evidence dir was not created -- skipped."
+} elseif (-not (Test-Path $evidenceDir)) {
+    Write-Host "build.json: evidence dir '$evidenceDir' missing -- skipped (launch continues)."
+} else {
+    $launcherRel = 'tools/dev-launcher/Start-TwoClients.ps1'
+    $launcherRootNorm = ''
+    $playRootNorm     = ''
+    try {
+        $launcherRootNorm = [System.IO.Path]::GetFullPath($LauncherRoot)
+        $playRootNorm     = [System.IO.Path]::GetFullPath($RepoRoot)
+    } catch { }
+    $isLauncherRoot   = ($launcherRootNorm -ne '' -and $launcherRootNorm -ieq $playRootNorm)
+    $autoSwitchedOrDedicated = (-not $isLauncherRoot)
+
+    $gitProv      = Read-CcgsGitProvenance -Path $RepoRoot
+    $serverInfo   = Read-CcgsBinaryInfo   -Path $serverBin
+    $clientInfo   = Read-CcgsBinaryInfo   -Path $clientBin
+    $cargoEnv     = Get-CcgsCargoEnvSnapshot
+    $targetProfDir = Join-Path $env:CARGO_TARGET_DIR $profileDir
+    $lastRebuild  = Read-CcgsLastBuildProvenance -TargetProfileDir $targetProfDir
+
+    # Build commands the launcher would invoke for missing-binary recovery.
+    # If neither was missing this run, an empty array is honest about it.
+    $buildCmds = @()
+    if ($needServer) {
+        if ($Release) { $buildCmds += 'cargo build --release -p server' } else { $buildCmds += 'cargo build -p server' }
+    }
+    if ($needClient) {
+        if ($Release) { $buildCmds += 'cargo build --release -p client --bin client' } else { $buildCmds += 'cargo build -p client --bin client' }
+    }
+
+    $payload = New-CcgsBuildProvenance `
+        -Context 'launch' `
+        -GeneratedAtUtc (Get-Date).ToUniversalTime() `
+        -RepoRoot $RepoRoot `
+        -RepoRootSource $PlayRootSource `
+        -IsLauncherRoot $isLauncherRoot `
+        -AutoSwitchedOrDedicated $autoSwitchedOrDedicated `
+        -Git $gitProv `
+        -BuildProfile $profileDir `
+        -BuildCommands $buildCmds `
+        -TargetDir $env:CARGO_TARGET_DIR `
+        -ServerBinary $serverInfo `
+        -ClientBinary $clientInfo `
+        -CargoEnv $cargoEnv `
+        -LauncherScript $launcherRel `
+        -LastRebuild $lastRebuild
+
+    $written = Write-CcgsBuildProvenance -EvidenceDir $evidenceDir -Payload $payload
+    if ($written) {
+        Write-Host "build.json written: $written"
+        if ($gitProv.head_short) { Write-Host "  HEAD = $($gitProv.head_short) on '$($gitProv.branch)' (clean=$($gitProv.is_clean))" }
+        if ($lastRebuild -and $lastRebuild.git -and $lastRebuild.git.head_short) {
+            Write-Host "  Last rebuild = $($lastRebuild.git.head_short) on '$($lastRebuild.git.branch)' at $($lastRebuild.generated_at_utc)"
+        } else {
+            Write-Host "  No prior rebuild sidecar found at $targetProfDir\last-build-provenance.json"
+        }
+    }
+}
 
 # ---- 6. Start server -----------------------------------------------------
 Write-Section "Start server"
