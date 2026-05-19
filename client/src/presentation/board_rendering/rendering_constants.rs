@@ -20,6 +20,7 @@ pub const Z_HEALTH_BARS: f32 = 3.1;
 // so a placement ghost preview never gets occluded by the link.
 pub const Z_SOURCE_CARD_LINK: f32 = 3.3;
 pub const Z_GHOST_UNIT: f32 = 3.5;
+pub const Z_GRID_OVERLAY: f32 = 3.6;
 
 pub const Z_BOARD_CAMERA: f32 = 999.0;
 pub const CELL_NODE_SIZE: f32 = 28.0;
