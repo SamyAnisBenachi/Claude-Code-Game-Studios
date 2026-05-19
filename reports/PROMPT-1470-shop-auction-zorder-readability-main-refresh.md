@@ -4,8 +4,6 @@ Status: READY_FOR_MAIN_LAND
 
 Branch: `work/1470-shop-auction-zorder-readability-main-refresh`
 
-Local HEAD: `85610842`
-
 Worktree: `D:\_DEV\claude-code-game-studios-worktrees\shop-auction-zorder-readability-main-refresh-1470`
 
 ## Summary
