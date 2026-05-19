@@ -6,11 +6,12 @@ use bevy::prelude::*;
 use bevy::state::app::StatesPlugin;
 use client::presentation::board_rendering::rendering_constants::{
     Z_BOARD_CAMERA, Z_CELL_NODES, Z_FIELD_WASH, Z_GHOST_UNIT, Z_GRID_OVERLAY, Z_HEALTH_BARS,
-    Z_OBJECTIVES, Z_TRAPS_STRUCTURES, Z_UNITS,
+    Z_LANE_RAILS, Z_LANE_SURFACE, Z_OBJECTIVES, Z_TRAPS_STRUCTURES, Z_UNITS,
 };
 use client::presentation::board_rendering::{
     BoardCamera, BoardCellNode, BoardGridOverlayLine, BoardGridOverlayState,
-    BoardGridOverlayToggleButton, BoardRenderingPlugin, SpawnHighlightState,
+    BoardGridOverlayToggleButton, BoardLaneRail, BoardLaneSurface, BoardRenderingPlugin,
+    SpawnHighlightState,
 };
 use client::presentation::{BoardLayout, LaneCell};
 use client::state::ClientState;
@@ -92,17 +93,64 @@ fn test_board_cells_are_world_space_sprites_not_ui_nodes() {
 }
 
 #[test]
+fn test_board_lane_surfaces_add_physical_lanes_without_picking() {
+    let mut app = app_in_session();
+    let world = app.world_mut();
+    let layout = *world
+        .get_resource::<BoardLayout>()
+        .expect("BoardLayout should exist during session");
+
+    let mut surfaces = world.query_filtered::<
+        (&BoardLaneSurface, &Sprite, &Transform, Option<&Pickable>),
+        With<BoardLaneSurface>,
+    >();
+    let surface_rows: Vec<_> = surfaces.iter(world).collect();
+    assert_eq!(surface_rows.len(), usize::from(BOARD_LANE_COUNT));
+
+    for (surface, sprite, transform, pickable) in surface_rows {
+        let lane_start = layout.cell_to_world(surface.lane, 1);
+        let lane_end = layout.cell_to_world(surface.lane, BOARD_CELL_COUNT);
+        let center = (lane_start + lane_end) * 0.5;
+        assert_eq!(transform.translation.x, center.x);
+        assert_eq!(transform.translation.y, center.y);
+        assert_eq!(transform.translation.z, Z_LANE_SURFACE);
+        assert_eq!(
+            sprite
+                .custom_size
+                .expect("lane surface size should be fixed")
+                .y,
+            layout.lane_height * 0.82
+        );
+        assert!(
+            pickable.is_none(),
+            "lane surfaces must not participate in placement picking"
+        );
+    }
+
+    let mut rails = world.query_filtered::<(&Transform, Option<&Pickable>), With<BoardLaneRail>>();
+    let rail_rows: Vec<_> = rails.iter(world).collect();
+    assert_eq!(rail_rows.len(), usize::from(BOARD_LANE_COUNT + 1));
+    for (transform, pickable) in rail_rows {
+        assert_eq!(transform.translation.z, Z_LANE_RAILS);
+        assert!(
+            pickable.is_none(),
+            "lane rails must not participate in placement picking"
+        );
+    }
+}
+
+#[test]
 fn test_spawn_highlight_state_uses_cell_tint_not_extra_z_layer() {
     assert_eq!(
         SpawnHighlightState::Inactive.tint(),
-        Color::srgba(0.12, 0.24, 0.30, 0.55)
+        Color::srgba(0.17, 0.29, 0.33, 0.72)
     );
     assert_eq!(
         SpawnHighlightState::ValidSpawn {
             player_id: PlayerId(1),
         }
         .tint(),
-        Color::srgba(1.0, 0.82, 0.24, 0.88)
+        Color::srgba(1.0, 0.76, 0.18, 0.94)
     );
 
     let constants = fs::read_to_string(
@@ -191,6 +239,8 @@ fn qa_grid_overlay_toggle_second_press_removes_lines() {
 #[test]
 fn test_board_z_layers_are_named_constants() {
     assert_eq!(Z_FIELD_WASH, 0.0);
+    assert_eq!(Z_LANE_SURFACE, 0.45);
+    assert_eq!(Z_LANE_RAILS, 0.55);
     assert_eq!(Z_CELL_NODES, 1.0);
     assert_eq!(Z_TRAPS_STRUCTURES, 2.0);
     assert_eq!(Z_OBJECTIVES, 2.5);
