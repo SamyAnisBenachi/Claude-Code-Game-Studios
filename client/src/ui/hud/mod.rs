@@ -61,8 +61,8 @@ pub const HUD_DIM_OVERLAY_ALPHA: f32 = overlays::OVERLAY_DIM_ALPHA;
 /// Max pixel width of the HUD phase timer bar fill (matches spawn dimensions).
 /// `sync_hud_timer_bar_system` scales `Node.width` from 0 up to this value
 /// based on `PhaseTimerState` remaining ratio.
-pub const HUD_PHASE_TIMER_BAR_MAX_WIDTH_PX: f32 = 200.0;
-pub const HUD_TIMER_COUNTDOWN_MIN_WIDTH_PX: f32 = 112.0;
+pub const HUD_PHASE_TIMER_BAR_MAX_WIDTH_PX: f32 = 176.0;
+pub const HUD_TIMER_COUNTDOWN_MIN_WIDTH_PX: f32 = 128.0;
 pub const HUD_TIMER_COUNTDOWN_FONT_SIZE_PX: f32 = typography::H1;
 pub const CURRENT_MANA_BAR_WIDTH_PX: f32 = 104.0;
 pub const CURRENT_MANA_BAR_HEIGHT_PX: f32 = 28.0;
@@ -115,6 +115,11 @@ pub const HUD_RESERVED_GOLD_TEXT_COLOR: Color = Color::srgba(0.95, 0.90, 0.70, 0
 /// so the prefix reads as a label, not data — the brighter value text
 /// remains the visual anchor of each pill.
 pub const HUD_PILL_PREFIX_TEXT_COLOR: Color = Color::srgba(0.70, 0.78, 0.90, 0.90);
+pub const HUD_STRIP_BACKGROUND_COLOR: Color = Color::srgba(0.025, 0.035, 0.052, 0.94);
+pub const HUD_STRIP_BORDER_COLOR: Color = Color::srgba(0.96, 0.70, 0.26, 0.66);
+pub const HUD_PILL_BACKGROUND_COLOR: Color = Color::srgba(0.035, 0.055, 0.085, 0.96);
+pub const HUD_PILL_BORDER_COLOR: Color = Color::srgba(0.30, 0.44, 0.58, 0.90);
+pub const HUD_TIMER_TEXT_COLOR: Color = Color::srgba(1.0, 0.92, 0.62, 1.0);
 // Sprint 14 story 004 (S11-TD-UI-FLEX-STRIPS) — per-module `_GAP_PX`
 // magic constants `HUD_GOLD_ROW_GAP_PX = 48.0` and
 // `HUD_SECONDARY_ROW_GAP_PX = 28.0` (PROMPT 802 §3.9 G2) are deleted in
@@ -794,6 +799,8 @@ fn spawn_hud(
             HudTopStripRoot,
             strips::HeaderBar,
             hud_top_strip_node(),
+            BackgroundColor(HUD_STRIP_BACKGROUND_COLOR),
+            BorderColor::all(HUD_STRIP_BORDER_COLOR),
             Visibility::Inherited,
             ChildOf(root),
             z_layers::UI_BASE,
@@ -806,6 +813,8 @@ fn spawn_hud(
             HudBottomStripRoot,
             strips::FooterBar,
             hud_bottom_strip_node(*config),
+            BackgroundColor(HUD_STRIP_BACKGROUND_COLOR),
+            BorderColor::all(HUD_STRIP_BORDER_COLOR),
             Visibility::Inherited,
             ChildOf(root),
             z_layers::UI_BASE,
@@ -943,8 +952,8 @@ fn spawn_hud(
             HudTimerCountdown,
             Text::new(""),
             hud_text_font(HUD_TIMER_COUNTDOWN_FONT_SIZE_PX),
-            TextColor(HUD_PRIMARY_TEXT_COLOR),
-            BackgroundColor(HUD_TEXT_BACKGROUND_COLOR),
+            TextColor(HUD_TIMER_TEXT_COLOR),
+            BackgroundColor(timer_countdown_background()),
             BorderColor::all(timer_countdown_border()),
             top_strip_timer_countdown_node(),
             Visibility::Hidden,
@@ -1034,8 +1043,8 @@ fn spawn_pill_container(commands: &mut Commands, parent: Entity, name: &'static 
             Name::new(name),
             HudPillContainer,
             pill_container_node(),
-            // No BackgroundColor — the container is a flex grouping only;
-            // the value entity inside still carries its own pill background.
+            BackgroundColor(HUD_PILL_BACKGROUND_COLOR),
+            BorderColor::all(HUD_PILL_BORDER_COLOR),
             Visibility::Inherited,
             ChildOf(parent),
         ))
@@ -1085,6 +1094,7 @@ fn spawn_text_label<M: Component>(
             hud_text_font(HUD_SECONDARY_FONT_SIZE_PX),
             TextColor(HUD_PRIMARY_TEXT_COLOR),
             BackgroundColor(HUD_TEXT_BACKGROUND_COLOR),
+            BorderColor::all(HUD_PILL_BORDER_COLOR),
             node,
             Visibility::Hidden,
             ChildOf(parent),
@@ -1193,6 +1203,7 @@ fn spawn_gold_label(
             hud_text_font(HUD_GOLD_FONT_SIZE_PX),
             TextColor(HUD_GOLD_TEXT_COLOR),
             BackgroundColor(HUD_TEXT_BACKGROUND_COLOR),
+            BorderColor::all(gold_label_border(owner)),
             top_strip_gold_node(),
             Visibility::Hidden,
             ChildOf(parent),
@@ -2883,7 +2894,18 @@ fn destroyed_dot_border() -> Color {
 }
 
 fn timer_countdown_border() -> Color {
-    Color::srgba(0.96, 0.98, 1.0, 0.95)
+    Color::srgba(1.0, 0.84, 0.34, 1.0)
+}
+
+fn timer_countdown_background() -> Color {
+    Color::srgba(0.10, 0.06, 0.03, 0.98)
+}
+
+fn gold_label_border(owner: GoldLabelOwner) -> Color {
+    match owner {
+        GoldLabelOwner::Local => Color::srgba(1.0, 0.82, 0.28, 0.96),
+        GoldLabelOwner::Opponent => Color::srgba(0.62, 0.78, 1.0, 0.92),
+    }
 }
 
 fn current_mana_bar_fill() -> Color {
@@ -3101,6 +3123,7 @@ fn hud_top_strip_node() -> Node {
     node.column_gap = Val::Px(spacing::SPACING_MD);
     node.row_gap = Val::Px(spacing::SPACING_XL - spacing::SPACING_XS);
     node.min_height = Val::Px(strips::HEADER_BAR_HEIGHT_PX);
+    node.border = UiRect::bottom(Val::Px(2.0));
     // AC: PROMPT-1183 - reserve-mana diamond and pill shadows escape the 60 px header.
     node.overflow = Overflow::visible();
     node
@@ -3112,6 +3135,7 @@ fn hud_bottom_strip_node(config: HudConfig) -> Node {
     node.padding.right = Val::Px(spacing::SPACING_LG);
     node.column_gap = Val::Px(spacing::SPACING_LG);
     node.row_gap = Val::Px(spacing::SPACING_SM);
+    node.border = UiRect::top(Val::Px(2.0));
     // AC: S11-UX-HUD-BOTTOM-STRIP-LAYOUT - 64 px figurines extend beyond the 40 px footer.
     node.overflow = Overflow::visible();
     node
@@ -3131,6 +3155,8 @@ fn bottom_strip_figurine_node() -> Node {
 fn top_strip_text_node() -> Node {
     Node {
         padding: UiRect::axes(Val::Px(spacing::SPACING_SM), Val::Px(spacing::SPACING_XS)),
+        border: UiRect::all(Val::Px(1.0)),
+        border_radius: BorderRadius::all(Val::Px(spacing::SPACING_XS)),
         align_items: AlignItems::Center,
         justify_content: JustifyContent::Center,
         ..default()
@@ -3149,6 +3175,8 @@ fn pill_container_node() -> Node {
         align_items: AlignItems::Center,
         justify_content: JustifyContent::FlexStart,
         column_gap: Val::Px(spacing::SPACING_SM),
+        border: UiRect::all(Val::Px(1.0)),
+        border_radius: BorderRadius::all(Val::Px(spacing::SPACING_XS)),
         ..default()
     }
 }
@@ -3167,6 +3195,8 @@ fn pill_prefix_node() -> Node {
 fn top_strip_gold_node() -> Node {
     Node {
         padding: UiRect::horizontal(Val::Px(spacing::SPACING_SM)),
+        border: UiRect::all(Val::Px(1.0)),
+        border_radius: BorderRadius::all(Val::Px(spacing::SPACING_XS)),
         align_items: AlignItems::Center,
         justify_content: JustifyContent::Center,
         ..default()
@@ -3204,8 +3234,8 @@ fn reserve_mana_diamond_node() -> Node {
 fn top_strip_timer_bar_node() -> Node {
     Node {
         width: Val::Px(HUD_PHASE_TIMER_BAR_MAX_WIDTH_PX),
-        height: Val::Px(spacing::SPACING_SM),
-        min_height: Val::Px(spacing::SPACING_SM),
+        height: Val::Px(10.0),
+        min_height: Val::Px(10.0),
         flex_shrink: 0.0,
         ..default()
     }
@@ -3214,9 +3244,9 @@ fn top_strip_timer_bar_node() -> Node {
 fn top_strip_timer_countdown_node() -> Node {
     Node {
         min_width: Val::Px(HUD_TIMER_COUNTDOWN_MIN_WIDTH_PX),
-        min_height: Val::Px(36.0),
+        min_height: Val::Px(40.0),
         padding: UiRect::axes(Val::Px(spacing::SPACING_SM), Val::Px(spacing::SPACING_XS)),
-        border: UiRect::all(Val::Px(1.0)),
+        border: UiRect::all(Val::Px(2.0)),
         border_radius: BorderRadius::all(Val::Px(spacing::SPACING_XS)),
         align_items: AlignItems::Center,
         justify_content: JustifyContent::Center,
