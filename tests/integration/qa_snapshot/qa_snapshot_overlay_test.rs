@@ -28,7 +28,7 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use bevy::input::InputPlugin;
 use bevy::prelude::*;
 use client::presentation::qa_snapshot::{
-    apply_qa_snapshot_capture_completed_system, build_snapshot,
+    apply_qa_snapshot_capture_completed_system, build_snapshot, BoardTargetingSnapshot,
     revert_qa_snapshot_feedback_state_system, update_snapshot_json_status, write_snapshot_to_dir,
     QASnapshotButton, QASnapshotCaptureCompleted, QASnapshotConfig, QASnapshotCounter,
     QASnapshotData, QASnapshotFeedbackState, QASnapshotOverlayEntities, QASnapshotOverlayRoot,
@@ -65,6 +65,53 @@ fn placeholder_screenshot(requested_at_ms: u128) -> ScreenshotInfo {
         status: SCREENSHOT_STATUS_PENDING.to_string(),
         captured_at_ms: None,
         error: None,
+    }
+}
+
+// Shared empty-payload constructor for `QASnapshotData` used by the write,
+// status-update, and capture-completed fixtures. Keeps the per-test bodies
+// focused on the field under test (snapshot_id / counter / unix_millis +
+// the on-disk side-effects) and means future top-level field additions to
+// `QASnapshotData` only have to land in one place.
+fn make_test_qa_snapshot_data(
+    snapshot_id: &str,
+    counter: u64,
+    unix_millis: u128,
+) -> QASnapshotData {
+    QASnapshotData {
+        snapshot_id: snapshot_id.to_string(),
+        counter,
+        unix_millis,
+        screenshot: placeholder_screenshot(unix_millis),
+        client_state: "Lobby".to_string(),
+        current_phase: client::presentation::qa_snapshot::PhaseInfo {
+            phase: None,
+            round: None,
+            timer_remaining_ms: None,
+        },
+        phase_view: client::presentation::qa_snapshot::PhaseViewInfo {
+            phase: None,
+            round_number: None,
+            timer_duration_ms: None,
+        },
+        session_identity: client::presentation::qa_snapshot::SessionIdentityInfo {
+            player_id: None,
+            session_id: None,
+            has_session_token: false,
+        },
+        window: client::presentation::qa_snapshot::WindowInfo {
+            width: None,
+            height: None,
+            scale_factor: None,
+        },
+        ui_counts: UiCounts::default(),
+        extras: client::presentation::qa_snapshot::ExtrasSnapshot::default(),
+        layout: client::presentation::qa_snapshot::LayoutSnapshot::default(),
+        placement_state: client::presentation::qa_snapshot::PlacementStateSnapshot::default(),
+        auction_state: client::presentation::qa_snapshot::AuctionStateSnapshot::default(),
+        auction_won_pending: None,
+        board_targeting: BoardTargetingSnapshot::default(),
+        warnings: vec![],
     }
 }
 
@@ -478,39 +525,7 @@ fn build_snapshot_serialises_present_resources_without_warnings() {
 #[test]
 fn write_snapshot_to_dir_creates_per_id_subdirectory() {
     let tmp = unique_tmp_dir("write");
-    let snapshot = QASnapshotData {
-        snapshot_id: "test-1".to_string(),
-        counter: 1,
-        unix_millis: 0,
-        screenshot: placeholder_screenshot(0),
-        client_state: "Lobby".to_string(),
-        current_phase: client::presentation::qa_snapshot::PhaseInfo {
-            phase: None,
-            round: None,
-            timer_remaining_ms: None,
-        },
-        phase_view: client::presentation::qa_snapshot::PhaseViewInfo {
-            phase: None,
-            round_number: None,
-            timer_duration_ms: None,
-        },
-        session_identity: client::presentation::qa_snapshot::SessionIdentityInfo {
-            player_id: None,
-            session_id: None,
-            has_session_token: false,
-        },
-        window: client::presentation::qa_snapshot::WindowInfo {
-            width: None,
-            height: None,
-            scale_factor: None,
-        },
-        ui_counts: UiCounts::default(),
-        extras: client::presentation::qa_snapshot::ExtrasSnapshot::default(),
-        layout: client::presentation::qa_snapshot::LayoutSnapshot::default(),
-        placement_state: client::presentation::qa_snapshot::PlacementStateSnapshot::default(),
-        auction_state: client::presentation::qa_snapshot::AuctionStateSnapshot::default(),
-        warnings: vec![],
-    };
+    let snapshot = make_test_qa_snapshot_data("test-1", 1, 0);
 
     let json_path =
         write_snapshot_to_dir(&tmp, &snapshot).expect("write_snapshot_to_dir must succeed");
@@ -532,39 +547,7 @@ fn write_snapshot_to_dir_creates_per_id_subdirectory() {
 #[test]
 fn update_snapshot_json_status_flips_to_captured_when_png_present() {
     let tmp = unique_tmp_dir("status-captured");
-    let snapshot = QASnapshotData {
-        snapshot_id: "status-1".to_string(),
-        counter: 1,
-        unix_millis: 1_700_000_000_000,
-        screenshot: placeholder_screenshot(1_700_000_000_000),
-        client_state: "Lobby".to_string(),
-        current_phase: client::presentation::qa_snapshot::PhaseInfo {
-            phase: None,
-            round: None,
-            timer_remaining_ms: None,
-        },
-        phase_view: client::presentation::qa_snapshot::PhaseViewInfo {
-            phase: None,
-            round_number: None,
-            timer_duration_ms: None,
-        },
-        session_identity: client::presentation::qa_snapshot::SessionIdentityInfo {
-            player_id: None,
-            session_id: None,
-            has_session_token: false,
-        },
-        window: client::presentation::qa_snapshot::WindowInfo {
-            width: None,
-            height: None,
-            scale_factor: None,
-        },
-        ui_counts: UiCounts::default(),
-        extras: client::presentation::qa_snapshot::ExtrasSnapshot::default(),
-        layout: client::presentation::qa_snapshot::LayoutSnapshot::default(),
-        placement_state: client::presentation::qa_snapshot::PlacementStateSnapshot::default(),
-        auction_state: client::presentation::qa_snapshot::AuctionStateSnapshot::default(),
-        warnings: vec![],
-    };
+    let snapshot = make_test_qa_snapshot_data("status-1", 1, 1_700_000_000_000);
     let json_path = write_snapshot_to_dir(&tmp, &snapshot).unwrap();
     let png_path = json_path.with_file_name(QA_SCREENSHOT_FILENAME);
     fs::write(&png_path, b"\x89PNG-fake").expect("write fake png");
@@ -591,39 +574,7 @@ fn update_snapshot_json_status_flips_to_captured_when_png_present() {
 #[test]
 fn update_snapshot_json_status_marks_failed_when_png_missing() {
     let tmp = unique_tmp_dir("status-failed");
-    let snapshot = QASnapshotData {
-        snapshot_id: "status-2".to_string(),
-        counter: 2,
-        unix_millis: 1_700_000_000_000,
-        screenshot: placeholder_screenshot(1_700_000_000_000),
-        client_state: "Lobby".to_string(),
-        current_phase: client::presentation::qa_snapshot::PhaseInfo {
-            phase: None,
-            round: None,
-            timer_remaining_ms: None,
-        },
-        phase_view: client::presentation::qa_snapshot::PhaseViewInfo {
-            phase: None,
-            round_number: None,
-            timer_duration_ms: None,
-        },
-        session_identity: client::presentation::qa_snapshot::SessionIdentityInfo {
-            player_id: None,
-            session_id: None,
-            has_session_token: false,
-        },
-        window: client::presentation::qa_snapshot::WindowInfo {
-            width: None,
-            height: None,
-            scale_factor: None,
-        },
-        ui_counts: UiCounts::default(),
-        extras: client::presentation::qa_snapshot::ExtrasSnapshot::default(),
-        layout: client::presentation::qa_snapshot::LayoutSnapshot::default(),
-        placement_state: client::presentation::qa_snapshot::PlacementStateSnapshot::default(),
-        auction_state: client::presentation::qa_snapshot::AuctionStateSnapshot::default(),
-        warnings: vec![],
-    };
+    let snapshot = make_test_qa_snapshot_data("status-2", 2, 1_700_000_000_000);
     let json_path = write_snapshot_to_dir(&tmp, &snapshot).unwrap();
     let png_path = json_path.with_file_name(QA_SCREENSHOT_FILENAME);
     // Note: png file NOT created.
@@ -647,39 +598,7 @@ fn update_snapshot_json_status_marks_failed_when_png_missing() {
 fn capture_completed_message_updates_feedback_to_saved() {
     test_helpers::init_test_tracing();
     let tmp = unique_tmp_dir("capture-completed");
-    let snapshot = QASnapshotData {
-        snapshot_id: "ack-1".to_string(),
-        counter: 1,
-        unix_millis: 1_700_000_000_000,
-        screenshot: placeholder_screenshot(1_700_000_000_000),
-        client_state: "Lobby".to_string(),
-        current_phase: client::presentation::qa_snapshot::PhaseInfo {
-            phase: None,
-            round: None,
-            timer_remaining_ms: None,
-        },
-        phase_view: client::presentation::qa_snapshot::PhaseViewInfo {
-            phase: None,
-            round_number: None,
-            timer_duration_ms: None,
-        },
-        session_identity: client::presentation::qa_snapshot::SessionIdentityInfo {
-            player_id: None,
-            session_id: None,
-            has_session_token: false,
-        },
-        window: client::presentation::qa_snapshot::WindowInfo {
-            width: None,
-            height: None,
-            scale_factor: None,
-        },
-        ui_counts: UiCounts::default(),
-        extras: client::presentation::qa_snapshot::ExtrasSnapshot::default(),
-        layout: client::presentation::qa_snapshot::LayoutSnapshot::default(),
-        placement_state: client::presentation::qa_snapshot::PlacementStateSnapshot::default(),
-        auction_state: client::presentation::qa_snapshot::AuctionStateSnapshot::default(),
-        warnings: vec![],
-    };
+    let snapshot = make_test_qa_snapshot_data("ack-1", 1, 1_700_000_000_000);
     let json_path = write_snapshot_to_dir(&tmp, &snapshot).unwrap();
     let png_path = json_path.with_file_name(QA_SCREENSHOT_FILENAME);
     fs::write(&png_path, b"\x89PNG-fake").unwrap();
@@ -723,39 +642,7 @@ fn capture_completed_message_updates_feedback_to_saved() {
 fn capture_completed_with_missing_png_demotes_to_failed() {
     test_helpers::init_test_tracing();
     let tmp = unique_tmp_dir("capture-failed");
-    let snapshot = QASnapshotData {
-        snapshot_id: "ack-2".to_string(),
-        counter: 2,
-        unix_millis: 1_700_000_000_000,
-        screenshot: placeholder_screenshot(1_700_000_000_000),
-        client_state: "Lobby".to_string(),
-        current_phase: client::presentation::qa_snapshot::PhaseInfo {
-            phase: None,
-            round: None,
-            timer_remaining_ms: None,
-        },
-        phase_view: client::presentation::qa_snapshot::PhaseViewInfo {
-            phase: None,
-            round_number: None,
-            timer_duration_ms: None,
-        },
-        session_identity: client::presentation::qa_snapshot::SessionIdentityInfo {
-            player_id: None,
-            session_id: None,
-            has_session_token: false,
-        },
-        window: client::presentation::qa_snapshot::WindowInfo {
-            width: None,
-            height: None,
-            scale_factor: None,
-        },
-        ui_counts: UiCounts::default(),
-        extras: client::presentation::qa_snapshot::ExtrasSnapshot::default(),
-        layout: client::presentation::qa_snapshot::LayoutSnapshot::default(),
-        placement_state: client::presentation::qa_snapshot::PlacementStateSnapshot::default(),
-        auction_state: client::presentation::qa_snapshot::AuctionStateSnapshot::default(),
-        warnings: vec![],
-    };
+    let snapshot = make_test_qa_snapshot_data("ack-2", 2, 1_700_000_000_000);
     let json_path = write_snapshot_to_dir(&tmp, &snapshot).unwrap();
     let png_path = json_path.with_file_name(QA_SCREENSHOT_FILENAME);
     // Intentionally do NOT write png.
