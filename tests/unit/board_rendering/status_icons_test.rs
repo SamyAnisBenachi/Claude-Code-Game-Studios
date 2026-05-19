@@ -1,12 +1,13 @@
 use bevy::prelude::*;
 use bevy::state::app::StatesPlugin;
 use client::presentation::board_rendering::rendering_constants::{
-    STATUS_ICON_LOCAL_Z, STATUS_ICON_TOP_RIGHT_X_OFFSET, Z_UNITS,
+    STATUS_ICON_LOCAL_Z, STATUS_ICON_TOP_RIGHT_X_OFFSET, UNIT_FOOTING_LOCAL_Z,
+    UNIT_FOOTING_Y_OFFSET, Z_UNITS,
 };
 use client::presentation::board_rendering::{
     co_occupancy_offset, status_icon_slot_translation, BoardRenderingPlugin, BoardUnit,
-    BoardUnitCard, BoardUnitOwner, BoardUnitStats, CardAtlas, PlayerTeamMap, StatusEffectKey,
-    StatusEffectVisual, StatusEffectsList, StatusIcon, StatusOverflowBadge,
+    BoardUnitCard, BoardUnitFooting, BoardUnitOwner, BoardUnitStats, CardAtlas, PlayerTeamMap,
+    StatusEffectKey, StatusEffectVisual, StatusEffectsList, StatusIcon, StatusOverflowBadge,
 };
 use client::presentation::LaneCell;
 use client::state::{ClientGameSnapshotMessage, ClientState};
@@ -164,6 +165,31 @@ fn test_status_icon_global_x_inherits_cooccupancy_parent_offset() {
     assert!((derived_icon_world_x - (unit_x + STATUS_ICON_TOP_RIGHT_X_OFFSET)).abs() <= 0.01);
 }
 
+#[test]
+fn test_snapshot_units_spawn_non_pickable_footing_child() {
+    let mut app = app_in_session();
+    install_test_atlas(&mut app);
+
+    write_snapshot(
+        &mut app,
+        snapshot_with_units(vec![unit_state(10, player(1), 2, 4)]),
+    );
+    app.update();
+
+    let unit = unit_entity(&mut app, 10);
+    let footings = unit_footing_entities(&mut app, unit);
+    assert_eq!(footings.len(), 1);
+
+    let footing = footings[0];
+    let transform = app.world().get::<Transform>(footing).unwrap();
+    assert_eq!(transform.translation.y, UNIT_FOOTING_Y_OFFSET);
+    assert_eq!(transform.translation.z, UNIT_FOOTING_LOCAL_Z);
+    assert!(
+        app.world().get::<Pickable>(footing).is_none(),
+        "unit footing must not participate in placement picking"
+    );
+}
+
 // Path B (story 014, PROMPT 800 Wave 1 d5053fe): production
 // co_occupancy_offset is total over u8 — emits warn! then clamps
 // unit_index to 1 for any unit_index >= 2. See story 014 "Binary
@@ -310,6 +336,14 @@ fn status_icon_entities(app: &mut App, unit: Entity) -> Vec<Entity> {
         .collect::<Vec<_>>();
     icons.sort_by_key(|entity| app.world().get::<StatusIcon>(*entity).unwrap().slot);
     icons
+}
+
+fn unit_footing_entities(app: &mut App, unit: Entity) -> Vec<Entity> {
+    let children = app.world().entity(unit).get::<Children>().unwrap();
+    children
+        .iter()
+        .filter(|child| app.world().get::<BoardUnitFooting>(*child).is_some())
+        .collect()
 }
 
 fn overflow_badges(app: &mut App, unit: Entity) -> Vec<StatusOverflowBadge> {

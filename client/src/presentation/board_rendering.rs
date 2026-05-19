@@ -141,6 +141,16 @@ pub struct BoardCamera;
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct BoardCellNode;
 
+// PROMPT 1489 — Krosmaga-style physical lane painting. Non-pickable; placement
+// hit-testing still flows through the cell-node sprites proven by PROMPT 1457.
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct BoardLaneSurface {
+    pub lane: u8,
+}
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct BoardLaneRail;
+
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct BoardGridOverlayLine;
 
@@ -157,6 +167,11 @@ pub struct BoardSnapshotEntity;
 pub struct BoardUnit {
     pub unit_id: EntityId,
 }
+
+// PROMPT 1489 — Krosmaga-style footing shadow child anchors each unit to its
+// cell visually. Non-pickable; never interferes with placement hit-testing.
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct BoardUnitFooting;
 
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BoardUnitRenderSource {
@@ -894,8 +909,8 @@ pub enum SpawnHighlightState {
 impl SpawnHighlightState {
     pub fn tint(self) -> Color {
         match self {
-            Self::Inactive => Color::srgba(0.12, 0.24, 0.30, 0.55),
-            Self::ValidSpawn { .. } => Color::srgba(1.0, 0.82, 0.24, 0.88),
+            Self::Inactive => Color::srgba(0.17, 0.29, 0.33, 0.72),
+            Self::ValidSpawn { .. } => Color::srgba(1.0, 0.76, 0.18, 0.94),
         }
     }
 
@@ -1981,10 +1996,12 @@ fn insert_board_rendering_session_resources(
     spawn_board_camera(&mut commands, &board_layout);
     if let Some(runtime_assets) = runtime_assets {
         spawn_board_background(&mut commands, &board_layout, &runtime_assets);
+        spawn_board_lane_surfaces(&mut commands, &board_layout);
         spawn_board_chrome(&mut commands, &board_layout, &runtime_assets);
         spawn_board_grid(&mut commands, &board_layout, Some(&runtime_assets));
         commands.insert_resource(runtime_assets);
     } else {
+        spawn_board_lane_surfaces(&mut commands, &board_layout);
         spawn_board_grid(&mut commands, &board_layout, None);
     }
     spawn_board_grid_overlay_toggle_control(&mut commands);
@@ -2369,6 +2386,7 @@ fn spawn_snapshot_unit(
             .insert(BoardUnitSourceClass(source_class));
     }
 
+    spawn_unit_footing(commands, unit_entity);
     spawn_hp_bar_children(
         commands,
         unit_entity,
@@ -2377,6 +2395,28 @@ fn spawn_snapshot_unit(
         stats,
         config,
     );
+}
+
+// PROMPT 1489 — Krosmaga-style footing shadow child. Non-pickable; never
+// participates in placement hit-testing. The footing rides with the unit's
+// transform (drag, place, push, etc.) via parent-child propagation.
+fn spawn_unit_footing(commands: &mut Commands, parent: Entity) {
+    commands.spawn((
+        BoardRenderingEntity,
+        BoardSnapshotEntity,
+        BoardUnitFooting,
+        Sprite::from_color(
+            Color::srgba(0.02, 0.035, 0.035, 0.48),
+            rendering_constants::UNIT_FOOTING_SIZE,
+        ),
+        Transform::from_xyz(
+            0.0,
+            rendering_constants::UNIT_FOOTING_Y_OFFSET,
+            rendering_constants::UNIT_FOOTING_LOCAL_Z,
+        ),
+        Visibility::Inherited,
+        ChildOf(parent),
+    ));
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -3096,6 +3136,68 @@ fn spawn_board_background(
     ));
 }
 
+// PROMPT 1489 — Krosmaga-style physical lane surfaces and rails. Painted
+// above the field wash but below the cell-node affordance dots so:
+//   - the lanes read as physical bands rather than a flat grey debug surface
+//   - the placement-cell affordance dots remain visible on top
+//   - placement hit-testing (PROMPT 1457 / full-flow 1472) is unaffected:
+//     none of the surfaces or rails carry `Pickable`.
+fn spawn_board_lane_surfaces(commands: &mut Commands, board_layout: &BoardLayout) {
+    let start = board_layout.cell_to_world(1, 1);
+    let end = board_layout.cell_to_world(1, BOARD_CELL_COUNT);
+    let width = (end.x - start.x).abs() + board_layout.cell_width;
+    let rail_width = width + rendering_constants::LANE_RAIL_THICKNESS;
+
+    for lane in 1..=BOARD_LANE_COUNT {
+        let lane_start = board_layout.cell_to_world(lane, 1);
+        let lane_end = board_layout.cell_to_world(lane, BOARD_CELL_COUNT);
+        let center = (lane_start + lane_end) * 0.5;
+        let surface_size = Vec2::new(width, board_layout.lane_height * 0.82);
+        let surface_tint = lane_surface_tint(lane);
+
+        commands.spawn((
+            BoardRenderingEntity,
+            BoardLaneSurface { lane },
+            Sprite::from_color(surface_tint, surface_size),
+            Transform::from_xyz(center.x, center.y, rendering_constants::Z_LANE_SURFACE),
+        ));
+
+        let rail_y = center.y - board_layout.lane_height * 0.5;
+        commands.spawn((
+            BoardRenderingEntity,
+            BoardLaneRail,
+            Sprite::from_color(
+                Color::srgba(0.72, 0.84, 0.86, 0.26),
+                Vec2::new(rail_width, rendering_constants::LANE_RAIL_THICKNESS),
+            ),
+            Transform::from_xyz(center.x, rail_y, rendering_constants::Z_LANE_RAILS),
+        ));
+    }
+
+    // Top edge rail above lane 1 so the board reads as fully bounded.
+    let top_start = board_layout.cell_to_world(1, 1);
+    let top_end = board_layout.cell_to_world(1, BOARD_CELL_COUNT);
+    let top_center = (top_start + top_end) * 0.5;
+    let top_y = top_center.y + board_layout.lane_height * 0.5;
+    commands.spawn((
+        BoardRenderingEntity,
+        BoardLaneRail,
+        Sprite::from_color(
+            Color::srgba(0.72, 0.84, 0.86, 0.30),
+            Vec2::new(rail_width, rendering_constants::LANE_RAIL_THICKNESS),
+        ),
+        Transform::from_xyz(top_center.x, top_y, rendering_constants::Z_LANE_RAILS),
+    ));
+}
+
+fn lane_surface_tint(lane: u8) -> Color {
+    if lane % 2 == 0 {
+        Color::srgba(0.16, 0.25, 0.27, 0.56)
+    } else {
+        Color::srgba(0.20, 0.31, 0.32, 0.62)
+    }
+}
+
 fn spawn_board_chrome(
     commands: &mut Commands,
     board_layout: &BoardLayout,
@@ -3361,14 +3463,34 @@ fn spawn_ghost_unit(
         card_id,
     );
 
-    commands.spawn((
-        BoardRenderingEntity,
-        GhostUnit { card_id },
-        BoardGhostInteraction { card_id },
-        Pickable::default(),
-        sprite,
-        Transform::from_xyz(world_xy.x, world_xy.y, rendering_constants::Z_GHOST_UNIT),
-    ));
+    commands
+        .spawn((
+            BoardRenderingEntity,
+            GhostUnit { card_id },
+            BoardGhostInteraction { card_id },
+            Pickable::default(),
+            sprite,
+            Transform::from_xyz(world_xy.x, world_xy.y, rendering_constants::Z_GHOST_UNIT),
+        ))
+        .with_children(|parent| {
+            // PROMPT 1489 — Krosmaga-style footing under the ghost preview so
+            // the dragged unit reads as anchored to the cell instead of
+            // floating in front of the board art.
+            parent.spawn((
+                BoardRenderingEntity,
+                BoardUnitFooting,
+                Sprite::from_color(
+                    Color::srgba(0.04, 0.08, 0.08, 0.34),
+                    rendering_constants::UNIT_FOOTING_SIZE,
+                ),
+                Transform::from_xyz(
+                    0.0,
+                    rendering_constants::UNIT_FOOTING_Y_OFFSET,
+                    rendering_constants::UNIT_FOOTING_LOCAL_Z,
+                ),
+                Visibility::Inherited,
+            ));
+        });
 }
 
 fn ghost_unit_sprite(
@@ -3437,7 +3559,10 @@ fn spawn_lane_ghost_wash(
         LaneGhostWash { card_id, lane },
         BoardGhostInteraction { card_id },
         Pickable::default(),
-        Sprite::from_color(Color::srgba(0.36, 0.74, 1.0, 0.28), size),
+        // PROMPT 1489 — warm-amber lane wash matches the Krosmaga-style
+        // physical board palette and the new valid-spawn tint, replacing the
+        // colder cyan that read as a debug placeholder.
+        Sprite::from_color(Color::srgba(0.98, 0.70, 0.22, 0.30), size),
         Transform::from_xyz(center.x, center.y, rendering_constants::Z_FIELD_WASH),
     ));
 }
