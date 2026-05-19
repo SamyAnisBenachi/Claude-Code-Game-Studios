@@ -74,7 +74,8 @@ Notes:
 - Worktree: `D:\_DEV\Work\Claude-Code-Game-Studios\.codex-worktrees\prompt-1454`
 - Branch: `work/qa-snapshot-forensic-field-upgrade-1454`
 - Base: `origin/main@86e50e831befde7e0a4978c93b40556c1383fd77`
-- Commit: `49358165`
+- Implementation commit: `49358165`
+- Branch tip after final report update: `306b86a7`
 - Push: `origin/work/qa-snapshot-forensic-field-upgrade-1454`
 
 1454: QA-SNAPSHOT-FORENSIC-FIELD-UPGRADE: DONE
