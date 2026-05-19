@@ -237,6 +237,13 @@ pub struct HandUiOutboundMessages {
 #[derive(Resource, Default, Debug, Clone, PartialEq, Eq)]
 pub struct PendingPlacements {
     pub placements: Vec<PlacedCardSubmit>,
+    pub rejected_batch: Option<RejectedPendingPlacementBatch>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RejectedPendingPlacementBatch {
+    pub placements: Vec<PlacedCardSubmit>,
+    pub reason: PlacementRejectedReason,
 }
 
 impl PendingPlacements {
@@ -246,6 +253,7 @@ impl PendingPlacements {
 
     fn clear(&mut self) {
         self.placements.clear();
+        self.rejected_batch = None;
     }
 
     fn stage_or_update(&mut self, placement: PlacedCardSubmit) {
@@ -259,10 +267,41 @@ impl PendingPlacements {
             *existing = placement;
             existing.current_mana_spend = current_mana_spend;
             existing.reserve_mana_spend = reserve_mana_spend;
+            self.clear_rejected_batch_if_changed();
             return;
         }
 
         self.placements.push(placement);
+        self.clear_rejected_batch_if_changed();
+    }
+
+    fn mark_rejected(&mut self, reason: PlacementRejectedReason) {
+        self.rejected_batch = Some(RejectedPendingPlacementBatch {
+            placements: self.placements.clone(),
+            reason,
+        });
+    }
+
+    fn rejected_reason_if_unchanged(&self) -> Option<PlacementRejectedReason> {
+        let rejected_batch = self.rejected_batch.as_ref()?;
+        (!self.placements.is_empty() && rejected_batch.placements == self.placements)
+            .then_some(rejected_batch.reason)
+    }
+
+    fn rejected_reason(&self) -> Option<PlacementRejectedReason> {
+        self.rejected_batch
+            .as_ref()
+            .map(|rejected_batch| rejected_batch.reason)
+    }
+
+    fn clear_rejected_batch(&mut self) {
+        self.rejected_batch = None;
+    }
+
+    fn clear_rejected_batch_if_changed(&mut self) {
+        if self.rejected_reason_if_unchanged().is_none() {
+            self.clear_rejected_batch();
+        }
     }
 
     fn target_for(&self, card_id: CardId) -> Option<&PlayTarget> {
@@ -277,7 +316,9 @@ impl PendingPlacements {
             .placements
             .iter()
             .position(|placement| placement.card_id == card_id)?;
-        Some(self.placements.remove(index))
+        let removed = self.placements.remove(index);
+        self.clear_rejected_batch_if_changed();
+        Some(removed)
     }
 
     fn reserve_amount_for(&self, card_id: CardId) -> Option<u32> {
@@ -317,6 +358,7 @@ impl PendingPlacements {
 
         placement.reserve_mana_spend += 1;
         placement.current_mana_spend = placement.current_mana_spend.saturating_sub(1);
+        self.clear_rejected_batch_if_changed();
         true
     }
 
@@ -335,6 +377,7 @@ impl PendingPlacements {
 
         placement.reserve_mana_spend -= 1;
         placement.current_mana_spend = placement.current_mana_spend.saturating_add(1);
+        self.clear_rejected_batch_if_changed();
         true
     }
 }
@@ -2501,7 +2544,7 @@ pub fn drain_placement_rejected_receiver_system(
 pub fn handle_placement_rejected_system(
     mut rejections: MessageReader<HandUiPlacementRejectedReceived>,
     entities: Option<Res<HandUiEntities>>,
-    pending_placements: Res<PendingPlacements>,
+    mut pending_placements: ResMut<PendingPlacements>,
     mut placement_timer: ResMut<PlacementTimer>,
     mut disclosure_state: ResMut<PlacementDisclosureState>,
     mut commands: Commands,
@@ -2524,18 +2567,20 @@ pub fn handle_placement_rejected_system(
         );
 
         placement_timer.submitted = false;
+        pending_placements.mark_rejected(rejection.reason);
+        let error = SubmitValidationError::ServerRejected {
+            reason: rejection.reason,
+        };
 
         if let Ok((mut text, mut interaction_state)) =
             submit_buttons.get_mut(entities.submit_button)
         {
             text.0.clear();
             text.0.push_str(&format!("Submit ({staged_count} cards)"));
-            *interaction_state = HandSubmitInteractionState::Active;
+            *interaction_state = HandSubmitInteractionState::Inactive;
         }
 
-        commands
-            .entity(entities.submit_button)
-            .remove::<SubmitValidationError>();
+        commands.entity(entities.submit_button).insert(error);
 
         set_visibility(
             entities.submitted_checkmark,
@@ -2543,11 +2588,7 @@ pub fn handle_placement_rejected_system(
             &mut visibility_query,
         );
 
-        disclosure_state.step = PlacementDisclosureStep::Correction {
-            error: SubmitValidationError::ServerRejected {
-                reason: rejection.reason,
-            },
-        };
+        disclosure_state.step = PlacementDisclosureStep::Correction { error };
     }
 }
 
@@ -3534,9 +3575,16 @@ pub fn handle_submit_button_click_system(
 
 pub fn sync_submit_validation_error_system(
     entities: Option<Res<HandUiEntities>>,
-    pending_placements: Res<PendingPlacements>,
+    mut pending_placements: ResMut<PendingPlacements>,
     economy: Res<PlayerEconomyView>,
-    submit_errors: Query<&SubmitValidationError, With<HandSubmitButton>>,
+    mut submit_errors: Query<
+        (
+            &SubmitValidationError,
+            &mut Text,
+            &mut HandSubmitInteractionState,
+        ),
+        With<HandSubmitButton>,
+    >,
     mut disclosure_state: ResMut<PlacementDisclosureState>,
     mut commands: Commands,
 ) {
@@ -3544,14 +3592,38 @@ pub fn sync_submit_validation_error_system(
         return;
     };
 
-    let Ok(error) = submit_errors.get(entities.submit_button) else {
+    let Ok((error, mut text, mut interaction_state)) =
+        submit_errors.get_mut(entities.submit_button)
+    else {
         return;
     };
+
+    if let SubmitValidationError::ServerRejected { reason } = *error {
+        if pending_placements.rejected_reason() == Some(reason) {
+            text.0.clear();
+            text.0.push_str(&format!(
+                "Submit ({} cards)",
+                pending_placements.staged_count()
+            ));
+            *interaction_state = HandSubmitInteractionState::Inactive;
+            disclosure_state.step = PlacementDisclosureStep::Correction { error: *error };
+            return;
+        }
+
+        pending_placements.clear_rejected_batch();
+        commands
+            .entity(entities.submit_button)
+            .remove::<SubmitValidationError>();
+        *interaction_state = HandSubmitInteractionState::Active;
+        disclosure_state.set_for_staged_count(pending_placements.staged_count());
+        return;
+    }
 
     if validate_submit_placement_spend(&pending_placements, &economy).is_ok() {
         commands
             .entity(entities.submit_button)
             .remove::<SubmitValidationError>();
+        *interaction_state = HandSubmitInteractionState::Active;
         disclosure_state.set_for_staged_count(pending_placements.staged_count());
     } else {
         disclosure_state.step = PlacementDisclosureStep::Correction { error: *error };
@@ -5005,6 +5077,22 @@ fn submit_pending_placements(
         return false;
     }
 
+    if let Some(reason) = pending_placements.rejected_reason_if_unchanged() {
+        let error = SubmitValidationError::ServerRejected { reason };
+        tracing::info!(
+            target: "client::ui::hand",
+            handler = "submit_pending_placements",
+            reason = "unchanged_rejected_pending_batch",
+            rejection_reason = ?reason,
+            staged_count = pending_placements.staged_count(),
+            "hand_ui_submit_short_circuit"
+        );
+        commands.entity(submit_button).insert(error);
+        *interaction_state = HandSubmitInteractionState::Inactive;
+        disclosure_state.step = PlacementDisclosureStep::Correction { error };
+        return false;
+    }
+
     commands
         .entity(submit_button)
         .remove::<SubmitValidationError>();
@@ -5080,16 +5168,16 @@ fn placement_disclosure_label(step: PlacementDisclosureStep) -> &'static str {
             // PROMPT 1244 — single corrective hint per server rejection reason.
             SubmitValidationError::ServerRejected { reason } => match reason {
                 PlacementRejectedReason::SpawnRangeRejected => {
-                    "Server rejected placement: pick a cell inside your spawn range"
+                    "Server rejected placement: retarget inside your spawn range or unstage"
                 }
                 PlacementRejectedReason::OccupancyRejected => {
-                    "Server rejected placement: that slot is already taken"
+                    "Server rejected placement: slot taken, retarget or unstage"
                 }
                 PlacementRejectedReason::InsufficientMana => {
                     "Server rejected placement: not enough mana for this batch"
                 }
                 PlacementRejectedReason::InvalidTarget => {
-                    "Server rejected placement: pick a valid target"
+                    "Server rejected placement: retarget to a valid cell or unstage"
                 }
                 PlacementRejectedReason::CardNotInHand
                 | PlacementRejectedReason::DuplicateCardId

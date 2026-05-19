@@ -238,6 +238,7 @@ fn test_placement_exit_clears_stale_hand_timer_submit_and_pending_state() {
             current_mana_spend: 1,
             reserve_mana_spend: 0,
         }],
+        rejected_batch: None,
     };
     *app.world_mut().resource_mut::<PlacementTimer>() = PlacementTimer {
         remaining_ms: 12_000,

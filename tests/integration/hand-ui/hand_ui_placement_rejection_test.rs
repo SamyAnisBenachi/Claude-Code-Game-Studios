@@ -29,8 +29,8 @@ use client::ui::{
         FanSlotIndex, HandCardCatalog, HandContents, HandSubmitButton, HandSubmitButtonClicked,
         HandSubmitInteractionState, HandUiEntities, HandUiOutboundMessages,
         HandUiPlacementDropResolved, HandUiPlacementRejectedReceived, HandUiPlugin,
-        PendingPlacements, PlacementDisclosureState, PlacementDisclosureStep, PlacementTimer,
-        SubmitValidationError,
+        PendingPlacements, PlacementDisclosureGuidance, PlacementDisclosureState,
+        PlacementDisclosureStep, PlacementTimer, SubmitValidationError,
     },
     shared::BoardLayout,
 };
@@ -99,8 +99,8 @@ fn rejection_after_submit_reverts_submitted_state_and_shows_correction() {
     );
     assert_eq!(
         submit_button_interaction(&mut app),
-        HandSubmitInteractionState::Active,
-        "submit button interaction must revert to Active after rejection",
+        HandSubmitInteractionState::Inactive,
+        "submit button interaction must stay Inactive until the rejected batch is edited",
     );
     assert_eq!(
         submit_button_text(&mut app),
@@ -133,7 +133,7 @@ fn rejection_after_submit_reverts_submitted_state_and_shows_correction() {
 }
 
 #[test]
-fn rejection_preserves_pending_placements_so_player_can_retry() {
+fn rejection_preserves_pending_placements_for_edit_recovery() {
     test_helpers::init_test_tracing();
     let mut app = app_with_hand_ui_in_placement(test_catalog([(CardId(11), CardType::Minion)]));
     set_local_player(&mut app, PlayerId(7));
@@ -165,6 +165,118 @@ fn rejection_preserves_pending_placements_so_player_can_retry() {
                 reason: PlacementRejectedReason::OccupancyRejected,
             },
         },
+    );
+}
+
+#[test]
+fn rejected_unchanged_pending_batch_cannot_resubmit_in_silent_loop() {
+    test_helpers::init_test_tracing();
+    let mut app = app_with_hand_ui_in_placement(test_catalog([(CardId(12), CardType::Minion)]));
+    set_local_player(&mut app, PlayerId(7));
+    set_hand(&mut app, [CardId(12)]);
+    stage_card_in_slot(
+        &mut app,
+        0,
+        PlayerId(7),
+        PlayTarget::BoardCell { lane: 1, cell: 1 },
+    );
+    click_submit(&mut app);
+    assert_eq!(submissions(&app).len(), 1);
+
+    app.world_mut()
+        .write_message(HandUiPlacementRejectedReceived {
+            reason: PlacementRejectedReason::OccupancyRejected,
+        });
+    run_update(&mut app);
+    click_submit(&mut app);
+
+    assert_eq!(
+        submissions(&app).len(),
+        1,
+        "unchanged rejected batch must not send another C2SSubmitPlacement",
+    );
+    assert_eq!(
+        submit_button_interaction(&mut app),
+        HandSubmitInteractionState::Inactive,
+    );
+    assert_eq!(
+        guidance_text(&mut app),
+        "Server rejected placement: slot taken, retarget or unstage",
+    );
+}
+
+#[test]
+fn retargeting_after_rejection_reenables_submit_and_sends_edited_batch() {
+    test_helpers::init_test_tracing();
+    let mut app = app_with_hand_ui_in_placement(test_catalog([(CardId(13), CardType::Minion)]));
+    set_local_player(&mut app, PlayerId(7));
+    set_hand(&mut app, [CardId(13)]);
+    stage_card_in_slot(
+        &mut app,
+        0,
+        PlayerId(7),
+        PlayTarget::BoardCell { lane: 1, cell: 1 },
+    );
+    click_submit(&mut app);
+    app.world_mut()
+        .write_message(HandUiPlacementRejectedReceived {
+            reason: PlacementRejectedReason::InvalidTarget,
+        });
+    run_update(&mut app);
+
+    stage_card_in_slot(
+        &mut app,
+        0,
+        PlayerId(7),
+        PlayTarget::BoardCell { lane: 1, cell: 2 },
+    );
+    assert_eq!(
+        submit_button_interaction(&mut app),
+        HandSubmitInteractionState::Active,
+    );
+    click_submit(&mut app);
+
+    let submissions = submissions(&app);
+    assert_eq!(submissions.len(), 2);
+    assert_eq!(
+        submissions[1].placements[0].target,
+        PlayTarget::BoardCell { lane: 1, cell: 2 },
+    );
+}
+
+#[test]
+fn unstaging_after_rejection_clears_stale_batch_and_returns_to_card_selection() {
+    test_helpers::init_test_tracing();
+    let mut app = app_with_hand_ui_in_placement(test_catalog([(CardId(14), CardType::Minion)]));
+    set_local_player(&mut app, PlayerId(7));
+    set_hand(&mut app, [CardId(14)]);
+    stage_card_in_slot(
+        &mut app,
+        0,
+        PlayerId(7),
+        PlayTarget::BoardCell { lane: 1, cell: 1 },
+    );
+    click_submit(&mut app);
+    app.world_mut()
+        .write_message(HandUiPlacementRejectedReceived {
+            reason: PlacementRejectedReason::SpawnRangeRejected,
+        });
+    run_update(&mut app);
+
+    app.world_mut()
+        .write_message(client::ui::hand::GhostClickedEvent {
+            card_id: CardId(14),
+        });
+    run_update(&mut app);
+
+    assert_eq!(
+        app.world().resource::<PendingPlacements>().staged_count(),
+        0,
+    );
+    assert_eq!(submit_button_text(&mut app), "Submit (0 cards)");
+    assert_eq!(
+        app.world().resource::<PlacementDisclosureState>().step,
+        PlacementDisclosureStep::CardSelection,
     );
 }
 
@@ -300,6 +412,17 @@ fn submit_button_interaction(app: &mut App) -> HandSubmitInteractionState {
         .get::<HandSubmitInteractionState>(entity)
         .copied()
         .expect("submit button should have a HandSubmitInteractionState component")
+}
+
+fn guidance_text(app: &mut App) -> String {
+    let mut query = app
+        .world_mut()
+        .query_filtered::<&Text, With<PlacementDisclosureGuidance>>();
+    query
+        .single(app.world())
+        .expect("placement disclosure guidance should exist")
+        .0
+        .clone()
 }
 
 fn submitted_checkmark_visibility(app: &mut App) -> Visibility {
