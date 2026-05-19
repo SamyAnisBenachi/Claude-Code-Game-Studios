@@ -1771,12 +1771,26 @@ fn insert_board_rendering_session_resources(
 ) {
     let board_layout = BoardLayout::default();
     let runtime_assets = asset_server.as_deref().map(BoardRuntimeAssets::load);
+    let board_envelope = BoardEnvelope::from_layout(&board_layout);
+
+    tracing::info!(
+        target: "client::presentation::board_rendering::board_envelope",
+        board_origin = ?board_layout.board_origin,
+        cell_width = board_layout.cell_width,
+        lane_height = board_layout.lane_height,
+        world_min = ?board_envelope.world_min(),
+        world_max = ?board_envelope.world_max(),
+        world_center = ?board_envelope.world_center,
+        lane_count = board_envelope.lane_count,
+        cell_count = board_envelope.cell_count,
+        "board envelope inserted"
+    );
 
     commands.insert_resource(board_layout);
     // PROMPT 1390 — BoardEnvelope is derived from BoardLayout and
     // inserted in lockstep so the QA snapshot projection always observes
     // a consistent pair.
-    commands.insert_resource(BoardEnvelope::from_layout(&board_layout));
+    commands.insert_resource(board_envelope);
     commands.insert_resource(CardAtlas::default());
     spawn_board_camera(&mut commands, &board_layout);
     if let Some(runtime_assets) = runtime_assets {
