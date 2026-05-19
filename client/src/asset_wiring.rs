@@ -1,7 +1,9 @@
 use bevy::prelude::*;
+use bevy::ui::widget::NodeImageMode;
 use shared::card::{CardCatalog, CardData, ClassId, Rarity};
 
 use crate::state::{ClientSessionIdentity, ClientState};
+use crate::ui::design_tokens::card_slot::card_slot_art_image_mode;
 
 const CARD_DATA_JSON: &str = include_str!("../../assets/data/cards.json");
 
@@ -605,7 +607,22 @@ pub fn apply_card_display_art(
             let mut entity_commands = commands.entity(entity);
             if let Some(asset_server) = asset_server {
                 let handle: Handle<Image> = asset_server.load(path.clone());
-                entity_commands.insert(ImageNode::new(handle));
+                // PROMPT 1403 / V-P0-01 / RC-6 — bind the canonical card-art
+                // image-mode policy at the single chokepoint. Bevy 0.18's
+                // `NodeImageMode` enum has no `Fit` variant (`Auto` /
+                // `Stretch` / `Sliced` / `Tiled`); `Auto` is the justified
+                // mapping for the story-022 AC2 "Fit or Auto with
+                // justification" clause and is sourced from the canonical
+                // accessor so future migrations only edit one place.
+                entity_commands.insert(ImageNode {
+                    image: handle,
+                    image_mode: card_slot_art_image_mode(),
+                    ..default()
+                });
+                debug_assert!(
+                    !matches!(card_slot_art_image_mode(), NodeImageMode::Stretch),
+                    "canonical card-art image_mode must not be Stretch (UI-1129-05 banner-stretch)",
+                );
             }
             entity_commands.insert(CardDisplayArtAsset { path });
             entity_commands.remove::<CardDisplayArtFallback>();
