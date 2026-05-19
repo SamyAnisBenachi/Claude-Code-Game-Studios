@@ -1006,3 +1006,11 @@ path = "../tests/integration/ui_viewport_live_test.rs"
 [[test]]
 name = "playable_client_protocol_receiver_drain_test"
 path = "../tests/integration/playable_client/protocol_receiver_drain_test.rs"
+
+# PROMPT 1404 / S19-UI-PHASE-CHANGE-BANNER-001 — transient centered banner
+# overlay surfaced on every major RoundPhase transition. Closes V-P1-04 /
+# RC-8 from PROMPT 1396 where phase / turn changes only repainted the HUD
+# phase pill and lacked a Krosmaga-style centered cue.
+[[test]]
+name = "phase_banner_test"
+path = "../tests/integration/ui_clean_pass/phase_banner_test.rs"

@@ -93,6 +93,12 @@ impl Plugin for PresentationPlugin {
         app.add_plugins(HandUiPlugin);
         app.add_plugins(HudPlugin);
         app.add_plugins(ShopAuctionUiPlugin);
+        // PROMPT 1404 / `S19-UI-PHASE-CHANGE-BANNER-001` — transient
+        // centered banner overlay on every major `RoundPhase` transition.
+        // Registered after the gameplay UI roots so the banner paints
+        // above HUD / hand / board (UI_OVERLAY layer) but below modals
+        // (result screen / photosensitivity warning at MODAL layer).
+        app.add_plugins(crate::ui::PhaseBannerPlugin);
         app.add_plugins(ResultScreenPlugin);
         // S13-CONN-LOST-UX-001 (Story 021): proactive Reconnecting / Connection
         // Lost overlay registered after ResultScreenPlugin per ADR-021.
