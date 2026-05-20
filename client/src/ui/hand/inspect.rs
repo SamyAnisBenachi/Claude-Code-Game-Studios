@@ -69,7 +69,7 @@ pub fn produce_hand_card_inspect_requests_system(
 pub fn apply_hand_card_inspect_target_system(
     mut requested: MessageReader<HandCardInspectRequested>,
     mut dismissed: MessageReader<HandCardInspectDismissed>,
-    keys: Res<ButtonInput<KeyCode>>,
+    keys: Option<Res<ButtonInput<KeyCode>>>,
     mut target: ResMut<HandCardInspectTarget>,
 ) {
     let latest = requested.read().last().map(|r| r.card_id);
@@ -77,8 +77,10 @@ pub fn apply_hand_card_inspect_target_system(
     for _ in dismissed.read() {
         dismiss = true;
     }
-    if keys.just_pressed(KeyCode::Escape) {
-        dismiss = true;
+    if let Some(keys) = keys.as_deref() {
+        if keys.just_pressed(KeyCode::Escape) {
+            dismiss = true;
+        }
     }
 
     if let Some(card_id) = latest {
@@ -364,6 +366,26 @@ mod tests {
             .write(HandCardInspectDismissed);
         app.update();
         assert_eq!(app.world().resource::<HandCardInspectTarget>().0, None);
+    }
+
+    #[test]
+    fn apply_target_system_runs_without_button_input_resource() {
+        let mut app = App::new();
+        app.init_resource::<HandCardInspectTarget>()
+            .add_message::<HandCardInspectRequested>()
+            .add_message::<HandCardInspectDismissed>()
+            .add_systems(Update, apply_hand_card_inspect_target_system);
+
+        app.world_mut()
+            .resource_mut::<Messages<HandCardInspectRequested>>()
+            .write(HandCardInspectRequested {
+                card_id: CardId(303),
+            });
+        app.update();
+        assert_eq!(
+            app.world().resource::<HandCardInspectTarget>().0,
+            Some(CardId(303))
+        );
     }
 
     #[test]
