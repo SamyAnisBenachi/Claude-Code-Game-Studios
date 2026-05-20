@@ -1517,6 +1517,20 @@ pub struct PlacementLifecycleSnapshot {
     pub rejected: Option<bool>,
     pub state: Option<String>,
     pub last_rejection_reason: Option<String>,
+    /// PROMPT 1533 — `true` between `submitted==true` and an observable
+    /// ACK (`accepted` flips to `true`) or rejection (`rejected==true` plus
+    /// `last_rejection_reason`). Derived locally as
+    /// `submitted == Some(true) && rejected != Some(true) && accepted != Some(true)`.
+    /// `None` when `submitted` itself is unknown (placement timer resource
+    /// absent).
+    pub awaiting_ack: Option<bool>,
+    /// PROMPT 1533 — derivation provenance for `accepted` so audits can
+    /// tell a heuristic-inferred ACK apart from a future authoritative
+    /// signal. Stable tokens: `local_clearance_heuristic` (submitted +
+    /// staged drained + no rejection + no in-flight drag),
+    /// `local_no_signal` (none of the above triggered). `None` mirrors
+    /// `accepted == None`.
+    pub accepted_source: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -1529,6 +1543,17 @@ pub struct UiTextMarkerSnapshot {
     pub clipped: Option<bool>,
     pub overflow_px: Option<f32>,
     pub visible: Option<bool>,
+    /// PROMPT 1533 — semantic role classification for important rendered
+    /// labels. Derived from the `Name` component via
+    /// [`classify_ui_text_marker_role`] using stable name → role mappings
+    /// (e.g. `HudGoldCounterValue` → `hud.gold_counter`,
+    /// `PhaseTimerCountdown` → `hud.phase_timer`). `None` when no mapping
+    /// matches; audits can grep on stable role tokens without depending on
+    /// raw `Name` string drift. The mapping is intentionally read-only and
+    /// best-effort: adding new roles only requires editing the classifier,
+    /// not the UI modules (preserves the qa_snapshot owned-write-scope
+    /// contract).
+    pub role: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -1910,7 +1935,7 @@ impl<'w, 's> ExtrasInputs<'w, 's> {
             self.hand_outbound.as_deref(),
             self.shop_outbound.as_deref(),
         );
-        let input = build_input_diagnostics_snapshot(&drag, &hand, None, None, None);
+        let input = build_input_diagnostics_snapshot(&drag, &hand, None, None, None, None);
         let debug_grid = build_debug_grid_snapshot(&self.debug_grid);
         let placement_lifecycle = build_placement_lifecycle_snapshot(&hand, &drag, &timers);
         let connection_lost = build_connection_lost_diagnostics_snapshot(
@@ -2471,6 +2496,7 @@ fn build_input_diagnostics_snapshot(
     active_targeting: Option<&ActiveTargetingSnapshot>,
     pointer_screen: Option<[f32; 2]>,
     focused_semantic_target: Option<String>,
+    hovered_entity: Option<String>,
 ) -> InputDiagnosticsSnapshot {
     let active_drag_state = if drag.placement_drag_active {
         Some("placement_drag".to_string())
@@ -2500,7 +2526,7 @@ fn build_input_diagnostics_snapshot(
     InputDiagnosticsSnapshot {
         last_pointer_screen,
         last_pointer_world: drag.placement_drag_cursor_world,
-        hovered_entity: None,
+        hovered_entity,
         pressed_entity,
         hovered_board_cell: target_cell,
         focused_semantic_target,
@@ -2598,9 +2624,34 @@ fn build_placement_lifecycle_snapshot(
     } else {
         None
     };
-    let accepted = None;
+    // PROMPT 1533 — derive `accepted` heuristically from locally observable
+    // post-ACK state: the SubmitPlacements C2S has fired (`submitted ==
+    // Some(true)`), the staged buffer drained back to zero
+    // (`staged_count == Some(0)`), there is no in-flight drag, and there is
+    // no rejection flag. Tagged with `accepted_source = "local_clearance_heuristic"`
+    // so audits can distinguish this from a hypothetical authoritative
+    // server-side signal (see proposal in
+    // reports/PROMPT-1533-qa-snapshot-observability-fields-followup.md).
+    let accepted_by_clearance = submitted == Some(true)
+        && staged_count == Some(0)
+        && last_rejection_reason.is_none()
+        && !drag.placement_drag_active
+        && !drag.ghost_unstage_active;
+    // Schema contract: `accepted` is tri-state — `Some(true)` when the
+    // local clearance heuristic fires, `None` otherwise. Rejection is
+    // already surfaced via `rejected` + `last_rejection_reason`; we keep
+    // `accepted == None` in rejected snapshots so audit tooling reading
+    // the legacy contract (1486) keeps working.
+    let accepted = accepted_by_clearance.then_some(true);
+    let accepted_source = accepted.map(|_| "local_clearance_heuristic".to_string());
+    let awaiting_ack = submitted.map(|s| {
+        s && last_rejection_reason.is_none()
+            && !accepted_by_clearance
+    });
     let state = if last_rejection_reason.is_some() {
         Some("rejected".to_string())
+    } else if accepted == Some(true) {
+        Some("accepted".to_string())
     } else if submitted == Some(true) {
         Some("submitted".to_string())
     } else if drag.placement_drag_active {
@@ -2622,6 +2673,8 @@ fn build_placement_lifecycle_snapshot(
         rejected,
         state,
         last_rejection_reason,
+        awaiting_ack,
+        accepted_source,
     }
 }
 
@@ -3141,16 +3194,23 @@ impl<'w, 's> LayoutInputs<'w, 's> {
         let collisions = build_layout_collisions(&surfaces);
 
         // Documented limitations (Q-05 / Q-06 / Q-07 disabled).
+        // PROMPT 1533 — Q-05 partially closed: each text marker now carries
+        // a stable `role` token derived from its `Name` via
+        // [`classify_ui_text_marker_role`]. Per-glyph clipping still requires
+        // UI-write-scope changes and is deferred.
         let limitations = vec![
             "Q-05 text marker diagnostics are best-effort: text, Name, \
-             bounds, font_px, clipped, and overflow_px are emitted when \
-             Bevy UI layout data exists; per-glyph clipping and semantic \
-             marker names require dedicated UI markers."
+             bounds, font_px, clipped, overflow_px, and (PROMPT 1533) a \
+             stable semantic `role` token derived from Name are emitted \
+             when Bevy UI layout data exists; per-glyph clipping still \
+             requires dedicated UI markers."
                 .to_string(),
             "Q-06 image.<marker>.aspect_ratio_src / aspect_ratio_rendered: \
              not computable without per-image-marker components and an \
              Assets<Image> read; adding markers requires touching \
-             client/src/ui/* (forbidden write scope for this story)."
+             client/src/ui/* (forbidden write scope for this story). See \
+             PROMPT 1533 report for proposed CardArtDiagnostic component + \
+             dedicated card-art audit prompt."
                 .to_string(),
             "Q-07 button.<marker>.affordance_state.disabled: Bevy 0.18 \
              Interaction enum has no Disabled variant; only default / hover \
@@ -3193,21 +3253,84 @@ fn build_ui_text_marker_snapshots(
                     let y = (computed.content_size.y - computed.size.y).max(0.0);
                     x.max(y)
                 });
+                let marker = name.map(|n| n.as_str().to_string());
+                let role = marker.as_deref().and_then(classify_ui_text_marker_role);
                 UiTextMarkerSnapshot {
                     entity: format!("{:?}", entity),
-                    marker: name.map(|n| n.as_str().to_string()),
+                    marker,
                     text: text.0.clone(),
                     bounds,
                     font_px: font.map(|f| f.font_size),
                     clipped: computed.map(surface_overflows_content),
                     overflow_px,
                     visible: visibility.map(is_visibility_visible),
+                    role,
                 }
             },
         )
         .collect::<Vec<_>>();
     markers.sort_by(|a, b| a.entity.cmp(&b.entity));
     markers
+}
+
+/// PROMPT 1533 — classify a UI text marker `Name` into a stable semantic
+/// role token so audits can grep on roles (`hud.phase_timer`,
+/// `hud.gold_counter`, `auction.bid_input`, …) instead of chasing raw
+/// `Name` strings whose casing/format may drift. The classifier is
+/// pattern-based, owned by this module, and conservative: every mapping
+/// here must match a Name actually emitted somewhere under
+/// `client/src/ui/**` or `client/src/presentation/**`. New roles can be
+/// added without touching UI write scope — that is the whole point.
+///
+/// Returns `None` when no mapping matches; the snapshot then carries
+/// `role: null` and audits can still inspect the raw `marker` field.
+pub fn classify_ui_text_marker_role(marker: &str) -> Option<String> {
+    // Exact-match table first — cheap, stable, easy to extend.
+    let exact = match marker {
+        "HudGoldCounterValue" | "HudGoldValue" => Some("hud.gold_counter"),
+        "HudOpponentGoldValue" => Some("hud.opponent_gold"),
+        "HudOpponentClassValue" => Some("hud.opponent_class"),
+        "HudPhaseLabel" | "PhaseLabel" => Some("hud.phase_label"),
+        "PhaseTimerCountdown" | "HudPhaseTimer" => Some("hud.phase_timer"),
+        "HudObjectiveLabel" => Some("hud.objective_label"),
+        "HudScoreboardDot" => Some("hud.scoreboard_dot"),
+        "PlacementSubmitLabel" | "PlacementActionSubmitLabel" => {
+            Some("placement.submit_label")
+        }
+        "PlacementActionCancelLabel" => Some("placement.cancel_label"),
+        "PlacementCorrectionMessage" => Some("placement.correction_message"),
+        "AuctionBidInput" | "AuctionBidValue" => Some("auction.bid_input"),
+        "AuctionLeaderLabel" => Some("auction.leader_label"),
+        "AuctionTimerLabel" => Some("auction.timer_label"),
+        "AuctionToastMessage" => Some("auction.toast_message"),
+        "ShopRefreshLabel" => Some("shop.refresh_label"),
+        "ShopReadyLabel" => Some("shop.ready_label"),
+        "LobbyConfirmLabel" => Some("lobby.confirm_label"),
+        "ConnectionLostMessage" => Some("overlay.connection_lost_message"),
+        "ResultScreenTitle" => Some("overlay.result_screen_title"),
+        "QASnapshotOverlayLabel" => Some("debug.qa_snapshot_label"),
+        "BoardGridOverlayToggleLabel" => Some("debug.grid_toggle_label"),
+        _ => None,
+    };
+    if let Some(role) = exact {
+        return Some(role.to_string());
+    }
+    // Pattern-based fallback for families of markers (card slots, hand
+    // slot indices, etc.). Conservative: only well-known prefixes.
+    let prefix_role = if marker.starts_with("HandFanCardLabel") {
+        Some("hand.card_label")
+    } else if marker.starts_with("HandFanCardCostLabel") {
+        Some("hand.card_cost_label")
+    } else if marker.starts_with("ShopSlotPriceLabel") {
+        Some("shop.slot_price_label")
+    } else if marker.starts_with("ShopSlotCardLabel") {
+        Some("shop.slot_card_label")
+    } else if marker.starts_with("AuctionBidButtonLabel") {
+        Some("auction.bid_button_label")
+    } else {
+        None
+    };
+    prefix_role.map(str::to_string)
 }
 
 fn shop_auction_variant_name(
@@ -3847,12 +3970,26 @@ pub fn build_snapshot_with_extras_and_layout(
         .as_ref()
         .and_then(|shop| shop.bid_keyboard_focus.as_ref())
         .map(|entity| format!("auction_bid_button:{entity}"));
+    // PROMPT 1533 — locally observable pointer/focus provenance lift:
+    // surface the currently hovered UI button (and its semantic name when
+    // present) drawn from the already-collected button affordance probes.
+    // No new ECS queries required — purely a projection of LayoutSnapshot.
+    let hovered_button = layout
+        .button_affordances
+        .iter()
+        .find(|button| button.interaction == "hover");
+    let hovered_entity = hovered_button.map(|button| button.entity.clone());
+    let hovered_semantic_target = hovered_button
+        .and_then(|button| button.name.as_deref())
+        .map(|name| format!("button:{name}"));
+    let focused_semantic_target = focused_semantic_target.or(hovered_semantic_target);
     extras.input = build_input_diagnostics_snapshot(
         &extras.drag,
         &extras.hand,
         board_targeting.active_targeting.as_ref(),
         pointer_screen,
         focused_semantic_target,
+        hovered_entity,
     );
     extras.placement_lifecycle =
         build_placement_lifecycle_snapshot(&extras.hand, &extras.drag, &extras.timers);

@@ -661,4 +661,69 @@ fn test_snapshot_extras_include_pointer_lifecycle_and_debug_grid_blocks() {
         extras["input"]["last_hit_test_source"],
         "board_targeting_overlay"
     );
+    // PROMPT 1533 — awaiting_ack/accepted_source diagnostic fields.
+    // submitted=true + rejection present ⇒ awaiting_ack=false (rejection is
+    // the terminal signal); accepted_source remains null because the
+    // local-clearance heuristic did not fire.
+    assert_eq!(
+        extras["placement_lifecycle"]["awaiting_ack"], false,
+        "rejection observed → no longer awaiting ack"
+    );
+    assert!(
+        extras["placement_lifecycle"]["accepted_source"].is_null(),
+        "rejected snapshot must not advertise an ACK source"
+    );
+}
+
+/// PROMPT 1533 — local-clearance ACK heuristic. When the placement timer
+/// reports `submitted == true`, the staged buffer drained to zero, and no
+/// rejection is present, the snapshot now exposes
+/// `placement_lifecycle.accepted = true` with
+/// `accepted_source = "local_clearance_heuristic"` and `state = "accepted"`.
+#[test]
+fn test_snapshot_placement_lifecycle_accepted_from_local_clearance() {
+    let extras = ExtrasSnapshot {
+        timers: TimersSnapshot {
+            placement_timer: Some(PlacementTimerSnapshot {
+                remaining_ms: 0,
+                urgency_fired: true,
+                in_grace_window: false,
+                grace_remaining_ms: 0,
+                submitted: true,
+            }),
+            ..TimersSnapshot::default()
+        },
+        hand: Some(HandSnapshot {
+            mode: Some("Placement".to_string()),
+            disclosure_step: Some("Submitted".to_string()),
+            hand_count: 0,
+            cards: Vec::new(),
+            pending_placements: Vec::new(),
+            staged_count: 0,
+        }),
+        drag: DragSnapshot::default(),
+        ..ExtrasSnapshot::default()
+    };
+    let snapshot = build_snapshot_with_extras_and_layout(
+        9,
+        1_700_000_001_000,
+        placeholder_screenshot(1_700_000_001_000),
+        None,
+        None,
+        None,
+        None,
+        None,
+        UiCounts::default(),
+        extras,
+        LayoutSnapshot::default(),
+        BoardTargetingSnapshot::default(),
+    );
+    let value = serde_json::to_value(&snapshot).expect("snapshot serialises");
+    let lifecycle = &value["extras"]["placement_lifecycle"];
+    assert_eq!(lifecycle["submitted"], true);
+    assert_eq!(lifecycle["accepted"], true, "local-clearance heuristic must fire");
+    assert!(lifecycle["rejected"].is_null() || lifecycle["rejected"] == false);
+    assert_eq!(lifecycle["state"], "accepted");
+    assert_eq!(lifecycle["accepted_source"], "local_clearance_heuristic");
+    assert_eq!(lifecycle["awaiting_ack"], false);
 }
