@@ -33,6 +33,11 @@ use crate::ui::lobby::PlayerTeamMapUpdated;
 use crate::ui::shared::{BoardLayout, LaneCell, BOARD_CELL_COUNT, BOARD_LANE_COUNT};
 
 pub mod drag_state_visuals;
+// PROMPT 1520 — hand / DRAFT_INITIAL grid card inspect consumer. Wires the
+// shared `card_inspect` primitive (PROMPT 1482) into right-click on
+// `HandSlotCard` (fan) and `GridSlotCard` (draft grid). Shop / auction
+// surfaces are owned by `ui/shop_auction/**` and not touched here.
+pub mod inspect;
 
 pub const HAND_FAN_SLOT_COUNT: usize = 10;
 /// Height of the absolute-positioned `HandFanRoot` strip anchored to the bottom
@@ -1133,6 +1138,10 @@ impl Plugin for HandUiPlugin {
             .init_resource::<ButtonInput<MouseButton>>()
             .add_message::<HandFanCardClicked>()
             .add_message::<HandGridCardClicked>()
+            // PROMPT 1520 — right-click card inspect consumer wiring.
+            .init_resource::<inspect::HandCardInspectTarget>()
+            .add_message::<inspect::HandCardInspectRequested>()
+            .add_message::<inspect::HandCardInspectDismissed>()
             .add_message::<HandUiDraftOfferingReceived>()
             .add_message::<HandUiCardAcquiredReceived>()
             // PROMPT 1244 — surface S2CPlacementRejected feedback to the
@@ -1242,6 +1251,17 @@ impl Plugin for HandUiPlugin {
                         handle_grid_card_click_system,
                         handle_hand_fan_card_click_system,
                         handle_hand_fan_activate_click_system,
+                        // PROMPT 1520 — produce inspect requests from
+                        // secondary-button presses on fan / grid cards,
+                        // fold them (plus Escape / backdrop click) into
+                        // `HandCardInspectTarget`, and dismiss the overlay
+                        // when the dim backdrop is pressed. Ordering: the
+                        // producer must run before the target-fold system
+                        // in the same tick, and dismiss-press must publish
+                        // its dismiss message before the fold.
+                        inspect::produce_hand_card_inspect_requests_system,
+                        inspect::handle_hand_card_inspect_backdrop_dismiss_system,
+                        inspect::apply_hand_card_inspect_target_system,
                         handle_placement_drop_resolved_system,
                         handle_reserve_strip_button_interactions_system,
                     )
@@ -1290,6 +1310,11 @@ impl Plugin for HandUiPlugin {
                         // when no drag is in flight. Distinct marker pathway
                         // from Story 020 (no `DragStateOverlay` carry).
                         sync_hand_idle_playable_affordance_system,
+                        // PROMPT 1520 — spawn / despawn the card-inspect
+                        // overlay tree to match `HandCardInspectTarget`.
+                        // Read-only over `HandCardCatalog` + the resource;
+                        // only mutates `Commands` when the resource changes.
+                        inspect::sync_hand_card_inspect_overlay_system,
                     )
                         .chain()
                         .in_set(HandUiSystemSet::StateSync),
