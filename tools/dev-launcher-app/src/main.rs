@@ -83,15 +83,24 @@ const COLOR_HEADER_MUTED: [u8; 3] = [193, 210, 227];
 const COLOR_PANEL_BG: [u8; 3] = [246, 248, 251];
 const COLOR_PANEL_TEXT: [u8; 3] = [35, 45, 58];
 const COLOR_PANEL_HEADING: [u8; 3] = [18, 30, 46];
+// PROMPT 1571: each status tone is a (background, foreground) pair so the
+// final SUCCESS/FAIL/RUNNING/READY badge reads at a glance from across the
+// room. Success is a solid green with white text; Fail is a solid red with
+// white text. Idle/Running/Warning keep the original muted panel-text palette.
 const COLOR_STATUS_IDLE: [u8; 3] = [231, 238, 247];
-const COLOR_STATUS_RUNNING: [u8; 3] = [226, 238, 252];
-const COLOR_STATUS_SUCCESS: [u8; 3] = [223, 244, 232];
+const COLOR_STATUS_IDLE_TEXT: [u8; 3] = COLOR_PANEL_TEXT;
+const COLOR_STATUS_RUNNING: [u8; 3] = [38, 89, 158];
+const COLOR_STATUS_RUNNING_TEXT: [u8; 3] = [255, 255, 255];
+const COLOR_STATUS_SUCCESS: [u8; 3] = [34, 139, 70];
+const COLOR_STATUS_SUCCESS_TEXT: [u8; 3] = [255, 255, 255];
 const COLOR_STATUS_WARNING: [u8; 3] = [255, 242, 209];
-const COLOR_STATUS_ERROR: [u8; 3] = [255, 229, 229];
+const COLOR_STATUS_WARNING_TEXT: [u8; 3] = COLOR_PANEL_TEXT;
+const COLOR_STATUS_ERROR: [u8; 3] = [192, 32, 32];
+const COLOR_STATUS_ERROR_TEXT: [u8; 3] = [255, 255, 255];
 const COLOR_LOG_BG: [u8; 3] = [18, 25, 34];
 const COLOR_LOG_TEXT: [u8; 3] = [224, 235, 244];
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum JobKind {
     Rebuild,
     Launch,
@@ -274,12 +283,52 @@ enum StatusTone {
 impl StatusTone {
     fn colors(self) -> ([u8; 3], [u8; 3]) {
         match self {
-            StatusTone::Idle => (COLOR_STATUS_IDLE, COLOR_PANEL_TEXT),
-            StatusTone::Running => (COLOR_STATUS_RUNNING, COLOR_PANEL_TEXT),
-            StatusTone::Success => (COLOR_STATUS_SUCCESS, COLOR_PANEL_TEXT),
-            StatusTone::Warning => (COLOR_STATUS_WARNING, COLOR_PANEL_TEXT),
-            StatusTone::Error => (COLOR_STATUS_ERROR, COLOR_PANEL_TEXT),
+            StatusTone::Idle => (COLOR_STATUS_IDLE, COLOR_STATUS_IDLE_TEXT),
+            StatusTone::Running => (COLOR_STATUS_RUNNING, COLOR_STATUS_RUNNING_TEXT),
+            StatusTone::Success => (COLOR_STATUS_SUCCESS, COLOR_STATUS_SUCCESS_TEXT),
+            StatusTone::Warning => (COLOR_STATUS_WARNING, COLOR_STATUS_WARNING_TEXT),
+            StatusTone::Error => (COLOR_STATUS_ERROR, COLOR_STATUS_ERROR_TEXT),
         }
+    }
+}
+
+// PROMPT 1571: the visible final state of a job. `compose_status_line` is a
+// pure helper that maps a `JobOutcome` to the (text, tone) pair surfaced on
+// the launcher status row. Kept pure so the success/fail UI contract is
+// unit-testable without spawning a real Win32 window.
+#[derive(Clone, Debug, PartialEq, Eq)]
+enum JobOutcome {
+    Ready,
+    Running(JobKind),
+    Success(JobKind),
+    Fail { job: JobKind, code: i32 },
+    Error { job: JobKind, reason: String },
+    ConfigError(String),
+}
+
+fn compose_status_line(outcome: &JobOutcome) -> (String, StatusTone) {
+    match outcome {
+        JobOutcome::Ready => (
+            "READY - idle. Click a button to start a job.".to_string(),
+            StatusTone::Idle,
+        ),
+        JobOutcome::Running(job) => (
+            format!("RUNNING - {} in progress...", job.human()),
+            StatusTone::Running,
+        ),
+        JobOutcome::Success(job) => (
+            format!("SUCCESS - {} exited 0.", job.human()),
+            StatusTone::Success,
+        ),
+        JobOutcome::Fail { job, code } => (
+            format!("FAIL - {} exited {} (nonzero).", job.human(), code),
+            StatusTone::Error,
+        ),
+        JobOutcome::Error { job, reason } => (
+            format!("FAIL - {} aborted: {}", job.human(), reason),
+            StatusTone::Error,
+        ),
+        JobOutcome::ConfigError(msg) => (format!("FAIL - {}", msg), StatusTone::Error),
     }
 }
 
@@ -310,7 +359,7 @@ pub struct LauncherUi {
     #[nwg_layout_item(layout: layout, col: 4, row: 2, col_span: 4, row_span: 2)]
     launch_btn: nwg::Button,
 
-    #[nwg_control(text: "Status: Idle - ready.", flags: "VISIBLE|MULTI_LINE", background_color: Some(COLOR_STATUS_IDLE))]
+    #[nwg_control(text: "READY - idle. Click a button to start a job.", flags: "VISIBLE|MULTI_LINE", background_color: Some(COLOR_STATUS_IDLE))]
     #[nwg_layout_item(layout: layout, col: 0, row: 4, col_span: 8)]
     state_label: nwg::RichLabel,
 
@@ -486,7 +535,7 @@ impl LauncherUi {
                     Some(source),
                     None,
                     lines,
-                    "Status: Idle - ready.".to_string(),
+                    compose_status_line(&JobOutcome::Ready).0,
                     StatusTone::Idle,
                     true,
                 )
@@ -510,7 +559,10 @@ impl LauncherUi {
                     None,
                     Some(err.clone()),
                     lines,
-                    "Status: ERROR - repo root unresolved. Buttons disabled.".to_string(),
+                    compose_status_line(&JobOutcome::ConfigError(
+                        "repo root unresolved. Buttons disabled.".to_string(),
+                    ))
+                    .0,
                     StatusTone::Error,
                     false,
                 )
@@ -571,10 +623,11 @@ impl LauncherUi {
                 state.append(format!("ERROR: {}", msg));
                 state.log_dirty = true;
                 drop(guard);
-                self.set_status(
-                    "Status: ERROR - repo root unresolved. Buttons disabled.",
-                    StatusTone::Error,
-                );
+                let (text, tone) =
+                    compose_status_line(&JobOutcome::ConfigError(
+                        "repo root unresolved. Buttons disabled.".to_string(),
+                    ));
+                self.set_status(&text, tone);
                 self.refresh_diagnostics();
                 self.refresh_log();
                 return;
@@ -589,10 +642,10 @@ impl LauncherUi {
             ));
             state.log_dirty = true;
             drop(guard);
-            self.set_status(
-                "Status: ERROR - launcher script missing.",
-                StatusTone::Error,
-            );
+            let (text, tone) = compose_status_line(&JobOutcome::ConfigError(
+                "launcher script missing on disk.".to_string(),
+            ));
+            self.set_status(&text, tone);
             self.refresh_diagnostics();
             self.refresh_log();
             return;
@@ -626,10 +679,8 @@ impl LauncherUi {
         drop(guard);
 
         self.set_buttons_enabled(false);
-        self.set_status(
-            &format!("Status: RUNNING - {}", job.human()),
-            StatusTone::Running,
-        );
+        let (text, tone) = compose_status_line(&JobOutcome::Running(job));
+        self.set_status(&text, tone);
         self.refresh_diagnostics();
         self.refresh_log();
     }
@@ -712,29 +763,21 @@ impl LauncherUi {
 
         if let Some((job, code)) = finished {
             self.set_buttons_enabled(true);
-            let (msg, tone) = if code == 0 {
-                (
-                    format!("Status: DONE - {} exited 0.", job.human()),
-                    StatusTone::Success,
-                )
+            let outcome = if code == 0 {
+                JobOutcome::Success(job)
             } else {
-                (
-                    format!(
-                        "Status: DONE WITH ERRORS - {} exited {}.",
-                        job.human(),
-                        code
-                    ),
-                    StatusTone::Warning,
-                )
+                JobOutcome::Fail { job, code }
             };
+            let (msg, tone) = compose_status_line(&outcome);
             self.set_status(&msg, tone);
         }
         if let Some((job, why)) = errored {
             self.set_buttons_enabled(true);
-            self.set_status(
-                &format!("Status: ERROR - {} failed. See output.", job.human()),
-                StatusTone::Error,
-            );
+            let (msg, tone) = compose_status_line(&JobOutcome::Error {
+                job,
+                reason: why.clone(),
+            });
+            self.set_status(&msg, tone);
             let _ = why;
         }
 
@@ -2429,5 +2472,108 @@ mod tests {
         assert!(other.human().contains("work/foo"));
         let invalid = PlayRootStatus::InvalidRepo("X".to_string());
         assert!(invalid.human().contains("not a CCGS workspace"));
+    }
+
+    // ---- PROMPT 1571: SUCCESS / FAIL job status UI contract -----------
+
+    #[test]
+    fn compose_status_line_ready_is_idle_tone() {
+        let (text, tone) = compose_status_line(&JobOutcome::Ready);
+        assert!(text.starts_with("READY"), "got: {}", text);
+        assert!(matches!(tone, StatusTone::Idle));
+    }
+
+    #[test]
+    fn compose_status_line_running_is_running_tone_and_mentions_job() {
+        let (text, tone) = compose_status_line(&JobOutcome::Running(JobKind::Rebuild));
+        assert!(text.starts_with("RUNNING"), "got: {}", text);
+        assert!(text.contains(JobKind::Rebuild.human()));
+        assert!(matches!(tone, StatusTone::Running));
+    }
+
+    #[test]
+    fn compose_status_line_success_exit_zero_is_success_tone() {
+        let (text, tone) = compose_status_line(&JobOutcome::Success(JobKind::Rebuild));
+        assert!(text.starts_with("SUCCESS"), "got: {}", text);
+        assert!(text.contains("exited 0"));
+        assert!(matches!(tone, StatusTone::Success));
+    }
+
+    #[test]
+    fn compose_status_line_fail_nonzero_is_error_tone() {
+        for code in [1i32, 2, -1, 255] {
+            let (text, tone) = compose_status_line(&JobOutcome::Fail {
+                job: JobKind::Rebuild,
+                code,
+            });
+            assert!(text.starts_with("FAIL"), "got: {}", text);
+            assert!(
+                text.contains(&format!("exited {}", code)),
+                "code {} missing in {}",
+                code,
+                text
+            );
+            assert!(
+                matches!(tone, StatusTone::Error),
+                "expected Error tone for nonzero exit {}, got other",
+                code
+            );
+        }
+    }
+
+    #[test]
+    fn compose_status_line_worker_error_is_fail_tone_and_quotes_reason() {
+        let (text, tone) = compose_status_line(&JobOutcome::Error {
+            job: JobKind::Launch,
+            reason: "spawn failed: foo".to_string(),
+        });
+        assert!(text.starts_with("FAIL"), "got: {}", text);
+        assert!(text.contains("spawn failed: foo"));
+        assert!(matches!(tone, StatusTone::Error));
+    }
+
+    #[test]
+    fn compose_status_line_config_error_is_fail_tone() {
+        let (text, tone) = compose_status_line(&JobOutcome::ConfigError(
+            "repo root unresolved.".to_string(),
+        ));
+        assert!(text.starts_with("FAIL"), "got: {}", text);
+        assert!(text.contains("repo root unresolved."));
+        assert!(matches!(tone, StatusTone::Error));
+    }
+
+    #[test]
+    fn status_tone_colors_success_uses_vivid_green_with_white_text() {
+        let (bg, fg) = StatusTone::Success.colors();
+        // green dominant, white text
+        assert!(bg[1] > bg[0] && bg[1] > bg[2], "expected green-dominant bg, got {:?}", bg);
+        assert_eq!(fg, [255, 255, 255]);
+    }
+
+    #[test]
+    fn status_tone_colors_error_uses_vivid_red_with_white_text() {
+        let (bg, fg) = StatusTone::Error.colors();
+        // red dominant, white text
+        assert!(bg[0] > bg[1] && bg[0] > bg[2], "expected red-dominant bg, got {:?}", bg);
+        assert_eq!(fg, [255, 255, 255]);
+    }
+
+    #[test]
+    fn status_tone_colors_running_is_distinct_from_success_and_error() {
+        let (running_bg, _) = StatusTone::Running.colors();
+        let (success_bg, _) = StatusTone::Success.colors();
+        let (error_bg, _) = StatusTone::Error.colors();
+        assert_ne!(running_bg, success_bg);
+        assert_ne!(running_bg, error_bg);
+        assert_ne!(success_bg, error_bg);
+    }
+
+    #[test]
+    fn status_tone_colors_idle_is_distinct_from_success() {
+        // PROMPT 1571: the initial-state (no job ever run) must not be
+        // visually confused with a successful job result.
+        let (idle_bg, _) = StatusTone::Idle.colors();
+        let (success_bg, _) = StatusTone::Success.colors();
+        assert_ne!(idle_bg, success_bg);
     }
 }
