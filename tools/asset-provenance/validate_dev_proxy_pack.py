@@ -32,6 +32,14 @@ VALID_SOURCE_CLASS = {"licensed_krosmaga_dev_proxy"}
 VALID_RELEASE_CLASS = {"dev_only"}
 VALID_WORKFLOW_STATUS = {"needed"}
 
+LOGICAL_ID_PREFIX = "lid_"
+_LOGICAL_ID_BODY_CHARS = set(
+    "abcdefghijklmnopqrstuvwxyz0123456789_"
+)
+_CONSUMER_SURFACE_CHARS = set(
+    "abcdefghijklmnopqrstuvwxyz0123456789_."
+)
+
 REQUIRED_ENTRY_KEYS = (
     "logical_id",
     "source_path",
@@ -114,6 +122,26 @@ def _check_entry(row: dict[str, Any]) -> list[dict[str, Any]]:
                 "logical_id_required",
                 row.get("logical_id"),
                 "logical_id must be a non-empty string.",
+                source_path,
+            )
+        )
+    elif not row["logical_id"].startswith(LOGICAL_ID_PREFIX) or not row["logical_id"][len(LOGICAL_ID_PREFIX):]:
+        failures.append(
+            _failure(
+                logical_id,
+                "logical_id_prefix_required",
+                row.get("logical_id"),
+                f"logical_id must start with '{LOGICAL_ID_PREFIX}' and carry a non-empty body (schema.md Logical Asset ID Layer).",
+                source_path,
+            )
+        )
+    elif not set(row["logical_id"][len(LOGICAL_ID_PREFIX):]).issubset(_LOGICAL_ID_BODY_CHARS):
+        failures.append(
+            _failure(
+                logical_id,
+                "logical_id_body_charset",
+                row.get("logical_id"),
+                "logical_id body must use only lowercase letters, digits, and underscores after the 'lid_' prefix.",
                 source_path,
             )
         )
@@ -206,6 +234,21 @@ def _check_entry(row: dict[str, Any]) -> list[dict[str, Any]]:
                 source_path,
             )
         )
+    elif (
+        "." not in consumer_surface
+        or not set(consumer_surface).issubset(_CONSUMER_SURFACE_CHARS)
+        or consumer_surface.startswith(".")
+        or consumer_surface.endswith(".")
+    ):
+        failures.append(
+            _failure(
+                logical_id,
+                "consumer_surface_format",
+                consumer_surface,
+                "expected_consumer_surface must be a dotted lowercase token path (e.g. 'hand.card_frame').",
+                source_path,
+            )
+        )
 
     if match_quality in {"missing", "no_art_needed"}:
         if source_path not in (None, ""):
@@ -247,6 +290,19 @@ def _check_entry(row: dict[str, Any]) -> list[dict[str, Any]]:
                     "source_path_must_not_be_repo_assets",
                     source_path,
                     "source_path points inside repo assets/**, which would imply copied Krosmaga content.",
+                    source_path,
+                )
+            )
+
+    if match_quality == "needs_conversion":
+        notes = row.get("conversion_notes")
+        if not isinstance(notes, str) or not notes.strip():
+            failures.append(
+                _failure(
+                    logical_id,
+                    "conversion_notes_required",
+                    notes,
+                    "needs_conversion rows must document conversion_notes (resize/atlas/audio remux/etc).",
                     source_path,
                 )
             )
@@ -312,6 +368,25 @@ def validate_manifest(manifest: dict[str, Any]) -> list[dict[str, Any]]:
                 "pack_release_class_must_be_dev_only",
                 pack.get("release_class"),
                 "The pack must use release_class=dev_only.",
+            )
+        )
+    if "workflow_status" in pack and pack.get("workflow_status") not in VALID_WORKFLOW_STATUS:
+        pack_failures.append(
+            _failure(
+                "<pack>",
+                "pack_workflow_status_must_remain_needed",
+                pack.get("workflow_status"),
+                "If pack.workflow_status is present it must remain 'needed' — a Krosmaga pack cannot advance the workflow.",
+            )
+        )
+    pack_id = pack.get("pack_id")
+    if not isinstance(pack_id, str) or not pack_id.strip():
+        pack_failures.append(
+            _failure(
+                "<pack>",
+                "pack_id_required",
+                pack_id,
+                "pack.pack_id must be a non-empty string.",
             )
         )
 
