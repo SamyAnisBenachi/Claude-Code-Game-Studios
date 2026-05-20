@@ -380,7 +380,11 @@ fn write_bid_rejected(app: &mut App, reason: BidRejectedReason) {
 
 fn write_settled(app: &mut App, winner: Option<PlayerId>, amount: u32) {
     app.world_mut()
-        .write_message(ShopAuctionSettledReceived { winner, amount });
+        .write_message(ShopAuctionSettledReceived {
+            winner,
+            amount,
+            card_id: CardId(1),
+        });
     run_update(app);
 }
 

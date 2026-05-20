@@ -189,6 +189,7 @@ fn sau_007_same_update_accepted_then_settled_renders_only_terminal_state() {
     app.world_mut().write_message(ShopAuctionSettledReceived {
         winner: Some(LOCAL_PLAYER),
         amount: 7,
+        card_id: CardId(1),
     });
     run_update(&mut app);
 
@@ -409,7 +410,11 @@ fn set_phase(app: &mut App, phase: RoundPhase, timer_duration_ms: u32) {
 
 fn write_settled(app: &mut App, winner: Option<PlayerId>, amount: u32) {
     app.world_mut()
-        .write_message(ShopAuctionSettledReceived { winner, amount });
+        .write_message(ShopAuctionSettledReceived {
+            winner,
+            amount,
+            card_id: CardId(1),
+        });
     run_update(app);
 }
 

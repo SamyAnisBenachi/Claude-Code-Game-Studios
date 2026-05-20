@@ -142,7 +142,11 @@ fn set_phase(app: &mut App, phase: RoundPhase, timer_duration_ms: u32) {
 
 fn write_settled(app: &mut App, winner: Option<PlayerId>, amount: u32) {
     app.world_mut()
-        .write_message(ShopAuctionSettledReceived { winner, amount });
+        .write_message(ShopAuctionSettledReceived {
+            winner,
+            amount,
+            card_id: AUCTION_WON_CARD_ID,
+        });
     run_update(app);
 }
 
@@ -402,4 +406,38 @@ fn ac15_opponent_settled_toast_text_includes_price() {
 
     // Suppress unused-time warning for `run_for`.
     let _ = run_for;
+}
+
+// ============================================================================
+// PROMPT 1513 — wire-authoritative card_id arms AuctionWonPending.
+// Regression-locks: the arm path must NOT depend on the local
+// `ShopAuctionAuctionState::card_id` (which is fragile across reconnect /
+// replay paths). The wire `S2CAuctionSettled.card_id` is the source of truth.
+// ============================================================================
+
+#[test]
+fn prompt_1513_arm_uses_wire_card_id_not_local_auction_state() {
+    test_helpers::init_test_tracing();
+    let mut app = app_in_active_auction(AUCTION_WON_CARD_ID, 4);
+    let _slot = spawn_fan_slot(&mut app, 0, AUCTION_WON_CARD_ID);
+
+    // Use a card_id on the wire that DIFFERS from the local auction state.
+    // This simulates the wire being authoritative across paths where local
+    // state may be stale (mid-settle reconnect, replay catch-up).
+    let wire_card_id = CardId(999);
+    app.world_mut()
+        .write_message(ShopAuctionSettledReceived {
+            winner: Some(LOCAL_PLAYER),
+            amount: 4,
+            card_id: wire_card_id,
+        });
+    run_update(&mut app);
+
+    let pending = app.world().resource::<AuctionWonPending>();
+    let state = pending.state.expect("AuctionWonPending must arm on local winner");
+    assert_eq!(
+        state.card_id, wire_card_id,
+        "PROMPT 1513: AuctionWonPending must arm with wire `S2CAuctionSettled.card_id`, \
+         not with `ShopAuctionAuctionState::card_id`"
+    );
 }

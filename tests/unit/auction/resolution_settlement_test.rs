@@ -114,6 +114,7 @@ fn test_winner_with_hand_room_spends_gold_adds_card_and_emits_settlement() {
         S2CAuctionSettled {
             winner: Some(winner),
             amount: 7,
+            card_id,
         }
     );
     let settled = settled.expect("winner settlement should emit internal message");
@@ -152,6 +153,7 @@ fn test_winner_with_full_hand_spends_gold_discards_card_and_settles() {
         S2CAuctionSettled {
             winner: Some(winner),
             amount: 7,
+            card_id,
         }
     );
     let settled = settled.expect("full-hand settlement should emit internal message");
@@ -183,6 +185,7 @@ fn test_no_bid_resolution_leaves_gold_unchanged_and_emits_none_settlement() {
         S2CAuctionSettled {
             winner: None,
             amount: 0,
+            card_id,
         }
     );
     let settled = settled.expect("no-bid settlement should emit internal message");

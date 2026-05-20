@@ -1518,6 +1518,12 @@ impl From<S2CAuctionBidRejected> for ShopAuctionBidRejectedReceived {
 pub struct ShopAuctionSettledReceived {
     pub winner: Option<PlayerId>,
     pub amount: u32,
+    /// PROMPT 1513 — wire-authoritative card id, mirrored from
+    /// `S2CAuctionSettled.card_id`. `handle_auction_settled_system` uses
+    /// this to arm `AuctionWonPending` instead of the local
+    /// `ShopAuctionAuctionState::card_id`, which is fragile (cleared on
+    /// `enter_settling`, missing on reconnect mid-settle).
+    pub card_id: CardId,
 }
 
 impl From<S2CAuctionSettled> for ShopAuctionSettledReceived {
@@ -1525,6 +1531,7 @@ impl From<S2CAuctionSettled> for ShopAuctionSettledReceived {
         Self {
             winner: message.winner,
             amount: message.amount,
+            card_id: message.card_id,
         }
     }
 }
@@ -2097,6 +2104,7 @@ pub fn drain_auction_settled_receiver_system(
             tracing::info!(
                 winner = ?message.winner,
                 amount = message.amount,
+                card_id = ?message.card_id,
                 msg_type = "S2CAuctionSettled",
                 "drain_auction_settled: recv"
             );
@@ -2343,22 +2351,22 @@ pub fn handle_auction_settled_system(
             if let Some(messages) = anim_messages.card_acquired_anim.as_deref_mut() {
                 messages.write(CardAcquiredAnimReady);
             }
-            // PROMPT 1347 / AC4 / AC5 / AC11 — arm the auction-won
-            // disposition state so the affordance banner, hand-fan marker,
-            // and QA snapshot block become active when the auction-followup
-            // PLACEMENT phase begins. `auction_state.card_id` is the won
-            // card (the auction state still holds the card at this point;
-            // it is cleared shortly after by `enter_settling`). One-shot
-            // per auction settle.
-            if let Some(card_id) = auction_state.card_id {
-                auction_won_pending.arm(card_id, phase_view.round_number);
-                tracing::info!(
-                    target: "client::ui::shop_auction",
-                    card_id = ?card_id,
-                    settle_round = phase_view.round_number,
-                    "auction_won_pending: armed for AC4/AC5/AC11"
-                );
-            }
+            // PROMPT 1347 / PROMPT 1513 / AC4 / AC5 / AC11 — arm the
+            // auction-won disposition state so the affordance banner,
+            // hand-fan marker, and QA snapshot block become active when
+            // the auction-followup PLACEMENT phase begins. Wire-authoritative:
+            // `message.card_id` comes from `S2CAuctionSettled.card_id`,
+            // not from `auction_state.card_id` (which is fragile —
+            // `enter_settling` ran just above and the auction state may
+            // already be transitioning on reconnect/replay paths).
+            // One-shot per auction settle.
+            auction_won_pending.arm(message.card_id, phase_view.round_number);
+            tracing::info!(
+                target: "client::ui::shop_auction",
+                card_id = ?message.card_id,
+                settle_round = phase_view.round_number,
+                "auction_won_pending: armed for AC4/AC5/AC11 (wire card_id)"
+            );
         }
         if let Some(messages) = anim_messages.settlement_overlay.as_deref_mut() {
             messages.write(SettlementOverlayRequested);

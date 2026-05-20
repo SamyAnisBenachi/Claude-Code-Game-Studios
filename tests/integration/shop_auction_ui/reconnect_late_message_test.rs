@@ -214,6 +214,7 @@ fn sau_008_late_auction_accepted_rejected_and_card_are_ignored_after_phase_exit(
     app.world_mut().write_message(ShopAuctionSettledReceived {
         winner: Some(LOCAL_PLAYER),
         amount: 7,
+        card_id: CardId(1),
     });
     run_update(&mut app);
     assert_eq!(

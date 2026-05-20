@@ -675,6 +675,13 @@ pub struct S2CAuctionBidAccepted {
 pub struct S2CAuctionSettled {
     pub winner: Option<PlayerId>,
     pub amount: u32,
+    /// PROMPT 1513 — wire-authoritative card id for the settled auction.
+    /// Always present (the server knows the auction card at settle time on
+    /// both the winner and no-bid paths). Clients use this to arm winner
+    /// disposition state (e.g. `AuctionWonPending`) without depending on
+    /// local `auction_state.card_id`, which is cleared shortly after the
+    /// settling transition.
+    pub card_id: CardId,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]

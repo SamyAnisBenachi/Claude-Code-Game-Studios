@@ -735,6 +735,7 @@ pub fn settle_expired_auction(
                 message: S2CAuctionSettled {
                     winner: Some(winner),
                     amount: bid_amount,
+                    card_id,
                 },
             });
 
@@ -766,6 +767,7 @@ pub fn settle_expired_auction(
                 message: S2CAuctionSettled {
                     winner: None,
                     amount: 0,
+                    card_id,
                 },
             });
 
