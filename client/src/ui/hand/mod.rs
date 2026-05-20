@@ -3956,7 +3956,23 @@ pub fn spawn_hand_ui(
         // (UI-1129-05 banner-stretch resolved). Child of the
         // pre-pooled `FanSlotIndex` entity (ADR-021 Impl Guideline 5
         // preserved — no new top-level pre-pool entry).
-        let (art_node, art_z) = card_slot_art_image_node(CardSlotKind::HandFan);
+        let (mut art_node, art_z) = card_slot_art_image_node(CardSlotKind::HandFan);
+        // PROMPT 1508 — HU-CHROME-02 regression canary requires every direct
+        // ChildOf(slot) to declare an explicit positive Val::Percent width
+        // (Node::default() / Val::Auto reproduces the Verdict B 0×0 bug). The
+        // shared `card_slot_art_image_node` builder ships with Val::Auto
+        // width sized via left/right px insets — fine for slots with a label
+        // strip below, but the hand-fan surface has no label-strip child so
+        // the art covers the full slot box with all chrome (frame, stat
+        // badges, icons, affordance overlays) painted on top. Override to
+        // percent-based 100% × 100% sizing anchored top-left so the slot
+        // children satisfy the HU-CHROME-02/03 composition contract.
+        art_node.left = Val::Percent(0.0);
+        art_node.right = Val::Auto;
+        art_node.top = Val::Percent(0.0);
+        art_node.bottom = Val::Auto;
+        art_node.width = Val::Percent(100.0);
+        art_node.height = Val::Percent(100.0);
         let art_entity = commands
             .spawn((
                 Name::new(format!("Fan Slot {index} Card Art")),
