@@ -725,6 +725,14 @@ path = "../tests/integration/playable_client/lobby_entry_test.rs"
 name = "playable_client_lobby_room_browser_test"
 path = "../tests/integration/playable_client/lobby_room_browser_test.rs"
 
+# PROMPT 1537 — bot affordance tests: Play vs Bot writes C2SCreateBotRoom path,
+# Add Bot writes C2SAddBot path with the first eligible empty non-bot slot, both
+# share a single bot_action_in_flight latch, and the affordances no-op when
+# their respective preconditions are not met.
+[[test]]
+name = "playable_client_lobby_bot_affordances_test"
+path = "../tests/integration/playable_client/lobby_bot_affordances_test.rs"
+
 [[test]]
 name = "playable_client_lobby_confirm_state_text_test"
 path = "../tests/integration/playable_client/lobby_confirm_state_text_test.rs"

@@ -3,8 +3,9 @@ use bevy::prelude::*;
 use lightyear::prelude::{MessageReceiver, MessageSender};
 use shared::card::ClassId;
 use shared::protocol::{
-    C2SConfirmClass, C2SCreateRoom, C2SJoinRoom, C2SListRooms, C2SSelectClass, GameMode,
-    ReliableChannel, RoomListEntry, S2CClassLocked, S2CClassesRevealed, S2CConfirmClassRejected,
+    BotKind, C2SAddBot, C2SConfirmClass, C2SCreateBotRoom, C2SCreateRoom, C2SJoinRoom,
+    C2SListRooms, C2SSelectClass, GameMode, ReliableChannel, RoomListEntry,
+    S2CBotActionRejected, S2CClassLocked, S2CClassesRevealed, S2CConfirmClassRejected,
     S2CCreateRoomRejected, S2CHandshake, S2CHandshakeRejected, S2CJoinAck, S2CJoinRejected,
     S2CRoomCreated, S2CRoomList, S2CSlotUpdated, SessionSlot,
 };
@@ -81,6 +82,19 @@ pub const LOBBY_ROOM_CODE_CHIP_HEIGHT_PX: f32 = 40.0;
 pub const LOBBY_SLOT_PANEL_WIDTH_PX: f32 = 160.0;
 pub const LOBBY_SLOT_PANEL_HEIGHT_PX: f32 = 48.0;
 
+/// PROMPT 1537 — bot-as-room-participant lobby affordances.
+///
+/// `Play vs Bot` (no-session phase) and `Add Bot` (in-room phase) reuse the
+/// canonical lobby button height so they read as peers of the existing
+/// Create / Join / Refresh row. The Play-vs-Bot button is sized wide enough
+/// to fit the "Play vs Bot" label without truncation. The Add Bot button
+/// uses the full panel width so it reads as a single decisive in-room CTA
+/// rather than a clickable chip.
+pub const LOBBY_PLAY_VS_BOT_BUTTON_WIDTH_PX: f32 = 144.0;
+pub const LOBBY_PLAY_VS_BOT_BUTTON_HEIGHT_PX: f32 = LOBBY_BUTTON_HEIGHT_PX;
+pub const LOBBY_ADD_BOT_BUTTON_WIDTH_PERCENT: f32 = 100.0;
+pub const LOBBY_ADD_BOT_BUTTON_HEIGHT_PX: f32 = LOBBY_BUTTON_HEIGHT_PX;
+
 impl Plugin for LobbyUiPlugin {
     fn build(&self, app: &mut App) {
         tracing::info!("LobbyUiPlugin loaded");
@@ -103,11 +117,13 @@ impl Plugin for LobbyUiPlugin {
                 Update,
                 (
                     drain_lobby_s2c_system,
+                    drain_lobby_bot_rejections_system,
                     lobby_initial_room_list_refresh_system,
                     lobby_keyboard_input_system,
                     lobby_button_interaction_system,
                     send_lobby_commands_system,
                     refresh_lobby_ui_system,
+                    refresh_bot_buttons_visibility_system,
                     refresh_confirm_button_visual_system,
                 )
                     .chain()
@@ -174,6 +190,11 @@ pub struct LobbyInputState {
     pub create_in_flight: bool,
     pub join_in_flight: bool,
     pub class_confirm_in_flight: bool,
+    /// PROMPT 1537 — single latch shared by the `Play vs Bot` and `Add Bot`
+    /// affordances. Cleared by `S2CRoomCreated` / `S2CSlotUpdated` /
+    /// `S2CBotActionRejected` so repeated clicks do not stack up unconfirmed
+    /// requests while one is in flight.
+    pub bot_action_in_flight: bool,
 }
 
 impl Default for LobbyInputState {
@@ -189,6 +210,7 @@ impl Default for LobbyInputState {
             create_in_flight: false,
             join_in_flight: false,
             class_confirm_in_flight: false,
+            bot_action_in_flight: false,
         }
     }
 }
@@ -216,6 +238,21 @@ pub enum LobbyCommand {
     },
     ConfirmClass {
         class_id: ClassId,
+    },
+    /// PROMPT 1537 — request a new room pre-seeded with a bot opponent.
+    /// Maps to `C2SCreateBotRoom { mode, bot_kind }`. Sent only when the
+    /// local client does not yet hold a `session_id`.
+    PlayVsBot {
+        bot_kind: BotKind,
+    },
+    /// PROMPT 1537 — request a bot occupy the named empty slot of the
+    /// current room. Maps to `C2SAddBot { slot, bot_kind }`. Sent only
+    /// after the local client holds a `session_id`. Server is authoritative
+    /// on owner-check / slot eligibility; rejection is surfaced via
+    /// `S2CBotActionRejected`.
+    AddBot {
+        slot: u8,
+        bot_kind: BotKind,
     },
 }
 
@@ -316,6 +353,20 @@ pub struct LobbyClassButton {
 #[derive(Component)]
 pub struct LobbyConfirmClassButton;
 
+/// PROMPT 1537 — "Play vs Bot" CTA in the create/join row. Visible only
+/// while `lobby.session_id` is `None`. Click writes
+/// `LobbyCommand::PlayVsBot { bot_kind: BotKind::Default }` which maps
+/// to `C2SCreateBotRoom`.
+#[derive(Component)]
+pub struct LobbyPlayVsBotButton;
+
+/// PROMPT 1537 — "Add Bot" CTA, visible only after `lobby.session_id` is
+/// `Some` and at least one empty non-bot opposing slot exists. Click writes
+/// `LobbyCommand::AddBot { slot, bot_kind }` against the first eligible
+/// slot computed by [`lobby_add_bot_target_slot`].
+#[derive(Component)]
+pub struct LobbyAddBotButton;
+
 /// PROMPT 1160 — refresh button in the existing-room browser panel. Pressing it
 /// writes a `LobbyCommand::RefreshRooms` which sends `C2SListRooms` on the
 /// reliable channel.
@@ -398,6 +449,15 @@ enum LobbyDynamicText {
     RoomListEmpty,
     /// PROMPT 1487 — selected-class identity panel copy.
     SelectedClassIdentity,
+    /// PROMPT 1537 — "Play vs Bot" CTA label. Variants:
+    /// `"Play vs Bot"` resting / `"Starting vs bot..."` while
+    /// `bot_action_in_flight`.
+    PlayVsBot,
+    /// PROMPT 1537 — "Add Bot" CTA label. Variants:
+    /// `"Add bot to seat N"` / `"Adding bot..."` while in-flight /
+    /// `"No open seat for bot"` defensively when no slot is eligible
+    /// (the button is hidden in that case via the visibility refresh).
+    AddBot,
 }
 
 pub fn drain_lobby_s2c_system(
@@ -461,6 +521,12 @@ pub fn drain_lobby_s2c_system(
                 slots: lobby.slots.clone(),
             });
             input.create_in_flight = false;
+            // PROMPT 1537 — `Play vs Bot` also resolves through
+            // `S2CRoomCreated` (the server pre-seeds the bot in a slot
+            // before the broadcast). Clearing the bot-action latch here
+            // re-enables follow-up affordances (e.g. `Add Bot` for a
+            // second seat in a 2v2 mode).
+            input.bot_action_in_flight = false;
         }
     }
 
@@ -516,6 +582,12 @@ pub fn drain_lobby_s2c_system(
             team_map_writer.write(PlayerTeamMapUpdated {
                 slots: lobby.slots.clone(),
             });
+            // PROMPT 1537 — `Add Bot` resolves through `S2CSlotUpdated`
+            // (server broadcasts the mutated slot map to the room).
+            // Clearing the latch here re-enables `Add Bot` if another
+            // open seat remains (e.g. TwoVTwo modes with multiple empty
+            // opposing slots).
+            input.bot_action_in_flight = false;
         }
     }
 
@@ -564,6 +636,87 @@ pub fn drain_lobby_s2c_system(
 /// function: no I/O, no command writes; exposed for tests.
 pub fn apply_room_list(lobby: &mut LobbyViewState, message: &S2CRoomList) {
     lobby.room_list = message.rooms.clone();
+}
+
+/// PROMPT 1537 — drain `S2CBotActionRejected` and surface the reason in
+/// the lobby status banner. Kept as a separate system from
+/// `drain_lobby_s2c_system` so that system's `SystemParam` tuple stays
+/// inside Bevy's 16-element limit. Always clears
+/// `bot_action_in_flight` so a rejected request does not strand the
+/// user with the button visibly hidden behind an "Adding bot..." label
+/// (the prompt instruction "make pending/requested bot state clear").
+pub fn drain_lobby_bot_rejections_system(
+    mut lobby: ResMut<LobbyViewState>,
+    mut input: ResMut<LobbyInputState>,
+    mut bot_rejected: Query<&mut MessageReceiver<S2CBotActionRejected>>,
+) {
+    for mut receiver in &mut bot_rejected {
+        for message in receiver.receive() {
+            tracing::info!(
+                reason = ?message.reason,
+                msg_type = "S2CBotActionRejected",
+                "drain_lobby_s2c: recv"
+            );
+            lobby.status = format!("Bot action rejected: {:?}", message.reason);
+            input.bot_action_in_flight = false;
+        }
+    }
+}
+
+/// PROMPT 1537 — flip the bot-affordance buttons between `Display::Flex`
+/// and `Display::None` from the current `(session_id, slots)` state.
+///
+/// Visibility rules (single source of truth so spawn/refresh agree):
+///   * `Play vs Bot`: visible while `lobby.session_id.is_none()` — i.e.
+///     before the local client holds a session. Hidden once the player
+///     has either created or joined a room. The in-flight label is
+///     handled by `lobby_dynamic_copy(LobbyDynamicText::PlayVsBot, ..)`.
+///   * `Add Bot`: visible while `lobby.session_id.is_some()` AND
+///     [`lobby_add_bot_target_slot`] returns `Some(_)`. Hidden as soon
+///     as no open non-bot slot remains, so the UI never renders a
+///     dead-end "no seat" pseudo-button (prompt instruction "avoid
+///     disabled button-looking labels").
+pub fn refresh_bot_buttons_visibility_system(
+    lobby: Res<LobbyViewState>,
+    mut play_vs_bot_nodes: Query<
+        &mut Node,
+        (
+            With<LobbyPlayVsBotButton>,
+            Without<LobbyAddBotButton>,
+        ),
+    >,
+    mut add_bot_nodes: Query<
+        &mut Node,
+        (
+            With<LobbyAddBotButton>,
+            Without<LobbyPlayVsBotButton>,
+        ),
+    >,
+) {
+    let play_vs_bot_visible = lobby.session_id.is_none();
+    for mut node in &mut play_vs_bot_nodes {
+        let next = if play_vs_bot_visible {
+            Display::Flex
+        } else {
+            Display::None
+        };
+        if node.display != next {
+            node.display = next;
+        }
+    }
+
+    let add_bot_visible =
+        lobby.session_id.is_some() && lobby_add_bot_target_slot(&lobby).is_some();
+    for mut node in &mut add_bot_nodes {
+        let next = if add_bot_visible {
+            Display::Flex
+        } else {
+            Display::None
+        };
+        if node.display != next {
+            node.display = next;
+        }
+    }
 }
 
 /// PROMPT 1160 — request the room list exactly once after the first handshake
@@ -737,6 +890,8 @@ fn lobby_button_interaction_system(
             Option<&LobbyConfirmClassButton>,
             Option<&LobbyRefreshRoomsButton>,
             Option<&LobbyRoomListRow>,
+            Option<&LobbyPlayVsBotButton>,
+            Option<&LobbyAddBotButton>,
         ),
         Changed<Interaction>,
     >,
@@ -744,7 +899,7 @@ fn lobby_button_interaction_system(
     mut lobby: ResMut<LobbyViewState>,
     mut commands: MessageWriter<LobbyCommand>,
 ) {
-    for (interaction, room_code, create, join, slot, class, confirm, refresh, row) in
+    for (interaction, room_code, create, join, slot, class, confirm, refresh, row, play_vs_bot, add_bot) in
         &mut interactions
     {
         if *interaction != Interaction::Pressed {
@@ -774,6 +929,10 @@ fn lobby_button_interaction_system(
             request_refresh_rooms(&mut lobby, &mut commands);
         } else if let Some(row) = row {
             request_join_room_from_row(row, &mut input, &mut lobby, &mut commands);
+        } else if play_vs_bot.is_some() {
+            request_play_vs_bot(&mut input, &mut lobby, &mut commands);
+        } else if add_bot.is_some() {
+            request_add_bot(&mut input, &mut lobby, &mut commands);
         }
     }
 }
@@ -785,6 +944,8 @@ fn send_lobby_commands_system(
     mut select_class: Query<&mut MessageSender<C2SSelectClass>>,
     mut confirm_class: Query<&mut MessageSender<C2SConfirmClass>>,
     mut list_rooms: Query<&mut MessageSender<C2SListRooms>>,
+    mut create_bot_room: Query<&mut MessageSender<C2SCreateBotRoom>>,
+    mut add_bot: Query<&mut MessageSender<C2SAddBot>>,
 ) {
     for command in commands.read() {
         match command {
@@ -851,6 +1012,45 @@ fn send_lobby_commands_system(
                 );
                 sender.send::<ReliableChannel>(C2SSelectClass {
                     class_id: *class_id,
+                });
+            }
+            LobbyCommand::PlayVsBot { bot_kind } => {
+                let Some(mut sender) = create_bot_room.iter_mut().next() else {
+                    warn!(
+                        bot_kind = ?bot_kind,
+                        "C2S send DROPPED: type=C2SCreateBotRoom, handler=send_lobby_commands_system, reason=no_sender_entity"
+                    );
+                    continue;
+                };
+                tracing::info!(
+                    msg_type = "C2SCreateBotRoom",
+                    mode = ?GameMode::OneVOne,
+                    bot_kind = ?bot_kind,
+                    "c2s_send: enter"
+                );
+                sender.send::<ReliableChannel>(C2SCreateBotRoom {
+                    mode: GameMode::OneVOne,
+                    bot_kind: *bot_kind,
+                });
+            }
+            LobbyCommand::AddBot { slot, bot_kind } => {
+                let Some(mut sender) = add_bot.iter_mut().next() else {
+                    warn!(
+                        slot = *slot,
+                        bot_kind = ?bot_kind,
+                        "C2S send DROPPED: type=C2SAddBot, handler=send_lobby_commands_system, reason=no_sender_entity"
+                    );
+                    continue;
+                };
+                tracing::info!(
+                    msg_type = "C2SAddBot",
+                    slot = *slot,
+                    bot_kind = ?bot_kind,
+                    "c2s_send: enter"
+                );
+                sender.send::<ReliableChannel>(C2SAddBot {
+                    slot: *slot,
+                    bot_kind: *bot_kind,
                 });
             }
             LobbyCommand::ConfirmClass { class_id } => {
@@ -1111,6 +1311,61 @@ fn request_select_class(
     commands.write(LobbyCommand::SelectClass { class_id });
 }
 
+/// PROMPT 1537 — write a `LobbyCommand::PlayVsBot` after gating on
+/// `bot_action_in_flight` and `session_id`. The button is hidden in the
+/// `session_id.is_some()` case via the visibility refresh, but this
+/// helper still re-checks defensively so a stray keyboard or click path
+/// cannot bypass the contract.
+pub fn request_play_vs_bot(
+    input: &mut LobbyInputState,
+    lobby: &mut LobbyViewState,
+    commands: &mut MessageWriter<LobbyCommand>,
+) {
+    if input.bot_action_in_flight {
+        lobby.status = "Bot action already pending".to_string();
+        return;
+    }
+    if lobby.session_id.is_some() {
+        lobby.status = "Already in a room — use Add Bot instead".to_string();
+        return;
+    }
+    input.bot_action_in_flight = true;
+    lobby.status = "Starting room with bot...".to_string();
+    commands.write(LobbyCommand::PlayVsBot {
+        bot_kind: BotKind::Default,
+    });
+}
+
+/// PROMPT 1537 — write a `LobbyCommand::AddBot` targeting the current
+/// `lobby_add_bot_target_slot`. The button is hidden whenever the target
+/// is `None`, but the helper re-checks defensively. The
+/// `bot_action_in_flight` latch is shared with `request_play_vs_bot` so
+/// the two paths cannot collide.
+pub fn request_add_bot(
+    input: &mut LobbyInputState,
+    lobby: &mut LobbyViewState,
+    commands: &mut MessageWriter<LobbyCommand>,
+) {
+    if input.bot_action_in_flight {
+        lobby.status = "Bot action already pending".to_string();
+        return;
+    }
+    let Some(slot) = lobby_add_bot_target_slot(lobby) else {
+        lobby.status = "No open seat available for bot".to_string();
+        return;
+    };
+    if lobby.session_id.is_none() {
+        lobby.status = "Create or join a room before adding a bot".to_string();
+        return;
+    }
+    input.bot_action_in_flight = true;
+    lobby.status = format!("Adding bot to seat {slot}");
+    commands.write(LobbyCommand::AddBot {
+        slot,
+        bot_kind: BotKind::Default,
+    });
+}
+
 fn request_confirm_class(
     input: &mut LobbyInputState,
     lobby: &mut LobbyViewState,
@@ -1354,6 +1609,43 @@ fn spawn_lobby_ui_system(
                                 ),
                                 BackgroundColor(Color::srgba(0.11, 0.15, 0.20, 0.95)),
                                 BorderColor::all(Color::srgb(0.28, 0.56, 0.72)),
+                            ));
+                            // PROMPT 1537 — `Play vs Bot` CTA. Always
+                            // spawned in the row; `Display` is flipped
+                            // by `refresh_bot_buttons_visibility_system`
+                            // based on `lobby.session_id` so the button
+                            // only shows pre-room. The initial
+                            // `display: None` keeps the node hidden on
+                            // the first frame if the lobby is spawned
+                            // post-session (re-enter from a previous
+                            // session); the refresh system corrects to
+                            // the canonical state on the next tick.
+                            let play_vs_bot_initial_display = if lobby.session_id.is_none() {
+                                Display::Flex
+                            } else {
+                                Display::None
+                            };
+                            row.spawn((
+                                LobbyPlayVsBotButton,
+                                LobbyDynamicText::PlayVsBot,
+                                Button,
+                                Interaction::None,
+                                Text::new(lobby_dynamic_copy(
+                                    LobbyDynamicText::PlayVsBot,
+                                    &lobby,
+                                    &input,
+                                )),
+                                lobby_text_font(typography::BODY),
+                                TextColor(Color::srgb(0.92, 0.86, 1.0)),
+                                Node {
+                                    display: play_vs_bot_initial_display,
+                                    ..lobby_button_node(
+                                        Val::Px(LOBBY_PLAY_VS_BOT_BUTTON_WIDTH_PX),
+                                        LOBBY_PLAY_VS_BOT_BUTTON_HEIGHT_PX,
+                                    )
+                                },
+                                BackgroundColor(Color::srgba(0.18, 0.12, 0.24, 0.95)),
+                                BorderColor::all(Color::srgb(0.62, 0.42, 0.78)),
                             ));
                         });
 
@@ -1791,6 +2083,44 @@ fn spawn_lobby_ui_system(
                                 ));
                             });
                         });
+
+                        // PROMPT 1537 — `Add Bot` CTA, anchored directly
+                        // below the slot panels so the open-seat target
+                        // reads as the row's natural follow-up action.
+                        // Visibility is driven entirely by
+                        // `refresh_bot_buttons_visibility_system` from
+                        // `(session_id, lobby_add_bot_target_slot)`;
+                        // initial `display: None` keeps it hidden until
+                        // a room exists.
+                        let add_bot_initial_display = if lobby.session_id.is_some()
+                            && lobby_add_bot_target_slot(&lobby).is_some()
+                        {
+                            Display::Flex
+                        } else {
+                            Display::None
+                        };
+                        panel.spawn((
+                            LobbyAddBotButton,
+                            LobbyDynamicText::AddBot,
+                            Button,
+                            Interaction::None,
+                            Text::new(lobby_dynamic_copy(
+                                LobbyDynamicText::AddBot,
+                                &lobby,
+                                &input,
+                            )),
+                            lobby_text_font(typography::BODY),
+                            TextColor(Color::srgb(0.92, 0.86, 1.0)),
+                            Node {
+                                display: add_bot_initial_display,
+                                ..lobby_button_node(
+                                    Val::Percent(LOBBY_ADD_BOT_BUTTON_WIDTH_PERCENT),
+                                    LOBBY_ADD_BOT_BUTTON_HEIGHT_PX,
+                                )
+                            },
+                            BackgroundColor(Color::srgba(0.18, 0.12, 0.24, 0.95)),
+                            BorderColor::all(Color::srgb(0.62, 0.42, 0.78)),
+                        ));
                     });
 
                 // Section 5 — confirm CTA. Last DIRECT child of the
@@ -2089,7 +2419,40 @@ fn lobby_dynamic_copy(
             }
         }
         LobbyDynamicText::SelectedClassIdentity => lobby_selected_class_identity_text(lobby, input),
+        LobbyDynamicText::PlayVsBot if input.bot_action_in_flight => {
+            "Starting vs bot...".to_string()
+        }
+        LobbyDynamicText::PlayVsBot => "Play vs Bot".to_string(),
+        LobbyDynamicText::AddBot if input.bot_action_in_flight => "Adding bot...".to_string(),
+        LobbyDynamicText::AddBot => match lobby_add_bot_target_slot(lobby) {
+            Some(slot) => format!("Add bot to seat {slot}"),
+            None => "No open seat for bot".to_string(),
+        },
     }
+}
+
+/// PROMPT 1537 — compute the first slot eligible to receive a bot via
+/// `C2SAddBot`. A slot is eligible iff:
+///   * it is currently empty (`player_id.is_none()`),
+///   * it is not already held by a bot (`!is_bot`),
+///   * it is not the local player's own slot (defensive — the local
+///     player always has `player_id == Some(local)`, so this matches the
+///     `is_none()` clause automatically, but the check stays for
+///     readability when future modes add spectator slots).
+///
+/// Returns `None` when the lobby has no eligible slot, which is the
+/// signal `refresh_bot_buttons_visibility_system` uses to hide the
+/// `Add Bot` button entirely (the prompt instruction "avoid disabled
+/// button-looking labels"). The returned slot index is the value the
+/// caller writes verbatim to `C2SAddBot.slot`; server is authoritative
+/// on owner-check / final eligibility and rejects via
+/// `S2CBotActionRejected` if anything has shifted in the meantime.
+pub fn lobby_add_bot_target_slot(lobby: &LobbyViewState) -> Option<u8> {
+    lobby
+        .slots
+        .iter()
+        .find(|slot| slot.player_id.is_none() && !slot.is_bot)
+        .map(|slot| slot.slot)
 }
 
 /// PROMPT 1138 — own-slot panel inline label.

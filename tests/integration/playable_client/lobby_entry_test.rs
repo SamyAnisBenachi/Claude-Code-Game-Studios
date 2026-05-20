@@ -107,6 +107,7 @@ fn lobby_state_is_updated_only_from_authoritative_s2c_messages() {
         create_in_flight: false,
         join_in_flight: false,
         class_confirm_in_flight: false,
+        bot_action_in_flight: false,
     };
 
     assert_eq!(lobby.room_code, None);
