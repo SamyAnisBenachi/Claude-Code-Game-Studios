@@ -11,7 +11,8 @@ use lightyear::prelude::{MessageReceiver, MessageSender};
 use shared::card::{CardCatalog, CardId, CardType, ClassId, Rarity};
 use shared::protocol::{
     C2SActivateCard, C2SPurchaseCard, C2SSubmitPlacement, EntityId, PlacedCardSubmit,
-    PlacementRejectedReason, PlayTarget, ReliableChannel, RoundPhase, S2CPlacementRejected,
+    PlacementRejectedReason, PlayTarget, ReliableChannel, RoundPhase, S2CPlacementAccepted,
+    S2CPlacementRejected,
 };
 use shared::session::PlayerId;
 
@@ -625,6 +626,49 @@ impl From<S2CPlacementRejected> for HandUiPlacementRejectedReceived {
     }
 }
 
+/// PROMPT 1546 — internal hand-UI message produced by
+/// [`drain_placement_accepted_receiver_system`] from each wire
+/// `S2CPlacementAccepted` so the ack handler can run on a Bevy `Messages`
+/// queue that tests can drive directly without a live Lightyear server.
+#[derive(Message, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct HandUiPlacementAcceptedReceived {
+    pub placements_len: u8,
+    pub is_final: bool,
+}
+
+impl From<S2CPlacementAccepted> for HandUiPlacementAcceptedReceived {
+    fn from(message: S2CPlacementAccepted) -> Self {
+        Self {
+            placements_len: message.placements_len,
+            is_final: message.is_final,
+        }
+    }
+}
+
+/// PROMPT 1546 — client-side ACK lifecycle state for the most recent
+/// `C2SSubmitPlacement` batch. Updated by `submit_pending_placements`
+/// (Pending), `handle_placement_accepted_system` (Accepted), and
+/// `handle_placement_rejected_system` (Rejected). Reset to `NotSubmitted`
+/// when the Placement phase begins.
+///
+/// The existing optimistic Submitted UI (set in `submit_pending_placements`
+/// and reverted by `handle_placement_rejected_system`) is unchanged; this
+/// resource is the authoritative ACK signal that downstream QA snapshot
+/// observability (PROMPT 1533/1543) and future UI polish consumes.
+#[derive(Resource, Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum PlacementSubmitAck {
+    /// Default — no `C2SSubmitPlacement` has been sent in the current phase
+    /// (or the phase just (re)entered Placement).
+    #[default]
+    NotSubmitted,
+    /// `C2SSubmitPlacement` has been sent; awaiting server ACK or rejection.
+    PendingAck,
+    /// Server unicasted `S2CPlacementAccepted` for the pending batch.
+    Accepted { placements_len: u8, is_final: bool },
+    /// Server unicasted `S2CPlacementRejected` for the pending batch.
+    Rejected { reason: PlacementRejectedReason },
+}
+
 #[derive(Message, Debug, Clone, PartialEq, Eq)]
 pub struct HandUiPlacementDropResolved {
     pub card: Entity,
@@ -1149,6 +1193,15 @@ impl Plugin for HandUiPlugin {
             // HandUiPlugin tests on `MinimalPlugins` can drive the handler
             // without a live Lightyear server.
             .add_message::<HandUiPlacementRejectedReceived>()
+            // PROMPT 1546 — symmetric accepted-ACK lane for `C2SSubmitPlacement`.
+            // The wire `S2CPlacementAccepted` is the only positive server
+            // signal for effect-only placements (Spell/Order/Instant) that
+            // never appear in `S2CPlacementReveal` or spawn replicated
+            // entities. Registered idempotently so HandUiPlugin tests on
+            // `MinimalPlugins` can drive the handler without a live Lightyear
+            // server.
+            .add_message::<HandUiPlacementAcceptedReceived>()
+            .init_resource::<PlacementSubmitAck>()
             .add_message::<PresentationGameSnapshotMessage>()
             // PROMPT 1149: PlayerTeamMapUpdated is registered by LobbyUiPlugin
             // and by BoardRenderingPlugin already, but `add_message` is
@@ -1225,6 +1278,15 @@ impl Plugin for HandUiPlugin {
                         // tick the rejection arrives.
                         drain_placement_rejected_receiver_system,
                         handle_placement_rejected_system,
+                        // PROMPT 1546 — symmetric accepted-ACK drain + handler.
+                        // Ordered after the rejection drain so a same-tick mix
+                        // (defensive — server today emits at most one of accept
+                        // or reject per submission) settles with rejected
+                        // taking priority over accepted, matching the order the
+                        // server already enforces.
+                        drain_placement_accepted_receiver_system,
+                        handle_placement_accepted_system,
+                        track_placement_submit_pending_ack_system,
                         handle_ghost_clicked_unstage_system,
                         handle_ghost_drag_started_system,
                     )
@@ -2553,6 +2615,99 @@ pub fn drain_placement_rejected_receiver_system(
     }
 }
 
+/// PROMPT 1546 — drains wire `S2CPlacementAccepted` messages into the
+/// internal [`HandUiPlacementAcceptedReceived`] queue so the ACK handler
+/// system can run on a Bevy `Messages` resource that tests on
+/// `MinimalPlugins + HandUiPlugin` can drive directly.
+///
+/// Mirrors [`drain_placement_rejected_receiver_system`].
+pub fn drain_placement_accepted_receiver_system(
+    mut receivers: Query<&mut MessageReceiver<S2CPlacementAccepted>>,
+    mut writer: MessageWriter<HandUiPlacementAcceptedReceived>,
+) {
+    for mut receiver in &mut receivers {
+        for message in receiver.receive() {
+            tracing::info!(
+                target: "client::ui::hand",
+                placements_len = message.placements_len,
+                is_final = message.is_final,
+                msg_type = "S2CPlacementAccepted",
+                "drain_placement_accepted: recv"
+            );
+            writer.write(message.into());
+        }
+    }
+}
+
+/// PROMPT 1546 — observes the optimistic submit flip and transitions the
+/// [`PlacementSubmitAck`] resource from `NotSubmitted` to `PendingAck` so the
+/// lifecycle is observable without threading the resource through every
+/// `submit_pending_placements` caller. The accept/reject handlers later
+/// transition `PendingAck` → `Accepted`/`Rejected`.
+///
+/// Also clears the ACK to `NotSubmitted` on every transition OUT of the
+/// Placement phase so the next Placement round starts clean. An accept that
+/// arrives while the client is in Resolution (e.g. phase-transition
+/// auto-submit, per readiness §4 item 2) is still recorded as
+/// `Accepted` — the reset only fires on the transition edge, not in
+/// steady-state Resolution.
+///
+/// Runs after both message drains so a same-tick (submit, ack-arrives)
+/// ordering settles cleanly: the drain handler installs the terminal
+/// `Accepted`/`Rejected` state, and this watcher only moves `NotSubmitted` →
+/// `PendingAck`, never overwriting a terminal state.
+pub fn track_placement_submit_pending_ack_system(
+    current: Res<CurrentClientPhase>,
+    placement_timer: Res<PlacementTimer>,
+    mut ack: ResMut<PlacementSubmitAck>,
+    mut last_phase: Local<Option<RoundPhase>>,
+) {
+    let observed = current.phase;
+    let leaving_placement = matches!(*last_phase, Some(prev) if prev == RoundPhase::Placement)
+        && observed != RoundPhase::Placement;
+    if leaving_placement {
+        *ack = PlacementSubmitAck::NotSubmitted;
+    }
+    *last_phase = Some(observed);
+
+    if placement_timer.submitted && matches!(*ack, PlacementSubmitAck::NotSubmitted) {
+        *ack = PlacementSubmitAck::PendingAck;
+    }
+}
+
+/// PROMPT 1546 — records the server-authoritative accept ACK for the most
+/// recent `C2SSubmitPlacement` batch into [`PlacementSubmitAck`].
+///
+/// This does NOT mutate the existing optimistic Submitted UI (set by
+/// `submit_pending_placements` and reverted by `handle_placement_rejected_system`);
+/// the resource state is the authoritative signal that downstream QA
+/// snapshot observability (PROMPT 1533/1543) and future UI polish consumes.
+///
+/// Per readiness §4 item 2: an ACK arriving after the phase has already
+/// transitioned out of Placement (e.g. when auto-submit fires at the
+/// Placement→Resolution boundary) still updates the resource — clients
+/// must tolerate "ACK arrived in Resolution phase". The phase-transition
+/// reset in `hand_ui_phase_transition_system` clears the state on the next
+/// Placement entry.
+pub fn handle_placement_accepted_system(
+    mut acceptances: MessageReader<HandUiPlacementAcceptedReceived>,
+    mut ack: ResMut<PlacementSubmitAck>,
+) {
+    for acceptance in acceptances.read() {
+        tracing::info!(
+            target: "client::ui::hand",
+            placements_len = acceptance.placements_len,
+            is_final = acceptance.is_final,
+            prev_state = ?*ack,
+            "hand_ui_placement_accepted_received"
+        );
+        *ack = PlacementSubmitAck::Accepted {
+            placements_len: acceptance.placements_len,
+            is_final: acceptance.is_final,
+        };
+    }
+}
+
 /// PROMPT 1244 — turns each [`HandUiPlacementRejectedReceived`] into a
 /// visible correction state.
 ///
@@ -2574,6 +2729,7 @@ pub fn handle_placement_rejected_system(
     mut pending_placements: ResMut<PendingPlacements>,
     mut placement_timer: ResMut<PlacementTimer>,
     mut disclosure_state: ResMut<PlacementDisclosureState>,
+    mut ack: ResMut<PlacementSubmitAck>,
     mut commands: Commands,
     mut submit_buttons: Query<(&mut Text, &mut HandSubmitInteractionState), With<HandSubmitButton>>,
     mut visibility_query: Query<&mut Visibility>,
@@ -2594,6 +2750,11 @@ pub fn handle_placement_rejected_system(
         );
 
         placement_timer.submitted = false;
+        // PROMPT 1546 — record server-authoritative ACK state alongside the
+        // existing optimistic-UI revert path.
+        *ack = PlacementSubmitAck::Rejected {
+            reason: rejection.reason,
+        };
         pending_placements.mark_rejected(rejection.reason);
         let error = SubmitValidationError::ServerRejected {
             reason: rejection.reason,
