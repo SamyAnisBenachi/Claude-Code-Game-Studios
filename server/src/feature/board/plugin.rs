@@ -6,11 +6,11 @@ use crate::core::session::SessionConfig;
 use crate::feature::board::{
     apply_attract_displacements, apply_change_lane_displacements, apply_repel_displacements,
     close_placement_phase, handle_placement_submission, placement_buffer_open,
-    send_placement_rejection_dispatches, update_spawn_range, AttractDisplacement, BoardConfig,
-    BoardGrid, BoardOccupancy, ChangeLaneDisplacement, FakeObjectiveDestroyed, PendingPlacements,
-    PlacementCommitTrace, PlacementCommitted, PlacementRejectionDispatch,
-    PlacementSubmissionReceived, PrismState, RepelDisplacement, SpawnRangeState, TrapTrigger,
-    UnitAtObjective,
+    send_placement_acceptance_dispatches, send_placement_rejection_dispatches, update_spawn_range,
+    AttractDisplacement, BoardConfig, BoardGrid, BoardOccupancy, ChangeLaneDisplacement,
+    FakeObjectiveDestroyed, PendingPlacements, PlacementAcceptanceDispatch, PlacementCommitTrace,
+    PlacementCommitted, PlacementRejectionDispatch, PlacementSubmissionReceived, PrismState,
+    RepelDisplacement, SpawnRangeState, TrapTrigger, UnitAtObjective,
 };
 
 /// Board/Lane system ordering labels.
@@ -37,6 +37,8 @@ impl Plugin for BoardPlugin {
             .insert_resource(BoardConfig::default())
             .add_message::<PlacementSubmissionReceived>()
             .add_message::<PlacementRejectionDispatch>()
+            // PROMPT 1546 — symmetric acceptance ACK dispatch queue.
+            .add_message::<PlacementAcceptanceDispatch>()
             .add_message::<PlacementCommitted>()
             .add_message::<FakeObjectiveDestroyed>()
             .add_message::<RepelDisplacement>()
@@ -72,6 +74,15 @@ impl Plugin for BoardPlugin {
             .add_systems(
                 Update,
                 send_placement_rejection_dispatches
+                    .after(handle_placement_submission)
+                    .in_set(BoardSystemSet::PlacementSubmission),
+            )
+            // PROMPT 1546 — symmetric acceptance ACK dispatcher. Runs in the
+            // same set so the S2CPlacementAccepted lands on the same tick as
+            // the accept decision (mirrors the rejection dispatcher contract).
+            .add_systems(
+                Update,
+                send_placement_acceptance_dispatches
                     .after(handle_placement_submission)
                     .in_set(BoardSystemSet::PlacementSubmission),
             )
