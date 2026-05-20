@@ -10,8 +10,8 @@ Source of truth:
 
 - Root checkout: `D:\_DEV\Work\Claude-Code-Game-Studios`
 - Root branch: `main`
-- Root/source commit: `origin/main@38975b51dcce63d649bf6d9bf0ecbf2ecfe84b1d`
-  (`orchestrator: default workers to worktree mode`)
+- Root/source commit: `origin/main@b531f499c2b565dbd2d71aa2c7c661805a46011b`
+  (`state: update 1509 return ledger`)
 - Mainland queue: no pending/running entries at the handoff check.
 - Root working tree caveat: `.claude/settings.json` is modified by dispatcher
   hook injection for the latest worker. Treat it as runtime churn; do not commit
@@ -33,6 +33,9 @@ Recently completed:
 - `1518 AUCTION-WON-CARD-DISPOSITION-INTEGRATION-RECOVERY-VERIFY`:
   `ALREADY_LANDED`; report:
   `reports/PROMPT-1518-auction-won-card-disposition-integration-refresh-recovery.md`.
+- `1518 AUCTION-WON-CARD-DISPOSITION-INTEGRATION-REFRESH`: duplicate rerun
+  confirmed `DUPLICATE`; no action needed; report:
+  `reports/PROMPT-1518-auction-won-card-disposition-integration-refresh-duplicate.md`.
 - `1534 KROSMAGA-DEV-PROXY-PACK-MATERIALIZATION-STAGE2`: `SHIPPED` on branch
   `worker/prompt-1534-krosmaga-dev-proxy-stage2`, commit `f6988b34`, base
   `5358aed1`; integration refresh `1539` was launched.
@@ -51,6 +54,7 @@ Processed worker-return ledger (2026-05-20, no new agents launched):
 
 | Prompt | Current state | Evidence | Written next step |
 |---|---|---|---|
+| `1518 AUCTION-WON-CARD-DISPOSITION-INTEGRATION-REFRESH` | DUPLICATE / already shipped. | User report: `reports/PROMPT-1518-auction-won-card-disposition-integration-refresh-duplicate.md`; worker branch `origin/worker/prompt-1513-auction-won-disposition` and original integration commit `f69bd595` are already ancestors of `origin/main@b531f499`. | Clear worker if open. No relaunch and no mainland enqueue needed. |
 | `1509 HU-CHROME-02-HAND-FAN-REPAIR-INTEGRATION` | READY_FOR_MAINLAND_ENQUEUE reported after ledger update. | User reported full report at `reports/PROMPT-1509-hu-chrome-02-hand-fan-repair-integration.md`; prior mainland queue also shows `origin/integrate/hu-chrome-02-hand-fan-repair-1509` landed `1172e165..5d46b9a9`, and follow-up `1519` is GREEN/SHIPPED. | Clear worker after noting. Before any mainland enqueue, inspect report/branch against current `origin/main` to avoid duplicate or non-FF enqueue if content is already present. Do not relaunch. |
 | `1530 SHOP-AUCTION-CARD-INSPECT-CONSUMER-WIRING` | SHIPPED on worker branch. | User report: branch `worker/prompt-1530-shop-auction-card-inspect-consumer-wiring` @ `b3743828`, base `5358aed1`; report in worker tree `reports/PROMPT-1530-shop-auction-card-inspect-consumer-wiring.md`; 3/3 unit tests pass. | Clear worker, then integration-refresh over current `origin/main` before mainland enqueue. |
 | `1531 BOT-PARTICIPANT-ACTION-LOOP-WAVE1` | SHIPPED on worker branch. | User report and worker report `reports/PROMPT-1531-bot-participant-action-loop-wave1.md`; report says server bot action-loop tests 7/7 pass and broad live QA deferred. | Clear worker, inspect exact branch/commit from report or worktree, then integration-refresh over current `origin/main`. Do not overlap with bot UI/protocol owners without checking files. |
