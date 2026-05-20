@@ -1,5 +1,69 @@
 # Codex Orchestrator State
 
+## Current Handoff Snapshot (2026-05-20, pause after PROMPT-1539 launch)
+
+This block supersedes earlier "current" snapshots until a later dated block is
+added. The user requested no more agent launches for now and asked to save the
+current orchestrator state plus generate a handoff document.
+
+Source of truth:
+
+- Root checkout: `D:\_DEV\Work\Claude-Code-Game-Studios`
+- Root branch: `main`
+- Root/source commit: `origin/main@38975b51dcce63d649bf6d9bf0ecbf2ecfe84b1d`
+  (`orchestrator: default workers to worktree mode`)
+- Mainland queue: no pending/running entries at the handoff check.
+- Root working tree caveat: `.claude/settings.json` is modified by dispatcher
+  hook injection for the latest worker. Treat it as runtime churn; do not commit
+  it unless intentionally updating dispatcher hooks.
+
+Operational pause:
+
+- Do not launch additional agents until the next orchestrator explicitly resumes
+  the queue.
+- Continue to use `project_id: "default"` for `gcs.dispatch`.
+- Workers should use dedicated worktrees. Dispatcher may still report
+  `workspaceMode: shared`; launch prompts must keep the explicit "create/switch
+  to a dedicated worktree before editing" instruction.
+- Cargo-heavy work remains isolated to VERIFY lanes. Do not make every
+  implementation worker run Cargo.
+
+Recently completed:
+
+- `1518 AUCTION-WON-CARD-DISPOSITION-INTEGRATION-RECOVERY-VERIFY`:
+  `ALREADY_LANDED`; report:
+  `reports/PROMPT-1518-auction-won-card-disposition-integration-refresh-recovery.md`.
+- `1534 KROSMAGA-DEV-PROXY-PACK-MATERIALIZATION-STAGE2`: `SHIPPED` on branch
+  `worker/prompt-1534-krosmaga-dev-proxy-stage2`, commit `f6988b34`, base
+  `5358aed1`; integration refresh `1539` was launched.
+- `1535 PLACEMENT-ACCEPTED-ACK-PROTOCOL-READINESS`: `NEEDS_WORK`; report:
+  `reports/PROMPT-1535-placement-accepted-ack-protocol-readiness.md`. It
+  recommends a serialized accepted-placement ACK implementation touching
+  `shared/src/protocol.rs`, `server/src/feature/board/placement.rs`, and
+  `client/src/ui/hand/mod.rs`.
+
+Workers active or pending user DONE reports:
+
+- `1530 SHOP-AUCTION-CARD-INSPECT-CONSUMER-WIRING`
+- `1531 BOT-PARTICIPANT-ACTION-LOOP-WAVE1`
+- `1532 RESOLUTION-REPLAY-VISUAL-MUTATION-FOLLOWUP`
+- `1533 QA-SNAPSHOT-OBSERVABILITY-FIELDS-FOLLOWUP`
+- `1536 POST-1528-FOCUSED-VERIFY-LANE`
+- `1537 BOT-LOBBY-ADD-BOT-UI-WIRING`
+- `1538 RESULT-MULLIGAN-KROSMAGA-CHROME-POLISH`
+- `1539 KROSMAGA-DEV-PROXY-STAGE2-INTEGRATION-REFRESH`
+
+Handoff document:
+
+- Current handoff file generated with the `handoff` skill:
+  `D:\Tmp\GCS_ORCHESTRATOR_HANDOFF_2026-05-20.md`
+
+Non-claims:
+
+- No sprint close-out, release readiness, full-game-complete, final-art/legal
+  clearance, accessibility completion, `S8-QA-001-W1` closure, or
+  `S11-HUD-TIMER-EYEBALL-VISUAL-001` closure is implied by this snapshot.
+
 ## Current Snapshot (2026-05-20, post-PROMPT-1528 mainland)
 
 This block is the current restart/orchestration snapshot. It supersedes stale
