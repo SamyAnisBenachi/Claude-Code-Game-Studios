@@ -43,6 +43,18 @@ repo.
 
 Key current rules:
 
+- Structured `gcs.dispatch` actions are the preferred source of truth for
+  orchestration side effects. Use `SPAWN`, `CLEAR`, `REPONDRE`, `RELANCER`,
+  and `NEW` for worker lifecycle changes when the tool is available. Use
+  `MAINLAND_LIST` before main-land work, then `MAINLAND_ENQUEUE` with
+  `project_id`, `source_branch`, and `intent_id` (`mainland-<slug>-<prompt_n>`)
+  for serialized fast-forward-only main landings. Use `MAINLAND_CANCEL` only for
+  pending queue entries.
+- If structured `gcs.dispatch` is unavailable, fallback emoji labels may be used
+  for worker lifecycle actions only. Do not claim a main-land queue action was
+  submitted unless `MAINLAND_ENQUEUE` returned a queue id, or a direct Git action
+  was explicitly performed and reported.
+
 - Put a plain emoji disposition label directly above every agent-window action:
   - `🟢 CLEAR -- PROMPT N` for a window the user can close.
   - `🟡 REPONDRE -- PROMPT N` for text to paste back into the same window.
@@ -70,8 +82,54 @@ Key current rules:
   orchestrator. Do not ask the human for special push/rebase permission from the
   worker window; the orchestrator handles main-land and permission-sensitive Git
   actions.
+- The active dispatcher is `gcs-app` / `gcs.dispatch`. Legacy dispatcher docs are
+  historical unless the current orchestrator state explicitly re-enables them.
 - Final prompt/status line is one line only: `N: TICKET-ID: STATUS`. No delimiter
   line, no HTML/span/CSS/ANSI markup, and STATUS must be a real outcome word.
+
+## NEW PROMPT TEMPLATE
+
+Use this template for new worker launches. Keep older prompt templates intact;
+this is the current default for new prompts.
+
+```text
+PROMPT N -- Short Task Title
+
+Context:
+- Current source-of-truth: origin/main@<sha if known>.
+- Related prompts/reports: <ids and paths>.
+- This worker is not alone in the repo; do not revert edits from other workers.
+
+Task:
+- <concrete task outcome>.
+
+Owned scope:
+- <files/modules this worker may edit>.
+- Forbidden unless explicitly instructed: production/sprint-status.yaml,
+  production/session-state/**, production/sprints/**, production/qa/**,
+  production/stage.txt, unrelated Cargo/CI files, unrelated source modules.
+
+Implementation rules:
+- Use a dedicated worktree and branch.
+- Use repo patterns and required skills (`liv-bevy-018` for Bevy code,
+  `liv-bevy-lightyear` for networking/protocol work).
+- Do not run broad Cargo suites by default. Run only focused local validation
+  that is cheap and relevant; defer broad verification to a separate VERIFY
+  prompt/checkpoint lane.
+- If push/rebase/protected-branch/GitHub export blocks, keep the local commit or
+  branch and relay exact branch, commit, command, and blocker. Do not ask the
+  human for special Git permission from the worker.
+
+Validation:
+- Minimum: path allowlist review + `git diff --check`.
+- Focused tests/checks: <specific tests if required>.
+- Cargo-heavy verification: deferred to VERIFY lane unless this prompt is that
+  lane.
+
+Report:
+- Write `reports/PROMPT-N-<slug>.md`.
+- Final line exactly: `N: TICKET-ID: STATUS`.
+```
 
 ## Parallel Worker Isolation
 

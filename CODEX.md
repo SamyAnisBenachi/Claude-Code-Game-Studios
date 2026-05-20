@@ -37,6 +37,17 @@ D:\_DEV\Work\Claude-Code-Game-Studios
 
 Current orchestration rules:
 
+- Prefer structured `gcs.dispatch` for orchestration side effects. Worker
+  lifecycle uses `SPAWN`, `CLEAR`, `REPONDRE`, `RELANCER`, and `NEW`.
+  Main-land uses `MAINLAND_LIST` to dedupe and `MAINLAND_ENQUEUE` with
+  `project_id`, `source_branch`, and `intent_id` (`mainland-<slug>-<prompt_n>`)
+  for serialized fast-forward-only landings. `MAINLAND_CANCEL` is for pending
+  queue entries only.
+- If `gcs.dispatch` is not exposed in the current session, fallback emoji labels
+  are acceptable for worker lifecycle actions. Do not claim a main-land queue
+  action was submitted unless the structured tool returned a queue id, or an
+  explicit Git operation was actually performed and reported.
+
 - Put a plain emoji disposition label directly above every agent-window action:
   `🟢 CLEAR -- PROMPT N`, `🟡 REPONDRE -- PROMPT N`,
   `🔴 RELANCER -- PROMPT N`, or `🟣 NEW -- PROMPT N`.
@@ -51,12 +62,62 @@ Current orchestration rules:
   word `STATUS`.
 - Workers use one worktree and one branch, push only `work/...`, and never push
   `main`.
+- Worker push/rebase/protected-branch problems must not block implementation
+  flow. Workers keep their commit/branch and relay exact state; the orchestrator
+  handles permission-sensitive Git and main-land.
 - Workers do not edit shared tracker files unless the prompt is explicitly a
   serialized tracking/closure task.
 - The orchestrator owns `main` integration, sprint/story tracking, and workspace
   smoke.
+- Do not assign broad Cargo test suites to every implementation worker. Use
+  separate VERIFY lanes or serialized smoke/checkpoint lanes, with at most one
+  Cargo-heavy lane active unless the user explicitly overrides.
 - Launch only actually ready, file-disjoint work. Do not create parallel work
   just to fill a quota.
+
+### NEW PROMPT TEMPLATE
+
+Keep older prompt templates intact. Use this as the default structure for new
+worker launches:
+
+```text
+PROMPT N -- Short Task Title
+
+Context:
+- Current source-of-truth: origin/main@<sha if known>.
+- Related prompts/reports: <ids and paths>.
+- This worker is not alone in the repo; do not revert edits from other workers.
+
+Task:
+- <concrete task outcome>.
+
+Owned scope:
+- <files/modules this worker may edit>.
+- Forbidden unless explicitly instructed: production/sprint-status.yaml,
+  production/session-state/**, production/sprints/**, production/qa/**,
+  production/stage.txt, unrelated Cargo/CI files, unrelated source modules.
+
+Implementation rules:
+- Use a dedicated worktree and branch.
+- Use repo patterns and required skills (`liv-bevy-018` for Bevy code,
+  `liv-bevy-lightyear` for networking/protocol work).
+- Do not run broad Cargo suites by default. Run only focused local validation
+  that is cheap and relevant; defer broad verification to a separate VERIFY
+  prompt/checkpoint lane.
+- If push/rebase/protected-branch/GitHub export blocks, keep the local commit or
+  branch and relay exact branch, commit, command, and blocker. Do not ask the
+  human for special Git permission from the worker.
+
+Validation:
+- Minimum: path allowlist review + `git diff --check`.
+- Focused tests/checks: <specific tests if required>.
+- Cargo-heavy verification: deferred to VERIFY lane unless this prompt is that
+  lane.
+
+Report:
+- Write `reports/PROMPT-N-<slug>.md`.
+- Final line exactly: `N: TICKET-ID: STATUS`.
+```
 
 At every interaction:
 1. **Tell the user where we are** in the project
