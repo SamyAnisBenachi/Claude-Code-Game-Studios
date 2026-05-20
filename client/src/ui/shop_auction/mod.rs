@@ -32,6 +32,13 @@ use crate::ui::settings::AccessibilityPreferences;
 // coupling: hand_ui still does not import from shop_auction.
 use crate::ui::hand::{FanSlotIndex, HandSlotCard, PendingPlacements, PlacementTimer};
 
+// PROMPT 1530 — shop / auction card inspect overlay consumer.
+// Wires the shared `card_inspect` primitive (PROMPT 1482) into the three
+// shop/auction card surfaces (`ShopSlotCard`, `DraftInitialSlotCard`,
+// `AuctionFeaturedCard`). See `inspect.rs` for the producer / target-fold /
+// overlay-sync / backdrop-dismiss systems.
+pub mod inspect;
+
 pub const SHOP_AUCTION_UI_PANEL_ROOT_COUNT: usize = 6;
 pub const SHOP_AUCTION_UI_DRAFT_INITIAL_SLOT_COUNT: usize = 9;
 pub const SHOP_AUCTION_UI_SHOP_SLOT_COUNT: usize = 3;
@@ -1695,6 +1702,20 @@ impl Plugin for ShopAuctionUiPlugin {
             .add_message::<ShopAuctionBidButtonClicked>()
             .add_message::<ShopAuctionAuctionPassButtonClicked>()
             .add_message::<ShopAuctionGoldCounterFlashRequested>()
+            // PROMPT 1530 — right-click card inspect consumer wiring for the
+            // shop / DRAFT_INITIAL / auction-featured card surfaces. Mirrors
+            // the hand/draft consumer registration shape (PROMPT 1520) so the
+            // overlay behaves identically across hand and shop_auction.
+            .init_resource::<inspect::ShopAuctionCardInspectTarget>()
+            .add_message::<inspect::ShopAuctionCardInspectRequested>()
+            .add_message::<inspect::ShopAuctionCardInspectDismissed>()
+            // PROMPT 1530 — bevy_picking `DefaultPickingPlugins` already
+            // registers `Pointer<Press>` in real gameplay; redeclare here so
+            // ShopAuctionUiPlugin tests built on `MinimalPlugins` can drive
+            // the producer via `write_message(Pointer::<Press>::new(...))`.
+            // `add_message` is idempotent (matches the PROMPT 696 pattern
+            // used by `HandUiPlugin`).
+            .add_message::<Pointer<Press>>()
             .configure_sets(
                 Update,
                 (
@@ -1758,6 +1779,17 @@ impl Plugin for ShopAuctionUiPlugin {
                         handle_auction_bid_button_click_system,
                         handle_auction_pass_button_interactions_system,
                         handle_auction_pass_button_click_system,
+                        // PROMPT 1530 — produce inspect requests from
+                        // secondary-button presses on shop / DRAFT_INITIAL /
+                        // featured-auction surfaces, fold them (plus Escape
+                        // / backdrop click) into the target resource, and
+                        // dismiss when the dim backdrop is pressed.
+                        // Ordering mirrors HandUiPlugin: producer + backdrop
+                        // dismiss run before the target-fold so all signals
+                        // land in the same tick they were buffered.
+                        inspect::produce_shop_auction_card_inspect_requests_system,
+                        inspect::handle_shop_auction_card_inspect_backdrop_dismiss_system,
+                        inspect::apply_shop_auction_card_inspect_target_system,
                     )
                         .chain()
                         .in_set(ShopAuctionUiSystemSet::Input),
@@ -1779,6 +1811,11 @@ impl Plugin for ShopAuctionUiPlugin {
                         update_auction_won_pending_system,
                         sync_auction_won_affordance_system,
                         sync_auction_won_hand_marker_system,
+                        // PROMPT 1530 — spawn / despawn the overlay tree to
+                        // match `ShopAuctionCardInspectTarget`. Runs only on
+                        // resource change, so the steady state is allocation
+                        // free.
+                        inspect::sync_shop_auction_card_inspect_overlay_system,
                     )
                         .chain()
                         .in_set(ShopAuctionUiSystemSet::StateSync),
