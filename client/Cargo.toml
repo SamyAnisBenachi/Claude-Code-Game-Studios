@@ -950,6 +950,13 @@ path = "../tests/integration/board_rendering/resolution_anim_queue_test.rs"
 name = "board_rendering_resolution_combat_feedback_test"
 path = "../tests/integration/board_rendering/resolution_combat_feedback_test.rs"
 
+# PROMPT 1521 — per-group resolution replay cadence: visible feedback
+# (damage numbers, kill markers) fires group-by-group as each AnimGroup
+# becomes active, rather than burst-firing at script intake.
+[[test]]
+name = "board_rendering_resolution_replay_per_group_cadence_test"
+path = "../tests/integration/board_rendering/resolution_replay_per_group_cadence_test.rs"
+
 # PROMPT 1390 (S19-BR-PLAYAREA-HIERARCHY-TARGETING-FEEDBACK-001) — targeting
 # overlay feedback (dim, valid/endpoint rings, invalid marker, source-card
 # link) + QA snapshot AC9 fields.
