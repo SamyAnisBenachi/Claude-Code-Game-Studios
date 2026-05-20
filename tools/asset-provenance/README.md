@@ -40,6 +40,8 @@ then exits 1.
 | `fixtures/dev-proxy-pack-clean.json` | Example PASS dev-proxy pack manifest containing no payload assets. |
 | `fixtures/dev-proxy-pack-release-claim.json` | Example FAIL manifest where a proxy row claims release-safe metadata. |
 | `fixtures/dev-proxy-pack-repo-assets-source.json` | Example FAIL manifest where a proxy source path points into `assets/**`. |
+| `fixtures/dev-proxy-pack-stage2-candidate.json` | Example PASS Stage-2 candidate covering active UI lanes (hand frame, HUD class figurines, board cell, objective dot, Sang Méprise marker). Documentation/test fixture only — no payload is committed. |
+| `fixtures/dev-proxy-pack-bad-logical-id.json` | Example FAIL manifest where a row uses a non-conformant `logical_id` (missing `lid_` prefix). |
 
 ## Release CLI Usage
 
@@ -126,6 +128,15 @@ The validator fails clearly when:
   `missing_handling`.
 - The license/provenance warning does not state that the row is dev-only or
   not release-approved.
+- `logical_id` does not start with `lid_` or its body contains characters
+  outside lowercase letters/digits/underscores.
+- `expected_consumer_surface` is not a dotted lowercase token path
+  (e.g. `hand.card_frame`, `hud.class_figurine_iop`).
+- A `needs_conversion` row lacks `conversion_notes` describing the
+  resize/atlas/audio-remux work required before binding.
+- `pack.workflow_status`, when present, is anything other than `needed` — a
+  Krosmaga pack cannot advance the workflow.
+- `pack.pack_id` is missing or empty.
 
 ## Non-Claims
 
