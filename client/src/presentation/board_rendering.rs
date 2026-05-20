@@ -948,6 +948,7 @@ impl Plugin for BoardRenderingPlugin {
             .init_resource::<PlacementRevealCollectState>()
             .init_resource::<PendingResolutionScript>()
             .init_resource::<ResolutionRevealWait>()
+            .init_resource::<ResolutionReplayProgress>()
             // PROMPT 1390 (S19-BR-PLAYAREA-HIERARCHY-TARGETING-FEEDBACK-001):
             // targeting overlay state lives at the BoardRendering plugin
             // boundary; the resource is always present so the QA snapshot
@@ -1064,6 +1065,21 @@ impl Plugin for BoardRenderingPlugin {
                 sync_resolution_queue_drain_state_system
                     .in_set(PresentationSet::StateSync)
                     .after(crate::card_animations::resolution_executing_system)
+                    .run_if(in_state(ClientState::InSession)),
+            )
+            // PROMPT 1521 — emit visible combat feedback group-by-group as
+            // each AnimGroup starts, rather than burst-firing it at script
+            // intake. Runs after `resolution_executing_system` so
+            // `current_group_started` reflects the just-started group, and
+            // before `sync_resolution_queue_drain_state_system`'s drain
+            // transition so the final group's feedback fires before the
+            // state machine leaves ResolutionExecuting.
+            .add_systems(
+                Update,
+                apply_resolution_replay_group_system
+                    .in_set(PresentationSet::StateSync)
+                    .after(crate::card_animations::resolution_executing_system)
+                    .before(sync_resolution_queue_drain_state_system)
                     .run_if(in_state(ClientState::InSession)),
             )
             .add_systems(
@@ -1497,20 +1513,18 @@ pub fn drain_resolution_event_system(
 
 #[allow(clippy::too_many_arguments)]
 pub fn consume_pending_resolution_script_system(
-    mut commands: Commands,
     mut pending_script: ResMut<PendingResolutionScript>,
     collect_state: Res<PlacementRevealCollectState>,
     mut reveal_wait: ResMut<ResolutionRevealWait>,
     mut render_state: ResMut<BoardRenderState>,
     timings: Option<Res<AnimationTimingConfig>>,
     mut anim_queue: Option<ResMut<AnimQueue>>,
+    mut replay_progress: ResMut<ResolutionReplayProgress>,
     local_player: Res<BoardLocalPlayer>,
     player_team_map: Res<PlayerTeamMap>,
     mut board_cells: Query<(&LaneCell, &mut SpawnHighlightState, &mut Sprite), With<BoardCellNode>>,
-    board_units: Query<(Entity, &BoardUnit, &Transform), Without<BoardCellNode>>,
     mut recovery_writer: MessageWriter<SnapshotRecoveryRequested>,
     mut local_spawn_range_writer: MessageWriter<LocalPlayerSpawnRangeChanged>,
-    mut damage_writer: MessageWriter<DamageNumberSpawnRequested>,
 ) {
     if !pending_resolution_script_ready_for_playback(
         &pending_script,
@@ -1547,17 +1561,13 @@ pub fn consume_pending_resolution_script_system(
                 local_player.player_id,
                 &mut local_spawn_range_writer,
             );
-            // PROMPT 1231 — minimal combat-resolution feedback: emit
-            // damage numbers and spawn kill markers from the script's
-            // CombatDamage / UnitDied / UnitRemoved events. Scoped to
-            // Resolution because the script only enters playback here
-            // and the markers self-despawn (TTL + BoardRebuildRequested).
-            emit_resolution_combat_feedback(
-                &script,
-                &board_units,
-                &mut commands,
-                &mut damage_writer,
-            );
+            // PROMPT 1521 — combat feedback (damage numbers, kill markers)
+            // is now emitted per-group by `apply_resolution_replay_group_system`
+            // as each AnimGroup becomes active, so visible board mutations
+            // unfold with the same cadence as the resolution script rather
+            // than landing in a single intake-time burst. Reset replay
+            // progress here so the new script starts at group 0.
+            replay_progress.reset();
             anim_queue.load_groups(groups);
             reveal_wait.clear();
             *render_state = BoardRenderState::ResolutionExecuting;
@@ -1573,48 +1583,128 @@ pub fn consume_pending_resolution_script_system(
     }
 }
 
-/// PROMPT 1231 — Walk the consumed resolution script and emit minimal
-/// visible feedback for damage / kill outcomes. CombatDamage events fire
-/// `DamageNumberSpawnRequested` (consumed by the existing
-/// `spawn_damage_numbers` system); UnitDied / UnitRemoved events spawn a
-/// transient `ResolutionKillMarker` text entity at the unit's last known
-/// world position. Markers self-clean via TTL or board rebuild so the
-/// feedback never persists into later phases.
-pub fn emit_resolution_combat_feedback(
-    script: &S2CResolutionEvent,
+/// PROMPT 1521 — Tracks which `AnimGroup` in the active resolution
+/// replay has already emitted its visible mutations (damage numbers,
+/// kill markers) so the per-group applier stays idempotent across
+/// frames and across the inter-step pause that gates group transitions.
+///
+/// Reset by `consume_pending_resolution_script_system` when a new script
+/// loads, and self-resets when the resolution queue drains.
+#[derive(Resource, Default, Debug)]
+pub struct ResolutionReplayProgress {
+    last_emitted_group_index: Option<usize>,
+}
+
+impl ResolutionReplayProgress {
+    pub fn reset(&mut self) {
+        self.last_emitted_group_index = None;
+    }
+
+    pub fn last_emitted_group_index(&self) -> Option<usize> {
+        self.last_emitted_group_index
+    }
+}
+
+/// PROMPT 1521 — Per-group resolution replay applier.
+///
+/// Walks the currently active `AnimGroup` produced by
+/// `resolution_anim_groups_from_script` and emits the visible feedback
+/// (damage numbers for `CombatDamage`, transient kill markers for
+/// `UnitDied` / `UnitRemoved`) once the group becomes the current
+/// playback group. Runs after `resolution_executing_system` so
+/// `current_group_started` reflects the just-started group, then dedupes
+/// via `ResolutionReplayProgress` so repeated frames in the same group
+/// don't re-emit feedback.
+///
+/// This replaces the previous intake-time `emit_resolution_combat_feedback`
+/// call inside `consume_pending_resolution_script_system`: visible
+/// mutation now follows the same `(sub_step, trigger_index)` cadence the
+/// server already encodes, instead of arriving in a single burst the
+/// moment the script is received.
+#[allow(clippy::too_many_arguments)]
+pub fn apply_resolution_replay_group_system(
+    mut commands: Commands,
+    render_state: Res<BoardRenderState>,
+    queue: Option<Res<AnimQueue>>,
+    mut progress: ResMut<ResolutionReplayProgress>,
+    board_units: Query<(Entity, &BoardUnit, &Transform), Without<BoardCellNode>>,
+    mut damage_writer: MessageWriter<DamageNumberSpawnRequested>,
+) {
+    let Some(queue) = queue else {
+        progress.reset();
+        return;
+    };
+
+    if queue.groups.is_empty() {
+        progress.reset();
+        return;
+    }
+
+    if *render_state != BoardRenderState::ResolutionExecuting {
+        return;
+    }
+
+    // System ordering: this runs `.after(resolution_executing_system)`,
+    // which is the only writer of `AnimQueue::current_index` /
+    // `current_group_started`. By the time we observe a non-empty queue
+    // and `ResolutionExecuting`, the group at `current_index` has been
+    // started (or freshly advanced into) within the same frame, so we
+    // can apply visible mutations for it.
+    let idx = queue.current_index;
+    if progress.last_emitted_group_index == Some(idx) {
+        return;
+    }
+
+    if let Some(group) = queue.groups.get(idx) {
+        for queued in &group.events {
+            let AnimQueueEvent::ResolutionReplay { event: tagged } = queued else {
+                continue;
+            };
+            apply_replay_event_visual_feedback(
+                tagged,
+                &board_units,
+                &mut commands,
+                &mut damage_writer,
+            );
+        }
+    }
+
+    progress.last_emitted_group_index = Some(idx);
+}
+
+fn apply_replay_event_visual_feedback(
+    tagged: &TaggedEvent,
     board_units: &Query<(Entity, &BoardUnit, &Transform), Without<BoardCellNode>>,
     commands: &mut Commands,
     damage_writer: &mut MessageWriter<DamageNumberSpawnRequested>,
 ) {
-    for tagged in &script.events {
-        match &tagged.event {
-            ResolutionEvent::CombatDamage {
-                defender_id,
-                damage_amount,
-                ..
-            } => {
-                if *damage_amount == 0 {
-                    continue;
-                }
-                let Some((target_entity, _, _)) = find_board_unit_by_id(*defender_id, board_units)
-                else {
-                    continue;
-                };
-                damage_writer.write(DamageNumberSpawnRequested {
-                    target: target_entity,
-                    damage_value: u32::from(*damage_amount),
-                    event_id: tagged.trigger_index,
-                });
+    match &tagged.event {
+        ResolutionEvent::CombatDamage {
+            defender_id,
+            damage_amount,
+            ..
+        } => {
+            if *damage_amount == 0 {
+                return;
             }
-            ResolutionEvent::UnitDied { unit_id, .. }
-            | ResolutionEvent::UnitRemoved { unit_id, .. } => {
-                let Some((_, _, transform)) = find_board_unit_by_id(*unit_id, board_units) else {
-                    continue;
-                };
-                spawn_resolution_kill_marker(commands, transform.translation, tagged.trigger_index);
-            }
-            _ => {}
+            let Some((target_entity, _, _)) = find_board_unit_by_id(*defender_id, board_units)
+            else {
+                return;
+            };
+            damage_writer.write(DamageNumberSpawnRequested {
+                target: target_entity,
+                damage_value: u32::from(*damage_amount),
+                event_id: tagged.trigger_index,
+            });
         }
+        ResolutionEvent::UnitDied { unit_id, .. }
+        | ResolutionEvent::UnitRemoved { unit_id, .. } => {
+            let Some((_, _, transform)) = find_board_unit_by_id(*unit_id, board_units) else {
+                return;
+            };
+            spawn_resolution_kill_marker(commands, transform.translation, tagged.trigger_index);
+        }
+        _ => {}
     }
 }
 
