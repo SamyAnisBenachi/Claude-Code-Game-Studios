@@ -90,6 +90,7 @@ pub fn register_protocol(registry: &mut impl ProtocolRegistry) {
     // producer and no client consumer ever existed; private pool state lives on
     // the server only and reaches the client through `S2CGameSnapshot.PlayerSnapshot.pool_snapshot`.
     register_s2c::<S2CPlacementReveal>(registry, ProtocolChannel::Reliable);
+    register_s2c::<S2CPlacementAccepted>(registry, ProtocolChannel::Reliable);
     register_s2c::<S2CPlacementRejected>(registry, ProtocolChannel::Reliable);
     register_s2c::<S2CResolutionEvent>(registry, ProtocolChannel::Reliable);
     register_s2c::<S2CAuctionCard>(registry, ProtocolChannel::Reliable);
@@ -687,6 +688,27 @@ pub struct S2CAuctionSettled {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct S2CAuctionBidRejected {
     pub reason: BidRejectedReason,
+}
+
+/// Server-authoritative acceptance feedback for a `C2SSubmitPlacement` batch.
+///
+/// PROMPT 1546 — sent unicast to the originating client immediately after
+/// `process_placement_submission` returns `Accepted`. Pairs with
+/// `S2CPlacementRejected` so every `C2SSubmitPlacement` is matched by exactly
+/// one server-authored ACK (`Accepted` or `Rejected`) before `S2CPlacementReveal`
+/// fires at phase close. This closes the "silent accept" gap surfaced by
+/// PROMPT 1476 (P0) and PROMPT 1478, and is the only positive signal the
+/// submitter receives for effect-only (Spell/Order/Instant) placements that
+/// never appear in reveal payloads and never spawn replicated entities.
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct S2CPlacementAccepted {
+    /// Server's view of how many placements were committed. Lets the client
+    /// cross-check its own staged count.
+    pub placements_len: u8,
+    /// Mirrors `PlayerSubmission.is_final` server-side. Always `true` today
+    /// (`process_placement_submission` only commits final batches); the field
+    /// exists for forward compatibility if non-final submissions are added.
+    pub is_final: bool,
 }
 
 /// Server-authoritative rejection feedback for a `C2SSubmitPlacement` batch.
