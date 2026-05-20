@@ -4,7 +4,7 @@
 > **GDD**: design/gdd/board-rendering.md
 > **Architecture Module**: `client/src/ui/board/` - `BoardRenderingPlugin` (sub-plugin #2 inside `PresentationPlugin`)
 > **Status**: Ready - story set drafted for S5-21; Story 001 depends on Presentation Layer Story 001
-> **Stories**: 14 stories created - 8 Complete, 3 Ready, 2 Blocked, 1 Draft; S6-03 browser/WASM evidence follow-up added as Story 012; canonical board rendering spec authoring story Story 013 Done via Sprint 15 PROMPT 1009 (PROMPT 1004 dev-story + PROMPT 1006 integration + PROMPT 1009 story-done closure); Story 014 is a future Sprint 19 Krosmaga-style PlayArea/targeting feedback candidate authored by PROMPT 1280
+> **Stories**: 15 stories created - 8 Complete, 3 Ready, 2 Blocked, 2 Draft; S6-03 browser/WASM evidence follow-up added as Story 012; canonical board rendering spec authoring story Story 013 Done via Sprint 15 PROMPT 1009 (PROMPT 1004 dev-story + PROMPT 1006 integration + PROMPT 1009 story-done closure); Story 014 is a future Sprint 19 Krosmaga-style PlayArea/targeting feedback candidate authored by PROMPT 1280; Story 015 is a future Sprint 19 resolution-event visual replay mutation candidate authored by PROMPT 1485
 
 ## Overview
 
@@ -109,8 +109,9 @@ This epic is complete when:
 | 012 | [Browser/WASM Board Performance Evidence](story-012-browser-wasm-board-performance-evidence.md) | Config/Data | Ready | TR-BR-003, TR-BR-005 | ADR-021 |
 | 013 | [Canonical Board Rendering Spec](story-013-board-rendering-spec.md) | UX -- design-spec authoring (doc-only) | Complete (Sprint 15 Should Have; closed PROMPT 1009 on `origin/main` after PROMPT 1004 dev-story + PROMPT 1006 integration `08f389b`) | TR-BR-002, TR-BR-006, TR-BR-007, TR-BR-008 | ADR-021, ADR-020, ADR-017, ADR-011, ADR-008, ADR-002 |
 | 014 | [PlayArea Hierarchy + Targeting Feedback](story-014-krosmaga-playarea-targeting-feedback.md) | UI + Visual/Feel + Integration | Draft -- future Sprint 19 candidate (`S19-BR-PLAYAREA-HIERARCHY-TARGETING-FEEDBACK-001`; PROMPT 1280 Krosmaga-style implementation wave), NOT activated | TR-BR-002, TR-BR-008 | ADR-021, ADR-020, ADR-017, ADR-011, ADR-008, ADR-002 |
+| 015 | [Resolution Event Visual Replay Mutation](story-015-resolution-event-visual-replay-mutation.md) | Integration + Visual/Feel | Draft -- future Sprint 19 candidate (`S19-BR-RESOLUTION-EVENT-VISUAL-REPLAY-MUTATION-001`; PROMPT 1485), NOT activated | TR-BR-001, TR-BR-004, TR-BR-005 | ADR-017, ADR-021, ADR-008, ADR-011, ADR-002 |
 
-**Story counts**: 2 Logic, 5 Integration, 3 Visual/Feel, 2 Config/Data, 1 UX design-spec authoring (Sprint 15 Should Have Done via PROMPT 1009), plus 1 Draft UI/Visual/Integration future Sprint 19 candidate and later final evidence split follow-up.
+**Story counts**: 2 Logic, 5 Integration, 3 Visual/Feel, 2 Config/Data, 1 UX design-spec authoring (Sprint 15 Should Have Done via PROMPT 1009), plus 2 Draft future Sprint 19 candidates and later final evidence split follow-up.
 
 ## Sprint 6 Candidate Order
 
