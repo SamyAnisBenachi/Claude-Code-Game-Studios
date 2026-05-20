@@ -7,8 +7,10 @@
 
 #![allow(dead_code, unused_imports)]
 
+pub mod lobby_loop;
 pub mod state;
 
+pub use lobby_loop::{bot_lobby_auto_confirm, deterministic_class_for_bot, BotLobbyPlugin};
 pub use state::{
     BotDecisionEntry, BotDecisionKind, BotDecisionLog, BotDifficulty, BotPhaseTiming, BotPlayers,
     BotState, BotThinkDelayWindow, BOT_AUCTION_PASS_THRESHOLD_MS, BOT_SAFETY_MARGIN_MS,
