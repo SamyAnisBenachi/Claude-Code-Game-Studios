@@ -96,6 +96,10 @@ fn main() {
     // PROMPT 1514 (BOT-ROOM-JOIN-LOOP): deterministic bot lobby auto-confirm so
     // rooms that already contain a bot occupant can lift out of LobbyWaiting.
     app.add_plugins(feature::bot::BotLobbyPlugin);
+    // PROMPT 1531 (BOT-PARTICIPANT-ACTION-LOOP-WAVE1): deterministic bot action
+    // loop that signals draft-ready, passes auction, and submits an empty
+    // placement so flow advances without a human counterpart.
+    app.add_plugins(feature::bot::BotActionLoopPlugin);
 
     // Networking - Lightyear 0.26 WebSocket server and shared protocol manifest.
     app.add_plugins(network::ServerNetworkPlugin);
