@@ -137,6 +137,65 @@ class DevProxyPackUnitTests(unittest.TestCase):
         )
         self.assertEqual(failures, [])
 
+    def test_logical_id_prefix_required(self):
+        failures = validate_dev_proxy_pack.validate_manifest(
+            _manifest(_entry(logical_id="card_frame_common"))
+        )
+        self.assert_rule(failures, "logical_id_prefix_required")
+
+    def test_logical_id_body_charset(self):
+        failures = validate_dev_proxy_pack.validate_manifest(
+            _manifest(_entry(logical_id="lid_Card_Frame"))
+        )
+        self.assert_rule(failures, "logical_id_body_charset")
+
+    def test_consumer_surface_format(self):
+        failures = validate_dev_proxy_pack.validate_manifest(
+            _manifest(_entry(expected_consumer_surface="HandCardFrame"))
+        )
+        self.assert_rule(failures, "consumer_surface_format")
+
+    def test_consumer_surface_trailing_dot(self):
+        failures = validate_dev_proxy_pack.validate_manifest(
+            _manifest(_entry(expected_consumer_surface="hand."))
+        )
+        self.assert_rule(failures, "consumer_surface_format")
+
+    def test_needs_conversion_requires_notes(self):
+        failures = validate_dev_proxy_pack.validate_manifest(
+            _manifest(_entry(match_quality="needs_conversion"))
+        )
+        self.assert_rule(failures, "conversion_notes_required")
+
+    def test_needs_conversion_with_notes_passes(self):
+        failures = validate_dev_proxy_pack.validate_manifest(
+            _manifest(
+                _entry(
+                    match_quality="needs_conversion",
+                    conversion_notes="Resize 64x64 -> 32x32 and pack into hand atlas.",
+                )
+            )
+        )
+        self.assertEqual(failures, [])
+
+    def test_pack_workflow_status_must_remain_needed(self):
+        failures = validate_dev_proxy_pack.validate_manifest(
+            _manifest(_entry(), workflow_status="approved")
+        )
+        self.assert_rule(failures, "pack_workflow_status_must_remain_needed")
+
+    def test_pack_workflow_status_needed_passes(self):
+        failures = validate_dev_proxy_pack.validate_manifest(
+            _manifest(_entry(), workflow_status="needed")
+        )
+        self.assertEqual(failures, [])
+
+    def test_pack_id_required(self):
+        manifest = _manifest(_entry())
+        manifest["pack"]["pack_id"] = ""
+        failures = validate_dev_proxy_pack.validate_manifest(manifest)
+        self.assert_rule(failures, "pack_id_required")
+
     def test_duplicate_logical_id_fails(self):
         failures = validate_dev_proxy_pack.validate_manifest(
             _manifest(_entry(), _entry(source_path="D:/_GAMES/Ankama/Krosmaga/other.png"))
@@ -174,6 +233,22 @@ class DevProxyPackCliTests(unittest.TestCase):
         payload = json.loads(result.stderr)
         rules = {entry["rule"] for entry in payload}
         self.assertIn("source_path_must_not_be_repo_assets", rules)
+
+    def test_stage2_candidate_fixture_exits_zero(self):
+        result = self._run(FIXTURE_DIR / "dev-proxy-pack-stage2-candidate.json")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stderr.strip(), "")
+
+    def test_bad_logical_id_fixture_exits_one(self):
+        result = self._run(FIXTURE_DIR / "dev-proxy-pack-bad-logical-id.json")
+        self.assertEqual(result.returncode, 1, result.stderr)
+        payload = json.loads(result.stderr)
+        rules = {entry["rule"] for entry in payload}
+        self.assertTrue(
+            "logical_id_prefix_required" in rules
+            or "logical_id_body_charset" in rules,
+            f"expected logical-id prefix/charset failure in {sorted(rules)}",
+        )
 
     def test_missing_manifest_exits_two(self):
         result = self._run(FIXTURE_DIR / "does-not-exist.json")
