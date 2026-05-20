@@ -5,7 +5,7 @@ use lightyear::prelude::{NetworkTarget, PeerId, Replicate, Server, ServerMultiMe
 use shared::card::{CardData, CardId, CardType};
 use shared::protocol::{
     PlacedCardReveal, PlacedCardSubmit, PlacementRejectedReason, PlayTarget, ReliableChannel,
-    S2CPlacementRejected, S2CPlacementReveal,
+    S2CPlacementAccepted, S2CPlacementRejected, S2CPlacementReveal,
 };
 use shared::session::PlayerId;
 
@@ -73,6 +73,23 @@ pub struct PlacementRejectionDispatch {
     pub player: PlayerId,
     pub peer_id: Option<PeerId>,
     pub reason: PlacementRejectedReason,
+}
+
+/// Server-internal queue entry for one accepted placement submission.
+///
+/// PROMPT 1546 — mirrors `PlacementRejectionDispatch` for the success path.
+/// `handle_placement_submission` writes one of these alongside the existing
+/// internal `PlacementSubmitted` whenever a submission is accepted; the
+/// downstream `send_placement_acceptance_dispatches` system unicasts a
+/// `S2CPlacementAccepted` to the originating client. The wire ACK is the
+/// only positive signal for effect-only placements that never appear in
+/// reveal payloads or spawn replicated entities.
+#[derive(Message, Clone, Debug, PartialEq, Eq)]
+pub struct PlacementAcceptanceDispatch {
+    pub player: PlayerId,
+    pub peer_id: Option<PeerId>,
+    pub placements_len: u8,
+    pub is_final: bool,
 }
 
 /// Internal signal emitted when a player destroys an opposing fake objective.
@@ -423,6 +440,7 @@ pub fn handle_placement_submission(
     mut pending: ResMut<PendingPlacements>,
     mut submitted: MessageWriter<PlacementSubmitted>,
     mut rejections: MessageWriter<PlacementRejectionDispatch>,
+    mut acceptances: MessageWriter<PlacementAcceptanceDispatch>,
 ) {
     let phase = round_state.as_deref().map(|state| state.phase);
     let session = session.as_deref();
@@ -462,6 +480,21 @@ pub fn handle_placement_submission(
                 );
                 submitted.write(PlacementSubmitted {
                     player: submission.player,
+                });
+                // PROMPT 1546 — every accepted submission also queues an ACK
+                // dispatch so the originating client gets a positive signal
+                // immediately on accept (not at phase close). `is_final` mirrors
+                // `process_placement_submission`'s commit — always true today.
+                let is_final = pending
+                    .submissions
+                    .get(&submission.player)
+                    .map(|sub| sub.is_final)
+                    .unwrap_or(true);
+                acceptances.write(PlacementAcceptanceDispatch {
+                    player: submission.player,
+                    peer_id: submission.peer_id,
+                    placements_len: u8::try_from(placements_len).unwrap_or(u8::MAX),
+                    is_final,
                 });
             }
             rejected => {
@@ -582,6 +615,66 @@ pub fn send_placement_rejection_dispatches(
                 reason = ?dispatch.reason,
                 err = ?e,
                 "S2C send failed: type=S2CPlacementRejected, handler=send_placement_rejection_dispatches"
+            );
+        }
+    }
+}
+
+/// Drains `PlacementAcceptanceDispatch` queue entries and unicasts a
+/// `S2CPlacementAccepted` to each accepted submitter's Lightyear peer.
+///
+/// PROMPT 1546 — mirrors `send_placement_rejection_dispatches`. Runs in the
+/// same `BoardSystemSet::PlacementSubmission` set after
+/// `handle_placement_submission` so the ACK lands on the same tick the
+/// submission was accepted. Drops dispatches with no resolved `peer_id`
+/// after a warn so the contract gap is observable.
+pub fn send_placement_acceptance_dispatches(
+    mut acceptances: MessageReader<PlacementAcceptanceDispatch>,
+    server: Query<&Server>,
+    sender: Option<ServerMultiMessageSender>,
+) {
+    let Ok(server) = server.single() else {
+        for _ in acceptances.read() {}
+        return;
+    };
+    let Some(mut sender) = sender else {
+        for _ in acceptances.read() {}
+        return;
+    };
+    for dispatch in acceptances.read() {
+        tracing::info!(
+            target: "server::game",
+            player_id = dispatch.player.0,
+            peer_id = ?dispatch.peer_id,
+            placements_len = dispatch.placements_len,
+            is_final = dispatch.is_final,
+            "send_placement_acceptance_dispatches: dispatching S2CPlacementAccepted enter"
+        );
+        let Some(peer_id) = dispatch.peer_id else {
+            tracing::warn!(
+                target: "server::game",
+                player_id = dispatch.player.0,
+                placements_len = dispatch.placements_len,
+                "send_placement_acceptance_dispatches: S2CPlacementAccepted DROPPED — peer_id unresolved; player not in PlayerConnectionMap or stale entry"
+            );
+            continue;
+        };
+        let message = S2CPlacementAccepted {
+            placements_len: dispatch.placements_len,
+            is_final: dispatch.is_final,
+        };
+        if let Err(e) = sender.send::<S2CPlacementAccepted, ReliableChannel>(
+            &message,
+            server,
+            &NetworkTarget::Single(peer_id),
+        ) {
+            tracing::error!(
+                target: "server::game",
+                player_id = dispatch.player.0,
+                peer_id = ?peer_id,
+                placements_len = dispatch.placements_len,
+                err = ?e,
+                "S2C send failed: type=S2CPlacementAccepted, handler=send_placement_acceptance_dispatches"
             );
         }
     }
