@@ -408,3 +408,7 @@ path = "../tests/unit/combat/persistent_states_test.rs"
 [[test]]
 name = "bot_foundation_state_test"
 path = "../tests/unit/bot/bot_foundation_state_test.rs"
+
+[[test]]
+name = "bot_lobby_loop_test"
+path = "../tests/unit/bot/bot_lobby_loop_test.rs"
