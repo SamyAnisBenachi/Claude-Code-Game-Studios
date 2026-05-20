@@ -957,6 +957,14 @@ path = "../tests/integration/board_rendering/resolution_combat_feedback_test.rs"
 name = "board_rendering_resolution_replay_per_group_cadence_test"
 path = "../tests/integration/board_rendering/resolution_replay_per_group_cadence_test.rs"
 
+# PROMPT 1532 — per-event visual mutation contract: replay applier
+# mutates LaneCell + Transform for UnitMoved / UnitChangedLane, dedupes
+# UnitPlaced against existing BoardUnits, and surfaces objective HP /
+# destruction in StandingObjectiveHp.
+[[test]]
+name = "board_rendering_resolution_replay_visual_mutation_test"
+path = "../tests/integration/board_rendering/resolution_replay_visual_mutation_test.rs"
+
 # PROMPT 1390 (S19-BR-PLAYAREA-HIERARCHY-TARGETING-FEEDBACK-001) — targeting
 # overlay feedback (dim, valid/endpoint rings, invalid marker, source-card
 # link) + QA snapshot AC9 fields.

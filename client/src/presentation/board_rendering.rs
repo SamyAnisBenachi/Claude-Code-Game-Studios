@@ -1627,7 +1627,22 @@ pub fn apply_resolution_replay_group_system(
     render_state: Res<BoardRenderState>,
     queue: Option<Res<AnimQueue>>,
     mut progress: ResMut<ResolutionReplayProgress>,
-    board_units: Query<(Entity, &BoardUnit, &Transform), Without<BoardCellNode>>,
+    board_layout: Option<Res<BoardLayout>>,
+    config: Res<BoardRenderingConfig>,
+    mut board_units: Query<
+        (Entity, &BoardUnit, &mut LaneCell, &mut Transform),
+        (Without<BoardCellNode>, Without<StandingObjective>),
+    >,
+    mut objectives: Query<
+        (
+            Entity,
+            &StandingObjective,
+            &mut StandingObjectiveHp,
+            Option<&Children>,
+        ),
+        Without<BoardUnit>,
+    >,
+    mut hp_fills: Query<(&mut Transform, &mut Sprite), (With<HpBarFill>, Without<BoardUnit>)>,
     mut damage_writer: MessageWriter<DamageNumberSpawnRequested>,
 ) {
     let Some(queue) = queue else {
@@ -1656,13 +1671,24 @@ pub fn apply_resolution_replay_group_system(
     }
 
     if let Some(group) = queue.groups.get(idx) {
+        debug!(
+            target: "client::resolution_replay",
+            group_index = idx,
+            event_count = group.events.len(),
+            "applying resolution replay group"
+        );
         for queued in &group.events {
             let AnimQueueEvent::ResolutionReplay { event: tagged } = queued else {
                 continue;
             };
             apply_replay_event_visual_feedback(
                 tagged,
-                &board_units,
+                idx,
+                board_layout.as_deref(),
+                *config,
+                &mut board_units,
+                &mut objectives,
+                &mut hp_fills,
                 &mut commands,
                 &mut damage_writer,
             );
@@ -1672,9 +1698,26 @@ pub fn apply_resolution_replay_group_system(
     progress.last_emitted_group_index = Some(idx);
 }
 
+#[allow(clippy::too_many_arguments)]
 fn apply_replay_event_visual_feedback(
     tagged: &TaggedEvent,
-    board_units: &Query<(Entity, &BoardUnit, &Transform), Without<BoardCellNode>>,
+    group_index: usize,
+    board_layout: Option<&BoardLayout>,
+    config: BoardRenderingConfig,
+    board_units: &mut Query<
+        (Entity, &BoardUnit, &mut LaneCell, &mut Transform),
+        (Without<BoardCellNode>, Without<StandingObjective>),
+    >,
+    objectives: &mut Query<
+        (
+            Entity,
+            &StandingObjective,
+            &mut StandingObjectiveHp,
+            Option<&Children>,
+        ),
+        Without<BoardUnit>,
+    >,
+    hp_fills: &mut Query<(&mut Transform, &mut Sprite), (With<HpBarFill>, Without<BoardUnit>)>,
     commands: &mut Commands,
     damage_writer: &mut MessageWriter<DamageNumberSpawnRequested>,
 ) {
@@ -1687,8 +1730,17 @@ fn apply_replay_event_visual_feedback(
             if *damage_amount == 0 {
                 return;
             }
-            let Some((target_entity, _, _)) = find_board_unit_by_id(*defender_id, board_units)
+            let Some(target_entity) = board_units
+                .iter()
+                .find(|(_, u, _, _)| u.unit_id == *defender_id)
+                .map(|(e, _, _, _)| e)
             else {
+                debug!(
+                    target: "client::resolution_replay",
+                    group_index, sub_step = tagged.sub_step, trigger_index = tagged.trigger_index,
+                    defender_id = ?defender_id,
+                    "CombatDamage: defender not on board; skipped"
+                );
                 return;
             };
             damage_writer.write(DamageNumberSpawnRequested {
@@ -1699,23 +1751,272 @@ fn apply_replay_event_visual_feedback(
         }
         ResolutionEvent::UnitDied { unit_id, .. }
         | ResolutionEvent::UnitRemoved { unit_id, .. } => {
-            let Some((_, _, transform)) = find_board_unit_by_id(*unit_id, board_units) else {
+            let Some(translation) = board_units
+                .iter()
+                .find(|(_, u, _, _)| u.unit_id == *unit_id)
+                .map(|(_, _, _, t)| t.translation)
+            else {
+                debug!(
+                    target: "client::resolution_replay",
+                    group_index, sub_step = tagged.sub_step, trigger_index = tagged.trigger_index,
+                    unit_id = ?unit_id,
+                    "UnitDied/UnitRemoved: unit not on board; skipped"
+                );
                 return;
             };
-            spawn_resolution_kill_marker(commands, transform.translation, tagged.trigger_index);
+            spawn_resolution_kill_marker(commands, translation, tagged.trigger_index);
+        }
+        ResolutionEvent::UnitMoved {
+            unit_id,
+            lane,
+            to_cell,
+            ..
+        } => {
+            apply_unit_lane_cell_mutation(
+                *unit_id,
+                *lane,
+                *to_cell,
+                tagged,
+                group_index,
+                board_layout,
+                board_units,
+                "UnitMoved",
+            );
+        }
+        ResolutionEvent::UnitChangedLane {
+            unit_id, to_lane, ..
+        } => {
+            // PROMPT 1532 — UnitChangedLane mutates only the lane; cell is
+            // preserved from the unit's current LaneCell.
+            let Some(preserved_cell) = board_units
+                .iter()
+                .find(|(_, u, _, _)| u.unit_id == *unit_id)
+                .map(|(_, _, lc, _)| lc.cell)
+            else {
+                debug!(
+                    target: "client::resolution_replay",
+                    group_index, sub_step = tagged.sub_step, trigger_index = tagged.trigger_index,
+                    unit_id = ?unit_id,
+                    "UnitChangedLane: unit not on board; skipped"
+                );
+                return;
+            };
+            apply_unit_lane_cell_mutation(
+                *unit_id,
+                *to_lane,
+                preserved_cell,
+                tagged,
+                group_index,
+                board_layout,
+                board_units,
+                "UnitChangedLane",
+            );
+        }
+        ResolutionEvent::UnitPlaced {
+            unit_id,
+            lane,
+            cell,
+            ..
+        } => {
+            // PROMPT 1532 — Dedupe vs placement reveal: if the unit is
+            // already on the board (spawned by S2CPlacementReveal or by a
+            // BoardSnapshotEntity rebuild), do nothing. We deliberately do
+            // NOT spawn a missing unit here — the replay payload lacks the
+            // owner / card / stats data we need to render a unit, so a
+            // missing entity at this point is a true data gap, not a visual
+            // bug, and the next snapshot rebuild will reconcile.
+            let existing = board_units
+                .iter()
+                .find(|(_, u, _, _)| u.unit_id == *unit_id)
+                .map(|(_, _, lc, _)| (lc.lane, lc.cell));
+            if let Some((existing_lane, existing_cell)) = existing {
+                debug!(
+                    target: "client::resolution_replay",
+                    group_index, sub_step = tagged.sub_step, trigger_index = tagged.trigger_index,
+                    unit_id = ?unit_id,
+                    payload_lane = lane, payload_cell = cell,
+                    existing_lane, existing_cell,
+                    "UnitPlaced: deduped against existing board unit (likely from PlacementReveal)"
+                );
+            } else {
+                debug!(
+                    target: "client::resolution_replay",
+                    group_index, sub_step = tagged.sub_step, trigger_index = tagged.trigger_index,
+                    unit_id = ?unit_id, lane, cell,
+                    "UnitPlaced: no existing board entity; awaiting snapshot rebuild for visual"
+                );
+            }
+        }
+        ResolutionEvent::ObjectiveDamage {
+            target_player_id,
+            lane,
+            objective_hp_after,
+            ..
+        } => {
+            apply_objective_hp_change(
+                *target_player_id,
+                *lane,
+                *objective_hp_after,
+                tagged,
+                group_index,
+                config,
+                objectives,
+                hp_fills,
+            );
+        }
+        ResolutionEvent::ObjectiveDestroyed {
+            target_player_id,
+            lane,
+            ..
+        } => {
+            // PROMPT 1532 — Mirror server destruction in the replay layer.
+            // Zero out HP and despawn the objective entity (children
+            // despawn via Bevy 0.18 default child-of cascade for entities
+            // tagged with BoardRenderingEntity / ChildOf).
+            apply_objective_hp_change(
+                *target_player_id,
+                *lane,
+                0,
+                tagged,
+                group_index,
+                config,
+                objectives,
+                hp_fills,
+            );
+            for (entity, obj, _, _) in objectives.iter() {
+                if obj.owner_id == *target_player_id && obj.lane == *lane {
+                    debug!(
+                        target: "client::resolution_replay",
+                        group_index, sub_step = tagged.sub_step, trigger_index = tagged.trigger_index,
+                        target_player_id = ?target_player_id, lane,
+                        "ObjectiveDestroyed: despawning standing objective"
+                    );
+                    commands.entity(entity).despawn();
+                    break;
+                }
+            }
         }
         _ => {}
     }
 }
 
-fn find_board_unit_by_id<'a>(
+fn apply_unit_lane_cell_mutation(
     unit_id: EntityId,
-    board_units: &'a Query<(Entity, &BoardUnit, &Transform), Without<BoardCellNode>>,
-) -> Option<(Entity, &'a BoardUnit, &'a Transform)> {
-    board_units
-        .iter()
-        .find(|(_, unit, _)| unit.unit_id == unit_id)
+    new_lane: u8,
+    new_cell: u8,
+    tagged: &TaggedEvent,
+    group_index: usize,
+    board_layout: Option<&BoardLayout>,
+    board_units: &mut Query<
+        (Entity, &BoardUnit, &mut LaneCell, &mut Transform),
+        (Without<BoardCellNode>, Without<StandingObjective>),
+    >,
+    label: &'static str,
+) {
+    let Some(layout) = board_layout else {
+        debug!(
+            target: "client::resolution_replay",
+            group_index, sub_step = tagged.sub_step, trigger_index = tagged.trigger_index,
+            unit_id = ?unit_id,
+            "{label}: BoardLayout missing; visual move skipped"
+        );
+        return;
+    };
+    if !in_board_bounds(new_lane, new_cell) {
+        debug!(
+            target: "client::resolution_replay",
+            group_index, sub_step = tagged.sub_step, trigger_index = tagged.trigger_index,
+            unit_id = ?unit_id, new_lane, new_cell,
+            "{label}: out-of-bounds destination; visual move skipped"
+        );
+        return;
+    }
+    let world_xy = layout.cell_to_world(new_lane, new_cell);
+    let Some((_, _, mut lane_cell, mut transform)) = board_units
+        .iter_mut()
+        .find(|(_, u, _, _)| u.unit_id == unit_id)
+    else {
+        debug!(
+            target: "client::resolution_replay",
+            group_index, sub_step = tagged.sub_step, trigger_index = tagged.trigger_index,
+            unit_id = ?unit_id,
+            "{label}: unit not on board; skipped"
+        );
+        return;
+    };
+    let prev_lane = lane_cell.lane;
+    let prev_cell = lane_cell.cell;
+    lane_cell.lane = new_lane;
+    lane_cell.cell = new_cell;
+    transform.translation.x = world_xy.x;
+    transform.translation.y = world_xy.y;
+    debug!(
+        target: "client::resolution_replay",
+        group_index, sub_step = tagged.sub_step, trigger_index = tagged.trigger_index,
+        unit_id = ?unit_id,
+        prev_lane, prev_cell, new_lane, new_cell,
+        "{label}: applied lane/cell mutation"
+    );
 }
+
+fn apply_objective_hp_change(
+    target_player_id: PlayerId,
+    lane: u8,
+    hp_after: u32,
+    tagged: &TaggedEvent,
+    group_index: usize,
+    config: BoardRenderingConfig,
+    objectives: &mut Query<
+        (
+            Entity,
+            &StandingObjective,
+            &mut StandingObjectiveHp,
+            Option<&Children>,
+        ),
+        Without<BoardUnit>,
+    >,
+    hp_fills: &mut Query<(&mut Transform, &mut Sprite), (With<HpBarFill>, Without<BoardUnit>)>,
+) {
+    let mut found = false;
+    let new_hp_u8 = u8::try_from(hp_after.min(u32::from(u8::MAX))).unwrap_or(u8::MAX);
+    let mut children_to_update: Option<Vec<Entity>> = None;
+    let mut new_visual: Option<HpBarVisual> = None;
+    for (_, obj, mut hp, children_opt) in objectives.iter_mut() {
+        if obj.owner_id == target_player_id && obj.lane == lane {
+            found = true;
+            let prev = hp.hp_current;
+            hp.hp_current = new_hp_u8.min(hp.hp_max);
+            let visual = hp_bar_visual(hp.hp_current, hp.hp_max, config);
+            new_visual = Some(visual);
+            children_to_update = children_opt.map(|c| c.iter().collect::<Vec<_>>());
+            debug!(
+                target: "client::resolution_replay",
+                group_index, sub_step = tagged.sub_step, trigger_index = tagged.trigger_index,
+                target_player_id = ?target_player_id, lane,
+                prev_hp = prev, new_hp = hp.hp_current,
+                "ObjectiveDamage/Destroyed: applied HP mutation"
+            );
+            break;
+        }
+    }
+    if !found {
+        debug!(
+            target: "client::resolution_replay",
+            group_index, sub_step = tagged.sub_step, trigger_index = tagged.trigger_index,
+            target_player_id = ?target_player_id, lane,
+            "ObjectiveDamage/Destroyed: no matching standing objective; skipped"
+        );
+        return;
+    }
+    if let (Some(visual), Some(children)) = (new_visual, children_to_update) {
+        for child in children {
+            if let Ok((mut transform, mut sprite)) = hp_fills.get_mut(child) {
+                apply_hp_fill_visual(&mut transform, &mut sprite, visual);
+            }
+        }
+    }
+}
+
 
 fn spawn_resolution_kill_marker(commands: &mut Commands, position: Vec3, event_id: u32) {
     let jitter = damage_number_jitter(event_id);
