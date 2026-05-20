@@ -8,9 +8,10 @@ replaces it.
 
 Source of truth:
 
-- `origin/main@c3d847f1d69b2b668ed53fe667cb839104d9c467`
-  (`PROMPT-1528 resolution-replay-mutation integration refresh`; includes
-  PROMPT 1521 partial client replay cadence and PROMPT 1527/1528 reports).
+- `origin/main@5358aed1a6075aca621936fd14f561be8fb854d3`
+  (`PROMPT-1528 resolution-replay-mutation integration refresh` plus the
+  post-1528 orchestrator-state refresh). The root checkout is expected to stay
+  on local `main` fast-forwarded to this ref.
 - Active stage remains Polish. Do not claim release readiness, full-game
   completion, final-art/legal clearance, accessibility completion, playtest
   validation, `S8-QA-001-W1` closure, or `S11-HUD-TIMER-EYEBALL-VISUAL-001`
@@ -76,6 +77,10 @@ Completed no-follow-up audits:
 
 Current launch guidance:
 
+- Default worker launch mode is `gcs.dispatch` with `workspace_mode: "worktree"`
+  for implementation, integration, verify, audit, and report work. Use the
+  shared/root checkout only when explicitly required; it must remain on `main`
+  as the orchestrator source-of-truth workspace.
 - 1472 is done; code repairs no longer need to wait for that old gate.
 - HU-CHROME is green; prompts previously gated by 1506/1510 can proceed if
   file ownership is disjoint from active workers.

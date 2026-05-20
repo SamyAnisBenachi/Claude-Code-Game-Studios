@@ -50,6 +50,10 @@ Key current rules:
   `project_id`, `source_branch`, and `intent_id` (`mainland-<slug>-<prompt_n>`)
   for serialized fast-forward-only main landings. Use `MAINLAND_CANCEL` only for
   pending queue entries.
+- For implementation, integration, verify, audit, and report workers, pass
+  `workspace_mode: "worktree"` in `gcs.dispatch` `SPAWN`/`RELANCER` unless a
+  specific task explicitly requires the shared root checkout. The root checkout
+  must stay on `main` as the orchestrator source-of-truth workspace.
 - If structured `gcs.dispatch` is unavailable, fallback emoji labels may be used
   for worker lifecycle actions only. Do not claim a main-land queue action was
   submitted unless `MAINLAND_ENQUEUE` returned a queue id, or a direct Git action
@@ -110,7 +114,9 @@ Owned scope:
   production/stage.txt, unrelated Cargo/CI files, unrelated source modules.
 
 Implementation rules:
-- Use a dedicated worktree and branch.
+- Use a dedicated worktree and branch. Orchestrator should launch this with
+  `workspace_mode: "worktree"`; if you start in the shared/root checkout, create
+  a dedicated worktree before editing.
 - Use repo patterns and required skills (`liv-bevy-018` for Bevy code,
   `liv-bevy-lightyear` for networking/protocol work).
 - Do not run broad Cargo suites by default. Run only focused local validation
