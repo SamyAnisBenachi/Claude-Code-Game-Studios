@@ -1,5 +1,68 @@
 # Codex Orchestrator State
 
+## Current Resume Snapshot (2026-05-21, post-1564 mainland and pause)
+
+This block is the active orchestration state. It supersedes older resume and
+handoff snapshots below. The user asked to stop launching additional work after
+the launcher-status prompt and to save the current state.
+
+Source of truth:
+
+- Root checkout: `D:\_DEV\Work\Claude-Code-Game-Studios`
+- Root branch: `main`
+- Root/source commit: `origin/main@5be95a9b8c2375c8e704efe2460501d20110c82d`
+  (`PROMPT 1564 bot participant action loop Wave 1 mainland`)
+- Local root checkout was fast-forwarded to the same commit.
+- Root working tree caveat: `.claude/settings.json` remains dispatcher runtime
+  churn and must stay out of commits unless intentionally updating hooks.
+- Mainland queue after `1564`: no pending/running entries.
+
+Recent mainland results:
+
+| Prompt | Result | Notes |
+|---|---|---|
+| `1550` | MAIN-LANDED | Shop/auction card inspect consumer wiring. |
+| `1551` | MAIN-LANDED | Resolution replay visual mutation follow-up refresh. |
+| `1554` | MAIN-LANDED | Result/mulligan Krosmaga chrome polish. |
+| `1557` | MAIN-LANDED | Hand inspect input resource optionalize. |
+| `1561` | MAIN-LANDED | Auction won-card disposition test serial-lock leak. |
+| `1564` | MAIN-LANDED | Bot participant action loop Wave 1; advanced main `f19ab3ea -> 5be95a9b`. |
+
+Closed stale refreshes:
+
+| Prompt | Disposition | Replacement |
+|---|---|---|
+| `1565` | Cleared; branch was FF-ready only over `f19ab3ea`, stale after `1564`. | `1568` |
+| `1566` | Cleared; branch was FF-ready only before `1564`, stale after `1564`. | `1569` |
+| `1567` | Cleared; branch was FF-ready only over `f19ab3ea`, stale after `1564`. | `1570` |
+
+Active workers at pause:
+
+| Prompt | Task | Expected next action |
+|---|---|---|
+| `1568` | `PLACEMENT-ACCEPTED-ACK-PROTOCOL-MAIN-READY-REFRESH-AFTER-1564` | On DONE, verify FF against current `origin/main`; enqueue only if FF-ready, otherwise refresh again. |
+| `1569` | `QA-SNAPSHOT-OBSERVABILITY-FIELDS-FOLLOWUP-MAIN-READY-REFRESH-AFTER-1564` | On DONE, verify FF; enqueue after `1568` or refresh if stale. |
+| `1570` | `KROSMAGA-DEV-PROXY-STAGE2-MAIN-READY-REFRESH-AFTER-1564` | On DONE, verify FF; enqueue after earlier mainland entries or refresh if stale. |
+| `1571` | `CCGS-DEV-LAUNCHER-JOB-STATUS-SUCCESS-FAIL-UI-REPAIR` | Tooling-only worker for visible green/red `SUCCESS`/`FAIL` launcher job status. Integrate later via normal branch/refresh flow. |
+
+Main blockers / sequencing:
+
+- Do not launch new work until the active workers above return or the next
+  orchestrator explicitly resumes.
+- Process mainland serially. Before `MAINLAND_ENQUEUE`, always run or otherwise
+  confirm `origin/main` is an ancestor of the candidate branch. If a branch is
+  stale, clear the stale worker and spawn a new refresh prompt rather than
+  enqueueing a guaranteed non-FF.
+- After `1568`, `1569`, and `1570` land, run focused VERIFY lanes:
+  placement accepted-ACK lifecycle, QA snapshot field coverage, Krosmaga
+  dev-proxy validator, and bot participant action loop.
+- Broad Cargo remains out of implementation workers. Use dedicated VERIFY lanes
+  and keep shared-target Cargo pressure serialized.
+- Workers must not ask the human for push/rebase/protected-branch permission.
+  They should keep branch/commit state and report exact blockers; the
+  orchestrator handles mainland and permission-sensitive Git actions.
+- Krosmaga assets remain dev-proxy only. No release/legal claim is implied.
+
 ## Current Resume Snapshot (2026-05-20, post-pause flow resumed)
 
 This block supersedes the pause ledger below for active orchestration. The user
