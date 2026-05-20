@@ -417,6 +417,17 @@ fn case_b_no_winner_settle_grants_no_card_and_emits_ac10_trace_line() {
 
 #[test]
 fn ac13_won_card_persists_in_hand_across_settle_with_no_submission() {
+    // PROMPT 1547 — `enter_auction` + `settle_expired_auction` emit the
+    // shared `server::game event = "auction_settled"` tracing line. Without
+    // joining the same serial guard + capture subscriber used by Case A/B,
+    // this test's `card_id=307` event can leak into the capture queue while
+    // a sibling test sits between its `take_captured()` clear and read,
+    // flipping their `card_id` field assertion under default multi-thread
+    // `cargo test`. Hold the lock for the whole body even though we don't
+    // read captured events here.
+    install_capture_subscriber();
+    let _serial = test_serial_lock();
+    take_captured();
     let winner = player(1);
     let card = make_card(307, Rarity::Rare, 3);
     let mut app = auction_fixture(catalog(vec![card]));
