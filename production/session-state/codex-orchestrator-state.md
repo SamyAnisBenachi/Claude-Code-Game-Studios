@@ -1,5 +1,52 @@
 # Codex Orchestrator State
 
+## Current Resume Snapshot (2026-05-20, post-pause flow resumed)
+
+This block supersedes the pause ledger below for active orchestration. The user
+explicitly resumed work and asked to relaunch unfinished work while keeping broad
+Cargo verification out of implementation workers.
+
+Source of truth:
+
+- Root checkout: `D:\_DEV\Work\Claude-Code-Game-Studios`
+- Root branch: `main`
+- Root/source commit: `origin/main@f341d6c5156eb22544a05c1834d7179f560bf317`
+  (`state: mark 1537 already landed`)
+- Root working tree caveat: `.claude/settings.json` remains dispatcher runtime
+  churn and must stay out of commits unless intentionally updating hooks.
+- Mainland queue at resume check: no pending/running entries.
+
+Active resumed workers:
+
+| Prompt | Task | Source / reason | Integration policy |
+|---|---|---|---|
+| `1540` | `SHOP-AUCTION-CARD-INSPECT-CONSUMER-WIRING-INTEGRATION-REFRESH` | Refresh PROMPT 1530 worker branch `origin/worker/prompt-1530-shop-auction-card-inspect-consumer-wiring` over current main. | Produce integration branch/report; no main push; broad Cargo deferred. |
+| `1541` | `BOT-PARTICIPANT-ACTION-LOOP-WAVE1-INTEGRATION-REFRESH` | Refresh PROMPT 1531 worker branch `origin/worker/prompt-1531-bot-participant-action-loop-wave1` over current main. | Produce integration branch/report; no main push; broad Cargo deferred. |
+| `1542` | `RESOLUTION-REPLAY-VISUAL-MUTATION-FOLLOWUP-INTEGRATION-REFRESH` | Refresh PROMPT 1532 worker branch `origin/worker/prompt-1532-resolution-replay-visual-mutation-followup` over current main. | Produce integration branch/report; no main push; broad Cargo deferred. |
+| `1543` | `QA-SNAPSHOT-OBSERVABILITY-FIELDS-FOLLOWUP-INTEGRATION-REFRESH` | Refresh PROMPT 1533 branch `origin/prompt-1533-qa-snapshot-observability-fields-followup` over current main. | Produce integration branch/report; no main push; broad Cargo deferred; do not implement accepted ACK here. |
+| `1544` | `RESULT-MULLIGAN-KROSMAGA-CHROME-POLISH-INTEGRATION-REFRESH` | Refresh PROMPT 1538 worker branch `origin/worker/prompt-1538-result-mulligan-krosmaga-chrome-polish` over current main. | Produce integration branch/report; no main push; broad Cargo deferred. |
+| `1545` | `KROSMAGA-DEV-PROXY-STAGE2-INTEGRATION-REFRESH-AFTER-STATE-COMMITS` | Prior PROMPT 1539 branch `origin/integrate/krosmaga-dev-proxy-stage2-1539` is not FF-ready after state commits. | Refresh integration over current main; no main push; Krosmaga remains dev-proxy only. |
+| `1546` | `PLACEMENT-ACCEPTED-ACK-PROTOCOL-IMPLEMENTATION` | PROMPT 1535 readiness found missing accepted-placement ACK. | Implement minimal shared/server/client ACK; no broad Cargo; avoid QA snapshot fields. |
+| `1547` | `AUCTION-WON-CARD-DISPOSITION-TEST-SERIAL-LOCK-LEAK-REPAIR` | PROMPT 1536 verify lane found test serial-lock leak. | Test-only repair unless product bug is proven; no broad Cargo. |
+| `1548` | `HAND-INSPECT-INPUT-RES-OPTIONALIZE` | PROMPT 1536 verify lane found hand inspect input resource gap. | Minimal `client/src/ui/hand/inspect.rs` fix; no broad Cargo. |
+
+Closed or no-action items from the same batch:
+
+- `1509`: already main-landed via mainland queue.
+- `1517`: NO-OP; payload already present on main.
+- `1537`: SHIPPED / already landed at worker commit `20abf970`, return marker
+  `78aa711b`.
+
+Operating notes:
+
+- Do not make every worker run Cargo. Use focused validation only inside these
+  workers; schedule a separate VERIFY lane after integration branches are ready.
+- If any worker hits push/rebase/protected-branch issues, it must report exact
+  branch, commit, command, and blocker; do not ask the human for Git permission
+  from the worker.
+- Use `MAINLAND_ENQUEUE` only after a worker reports an FF-ready integration
+  branch or after the orchestrator verifies the branch is FF-ready.
+
 ## Current Handoff Snapshot (2026-05-20, pause after PROMPT-1539 launch)
 
 This block supersedes earlier "current" snapshots until a later dated block is
