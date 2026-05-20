@@ -26,7 +26,8 @@
       "release_class": "dev_only",
       "workflow_status": "needed",
       "license_provenance_warning": "Dev-only Krosmaga proxy; never release-safe.",
-      "expected_consumer_surface": "board.cell"
+      "expected_consumer_surface": "board.cell",
+      "conversion_notes": "Resize Krosmaga cell sprite to 32x32 and atlas-pack for board rendering."
     },
     {
       "logical_id": "lid_result_panel_chrome_win",
