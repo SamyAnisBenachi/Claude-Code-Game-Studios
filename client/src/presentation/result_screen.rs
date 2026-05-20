@@ -225,12 +225,15 @@ pub struct ResultScreenEntities {
     pub panel: Entity,
     pub accent_stripe: Entity,
     pub round_chip: Entity,
+    pub step_indicator: Entity,
     pub hero_panel: Entity,
     pub accounting_panel: Entity,
     pub headline: Entity,
+    pub title_divider: Entity,
     pub class_persona: Entity,
     pub cause: Entity,
     pub continue_hint: Entity,
+    pub section_divider: Entity,
     pub summary: Entity,
     pub resources_line: Entity,
     pub ledger_line: Entity,
@@ -313,6 +316,28 @@ pub struct ResultScreenContinueHint;
 /// accounting panel.
 #[derive(Component, Debug, Clone, Copy)]
 pub struct ResultScreenResourcesLine;
+
+/// Marker on the thin outcome-tinted divider rendered immediately below the
+/// hero headline. Frames the title from the rest of the hero column the way
+/// Krosmaga's outcome banner is framed by a coloured rule. Background colour
+/// is updated each frame from the outcome accent palette so the divider stays
+/// in sync with the accent stripe and panel border.
+#[derive(Component, Debug, Clone, Copy)]
+pub struct ResultScreenTitleDivider;
+
+/// Marker on the thin neutral divider rendered between the "Match Accounting"
+/// header and the resources / ledger rows on the accounting panel. Purely
+/// visual; no data binding.
+#[derive(Component, Debug, Clone, Copy)]
+pub struct ResultScreenSectionDivider;
+
+/// Marker on the compact step indicator pill ("Step 1 of 2" / "Step 2 of 2")
+/// rendered at the top of the result content column. Telegraphs the two-step
+/// hero -> accounting reveal so the Continue affordance reads as progression
+/// rather than dismissal. Text is updated each frame from the current
+/// [`ResultScreenStep`].
+#[derive(Component, Debug, Clone, Copy)]
+pub struct ResultScreenStepIndicator;
 
 /// Marker on the chunked "objectives lost" ledger line on the accounting
 /// panel — short, scannable counts separate from the verbose summary.
@@ -755,6 +780,10 @@ fn spawn_result_screen_system(
                 },
                 border: UiRect::all(Val::Px(2.0)),
                 border_radius: BorderRadius::all(Val::Px(10.0)),
+                // Clip any overflow on small viewports rather than spilling
+                // outside the framed panel. The objective grid already wraps
+                // and the accounting column shrinks; this is a safety net.
+                overflow: Overflow::clip(),
                 ..default()
             },
             BackgroundColor(Color::srgba(0.055, 0.062, 0.078, 0.96)),
@@ -789,6 +818,38 @@ fn spawn_result_screen_system(
                 row_gap: Val::Px(14.0),
                 ..default()
             },
+        ))
+        .id();
+
+    // Compact step indicator pill ("Step 1 of 2" / "Step 2 of 2") at the top
+    // of the content column. Telegraphs the two-step hero -> accounting
+    // reveal so Continue reads as progression, not dismissal.
+    let step_indicator = commands
+        .spawn((
+            Name::new("Result step indicator"),
+            ResultScreenStepIndicator,
+            ChildOf(content),
+            Node {
+                display: Display::Flex,
+                align_self: AlignSelf::FlexEnd,
+                padding: UiRect {
+                    left: Val::Px(8.0),
+                    right: Val::Px(8.0),
+                    top: Val::Px(2.0),
+                    bottom: Val::Px(2.0),
+                },
+                border: UiRect::all(Val::Px(1.0)),
+                border_radius: BorderRadius::all(Val::Px(8.0)),
+                ..default()
+            },
+            BackgroundColor(Color::srgba(0.08, 0.10, 0.14, 0.75)),
+            BorderColor::all(Color::srgba(0.82, 0.86, 0.9, 0.28)),
+            Text::new("Step 1 of 2"),
+            TextFont {
+                font_size: typography::CAPTION,
+                ..default()
+            },
+            TextColor(Color::srgba(0.82, 0.86, 0.9, 0.92)),
         ))
         .id();
 
@@ -851,6 +912,29 @@ fn spawn_result_screen_system(
         Color::srgb(0.96, 0.97, 0.99),
         Some(ResultScreenHeadline),
     );
+    // Thin outcome-tinted divider immediately under the headline. Frames the
+    // title from the rest of the hero column; the colour is driven by the
+    // outcome accent in `sync_result_screen_ui_system`.
+    let title_divider = commands
+        .spawn((
+            Name::new("Result title divider"),
+            ResultScreenTitleDivider,
+            ChildOf(hero_panel),
+            Node {
+                width: Val::Percent(48.0),
+                min_width: Val::Px(120.0),
+                height: Val::Px(2.0),
+                border_radius: BorderRadius::all(Val::Px(1.0)),
+                margin: UiRect {
+                    top: Val::Px(-4.0),
+                    bottom: Val::Px(2.0),
+                    ..default()
+                },
+                ..default()
+            },
+            BackgroundColor(OUTCOME_ACCENT_NEUTRAL.with_alpha(0.55)),
+        ))
+        .id();
     let class_persona = spawn_result_text(
         &mut commands,
         hero_panel,
@@ -901,6 +985,28 @@ fn spawn_result_screen_system(
         Color::srgb(0.93, 0.95, 0.98),
         None::<ResultScreenSummaryText>,
     );
+
+    // Subtle neutral rule between the section header and the data rows.
+    // Visual-only; purely Krosmaga-style section framing.
+    let section_divider = commands
+        .spawn((
+            Name::new("Result section divider"),
+            ResultScreenSectionDivider,
+            ChildOf(accounting_panel),
+            Node {
+                width: Val::Percent(100.0),
+                height: Val::Px(1.0),
+                border_radius: BorderRadius::all(Val::Px(1.0)),
+                margin: UiRect {
+                    top: Val::Px(-2.0),
+                    bottom: Val::Px(2.0),
+                    ..default()
+                },
+                ..default()
+            },
+            BackgroundColor(Color::srgba(0.82, 0.86, 0.9, 0.20)),
+        ))
+        .id();
 
     let resources_line = spawn_result_text(
         &mut commands,
@@ -982,6 +1088,11 @@ fn spawn_result_screen_system(
                     top: Val::Px(10.0),
                     ..default()
                 },
+                // Pin the action row: it must never be the row that shrinks
+                // away on a small viewport, otherwise the dismiss path
+                // becomes unreachable on 1280x720 with a tall objective grid.
+                flex_shrink: 0.0,
+                min_height: Val::Px(54.0),
                 ..default()
             },
         ))
@@ -1017,12 +1128,15 @@ fn spawn_result_screen_system(
         panel,
         accent_stripe,
         round_chip,
+        step_indicator,
         hero_panel,
         accounting_panel,
         headline,
+        title_divider,
         class_persona,
         cause,
         continue_hint,
+        section_divider,
         summary,
         resources_line,
         ledger_line,
@@ -1384,6 +1498,18 @@ fn sync_result_screen_ui_system(
     if let Ok(mut border) = border_query.get_mut(entities.panel) {
         *border = BorderColor::all(accent.with_alpha(0.42));
     }
+    // Title divider tints alongside the accent stripe so the framed headline
+    // reads as a single outcome-tinted unit.
+    if let Ok(mut background) = background_query.get_mut(entities.title_divider) {
+        *background = BackgroundColor(accent.with_alpha(0.55));
+    }
+
+    // Step indicator label tracks the current step.
+    let step_label = match step_state.current {
+        ResultScreenStep::Hero => "Step 1 of 2",
+        ResultScreenStep::Accounting => "Step 2 of 2",
+    };
+    set_text(&mut text_query, entities.step_indicator, step_label);
 
     // Round chip — only mounted when a round number is known.
     let round_label =
