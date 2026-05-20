@@ -10,8 +10,8 @@ Source of truth:
 
 - Root checkout: `D:\_DEV\Work\Claude-Code-Game-Studios`
 - Root branch: `main`
-- Root/source commit: `origin/main@b531f499c2b565dbd2d71aa2c7c661805a46011b`
-  (`state: update 1509 return ledger`)
+- Root/source commit: `origin/main@2e8a5a9e17a2745d97e09bbf69c1a19dd77d3a1e`
+  (`state: record duplicate 1518 return`)
 - Mainland queue: no pending/running entries at the handoff check.
 - Root working tree caveat: `.claude/settings.json` is modified by dispatcher
   hook injection for the latest worker. Treat it as runtime churn; do not commit
@@ -44,11 +44,13 @@ Recently completed:
   recommends a serialized accepted-placement ACK implementation touching
   `shared/src/protocol.rs`, `server/src/feature/board/placement.rs`, and
   `client/src/ui/hand/mod.rs`.
+- `1537 BOT-LOBBY-ADD-BOT-UI-WIRING`: `SHIPPED`; report path reported by user:
+  `reports/PROMPT-1537-bot-lobby-add-bot-ui-wiring.md`.
 
 Workers active or pending user DONE reports:
 
-- `1537 BOT-LOBBY-ADD-BOT-UI-WIRING`: no DONE/report received yet; wait for
-  worker output. Do not relaunch while pause is active.
+- No known active/pending worker windows remain from the pause ledger. Do not
+  relaunch workers unless the next orchestrator explicitly resumes the queue.
 
 Processed worker-return ledger (2026-05-20, no new agents launched):
 
@@ -62,7 +64,7 @@ Processed worker-return ledger (2026-05-20, no new agents launched):
 | `1533 QA-SNAPSHOT-OBSERVABILITY-FIELDS-FOLLOWUP` | SHIPPED on worker branch. | User report: branch `prompt-1533-qa-snapshot-observability-fields-followup` @ `4c3ece2c`, base `5358aed1`; report `reports/PROMPT-1533-qa-snapshot-observability-fields-followup.md`; snapshot field coverage test 15/15 pass. | Clear worker, integration-refresh over current `origin/main`; watch for conflicts with accepted-ACK fields from future `1535` implementation. |
 | `1535 PLACEMENT-ACCEPTED-ACK-PROTOCOL-READINESS` | NEEDS_WORK readiness outcome; no implementation done. | Report on main: `reports/PROMPT-1535-placement-accepted-ack-protocol-readiness.md`. It proves accepted ACK is missing and recommends a serialized protocol/server/client implementation. | Clear worker if open. Later launch one implementation prompt only when `shared/src/protocol.rs`, `server/src/feature/board/placement.rs`, and `client/src/ui/hand/mod.rs` are free. |
 | `1536 POST-1528-FOCUSED-VERIFY-LANE` | PARTIAL verify lane. | User report and worker report `reports/PROMPT-1536-post-1528-focused-verify-lane.md`. Report recommends two follow-ups: auction test serial-lock leak and hand inspect optional input resource. | Clear worker. Do not launch follow-ups during pause; next orchestrator should triage recommended fixes after current implementation branches are integrated or isolated. |
-| `1537 BOT-LOBBY-ADD-BOT-UI-WIRING` | NO_DONE_YET / still pending. | No local report found and no user DONE received. Dispatcher previously said terminal was live after an earlier timeout. | Wait for DONE/report. Do not relaunch while pause is active. |
+| `1537 BOT-LOBBY-ADD-BOT-UI-WIRING` | SHIPPED. | User reported DONE with full report at `reports/PROMPT-1537-bot-lobby-add-bot-ui-wiring.md`; the report is not present in the root checkout yet, so inspect worker branch/report before integration. | Clear worker. Next action is an integration-refresh over current `origin/main`, then focused bot-lobby UI verify or mainland enqueue only after the integration branch is confirmed. |
 | `1538 RESULT-MULLIGAN-KROSMAGA-CHROME-POLISH` | SHIPPED on worker branch. | Worker report `reports/PROMPT-1538-result-mulligan-krosmaga-chrome-polish.md`; branch `worker/prompt-1538-result-mulligan-krosmaga-chrome-polish`, commit `93cfb255`, based on `38975b51`; 25/25 focused tests pass. | Clear worker, then integration-refresh over current `origin/main`; no mulligan module exists yet, so future mulligan-specific work remains deferred. |
 | `1539 KROSMAGA-DEV-PROXY-STAGE2-INTEGRATION-REFRESH` | SHIPPED. | User report: `reports/PROMPT-1539-krosmaga-dev-proxy-stage2-integration-refresh.md`. | Clear worker, inspect integration branch/commit from report, then enqueue mainland only if FF-ready; otherwise refresh again. |
 
