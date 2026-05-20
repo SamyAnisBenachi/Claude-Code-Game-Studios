@@ -1,5 +1,120 @@
 # Codex Orchestrator State
 
+## Current Snapshot (2026-05-20, post-PROMPT-1528 mainland)
+
+This block is the current restart/orchestration snapshot. It supersedes stale
+historical "current source of truth" text below unless a later dated block
+replaces it.
+
+Source of truth:
+
+- `origin/main@c3d847f1d69b2b668ed53fe667cb839104d9c467`
+  (`PROMPT-1528 resolution-replay-mutation integration refresh`; includes
+  PROMPT 1521 partial client replay cadence and PROMPT 1527/1528 reports).
+- Active stage remains Polish. Do not claim release readiness, full-game
+  completion, final-art/legal clearance, accessibility completion, playtest
+  validation, `S8-QA-001-W1` closure, or `S11-HUD-TIMER-EYEBALL-VISUAL-001`
+  closure from this snapshot.
+
+Verified since the older 1472 planning snapshot:
+
+- `1472 POST-REPAIR-LIVE-TWO-CLIENT-QA-RETEST`: PASS on
+  `origin/main@56b5fc0c`. Verified lobby, class confirm, draft offers,
+  shop slots, placement drag/drop with retry, submit acceptance, unit visible
+  in Resolution, next draft, auction card/bid/settlement, QA snapshot and grid
+  toggle evidence.
+- `1473 DEV-LAUNCHER-CANONICAL-TWO-CLIENT-VERIFY`: PASS. Launcher rebuilt
+  latest main, started server plus two clients from the canonical launcher
+  workflow, wrote build provenance, and no launcher UI cropping was observed.
+- `1475 KROSMAGA-UI-IMPLEMENTATION-LANE-MAP`: COMPLETE. Krosmaga-style work
+  was split into file-owned UI lanes; dev-proxy assets remain reference/dev-only.
+- `1476 MULTIPLAYER-PHASE-STATE-SYNC-GAP-AUDIT`: COMPLETE. Main remaining
+  state risks are explicit placement-accepted ACK, accepted-unit visibility
+  reliance on reveal/snapshot reconstruction, timer freshness, shop-offer
+  recovery, and auction settlement payload completeness.
+- `1477 RESOLUTION-COMBAT-LOOP-VISUAL-STATE-AUDIT`: COMPLETE. Server
+  resolution flow is materially implemented, but client replay still needs
+  visible mutation of movement, HP, removals, objective damage/destruction,
+  gold rewards, and event comprehension.
+- `1478 QA-SNAPSHOT-OBSERVABILITY-COMPLETENESS-AUDIT`: COMPLETE. Snapshot
+  state is strong for local UI, shop, auction, placement intent, rendered board
+  entities, and overlays; still weak for server-authoritative theoretical UI,
+  real placement ACK lifecycle, precise pointer/focus, semantic rendered-label
+  roles, image/card-art diagnostics, and pixel-level occlusion.
+- `1479 KROSMAGA-ASSET-BINDING-ROLLOUT-PLAN`: COMPLETE. Asset path is staged:
+  logical IDs -> dev-pack materialization tooling -> surface binding lanes ->
+  original replacement. No Krosmaga payload may be copied into release assets.
+- `1480 CARGO-VERIFY-LANE-SCHEDULER`: COMPLETE. Cargo-heavy checks stay in
+  dedicated VERIFY lanes with max shared-target concurrency 1.
+- `1519 POST-1511-HU-CHROME-VERIFY`: SHIPPED/GREEN. The HU-CHROME-02 gate is
+  clear on main-line code; PROMPT 1510's fail was stale worktree/cache state,
+  not current main.
+
+Landed since the 1472 planning snapshot:
+
+- `1518 AUCTION-WON-CARD-DISPOSITION-INTEGRATION-REFRESH`: MAIN-LANDED at
+  `f69bd595`. Main now includes wire-authoritative
+  `S2CAuctionSettled.card_id` and client use of the wire settlement card id
+  instead of stale local auction state.
+- `1523 CARD-INSPECT-HAND-DRAFT-INTEGRATION-REFRESH`: MAIN-LANDED at
+  `a51f0ac7`. Main now includes right-click card inspect wiring for hand fan
+  and DraftInitial grid surfaces; shop/auction inspect wiring remains a
+  separate follow-up.
+- `1526 BOT-ROOM-JOIN-LOOP-INTEGRATION-REFRESH-AFTER-1523`: MAIN-LANDED at
+  `b82a341d`. Main now includes deterministic bot lobby class auto-confirm so
+  bot rooms can advance past lobby once the human confirms.
+- `1528 RESOLUTION-REPLAY-MUTATION-INTEGRATION-REFRESH-AFTER-1526`:
+  MAIN-LANDED at `c3d847f1`. Main now includes the partial client replay
+  cadence slice: resolution feedback applies at active AnimGroup cadence rather
+  than intake-time burst.
+
+Completed no-follow-up audits:
+
+- `1515 CARD-COST-COMBAT-STAT-RENDERING-RE-AUDIT`: REDUNDANT.
+- `1516 HUD-GHOST-GLYPH-LEGIBILITY-RE-AUDIT`: OBSOLETE.
+- `1517 DEV-LAUNCHER-BUILD-PROVENANCE-MAINLAND-REFRESH`: NO-OP.
+
+Current launch guidance:
+
+- 1472 is done; code repairs no longer need to wait for that old gate.
+- HU-CHROME is green; prompts previously gated by 1506/1510 can proceed if
+  file ownership is disjoint from active workers.
+- Shop/auction is no longer held by 1518. The next useful shop/auction UI lane
+  is inspect/consumer wiring and/or Krosmaga-style card product continuation,
+  but keep it file-owned and separate from other `shop_auction` changes.
+- Shared protocol is no longer held by 1518. New protocol changes still need a
+  dedicated owner and should be serialized by branch/file ownership.
+- Bot local/single-player remains deferred. Prioritize bot-as-room-participant:
+  draft pick loop, placement failsafe, and auction pass.
+- Krosmaga art remains dev-proxy/reference only. Continue implementation as
+  Krosmaga-inspired hierarchy, pacing, readability, and layout; do not make
+  release claims from Krosmaga proxy assets.
+- Broad Cargo is still not part of implementation prompts. Use targeted VERIFY
+  lanes and serialize shared-target Cargo pressure.
+
+Current condensed task board:
+
+- P0 gameplay: follow up the resolution replay partial slice with client-only
+  visual mutations for unit movement/lane change, placed-unit dedupe,
+  objective HP/destruction, gold-awarded HUD fanout, spawn-range/phase handoff
+  coverage, and replay author/debug notes; then run the next live two-client
+  multi-round retest.
+- P0 multiplayer/state: explicit placement-accepted ACK remains a candidate if
+  live evidence shows ambiguity; snapshot still needs real placement ACK
+  lifecycle and richer pointer/semantic-label/image diagnostics.
+- P1 bot: launch bot draft pick loop, bot placement failsafe, and bot auction
+  pass as separate server-owned lanes now that lobby class auto-confirm is on
+  main.
+- P1 UI/Krosmaga: shop/auction card inspect consumer wiring remains open;
+  continue board/objective physicality, HUD/lobby/result polish, and dev-proxy
+  binding lanes guarded by provenance.
+- P1 QA/observability: add missing snapshot fields from 1478 only as dedicated
+  observability lanes; keep image-by-image forensic QA as the standard for
+  human snapshot analysis.
+- P2 sprint/paperwork: Sprint 18 story-done/smoke/team-QA/closeout remain
+  serialized and should wait until active implementation branches are integrated
+  or explicitly accepted as carried conditions.
+
 ## Current Operating Rules (2026-05-13 override)
 
 This section is the current GCS orchestrator contract. It supersedes older
