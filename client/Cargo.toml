@@ -507,6 +507,16 @@ path = "../tests/integration/qa_snapshot/layout_field_coverage_test.rs"
 name = "qa_snapshot_placement_auction_state_field_coverage_test"
 path = "../tests/integration/qa_snapshot/placement_auction_state_field_coverage_test.rs"
 
+# PROMPT 1586 — QA-SNAPSHOT-RESOLUTION-PHASE-FIELDS-FOLLOWUP.
+# Locks the `extras.resolution_phase` JSON block: per-lane resolved damage,
+# objective hp deltas, gold awards, unit removal/death events, and the
+# phase-resolution event summary derived from the locally observable
+# `PendingResolutionScript` / `AnimQueue`. Pure data-side observability
+# projection — no render or playback behaviour change.
+[[test]]
+name = "qa_snapshot_resolution_phase_field_coverage_test"
+path = "../tests/integration/qa_snapshot/resolution_phase_field_coverage_test.rs"
+
 # PROMPT 1347 / S18-AUCTION-WON-CARD-DISPOSITION-001 (AC11 + AC16) —
 # locks the top-level `auction_won_pending` JSON block against the
 # `client::presentation::qa_snapshot` schema. Asserts the block is

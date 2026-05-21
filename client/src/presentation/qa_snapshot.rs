@@ -97,13 +97,14 @@ use bevy::ui::{ComputedNode, GlobalZIndex, UiGlobalTransform, UiScale};
 use bevy::window::PrimaryWindow;
 use serde::Serialize;
 
+use crate::card_animations::{AnimQueue, AnimQueueEvent, PendingObjectiveDestroyedEvents};
 use crate::presentation::board_rendering::{
     rendering_constants, BoardEnvelope, BoardGridOverlayLine, BoardGridOverlayState,
     BoardGridOverlayToggleButton, BoardGridOverlayToggleRoot, BoardLocalPlayer, BoardRenderState,
     BoardUnit, BoardUnitCard, BoardUnitOwner, BoardUnitRenderSource, BoardUnitStats,
-    ObjectiveArtKind, SourceCardLink, StandingObjective, StandingObjectiveArt, StandingObjectiveHp,
-    TargetingDimWash, TargetingEndpointRing, TargetingInvalidMarker, TargetingOverlayState,
-    TargetingValidRing,
+    ObjectiveArtKind, PendingResolutionScript, ResolutionReplayProgress, SourceCardLink,
+    StandingObjective, StandingObjectiveArt, StandingObjectiveHp, TargetingDimWash,
+    TargetingEndpointRing, TargetingInvalidMarker, TargetingOverlayState, TargetingValidRing,
 };
 use crate::presentation::shared::economy_view::{PlayerEconomyView, PlayerEconomyViewUpdateSource};
 use crate::state::{
@@ -1170,6 +1171,13 @@ pub struct ExtrasSnapshot {
     /// `null` until a real local accepted-placement signal exists.
     pub placement_lifecycle: PlacementLifecycleSnapshot,
     pub connection_lost: ConnectionLostDiagnosticsSnapshot,
+    /// PROMPT 1586 — resolution-phase observability fields. Aggregates
+    /// per-lane resolved damage, objective hp deltas, gold awards, and
+    /// unit removal/death events from the locally observable resolution
+    /// script (`PendingResolutionScript` pre-consume, `AnimQueue`
+    /// post-consume). Defaulted (`active=false`, empty vectors) outside
+    /// the resolution window so the JSON shape stays stable across phases.
+    pub resolution_phase: ResolutionPhaseSnapshot,
 }
 
 /// Maximum number of board entities of one kind (units OR objectives)
@@ -1573,6 +1581,138 @@ pub struct OutboundIntentsSnapshot {
     pub shop_gold_counter_flash_requests: u32,
 }
 
+/// PROMPT 1586 — resolution-phase observability fields.
+///
+/// Mirrors the locally observable resolution script (`PendingResolutionScript`
+/// pre-load, `AnimQueue` post-load) so QA-snapshot forensic consumers can
+/// reconstruct the theoretical visible resolution state alongside the captured
+/// screenshot. Pure data-side projection: this block never drives render or
+/// playback behaviour — the existing `apply_resolution_replay_group_system`
+/// remains the sole writer of visual mutations.
+///
+/// All sub-fields are defaulted (`active=false`, empty vectors, `None`
+/// markers) outside the resolution window so the JSON shape stays stable
+/// across phases.
+#[derive(Debug, Clone, Default, Serialize)]
+pub struct ResolutionPhaseSnapshot {
+    /// `true` when either a `PendingResolutionScript` is loaded, the
+    /// `AnimQueue` carries resolution groups, or
+    /// `BoardRenderState == ResolutionExecuting`. False outside the
+    /// resolution window.
+    pub active: bool,
+    /// Round number of the currently observable script. Known while the
+    /// pending script has not yet been consumed into `AnimQueue` groups;
+    /// the queue discards the round once events are flattened into
+    /// `AnimGroup`s, so this field is best-effort and may be `None`
+    /// mid-playback.
+    pub round: Option<u32>,
+    /// Stable token describing where the `events_*` aggregates were sourced.
+    /// `"pending_resolution_script"` pre-consume, `"anim_queue"`
+    /// post-consume, `None` when neither has data.
+    pub events_source: Option<String>,
+    /// Total `TaggedEvent` count across all observable sub-step groups.
+    pub event_count: usize,
+    /// Total group count (`AnimQueue::groups.len()`, or distinct `sub_step`
+    /// count from `PendingResolutionScript` pre-consume).
+    pub group_count: usize,
+    /// `AnimQueue::current_index` when playback is in progress; `None` when
+    /// the queue is empty or the resource is absent.
+    pub anim_queue_current_index: Option<usize>,
+    /// `ResolutionReplayProgress::last_emitted_group_index()` — the last
+    /// `AnimGroup` index for which `apply_resolution_replay_group_system`
+    /// emitted visible feedback. `None` before the first group fires or
+    /// after the queue drains.
+    pub last_emitted_group_index: Option<usize>,
+    /// Aggregate per-variant counts across `events` — phase-resolution
+    /// event summary for at-a-glance audit.
+    pub event_summary: ResolutionEventSummary,
+    /// Per-lane resolved objective outcome: total objective damage, the
+    /// final `objective_hp_after` from the last damage event in the lane,
+    /// and the destruction flag from any `ObjectiveDestroyed` event. One
+    /// entry per `(target_player_id, lane)` pair seen in the script,
+    /// ordered as first-seen.
+    pub per_lane_objective: Vec<LaneObjectiveResolutionSnapshot>,
+    /// Every `GoldAwarded` event in the script — surfaces prism/gold deltas
+    /// for forensic correlation against `PlayerEconomyView` mutations.
+    pub gold_awards: Vec<GoldAwardSnapshot>,
+    /// Every `UnitDied` event in the script (unit removal with optional
+    /// killer attribution).
+    pub unit_deaths: Vec<UnitRemovalSnapshot>,
+    /// Every `UnitRemoved` event in the script (removal without killer
+    /// attribution — e.g. board-clear effects).
+    pub unit_removals: Vec<UnitRemovalSnapshot>,
+    /// `PendingObjectiveDestroyedEvents::len()` — count of objectives the
+    /// client has staged for the post-resolution destroyed reveal animation.
+    pub pending_objective_destroyed_count: usize,
+    /// `true` when the script contains a `GameOver` event.
+    pub game_over: bool,
+    /// `GameOverReason` Debug string when `game_over == true`; `None`
+    /// otherwise.
+    pub game_over_reason: Option<String>,
+}
+
+/// PROMPT 1586 — aggregate `ResolutionEvent`-variant counts for at-a-glance
+/// auditing. Mirrors every variant of `shared::protocol::ResolutionEvent`
+/// (one `usize` field per variant) so consumers can spot dropped / extra
+/// events without re-walking the full event vector.
+#[derive(Debug, Clone, Default, Serialize)]
+pub struct ResolutionEventSummary {
+    pub sub_step_begin: usize,
+    pub unit_placed: usize,
+    pub unit_moved: usize,
+    pub unit_changed_lane: usize,
+    pub combat_damage: usize,
+    pub unit_removed: usize,
+    pub keyword_triggered: usize,
+    pub gold_awarded: usize,
+    pub objective_damage: usize,
+    pub unit_died: usize,
+    pub trap_triggered: usize,
+    pub objective_destroyed: usize,
+    pub spawn_range_changed: usize,
+    pub game_over: usize,
+}
+
+/// PROMPT 1586 — per-lane objective resolution outcome derived from
+/// `ObjectiveDamage` + `ObjectiveDestroyed` events.
+#[derive(Debug, Clone, Serialize)]
+pub struct LaneObjectiveResolutionSnapshot {
+    pub lane: u8,
+    pub target_player_id: String,
+    /// Sum of `damage_amount` across all `ObjectiveDamage` events for this
+    /// `(player, lane)`.
+    pub damage_total: u32,
+    /// `objective_hp_after` from the last damage event for this lane in
+    /// the event stream. `None` when no damage event hit this lane
+    /// (objective destroyed without damage — e.g. instant-kill path).
+    pub hp_after: Option<u32>,
+    /// `true` when the script contains an `ObjectiveDestroyed` event for
+    /// this `(player, lane)`.
+    pub destroyed: bool,
+    /// `was_fake` from the `ObjectiveDestroyed` event, when present.
+    pub was_fake: Option<bool>,
+}
+
+/// PROMPT 1586 — `GoldAwarded` event surfaced for forensic correlation
+/// against `PlayerEconomyView` gold mutations.
+#[derive(Debug, Clone, Serialize)]
+pub struct GoldAwardSnapshot {
+    pub player: String,
+    pub amount: u32,
+    pub reason: String,
+}
+
+/// PROMPT 1586 — unit removal/death event surfaced for forensic
+/// correlation against `BoardUnit` despawn flows.
+#[derive(Debug, Clone, Serialize)]
+pub struct UnitRemovalSnapshot {
+    pub unit_id: u64,
+    pub lane: u8,
+    pub cell: u8,
+    /// Killer entity id (`UnitDied` events) or `None` (`UnitRemoved`).
+    pub killer_id: Option<u64>,
+}
+
 /// Bevy's `SystemParam` limit is 16 fields. The extras bag groups its
 /// resources into nested SystemParams so [`write_qa_snapshot_system`] can
 /// keep everything in a single SystemParam parameter while still respecting
@@ -1594,6 +1734,21 @@ pub struct ExtrasInputs<'w, 's> {
     pub hand_outbound: Option<Res<'w, HandUiOutboundMessages>>,
     pub shop_outbound: Option<Res<'w, ShopAuctionUiOutboundMessages>>,
     pub debug_grid: DebugGridInputs<'w, 's>,
+    pub resolution: ExtrasResolutionInputs<'w>,
+}
+
+/// PROMPT 1586 — read-only projection of the locally observable resolution
+/// script + replay progress so `ExtrasSnapshot.resolution_phase` can be
+/// populated without inflating [`ExtrasInputs`] past Bevy's 16-field
+/// SystemParam ceiling. Every resource is `Option`-wrapped so missing
+/// resources (lobby / pre-handshake / between rounds) project to a defaulted
+/// [`ResolutionPhaseSnapshot`] rather than panicking.
+#[derive(SystemParam)]
+pub struct ExtrasResolutionInputs<'w> {
+    pub pending_script: Option<Res<'w, PendingResolutionScript>>,
+    pub replay_progress: Option<Res<'w, ResolutionReplayProgress>>,
+    pub anim_queue: Option<Res<'w, AnimQueue>>,
+    pub pending_objective_destroyed: Option<Res<'w, PendingObjectiveDestroyedEvents>>,
 }
 
 #[derive(SystemParam)]
@@ -1943,6 +2098,13 @@ impl<'w, 's> ExtrasInputs<'w, 's> {
             opponent_connection.as_ref(),
             session_lifecycle.as_ref(),
         );
+        let resolution_phase = build_resolution_phase_snapshot(
+            self.resolution.pending_script.as_deref(),
+            self.resolution.replay_progress.as_deref(),
+            self.resolution.anim_queue.as_deref(),
+            self.resolution.pending_objective_destroyed.as_deref(),
+            self.board_render_state.as_deref(),
+        );
 
         ExtrasSnapshot {
             frame_count,
@@ -1964,6 +2126,7 @@ impl<'w, 's> ExtrasInputs<'w, 's> {
             debug_grid,
             placement_lifecycle,
             connection_lost,
+            resolution_phase,
         }
     }
 }
@@ -2711,6 +2874,226 @@ fn correction_reason_from_disclosure_name(disclosure: &str) -> Option<String> {
         .strip_prefix("Correction(")
         .and_then(|rest| rest.strip_suffix(')'))
         .map(str::to_string)
+}
+
+/// PROMPT 1586 — pure projection of the locally observable resolution
+/// script + replay progress into [`ResolutionPhaseSnapshot`].
+///
+/// Walks `PendingResolutionScript` (pre-consume) or `AnimQueue` (post-consume)
+/// and aggregates per-lane objective damage, gold awards, and unit
+/// removal/death events. Exposed (`pub`) so unit tests can verify the
+/// projection without spinning up a real Bevy app.
+///
+/// `active` is `true` when any data source carries events or the
+/// `BoardRenderState` is `ResolutionExecuting`. Outside the resolution
+/// window the function returns a defaulted snapshot so the JSON shape
+/// stays stable.
+pub fn build_resolution_phase_snapshot(
+    pending_script: Option<&PendingResolutionScript>,
+    replay_progress: Option<&ResolutionReplayProgress>,
+    anim_queue: Option<&AnimQueue>,
+    pending_objective_destroyed: Option<&PendingObjectiveDestroyedEvents>,
+    board_render_state: Option<&BoardRenderState>,
+) -> ResolutionPhaseSnapshot {
+    use shared::protocol::ResolutionEvent;
+
+    // Source order: prefer AnimQueue (post-consume / mid-playback) over
+    // PendingResolutionScript (pre-consume). They cannot both carry events
+    // in practice — `consume_pending_resolution_script_system` takes the
+    // script out before loading the queue — but the explicit precedence
+    // documents the contract.
+    let queue_events: Vec<&shared::protocol::TaggedEvent> = anim_queue
+        .map(|q| {
+            q.groups
+                .iter()
+                .flat_map(|group| {
+                    group.events.iter().filter_map(|event| match event {
+                        AnimQueueEvent::ResolutionReplay { event } => Some(event),
+                        _ => None,
+                    })
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+
+    let pending_script_inner = pending_script.and_then(|p| p.script());
+
+    let (events_source, round, events): (
+        Option<String>,
+        Option<u32>,
+        Vec<&shared::protocol::TaggedEvent>,
+    ) = if !queue_events.is_empty() {
+        (Some("anim_queue".to_string()), None, queue_events)
+    } else if let Some(script) = pending_script_inner {
+        (
+            Some("pending_resolution_script".to_string()),
+            Some(script.round),
+            script.events.iter().collect(),
+        )
+    } else {
+        (None, None, Vec::new())
+    };
+
+    let event_count = events.len();
+    let group_count = match anim_queue {
+        Some(q) if !q.groups.is_empty() => q.groups.len(),
+        _ => {
+            // Distinct sub_step count from the pending script. Avoids
+            // allocating a HashSet for a typically-small event vector.
+            let mut sub_steps: Vec<u8> = events.iter().map(|e| e.sub_step).collect();
+            sub_steps.sort_unstable();
+            sub_steps.dedup();
+            sub_steps.len()
+        }
+    };
+    let anim_queue_current_index = anim_queue
+        .filter(|q| !q.groups.is_empty())
+        .map(|q| q.current_index);
+    let last_emitted_group_index =
+        replay_progress.and_then(|p| p.last_emitted_group_index());
+
+    let mut event_summary = ResolutionEventSummary::default();
+    let mut lane_index: Vec<(u8, String)> = Vec::new();
+    let mut per_lane_objective: Vec<LaneObjectiveResolutionSnapshot> = Vec::new();
+    let mut gold_awards: Vec<GoldAwardSnapshot> = Vec::new();
+    let mut unit_deaths: Vec<UnitRemovalSnapshot> = Vec::new();
+    let mut unit_removals: Vec<UnitRemovalSnapshot> = Vec::new();
+    let mut game_over = false;
+    let mut game_over_reason: Option<String> = None;
+
+    for tagged in &events {
+        match &tagged.event {
+            ResolutionEvent::SubStepBegin => event_summary.sub_step_begin += 1,
+            ResolutionEvent::UnitPlaced { .. } => event_summary.unit_placed += 1,
+            ResolutionEvent::UnitMoved { .. } => event_summary.unit_moved += 1,
+            ResolutionEvent::UnitChangedLane { .. } => event_summary.unit_changed_lane += 1,
+            ResolutionEvent::CombatDamage { .. } => event_summary.combat_damage += 1,
+            ResolutionEvent::UnitRemoved {
+                unit_id, lane, cell, ..
+            } => {
+                event_summary.unit_removed += 1;
+                unit_removals.push(UnitRemovalSnapshot {
+                    unit_id: *unit_id,
+                    lane: *lane,
+                    cell: *cell,
+                    killer_id: None,
+                });
+            }
+            ResolutionEvent::KeywordTriggered { .. } => event_summary.keyword_triggered += 1,
+            ResolutionEvent::GoldAwarded {
+                player,
+                amount,
+                reason,
+            } => {
+                event_summary.gold_awarded += 1;
+                gold_awards.push(GoldAwardSnapshot {
+                    player: format!("{:?}", player),
+                    amount: *amount,
+                    reason: format!("{:?}", reason),
+                });
+            }
+            ResolutionEvent::ObjectiveDamage {
+                target_player_id,
+                lane,
+                damage_amount,
+                objective_hp_after,
+                ..
+            } => {
+                event_summary.objective_damage += 1;
+                let key = (*lane, format!("{:?}", target_player_id));
+                let slot = match lane_index.iter().position(|k| k == &key) {
+                    Some(idx) => idx,
+                    None => {
+                        lane_index.push(key.clone());
+                        per_lane_objective.push(LaneObjectiveResolutionSnapshot {
+                            lane: *lane,
+                            target_player_id: key.1.clone(),
+                            damage_total: 0,
+                            hp_after: None,
+                            destroyed: false,
+                            was_fake: None,
+                        });
+                        per_lane_objective.len() - 1
+                    }
+                };
+                let entry = &mut per_lane_objective[slot];
+                entry.damage_total = entry.damage_total.saturating_add(*damage_amount);
+                entry.hp_after = Some(*objective_hp_after);
+            }
+            ResolutionEvent::UnitDied {
+                unit_id,
+                lane,
+                cell,
+                killer_id,
+            } => {
+                event_summary.unit_died += 1;
+                unit_deaths.push(UnitRemovalSnapshot {
+                    unit_id: *unit_id,
+                    lane: *lane,
+                    cell: *cell,
+                    killer_id: *killer_id,
+                });
+            }
+            ResolutionEvent::TrapTriggered { .. } => event_summary.trap_triggered += 1,
+            ResolutionEvent::ObjectiveDestroyed {
+                target_player_id,
+                lane,
+                was_fake,
+            } => {
+                event_summary.objective_destroyed += 1;
+                let key = (*lane, format!("{:?}", target_player_id));
+                let slot = match lane_index.iter().position(|k| k == &key) {
+                    Some(idx) => idx,
+                    None => {
+                        lane_index.push(key.clone());
+                        per_lane_objective.push(LaneObjectiveResolutionSnapshot {
+                            lane: *lane,
+                            target_player_id: key.1.clone(),
+                            damage_total: 0,
+                            hp_after: None,
+                            destroyed: false,
+                            was_fake: None,
+                        });
+                        per_lane_objective.len() - 1
+                    }
+                };
+                let entry = &mut per_lane_objective[slot];
+                entry.destroyed = true;
+                entry.was_fake = Some(*was_fake);
+            }
+            ResolutionEvent::SpawnRangeChanged { .. } => event_summary.spawn_range_changed += 1,
+            ResolutionEvent::GameOver { reason, .. } => {
+                event_summary.game_over += 1;
+                game_over = true;
+                game_over_reason = Some(format!("{:?}", reason));
+            }
+        }
+    }
+
+    let pending_objective_destroyed_count =
+        pending_objective_destroyed.map(|p| p.len()).unwrap_or(0);
+
+    let active = event_count > 0
+        || matches!(board_render_state, Some(BoardRenderState::ResolutionExecuting))
+        || pending_objective_destroyed_count > 0;
+
+    ResolutionPhaseSnapshot {
+        active,
+        round,
+        events_source,
+        event_count,
+        group_count,
+        anim_queue_current_index,
+        last_emitted_group_index,
+        event_summary,
+        per_lane_objective,
+        gold_awards,
+        unit_deaths,
+        unit_removals,
+        pending_objective_destroyed_count,
+        game_over,
+        game_over_reason,
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────
