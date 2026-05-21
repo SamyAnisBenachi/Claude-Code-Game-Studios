@@ -16,7 +16,8 @@ current `origin/main @ c7cfc5a4`.
 ## Branch / Commit
 
 - Refreshed branch (local + pushed): `integrate/qa-plan-snapshot-fields-1593`
-- Tip commit: `7f78b553cafd65f0e3fb1b8a23cb63e14c8e62a8`
+- Tip commit (cherry-pick payload, pre-report): `7f78b553cafd65f0e3fb1b8a23cb63e14c8e62a8`
+- Tip commit (this-report included, post-push): `7196bdad0e2bbb3efd0276a5ba51efd76352d726`
 - Base: `origin/main @ c7cfc5a4a047686890f3a54f154f1e8929c1af70`
 - Strict-FF check: `git merge-base --is-ancestor origin/main HEAD` → 0 (ancestor)
 - Worktree: `D:/Tmp/wt-1593`
@@ -111,8 +112,10 @@ test — nothing else.
 
 ## Push Outcome
 
-See trailing `git push` lines in the launching transcript; the branch is
-pushed as `origin/integrate/qa-plan-snapshot-fields-1593 @ 7f78b553`.
+`git push -u origin integrate/qa-plan-snapshot-fields-1593` succeeded as a
+new-branch creation; the branch is published as
+`origin/integrate/qa-plan-snapshot-fields-1593 @ 7196bdad` (includes this
+PROMPT-1593 report commit on top of the four cherry-picked commits).
 
 ## Status Line
 
