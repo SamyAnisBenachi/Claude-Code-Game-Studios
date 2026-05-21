@@ -1,4 +1,5 @@
-//! Bot participant action loop, Wave 1 (PROMPT 1531).
+//! Bot participant action loop, Wave 1 (PROMPT 1531) + Wave 2 auction bid
+//! (PROMPT 1582).
 //!
 //! After [`bot_lobby_auto_confirm`](super::lobby_loop::bot_lobby_auto_confirm)
 //! lifts a room into `GameActive`, this module advances the bot through the
@@ -7,44 +8,61 @@
 //! - **Draft (initial & shop):** emit a deterministic `DraftReadySignal` so the
 //!   RSM's `DRAFT_* -> Placement|Auction` gate fires without waiting on a
 //!   non-existent human ready click.
-//! - **Auction:** intentionally pass. Wave-1 bots never bid; the existing
-//!   auction safety timer settles the round when no bids arrive. The decision
-//!   is logged once per round so the audit log keeps a contiguous trace.
+//! - **Auction (Wave 2):** deterministic bid decision behaviour. The bot reads
+//!   `AuctionState` / `PlayerEconomies` / `PlayerHands` (all read-only) and
+//!   records one `BotDecisionKind::AuctionBid { card_id, amount, valuation }`
+//!   per `(player, round, current_price)` tuple when the heuristic decides to
+//!   bid, or `BotDecisionKind::AuctionPass { reason }` with a precise reason
+//!   literal otherwise. Wave 2 owns the **decision** only; submitting the bid
+//!   onto the auction wire (`AuctionBid` message integration) is deferred to a
+//!   later wave per PROMPT 1582 owned-scope (`server/src/feature/bot/*` and
+//!   tests only — no auction-module edits). When `AuctionState` is absent
+//!   (test scaffolding that bypasses the auction plugin) the Wave-1
+//!   "pass once per round" fallback still applies so legacy tests continue to
+//!   compile against the new branch.
 //! - **Placement:** submit an empty (no-op) placement as a fail-safe so the
 //!   `Placement -> Resolution` gate fires without waiting on the bot to place
 //!   units. Heuristic placement (legal-cell pick) is explicitly deferred to a
 //!   later wave.
 //!
-//! Scope discipline (PROMPT 1531 owned-scope):
+//! Scope discipline (PROMPT 1531 owned-scope, preserved by PROMPT 1582):
 //! - **No new protocol messages.** We write the *internal* server-side
 //!   `DraftReadySignal` and `PlacementSubmissionReceived` messages that the
 //!   network layer already produces for human clients. The contract is reused,
-//!   not extended.
+//!   not extended. PROMPT 1582 does **not** emit any auction wire message.
 //! - **No shop purchases.** Wave 1 just needs to advance flow; shop buys
 //!   require gold/hand bookkeeping the bot does not yet own. Bots fall through
 //!   `DraftShop` via the ready signal alone.
 //! - **No client UI.** Server-only behavior.
 //!
 //! Determinism: every decision uses only inputs (round number, current phase,
-//! bot membership), never wall-clock time or random noise. Two replays of the
-//! same session produce the same `BotDecisionLog`. The `BotState::rng`
-//! ChaCha8 stream defined in the foundation is intentionally untouched by
-//! Wave 1 — later heuristics (shop buy, lane targeting) will own RNG draws.
+//! bot membership, observable auction state) plus the bot's private
+//! `ChaCha8Rng` seeded at session start. Two replays of the same session with
+//! the same observable inputs produce the same `BotDecisionLog`. PROMPT 1582
+//! draws RNG once per `(player, round)` to derive a stable per-round
+//! valuation; the word counter is bumped in lockstep and snapshotted into the
+//! decision log per ADR-005 audit convention.
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use bevy::prelude::*;
 use lightyear::prelude::PeerId;
+use rand::RngCore;
 
+use crate::core::economy::PlayerEconomies;
 use crate::core::rsm::{
     state::{RoundPhase, RoundState},
     DraftReadySignal,
 };
 use crate::core::session::config::SessionConfig;
+use crate::feature::acquisition::{PlayerHands, MAX_HAND_SIZE};
+use crate::feature::auction::{AuctionPhase, AuctionState};
 use crate::feature::board::PlacementSubmissionReceived;
 use crate::feature::bot::state::{
     BotDecisionEntry, BotDecisionKind, BotDecisionLog, BotPlayers,
+    BOT_AUCTION_PASS_THRESHOLD_MS, BOT_AUCTION_VALUATION_NOISE_DENOMINATOR,
 };
+use shared::card::CardId;
 use shared::session::PlayerId;
 
 /// Convert the server-internal `RoundPhase` into the wire `shared::protocol`
@@ -73,13 +91,305 @@ fn session_bot_players(bots: &BotPlayers, session: &SessionConfig) -> Vec<Player
         .collect()
 }
 
-/// Snapshot the bot's RNG counters for the decision log. Wave 1 never consumes
-/// RNG, so the counter stays at whatever `BotState::new` initialised it to,
-/// but we still record the values per ADR-005 audit-log convention.
+/// Snapshot the bot's RNG counters for the decision log. Wave-1 branches never
+/// consume RNG, so the counter stays at whatever `BotState::new` initialised it
+/// to. Wave 2's auction-bid branch bumps the counter once per `(player, round)`
+/// when the bot first observes the auction card; subsequent snapshots in the
+/// same round therefore report the post-draw counter.
 fn seed_snapshot(bots: &BotPlayers, player_id: PlayerId) -> (u64, u64) {
     bots.get(player_id)
         .map(|state| (state.rng_seed, state.rng_word_counter))
         .unwrap_or((0, 0))
+}
+
+/// Outcome of the Wave-2 auction bid heuristic for a single bot tick.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum AuctionDecision {
+    /// Bot would submit a bid at `amount`. Wave 2 records the decision in the
+    /// audit log only; the message is not pushed onto the auction wire (the
+    /// integration wave that owns auction-side ingestion is deferred per
+    /// PROMPT 1582 owned-scope).
+    Bid { amount: u32, valuation: u32 },
+    /// Bot declines to bid. The static reason literal feeds
+    /// `BotDecisionKind::AuctionPass { reason }` directly.
+    Pass { reason: &'static str },
+}
+
+/// Cached per-round auction context for a single bot. Populated lazily the
+/// first tick the bot observes a `LiveBidding` auction in a given round, then
+/// reused for every subsequent tick of the same round so the valuation does
+/// not drift and the RNG is only advanced once per round.
+///
+/// `pub` so the type can appear in the public `bot_action_loop` system
+/// signature via `Local<HashMap<_, AuctionRoundContext>>` without tripping
+/// the `private_interfaces` lint. The type is otherwise an implementation
+/// detail of the auction branch and is not re-exported from the module.
+#[derive(Debug, Clone, Copy)]
+pub struct AuctionRoundContext {
+    /// The card the bot is reasoning about. Stored so a mid-round card swap
+    /// (which the current auction protocol does not allow but defensive code
+    /// must still handle) invalidates the cache instead of mispricing.
+    card_id: CardId,
+    /// Bot's reservation price for `card_id`. Maximum the bot will ever bid
+    /// this round, independent of `current_price`.
+    valuation: u32,
+    /// The highest `current_price` snapshot the bot has already produced a
+    /// decision against. Lets the bot stay quiet across ticks at the same
+    /// price (idempotency) yet re-evaluate when a human raises the price.
+    last_decision_price: u32,
+}
+
+/// Compute the bot's per-round valuation for `starting_price`.
+///
+/// Deterministic given the bot's RNG and word counter. Draws one `u64` from
+/// the bot's private `ChaCha8Rng` and clamps the noise to half the starting
+/// price (see [`BOT_AUCTION_VALUATION_NOISE_DENOMINATOR`]). The valuation
+/// floor is `starting_price + 1` so the bot's reservation is always above
+/// the rarity-derived minimum legal bid; the noise adds 0..=noise_max
+/// headroom on top. Bumps the bot's `rng_word_counter` so the audit log can
+/// track entropy consumption per ADR-005.
+fn draw_valuation(bot: &mut crate::feature::bot::state::BotState, starting_price: u32) -> u32 {
+    let noise_modulus = starting_price
+        .saturating_div(BOT_AUCTION_VALUATION_NOISE_DENOMINATOR)
+        .saturating_add(1);
+    let word = bot.rng.next_u64();
+    bot.rng_word_counter = bot.rng_word_counter.saturating_add(1);
+    let noise = u32::try_from(word % u64::from(noise_modulus)).unwrap_or(u32::MAX);
+    starting_price.saturating_add(1).saturating_add(noise)
+}
+
+/// Decide the bot's auction action against the observable `LiveBidding` state.
+///
+/// Pure decision logic with no side effects beyond the optional RNG draw the
+/// caller already performed for `context.valuation`. The function only reads
+/// the auction snapshot, the bot's economy, and hand size — it never mutates
+/// any of these. All `Pass` reasons are static literals so the decision log
+/// can store them without allocation.
+fn decide_auction_action(
+    bot_id: PlayerId,
+    auction: &AuctionState,
+    context: &AuctionRoundContext,
+    economy_gold_minus_reserved: u32,
+    hand_full: bool,
+) -> AuctionDecision {
+    if auction.phase != AuctionPhase::LiveBidding {
+        return AuctionDecision::Pass { reason: "phase_not_live_bidding" };
+    }
+    if auction.card_id != Some(context.card_id) {
+        return AuctionDecision::Pass { reason: "card_changed_mid_round" };
+    }
+    if auction.current_leader == Some(bot_id) {
+        return AuctionDecision::Pass { reason: "already_leader" };
+    }
+    if hand_full {
+        return AuctionDecision::Pass { reason: "hand_full" };
+    }
+    if auction.timer_remaining_ms < BOT_AUCTION_PASS_THRESHOLD_MS {
+        return AuctionDecision::Pass { reason: "timer_below_threshold" };
+    }
+    let min_legal_bid = auction.current_price.saturating_add(1);
+    if context.valuation < min_legal_bid {
+        return AuctionDecision::Pass { reason: "valuation_below_min_bid" };
+    }
+    if economy_gold_minus_reserved < min_legal_bid {
+        return AuctionDecision::Pass { reason: "insufficient_gold" };
+    }
+    let amount = context.valuation.min(economy_gold_minus_reserved).max(min_legal_bid);
+    AuctionDecision::Bid { amount, valuation: context.valuation }
+}
+
+/// Returns the bot's unreserved gold (gold minus reserved) for the auction
+/// pre-flight check, or `None` when the bot is missing from the economies
+/// map (which is a server-side bug we surface to the caller as a pass).
+fn unreserved_gold(economies: Option<&PlayerEconomies>, bot_id: PlayerId) -> Option<u32> {
+    let economies = economies?;
+    let economy = economies.0.get(&bot_id)?;
+    Some(economy.gold.saturating_sub(economy.reserved_gold))
+}
+
+/// Returns true when the bot's hand has reached `MAX_HAND_SIZE`. Falls back to
+/// `false` when `PlayerHands` is absent so the heuristic does not over-pass on
+/// resource-missing test scaffolds.
+fn hand_is_full(hands: Option<&PlayerHands>, bot_id: PlayerId) -> bool {
+    hands.map(|h| h.hand_len(bot_id) >= MAX_HAND_SIZE).unwrap_or(false)
+}
+
+/// Wave-2 auction branch driver. Runs once per `bot_action_loop` invocation
+/// when `RoundPhase::DraftAuction` is active. Routes to either the Wave-1
+/// fallback (when `AuctionState` is not in the world) or the Wave-2 heuristic.
+#[allow(clippy::too_many_arguments)]
+fn run_auction_branch(
+    round: u32,
+    phase: RoundPhase,
+    ts: u64,
+    bot_players: &[PlayerId],
+    bots: &mut BotPlayers,
+    auction: Option<&AuctionState>,
+    economies: Option<&PlayerEconomies>,
+    hands: Option<&PlayerHands>,
+    decision_log: &mut BotDecisionLog,
+    auction_pass_logged: &mut HashSet<(PlayerId, u32)>,
+    auction_round_ctx: &mut HashMap<(PlayerId, u32), AuctionRoundContext>,
+) {
+    // Wave-1 fallback when AuctionState is absent (legacy tests, pre-auction
+    // scaffolds). Preserves the "pass once per round" contract.
+    let Some(auction) = auction else {
+        for player_id in bot_players {
+            let key = (*player_id, round);
+            if auction_pass_logged.contains(&key) {
+                continue;
+            }
+            auction_pass_logged.insert(key);
+
+            let (seed, counter) = seed_snapshot(bots, *player_id);
+            decision_log.push(BotDecisionEntry {
+                round_number: round,
+                phase: protocol_phase(phase),
+                bot_player_id: *player_id,
+                decision: BotDecisionKind::AuctionPass {
+                    reason: "auction_state_unavailable",
+                },
+                timestamp_ms: ts,
+                legal_action_count: None,
+                seed,
+                seed_word_counter: counter,
+            });
+            tracing::info!(
+                target: "server::bot",
+                bot_player_id = ?player_id,
+                round,
+                "bot_action_loop: auction pass (AuctionState resource absent; wave-1 fallback)"
+            );
+        }
+        return;
+    };
+
+    // Wave-2 path: bot needs an active LiveBidding auction with a card. If
+    // the auction is still selecting or already settled, log one pass per
+    // round and bail.
+    let Some(card_id) = auction.card_id else {
+        for player_id in bot_players {
+            let key = (*player_id, round);
+            if auction_pass_logged.contains(&key) {
+                continue;
+            }
+            auction_pass_logged.insert(key);
+
+            let (seed, counter) = seed_snapshot(bots, *player_id);
+            decision_log.push(BotDecisionEntry {
+                round_number: round,
+                phase: protocol_phase(phase),
+                bot_player_id: *player_id,
+                decision: BotDecisionKind::AuctionPass {
+                    reason: "auction_card_not_selected",
+                },
+                timestamp_ms: ts,
+                legal_action_count: None,
+                seed,
+                seed_word_counter: counter,
+            });
+        }
+        return;
+    };
+
+    for player_id in bot_players {
+        // Either reuse this round's cached context or compute a fresh one.
+        // Resetting on card change keeps the heuristic well-defined if the
+        // protocol ever swaps cards mid-round (today it does not).
+        let context = match auction_round_ctx.get(&(*player_id, round)) {
+            Some(ctx) if ctx.card_id == card_id => *ctx,
+            _ => {
+                let Some(bot_state) = bots.get_mut(*player_id) else {
+                    continue;
+                };
+                let valuation = draw_valuation(bot_state, auction.starting_price);
+                let ctx = AuctionRoundContext {
+                    card_id,
+                    valuation,
+                    // Sentinel so the first real decision (against the live
+                    // `current_price`) always fires regardless of whether
+                    // `current_price` is at the floor or already raised.
+                    last_decision_price: u32::MAX,
+                };
+                auction_round_ctx.insert((*player_id, round), ctx);
+                ctx
+            }
+        };
+
+        // Idempotency: skip if we've already produced a decision at this
+        // exact `current_price`. Future ticks at a higher price (a human
+        // raised) will re-evaluate; the bot can then re-bid against the new
+        // price up to its reservation.
+        if context.last_decision_price == auction.current_price {
+            continue;
+        }
+
+        let gold = unreserved_gold(economies, *player_id).unwrap_or(0);
+        let hand_full = hand_is_full(hands, *player_id);
+        let decision = decide_auction_action(*player_id, auction, &context, gold, hand_full);
+
+        // Update the per-round context's `last_decision_price` so we don't
+        // re-log against the same price next tick.
+        if let Some(ctx) = auction_round_ctx.get_mut(&(*player_id, round)) {
+            ctx.last_decision_price = auction.current_price;
+        }
+
+        let (seed, counter) = seed_snapshot(bots, *player_id);
+        match decision {
+            AuctionDecision::Bid { amount, valuation } => {
+                decision_log.push(BotDecisionEntry {
+                    round_number: round,
+                    phase: protocol_phase(phase),
+                    bot_player_id: *player_id,
+                    decision: BotDecisionKind::AuctionBid {
+                        card_id,
+                        amount,
+                        valuation,
+                    },
+                    timestamp_ms: ts,
+                    // The heuristic considered a single bid amount (no
+                    // alternatives), hence 1. Future heuristics that
+                    // evaluate multiple counter-bids should report the
+                    // actual evaluated count here.
+                    legal_action_count: Some(1),
+                    seed,
+                    seed_word_counter: counter,
+                });
+                tracing::info!(
+                    target: "server::bot",
+                    bot_player_id = ?player_id,
+                    round,
+                    card_id = ?card_id,
+                    amount,
+                    valuation,
+                    current_price = auction.current_price,
+                    "bot_action_loop: auction bid decision (decision-only; not wired to auction yet)"
+                );
+            }
+            AuctionDecision::Pass { reason } => {
+                decision_log.push(BotDecisionEntry {
+                    round_number: round,
+                    phase: protocol_phase(phase),
+                    bot_player_id: *player_id,
+                    decision: BotDecisionKind::AuctionPass { reason },
+                    timestamp_ms: ts,
+                    legal_action_count: Some(0),
+                    seed,
+                    seed_word_counter: counter,
+                });
+                tracing::info!(
+                    target: "server::bot",
+                    bot_player_id = ?player_id,
+                    round,
+                    card_id = ?card_id,
+                    reason,
+                    current_price = auction.current_price,
+                    "bot_action_loop: auction pass (heuristic gate)"
+                );
+            }
+        }
+    }
+
 }
 
 /// Wallclock helper: convert `Time::elapsed()` to integer milliseconds for the
@@ -112,11 +422,15 @@ pub fn bot_action_loop(
     time: Res<Time>,
     round_state: Option<Res<RoundState>>,
     session: Option<Res<SessionConfig>>,
-    bots: Res<BotPlayers>,
+    mut bots: ResMut<BotPlayers>,
+    auction: Option<Res<AuctionState>>,
+    economies: Option<Res<PlayerEconomies>>,
+    hands: Option<Res<PlayerHands>>,
     mut decision_log: ResMut<BotDecisionLog>,
     mut ready_signals: MessageWriter<DraftReadySignal>,
     mut placement_submissions: MessageWriter<PlacementSubmissionReceived>,
     mut auction_pass_logged: Local<HashSet<(PlayerId, u32)>>,
+    mut auction_round_ctx: Local<HashMap<(PlayerId, u32), AuctionRoundContext>>,
 ) {
     let (Some(round_state), Some(session)) = (round_state, session) else {
         return;
@@ -167,37 +481,19 @@ pub fn bot_action_loop(
             }
         }
         RoundPhase::DraftAuction => {
-            // Wave-1 bots intentionally never bid. Log the pass once per
-            // (player, round) so the audit trail has a single entry per bot
-            // per auction phase instead of one per tick.
-            for player_id in &bot_players {
-                let key = (*player_id, round);
-                if auction_pass_logged.contains(&key) {
-                    continue;
-                }
-                auction_pass_logged.insert(key);
-
-                let (seed, counter) = seed_snapshot(&bots, *player_id);
-                decision_log.push(BotDecisionEntry {
-                    round_number: round,
-                    phase: protocol_phase(phase),
-                    bot_player_id: *player_id,
-                    decision: BotDecisionKind::AuctionPass {
-                        reason: "wave1_deterministic_pass",
-                    },
-                    timestamp_ms: ts,
-                    legal_action_count: None,
-                    seed,
-                    seed_word_counter: counter,
-                });
-
-                tracing::info!(
-                    target: "server::bot",
-                    bot_player_id = ?player_id,
-                    round,
-                    "bot_action_loop: auction pass (no bids will be placed; safety timer will settle)"
-                );
-            }
+            run_auction_branch(
+                round,
+                phase,
+                ts,
+                &bot_players,
+                &mut bots,
+                auction.as_deref(),
+                economies.as_deref(),
+                hands.as_deref(),
+                &mut decision_log,
+                &mut auction_pass_logged,
+                &mut auction_round_ctx,
+            );
         }
         RoundPhase::Placement => {
             for player_id in &bot_players {

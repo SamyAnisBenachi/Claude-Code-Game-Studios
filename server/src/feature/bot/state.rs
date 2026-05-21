@@ -35,6 +35,15 @@ pub const BOT_SAFETY_MARGIN_MS: u32 = 800;
 /// Auction-pass cutoff: with less time than this remaining the bot will not bid.
 pub const BOT_AUCTION_PASS_THRESHOLD_MS: u32 = 500;
 
+/// Wave-2 valuation noise denominator for the auction bid heuristic.
+///
+/// Per-round valuation is computed as
+/// `starting_price + (rng_word % (starting_price / BOT_AUCTION_VALUATION_NOISE_DENOMINATOR + 1))`.
+/// A denominator of `2` caps the noise at half the starting price, keeping the
+/// bot's reservation bounded around the rarity-derived floor: it can outbid a
+/// stingy human but never overpays catastrophically on a single auction.
+pub const BOT_AUCTION_VALUATION_NOISE_DENOMINATOR: u32 = 2;
+
 /// MVP difficulty enum. Single variant for the foundation slice; later phases
 /// may add `Easy` / `Hard` without breaking the `BotState` shape.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
