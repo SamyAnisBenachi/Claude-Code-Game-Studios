@@ -38,7 +38,7 @@ Active / waiting workers at pause:
 | Prompt | State | Notes |
 |---|---|---|
 | `1614` | RUNNING | Bot debug overlay implementation from PROMPT 1604 contract. Debug/observability only; should be dev-gated and avoid release UI changes by default. |
-| `1615` | RUNNING | Runtime verify lane for autoplay-vs-bot / recipe behavior. Should run focused recipe/runtime checks only, no broad Cargo. |
+| `1615` | PARTIAL / CLEARED | Runtime verify completed driver/recipe/checkpoint validation against fake RPC. Live Bevy client smoke not verified due host/tooling blockers: PowerShell 7-only `Get-Date -AsUTC` usage, missing cached `autoplay-remote` client build, and need for an interactive GUI session. |
 | `1616` | RUNNING | Bot/autoplay QA companion agent for direct user discussion/guidance. Advisory only unless explicitly re-tasked. |
 
 Recent dispositions:
@@ -53,17 +53,20 @@ Recent dispositions:
 | `1611` | MAIN-LANDED / CLEARED | Bot/autoplay sprint-story ledger. Advanced main `ee9109c8 -> 271f21bc`. |
 | `1612` | SUPERSEDED / CLEARED | Stale autoplay recipe integration based on `ee9109c8`; not mainlanded because it predated `1611`. |
 | `1613` | MAIN-LANDED / CLEARED | Autoplay recipe library refreshed after `1611`. Advanced main `271f21bc -> 6e16951f`. |
+| `1615` | PARTIAL / CLEARED | Driver + recipe registry + checkpoint emission PASS for all 7 recipes against fake RPC. `full-game` blocks as designed without `CCGS_AUTOPLAY_BOT_ROOM_READY`. Live client end-to-end not verified. |
 
 Immediate next steps after token/context reset:
 
-1. Wait for `1614` and `1615` outputs. Do not launch additional broad work
-   until these return or the user explicitly asks. `1616` is available as the
-   user-facing bot/autoplay QA companion only.
+1. Wait for `1614` output. Do not launch additional broad work until it returns
+   or the user explicitly asks. `1616` is available as the user-facing
+   bot/autoplay QA companion only.
 2. If `1614` ships an implementation branch, refresh/integrate it, then run a
    focused verify lane for debug overlay protocol/UI/snapshot behavior.
-3. If `1615` passes runtime recipe checks, record autoplay-vs-bot QA readiness
-   and decide whether to run a longer bot/autoplay soak. If it fails or blocks,
-   launch a focused repair from the exact failing recipe/output.
+3. For the `1615` PARTIAL result, the next focused repair is tooling-only:
+   make `tools/autoplay/Run-AutoplaySmoke.ps1` Windows PowerShell 5.1-compatible
+   or ensure `pwsh` 7+ is installed, then run one bounded live GUI smoke with
+   `autoplay-remote`. Do not claim full autoplay-vs-bot readiness until a live
+   client smoke passes.
 4. Keep Cargo-heavy verification in dedicated lanes only. Implementation
    workers should not all run broad tests.
 
