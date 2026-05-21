@@ -1,0 +1,47 @@
+{
+  "pack": {
+    "pack_id": "krosmaga-proxy-v1",
+    "description": "FAIL fixture: stage_readiness=stage3_binding without atlas_binding; atlas_binding.atlas_id references a sheet not present in pack.sprite_sheets registry. Documentation/test fixture only.",
+    "dev_only": true,
+    "source_class": "licensed_krosmaga_dev_proxy",
+    "release_class": "dev_only",
+    "workflow_status": "needed",
+    "sprite_sheets": [
+      {
+        "sheet_id": "hand_card_frames_v1",
+        "dimensions_px": [256, 192],
+        "frame_count": 4
+      }
+    ]
+  },
+  "entries": [
+    {
+      "logical_id": "lid_card_frame_common",
+      "source_path": "D:/_GAMES/Ankama/Krosmaga/_extracted/_extracted/AssetStudio_All/assets/art/cards/frames/frame_common.png",
+      "match_quality": "good",
+      "dev_only": true,
+      "source_class": "licensed_krosmaga_dev_proxy",
+      "release_class": "dev_only",
+      "workflow_status": "needed",
+      "license_provenance_warning": "Dev-only Krosmaga proxy; not release-approved.",
+      "expected_consumer_surface": "hand.card_frame_common",
+      "stage_readiness": "stage3_binding"
+    },
+    {
+      "logical_id": "lid_hud_class_figurine_iop",
+      "source_path": "D:/_GAMES/Ankama/Krosmaga/_extracted/_extracted/AssetStudio_All/assets/art/ui/customisations/medallions/god_medallion_iop_500/god_medallion_iop_500.png",
+      "match_quality": "good",
+      "dev_only": true,
+      "source_class": "licensed_krosmaga_dev_proxy",
+      "release_class": "dev_only",
+      "workflow_status": "needed",
+      "license_provenance_warning": "Dev-only Krosmaga proxy; never release-safe.",
+      "expected_consumer_surface": "hud.class_figurine_iop",
+      "atlas_binding": {
+        "atlas_id": "hud_class_figurines_v1",
+        "frame_index": 0,
+        "frame_size_px": [128, 128]
+      }
+    }
+  ]
+}
