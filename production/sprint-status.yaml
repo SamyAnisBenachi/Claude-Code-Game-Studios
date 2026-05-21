@@ -7990,9 +7990,14 @@ sprint_18_activation:
   not_release_activation: true
   sprint_plan: "production/sprints/sprint-18.md"
   sprint_plan_authoring: "PROMPT 1285 (sprint-plan/sprint-18-draft-1285 branch in worktree D:/tmp/sprint-18-plan-draft-1285; committed against origin/main@d73e25e49519a214f8fb0fefa1e78351ccd74795; Sprint 18 DRAFT plan body authored); PROMPT 1292 main-landed the draft at 1345c6b8b1cbd543dbd63d279186c93924ca54db."
-  qa_plan_found: false
-  qa_plan_path: "production/qa/qa-plan-sprint-18.md (absent on origin/main at activation; PROMPT 1301 does NOT author the QA plan)"
-  qa_plan_note: "Sprint 18 QA plan does NOT exist at activation. Must be authored via /qa-plan sprint-18 before any /dev-story runs against Sprint 18 stories, before any gate-check, and before any Sprint 18 close-out. Mirrors Sprint 17 PROMPT 1100 precedent."
+  qa_plan_found: true
+  qa_plan_path: "production/qa/qa-plan-sprint-18.md"
+  qa_plan_authoring_prompt: "1318 (initial author); refresh chain PROMPT 1319 + PROMPT 1320 (integration main-land of the post-1318 refresh)"
+  qa_plan_authoring_date: "2026-05-19"
+  qa_plan_main_land_commit: "8eedaf63 `qa-plan(s18): author Sprint 18 QA plan (PROMPT 1318)`"
+  qa_plan_note: "PROMPT 1587 paperwork-only discharge of the Sprint 18 plan §0.4 QA-plan-absent-at-activation gap. The stale `qa_plan_found: false` recorded by PROMPT 1301 at activation is corrected here by PROMPT 1587 with reference to PROMPT 1318 (initial author at 8eedaf63) and PROMPT 1320 (integration refresh main-land). The Sprint 18 QA plan covers all 12 active rows (4 Must Have + 6 Should Have + 2 Nice to Have); per-row Logic / Integration / Visual / UI / Config-Data classification per .claude/docs/coding-standards.md; rows 1 + 11 explicit Sprint 19 carry-forward language preserved; rows 4 + 10 verify-only candidacy preserved; row 1 BLOCKED-HUMAN-OPERATOR by design preserved; PROMPT 761 Polish->Release FAIL preserved with NO retry; QA-COND-0005 / QA-COND-0006 / PAW-TD-*-a / TQ-S12-C1..C7 / S8-QA-001-W1 carried conditions preserved. PROMPT 1587 does NOT modify the QA plan file content (PROMPT 1318/1319/1320 authoring preserved verbatim); does NOT close Sprint 18; does NOT activate Sprint 19; does NOT advance stage; does NOT retry PROMPT 761; does NOT close any carried condition; does NOT touch any code under client/** / server/** / shared/** / tests/**; does NOT run cargo. Mirrors PROMPT 814 (Sprint 12 qa_plan_found stale-false correction) paperwork pattern."
+  qa_plan_disposition_discharge_prompt: "1587 (paperwork-only)"
+  qa_plan_disposition_discharge_source_of_truth: "origin/main@9be8827fbd22b2a49d973ba585b5d210fdc8a903"
   section_0_blockers_discharged:
     prompt_1284_post_fmt_smoke: "discharged via PROMPT 1289 closeout evidence reconcile (cargo fmt --check PASS; cargo test --workspace --tests --no-fail-fast PASS at 263 suites / 1861 tests / 0 failed / 0 ignored); PROMPT 1289 narrative-of-record at production/qa/closeout-evidence-reconcile-sprint-17-2026-05-18-prompt-1289.md; PROMPT 1288 post-fmt Team-QA refresh-of-record at production/qa/team-qa-sprint-17-2026-05-18-post-fmt-refresh.md"
     closeout_evidence_reconcile_landed: "PROMPT 1289 reconcile main-landed by PROMPT 1291 at origin/main@4efe800ea083001ba5aa5039e7d648b79ce1fd62; subject `closeout-evidence-reconcile(s17): discharge PROMPT 1279 smoke-evidence documentation gap via PROMPT 1284 + PROMPT 1288 (PROMPT 1289)`. Ancestor of the current activation tip 1345c6b."
