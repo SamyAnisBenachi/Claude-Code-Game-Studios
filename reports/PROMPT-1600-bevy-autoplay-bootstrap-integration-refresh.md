@@ -87,6 +87,11 @@ Branch `integrate/bevy-autoplay-bootstrap-1600` (tip `d69a2a81`) is
 strict-FF-ready against `origin/main @ b3dc0a39`.
 
 ## Push
-Push attempt and outcome appended below this line at completion.
+`git push -u origin integrate/bevy-autoplay-bootstrap-1600` → success.
+- Pushed tip (with report commit): `69e81cb7` (parent `d69a2a81`).
+- Cherry-pick tip (autoplay slice): `d69a2a81` — strict-FF-ready vs
+  `origin/main @ b3dc0a39`.
+- Remote branch: `origin/integrate/bevy-autoplay-bootstrap-1600`.
+- `main` NOT pushed (per PROMPT 1600 rules).
 
 1600: BEVY-AUTOPLAY-BOOTSTRAP-INTEGRATION-REFRESH: SHIPPED
