@@ -758,6 +758,14 @@ path = "../tests/integration/playable_client/lobby_room_browser_test.rs"
 name = "playable_client_lobby_bot_controls_test"
 path = "../tests/integration/playable_client/lobby_bot_controls_test.rs"
 
+# PROMPT 1603 (BOT-FLOW-TWO-BOT-SOAK-ENTRYPOINT) — debug-only
+# `Create 2-Bot Soak Room` lobby entrypoint: env-var contract, session-gated
+# request helper, and ECS-level proof that the button is absent without
+# CCGS_DEBUG_UI=1.
+[[test]]
+name = "playable_client_lobby_create_bot_room_test"
+path = "../tests/integration/playable_client/lobby_create_bot_room_test.rs"
+
 [[test]]
 name = "playable_client_lobby_confirm_state_text_test"
 path = "../tests/integration/playable_client/lobby_confirm_state_text_test.rs"

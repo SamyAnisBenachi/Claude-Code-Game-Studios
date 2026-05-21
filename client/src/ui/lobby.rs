@@ -3,11 +3,11 @@ use bevy::prelude::*;
 use lightyear::prelude::{MessageReceiver, MessageSender};
 use shared::card::ClassId;
 use shared::protocol::{
-    BotKind, C2SAddBot, C2SConfirmClass, C2SCreateRoom, C2SJoinRoom, C2SListRooms, C2SRemoveBot,
-    C2SSelectClass, GameMode, ReliableChannel, RoomListEntry, S2CBotActionRejected, S2CClassLocked,
-    S2CClassesRevealed, S2CConfirmClassRejected, S2CCreateRoomRejected, S2CHandshake,
-    S2CHandshakeRejected, S2CJoinAck, S2CJoinRejected, S2CRoomCreated, S2CRoomList, S2CSlotUpdated,
-    SessionSlot,
+    BotKind, C2SAddBot, C2SConfirmClass, C2SCreateBotRoom, C2SCreateRoom, C2SJoinRoom,
+    C2SListRooms, C2SRemoveBot, C2SSelectClass, GameMode, ReliableChannel, RoomListEntry,
+    S2CBotActionRejected, S2CClassLocked, S2CClassesRevealed, S2CConfirmClassRejected,
+    S2CCreateRoomRejected, S2CHandshake, S2CHandshakeRejected, S2CJoinAck, S2CJoinRejected,
+    S2CRoomCreated, S2CRoomList, S2CSlotUpdated, SessionSlot,
 };
 use shared::session::PlayerId;
 
@@ -232,6 +232,16 @@ pub enum LobbyCommand {
     RemoveBot {
         slot: u8,
     },
+    /// PROMPT 1603 — debug-only bot-vs-bot soak QA helper: ask the server to
+    /// create a fresh room pre-seeded with a bot in the opposing-team slot.
+    /// Sent via `C2SCreateBotRoom`. Surfaced only behind `CCGS_DEBUG_UI=1`.
+    /// A follow-up `C2SAddBot` is still required from the room owner to fill
+    /// the second seat for the actual bot-vs-bot soak (see
+    /// `tools/dev-launcher/Start-BotVsBotSoak.ps1`).
+    CreateBotRoom {
+        mode: GameMode,
+        bot_kind: BotKind,
+    },
 }
 
 /// Lobby UI root — Story 024 Option A: full-viewport flex container that
@@ -382,6 +392,16 @@ pub struct LobbyRemoveBotButton {
     pub slot: u8,
 }
 
+/// PROMPT 1603 — debug-only `Create 2-Bot Soak Room` button marker. Spawned
+/// only when [`is_debug_ui_enabled`] returns `true` AND
+/// `LobbyViewState.session_id` is `None` (the player has not yet joined or
+/// created a room). Provides the entry point for the headless bot-vs-bot
+/// soak QA flow tracked under `reports/PROMPT-1594-bot-flow-inventory-followup.md`
+/// item 7. The control is invisible in production builds where the
+/// `CCGS_DEBUG_UI` env var is unset.
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct LobbyCreateBotRoomButton;
+
 /// Background portrait image for a class selection card in the lobby class picker.
 /// One entity per `ClassId` variant (7 total). The `ImageNode` is the portrait image;
 /// selection state is conveyed by a separate overlay, not by swapping this image.
@@ -445,6 +465,8 @@ enum LobbyDynamicText {
     AddBot(u8),
     /// PROMPT 1596 — Remove Bot button label, parameterised by target slot.
     RemoveBot(u8),
+    /// PROMPT 1603 — debug-only `Create 2-Bot Soak Room` button label.
+    CreateBotRoom,
 }
 
 pub fn drain_lobby_s2c_system(
@@ -715,6 +737,47 @@ pub fn request_remove_bot(
     commands.write(LobbyCommand::RemoveBot { slot });
 }
 
+/// PROMPT 1603 — pure helper for the `CCGS_DEBUG_UI` env-var contract. Exposed
+/// for tests so the gating logic can be exercised without touching the
+/// process-wide env. Returns `true` only when the raw value is exactly `"1"`
+/// after trimming whitespace; every other value (absent, empty, `"0"`,
+/// `"true"`, etc.) returns `false`. The strict `"1"` contract mirrors the
+/// `CCGS_QA_SNAPSHOT=1` precedent (see
+/// `client/src/presentation/qa_snapshot.rs`) so a single mental model covers
+/// both debug-only surfaces.
+pub fn debug_ui_enabled_from(value: Option<&str>) -> bool {
+    matches!(value, Some(v) if v.trim() == "1")
+}
+
+/// PROMPT 1603 — process-wide read of the `CCGS_DEBUG_UI` env var. Read once
+/// at lobby spawn time (`spawn_lobby_ui_system`) so a debug-only entry point
+/// can be added/removed by relaunching the client rather than re-spawning
+/// the UI per frame.
+pub fn is_debug_ui_enabled() -> bool {
+    debug_ui_enabled_from(std::env::var("CCGS_DEBUG_UI").ok().as_deref())
+}
+
+/// PROMPT 1603 — write a `LobbyCommand::CreateBotRoom`. Unlike
+/// [`request_add_bot`] / [`request_remove_bot`] this surface does NOT require
+/// a pre-existing session: its whole point is to bootstrap one. Pre-flights
+/// against `lobby.session_id` to refuse silently when the caller already has
+/// a room (mirrors the server contract — `C2SCreateBotRoom` is rejected with
+/// `S2CBotActionRejected::AlreadyInSession` in that case, see
+/// `server/src/core/session/system.rs`).
+pub fn request_create_bot_room(
+    mode: GameMode,
+    bot_kind: BotKind,
+    lobby: &mut LobbyViewState,
+    commands: &mut MessageWriter<LobbyCommand>,
+) {
+    if lobby.session_id.is_some() {
+        lobby.status = "Already in a room; leave it before creating a soak room".to_string();
+        return;
+    }
+    lobby.status = "Creating 2-bot soak room".to_string();
+    commands.write(LobbyCommand::CreateBotRoom { mode, bot_kind });
+}
+
 /// PROMPT 1160 — request the room list exactly once after the first handshake
 /// completes, so the browser panel is populated before the user thinks to
 /// interact. Split out from `drain_lobby_s2c_system` to keep that system's
@@ -888,6 +951,7 @@ fn lobby_button_interaction_system(
             Option<&LobbyRoomListRow>,
             Option<&LobbyAddBotButton>,
             Option<&LobbyRemoveBotButton>,
+            Option<&LobbyCreateBotRoomButton>,
         ),
         Changed<Interaction>,
     >,
@@ -895,8 +959,20 @@ fn lobby_button_interaction_system(
     mut lobby: ResMut<LobbyViewState>,
     mut commands: MessageWriter<LobbyCommand>,
 ) {
-    for (interaction, room_code, create, join, slot, class, confirm, refresh, row, add_bot, remove_bot) in
-        &mut interactions
+    for (
+        interaction,
+        room_code,
+        create,
+        join,
+        slot,
+        class,
+        confirm,
+        refresh,
+        row,
+        add_bot,
+        remove_bot,
+        create_bot_room,
+    ) in &mut interactions
     {
         if *interaction != Interaction::Pressed {
             continue;
@@ -929,6 +1005,13 @@ fn lobby_button_interaction_system(
             request_add_bot(add_bot.slot, BotKind::Default, &mut lobby, &mut commands);
         } else if let Some(remove_bot) = remove_bot {
             request_remove_bot(remove_bot.slot, &mut lobby, &mut commands);
+        } else if create_bot_room.is_some() {
+            request_create_bot_room(
+                GameMode::OneVOne,
+                BotKind::Default,
+                &mut lobby,
+                &mut commands,
+            );
         }
     }
 }
@@ -942,6 +1025,7 @@ fn send_lobby_commands_system(
     mut list_rooms: Query<&mut MessageSender<C2SListRooms>>,
     mut add_bot: Query<&mut MessageSender<C2SAddBot>>,
     mut remove_bot: Query<&mut MessageSender<C2SRemoveBot>>,
+    mut create_bot_room: Query<&mut MessageSender<C2SCreateBotRoom>>,
 ) {
     for command in commands.read() {
         match command {
@@ -1061,6 +1145,26 @@ fn send_lobby_commands_system(
                     "c2s_send: enter"
                 );
                 sender.send::<ReliableChannel>(C2SRemoveBot { slot: *slot });
+            }
+            LobbyCommand::CreateBotRoom { mode, bot_kind } => {
+                let Some(mut sender) = create_bot_room.iter_mut().next() else {
+                    warn!(
+                        mode = ?mode,
+                        bot_kind = ?bot_kind,
+                        "C2S send DROPPED: type=C2SCreateBotRoom, handler=send_lobby_commands_system, reason=no_sender_entity"
+                    );
+                    continue;
+                };
+                tracing::info!(
+                    msg_type = "C2SCreateBotRoom",
+                    mode = ?mode,
+                    bot_kind = ?bot_kind,
+                    "c2s_send: enter"
+                );
+                sender.send::<ReliableChannel>(C2SCreateBotRoom {
+                    mode: *mode,
+                    bot_kind: *bot_kind,
+                });
             }
         }
     }
@@ -1548,6 +1652,45 @@ fn spawn_lobby_ui_system(
                                 BorderColor::all(Color::srgb(0.28, 0.56, 0.72)),
                             ));
                         });
+
+                        // PROMPT 1603 — debug-only `Create 2-Bot Soak Room`
+                        // button. Spawned only when `CCGS_DEBUG_UI=1` AND
+                        // the player is not yet in a session, so the
+                        // affordance lives on the same surface as
+                        // Create Room / Join Room and disappears once a
+                        // room is owned. Production builds (env unset)
+                        // never spawn the entity, so the control is
+                        // invisible by default. Wired to
+                        // `request_create_bot_room`, which writes
+                        // `LobbyCommand::CreateBotRoom` -> `C2SCreateBotRoom`.
+                        if lobby.session_id.is_none() && is_debug_ui_enabled() {
+                            panel.spawn((lobby_row_node(),)).with_children(|row| {
+                                row.spawn((
+                                    LobbyCreateBotRoomButton,
+                                    LobbyDynamicText::CreateBotRoom,
+                                    Button,
+                                    Interaction::None,
+                                    Text::new(lobby_dynamic_copy(
+                                        LobbyDynamicText::CreateBotRoom,
+                                        &lobby,
+                                        &input,
+                                    )),
+                                    lobby_text_font(typography::CAPTION),
+                                    TextColor(Color::srgba(0.95, 0.78, 0.62, 0.95)),
+                                    // Match Create Room width so the debug
+                                    // affordance reads as a peer of the
+                                    // primary CTAs without dominating the
+                                    // row.
+                                    lobby_button_node(
+                                        Val::Px(LOBBY_CREATE_BUTTON_WIDTH_PX + 96.0),
+                                        LOBBY_CREATE_BUTTON_HEIGHT_PX,
+                                    ),
+                                    BackgroundColor(Color::srgba(0.18, 0.12, 0.08, 0.95)),
+                                    BorderColor::all(Color::srgb(0.58, 0.36, 0.22)),
+                                    Name::new("Lobby Create Bot Room Button (debug)"),
+                                ));
+                            });
+                        }
 
                         // PROMPT 1160 / PROMPT 1178 — existing-room browser section.
                         // Visible only before the local client has an active
@@ -2372,6 +2515,7 @@ fn lobby_dynamic_copy(
         LobbyDynamicText::SelectedClassIdentity => lobby_selected_class_identity_text(lobby, input),
         LobbyDynamicText::AddBot(slot) => format!("Add Bot (seat {slot})"),
         LobbyDynamicText::RemoveBot(slot) => format!("Remove Bot (seat {slot})"),
+        LobbyDynamicText::CreateBotRoom => "Create 2-Bot Soak Room".to_string(),
     }
 }
 
