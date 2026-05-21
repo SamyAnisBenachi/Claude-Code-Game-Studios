@@ -1,5 +1,43 @@
 # Codex Orchestrator State
 
+## Current Resume Snapshot (2026-05-21, post-1577 mainland)
+
+This block is the active orchestration state. It supersedes older resume and
+handoff snapshots below.
+
+Source of truth:
+
+- Root checkout: `D:\_DEV\Work\Claude-Code-Game-Studios`
+- Root branch: `main`
+- Root/source commit: `origin/main@442627772370eb9a47efd70357193cb3471d7faf`
+  (`PROMPT 1577 CCGS dev launcher job-status integration`)
+- Local root checkout was fast-forwarded to the same commit.
+- Root working tree caveat: `.claude/settings.json` remains dispatcher runtime
+  churn and must stay out of commits unless intentionally updating hooks.
+- Mainland queue after `1577`: no pending/running entries.
+
+Recently landed:
+
+| Prompt | Result | Notes |
+|---|---|---|
+| `1576` | MAIN-LANDED | Combined refresh for placement accepted ACK protocol, QA snapshot observability fields, and Krosmaga dev-proxy Stage 2. Advanced main `2bdff922 -> a9b54eda`. |
+| `1577` | MAIN-LANDED | CCGS dev launcher visible `SUCCESS`/`FAIL`/`RUNNING` job-status UI. Advanced main `a9b54eda -> 44262777`. |
+| `1578` | PASS | Focused verify lane after `1576`: 50/50 tests passed across placement ACK server/client, QA snapshot fields, and Krosmaga dev-proxy tooling. Worker cleared; no source edits. |
+
+Active workers:
+
+- No active worker windows known after clearing `1577` and `1578`.
+
+Immediate next useful actions:
+
+- If continuing implementation, launch from current `origin/main@44262777`.
+- Run a launcher manual smoke from the rebuilt EXE when convenient to confirm
+  green/red job state is visible in the actual app.
+- For gameplay, next high-value verify is a fresh live two-client flow after
+  the accepted-placement ACK and snapshot observability changes now on main.
+- Keep broad Cargo out of implementation prompts; use dedicated VERIFY lanes.
+- Krosmaga assets remain dev-proxy only. No release/legal claim is implied.
+
 ## Current Resume Snapshot (2026-05-21, post-1564 mainland and pause)
 
 This block is the active orchestration state. It supersedes older resume and
