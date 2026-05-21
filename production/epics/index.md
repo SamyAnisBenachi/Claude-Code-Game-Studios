@@ -30,6 +30,7 @@
 | [shop-auction-ui](shop-auction-ui/EPIC.md) | Presentation | `client/src/ui/shop_auction/` | shop-auction-ui | 9 stories | Ready - UX spec gates final visual evidence |
 | [playable-client](playable-client/EPIC.md) | Polish | `client/src/main.rs` + `client/src/network/` + client UI/presentation + server message bridges | Sprint 7 real primary client path | 8 stories | Ready |
 | [audio-system](audio-system/EPIC.md) | Polish | `client/src/audio/` — `AudioPlugin` (new) | audio-production-queue-2026-05-04; ASSET-084 (timer urgency cue) | 1 story (bootstrap); P0/P1 cue stories deferred | Ready |
+| [bot-and-autoplay](bot-and-autoplay/EPIC.md) | Polish | `server/src/game/bot/`, `client/src/autoplay.rs`, `tools/autoplay/**`, `docs/autoplay/**`, `.claude/skills/ccgs-autoplay/**` | N/A (operational QA automation) | 5 stories (1 Sprint 18 carry-tracking + 4 Sprint 19 candidates) | Draft — ledger placeholder authored 2026-05-21 by PROMPT 1608; NOT activated |
 
 > ⭐ Sprint 1 Story 1.0 = `lightyear-protocol-verification` Story 001 (Lightyear 0.26 verification spike)
 

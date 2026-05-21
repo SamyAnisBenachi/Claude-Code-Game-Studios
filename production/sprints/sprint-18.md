@@ -250,6 +250,34 @@ land on `origin/main`:
   file's presence on `origin/main` before including any of these rows
   in the Sprint 18 active set. If not landed, defer to Sprint 19.
 
+### 4-bis Bot & Autoplay Ledger Note (added 2026-05-21 by PROMPT 1608)
+
+The bot + autoplay QA-automation substrate has been landing on
+`origin/main` outside the Sprint 18 active row set (PROMPT 1430, 1439,
+1531, 1582, 1583, 1595, 1597, 1598, 1601, 1602, 1603/1607, 1604, 1606).
+A new ledger epic `production/epics/bot-and-autoplay/` was authored by
+PROMPT 1608 with 5 candidate stories:
+
+- `BOT-ROOM-PARTICIPANT-001` -- Sprint 18 carry-tracking (already
+  implemented on `origin/main`; `/story-done` paperwork deferred to
+  Sprint 19).
+- `BOT-SOAK-ENTRYPOINT-001` -- Sprint 19 candidate (worker shipped via
+  PROMPT 1603; integration PROMPT 1607 not confirmed main-landed at
+  this banner-update tip `origin/main@576fbe8c`).
+- `AUTOPLAY-RECIPE-LIBRARY-001` -- Sprint 19 candidate (bootstrap on
+  `origin/main`; recipe library extension is the next slice).
+- `AUTOPLAY-VS-BOT-QA-001` -- Sprint 19 candidate (gated on 001 + 002
+  + 003).
+- `BOT-DEBUG-OVERLAY-001` -- Sprint 19 candidate (data contract via
+  PROMPT 1604; implementation gated on 1602 / 1603 main-land).
+
+**Sprint 18 active row set (§2.1 / §2.2 / §2.3) is NOT modified by this
+note.** None of the above rows is being activated into Sprint 18 by
+PROMPT 1608. Sprint 19 is NOT activated by PROMPT 1608. The note exists
+so Sprint 19 planning has a concrete candidate roster instead of an
+implicit one. See `production/epics/bot-and-autoplay/EPIC.md` for the
+governing ADRs, scope, and non-claims.
+
 ---
 
 ## 5. Activation Sequence (informational; not executed by this draft)

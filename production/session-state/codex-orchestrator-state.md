@@ -1,5 +1,29 @@
 # Codex Orchestrator State
 
+## Current Resume Snapshot (2026-05-21, post-1608 bot/autoplay ledger)
+
+Ledger-only refresh by PROMPT 1608. Source-of-truth at this snapshot:
+`origin/main@576fbe8ce901a8b919a4c2db58847f2d497d3d15` (PROMPT 1602 bot
+Wave 3 placement heuristic main-land). No mainland advance.
+
+PROMPT 1608 authored a new tracking epic
+`production/epics/bot-and-autoplay/` (EPIC.md + 5 story files) and added
+a §4-bis ledger note to `production/sprints/sprint-18.md` that records
+the bot + autoplay workstreams as 1 Sprint 18 carry-tracking row
+(`BOT-ROOM-PARTICIPANT-001`) and 4 Sprint 19 candidate rows
+(`BOT-SOAK-ENTRYPOINT-001`, `AUTOPLAY-RECIPE-LIBRARY-001`,
+`AUTOPLAY-VS-BOT-QA-001`, `BOT-DEBUG-OVERLAY-001`). The Sprint 18 active
+row set (4 Must + 6 Should + 2 Nice) is preserved verbatim. Sprint 19
+is NOT activated. `production/stage.txt` remains `Polish`.
+`production/sprint-status.yaml` is NOT modified (no top-level / activation
+block changes). PROMPT 1604 debug-overlay data contract, PROMPT 1601
+autoplay bootstrap main-land, PROMPT 1602 Wave 3 placement heuristic,
+and PROMPT 1603 / 1607 bot-vs-bot soak entrypoint are all referenced
+from the new story files.
+
+The earlier post-1601 snapshot block is preserved verbatim below for
+audit.
+
 ## Current Resume Snapshot (2026-05-21, post-1601 mainland)
 
 This block is the active orchestration state. It supersedes older resume and
