@@ -3,7 +3,7 @@
 **Source-of-truth tip:** `origin/main @ 237572af`
 **Branch:** `work/bot-flow-two-bot-soak-entrypoint-1603`
 **Worktree:** `D:/Tmp/wt-1603`
-**Commit:** _filled in after commit_
+**Commit:** `bd67948e664ddb4a498d4ec01455ca36be724593` (pushed to `origin/work/bot-flow-two-bot-soak-entrypoint-1603`)
 
 ## Scope
 
