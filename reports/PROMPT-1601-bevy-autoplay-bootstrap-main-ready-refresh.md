@@ -78,10 +78,9 @@ fast-forward-eligible tip against the current `origin/main`.
 
 ## Push outcome
 
-Branch push of `integrate/bevy-autoplay-bootstrap-1601` to `origin` is
-attempted as a follow-up shell command after this report is finalized; if the
-push fails, the local branch and commit identifiers above remain authoritative
-and the orchestrator may retry the push without re-running the refresh.
+`git push -u origin integrate/bevy-autoplay-bootstrap-1601` SUCCEEDED. Remote
+tracking ref `origin/integrate/bevy-autoplay-bootstrap-1601` now points at the
+local tip (final SHA after this amendment commit is recorded below).
 
 ## Readiness verdict
 
