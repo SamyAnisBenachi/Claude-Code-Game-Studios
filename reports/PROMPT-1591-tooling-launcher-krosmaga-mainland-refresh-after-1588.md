@@ -94,8 +94,11 @@ for audit reference.
 
 ## Push outcome
 
-(Push attempt and outcome recorded below in the amendment when MAINLAND_ENQUEUE
-is dispatched.)
+- `git push -u origin integrate/tooling-launcher-krosmaga-1591` succeeded.
+- Remote ref now: `origin/integrate/tooling-launcher-krosmaga-1591 @ a7aa0008`.
+- `main` was NOT pushed; only the integration branch was pushed.
+- Branch is strict-FF-ready vs `origin/main @ 945cbd71` and ready for
+  MAINLAND_ENQUEUE.
 
 ## Krosmaga disclaimer
 
