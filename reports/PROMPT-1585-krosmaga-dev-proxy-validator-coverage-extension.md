@@ -143,6 +143,8 @@ them into the existing `_check_entry` / `validate_manifest` flow.
 
 ## Push
 
-<filled in after the push attempt>
+- Local commit: `dd55ac3b` on `work/krosmaga-dev-proxy-validator-coverage-1585`.
+- `git push -u origin work/krosmaga-dev-proxy-validator-coverage-1585` succeeded
+  on first attempt; remote tracking established.
 
 1585: KROSMAGA-DEV-PROXY-VALIDATOR-COVERAGE-EXTENSION: SHIPPED
