@@ -100,6 +100,13 @@ fn main() {
     // loop that signals draft-ready, passes auction, and submits an empty
     // placement so flow advances without a human counterpart.
     app.add_plugins(feature::bot::BotActionLoopPlugin);
+    // PROMPT 1597 (BOT-FLOW-SERVER-QA-SNAPSHOT-AND-DECISION-LOG):
+    // server-authoritative QA evidence for bot-driven flows. Writes JSON
+    // snapshots (phase transitions / 10s periodic / best-effort AppExit)
+    // under `dev-runs/bot-qa-snapshots/` and streams every BotDecisionLog
+    // append to `dev-runs/bot-decision-log.jsonl`. Disabled in release by
+    // default; enable explicitly via `CCGS_BOT_QA_SNAPSHOT=1`.
+    app.add_plugins(feature::bot::BotQaSnapshotPlugin);
 
     // Networking - Lightyear 0.26 WebSocket server and shared protocol manifest.
     app.add_plugins(network::ServerNetworkPlugin);
