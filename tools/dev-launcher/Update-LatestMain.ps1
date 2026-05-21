@@ -18,7 +18,11 @@
 #   2. If $PlayRoot is missing and $LauncherRoot is a git repo, materialises
 #      $PlayRoot as a linked git worktree off $LauncherRoot:
 #        git -C $LauncherRoot worktree add $PlayRoot main
-#      (creating local `main` from origin/main if necessary).
+#      (creating local `main` from origin/main if necessary). When `main` is
+#      already checked out by another worktree (typically the launcher root
+#      itself), falls back to a dedicated `play-main` local branch that
+#      tracks origin/main, so the dedicated checkout still mirrors origin/main
+#      without colliding with the launcher root's checkout.
 #   3. Inside $PlayRoot, aborts unless the working tree is clean (override
 #      with -Force). If the dedicated checkout is on a non-main branch,
 #      attempts `git switch main` only if clean; refuses otherwise.
@@ -95,9 +99,11 @@ PARAMETERS
 SAFETY
   The launcher/orchestrator checkout is NEVER switched or reset by this script.
   Inside the dedicated play root only:
-    Dirty tree   -> abort unless -Force.
-    Not on main  -> attempt 'git switch main' only if clean; abort unless -Force.
-    Non-FF main  -> abort unless -Force.
+    Dirty tree                -> abort unless -Force.
+    Not on main / play-main   -> attempt 'git switch main' (then 'play-main'
+                                 if main is checked out elsewhere) only if
+                                 clean; abort unless -Force.
+    Non-FF current branch     -> abort unless -Force.
   Low disk and not -AllowCacheClean -> warn, continue without cleanup.
   Cleanup is restricted to the resolved CARGO_TARGET_DIR only.
 
@@ -164,12 +170,16 @@ if ($LauncherRootNorm -ieq $PlayRootNorm) {
 }
 
 # ---- 1b. Materialise play root as a worktree if missing ------------------
+# Branch name used when the launcher root already has `main` checked out. Git
+# refuses to check out the same branch in two worktrees, so the dedicated
+# play/build checkout uses a separate local branch that tracks `origin/main`.
+$PlayBranchFallback = 'play-main'
 if (-not (Test-Path $PlayRoot)) {
     Write-Section "Create play/build worktree"
     Write-Host "Path $PlayRoot does not exist -- creating as a linked git worktree."
     if ($DryRun) {
         Write-Host "[dry-run] git -C $LauncherRoot fetch origin"
-        Write-Host "[dry-run] git -C $LauncherRoot worktree add $PlayRoot main"
+        Write-Host "[dry-run] git -C $LauncherRoot worktree add $PlayRoot main (or -B $PlayBranchFallback origin/main if main is already checked out)"
     } else {
         # Make sure origin/main is up to date so the new worktree starts on a
         # current ref. This fetch is read-only and does not modify any branch.
@@ -178,12 +188,29 @@ if (-not (Test-Path $PlayRoot)) {
             Write-Host -ForegroundColor Red "git fetch failed in launcher root; cannot create worktree."
             exit 1
         }
-        # Prefer `worktree add ... main` so the new checkout carries the local
-        # `main` ref. If `main` is already checked out in another worktree,
-        # fall back to creating a fresh branch tracking origin/main.
+        # Detect whether `main` is already checked out by another worktree (the
+        # most common case: the launcher root IS that worktree). If yes, we
+        # can't `worktree add ... main` and must use a dedicated branch.
+        $mainCheckedOutElsewhere = $false
+        $worktreeListRaw = git -C $LauncherRoot worktree list --porcelain 2>$null
+        if ($LASTEXITCODE -eq 0 -and $worktreeListRaw) {
+            foreach ($line in ($worktreeListRaw -split "`n")) {
+                if ($line.Trim() -eq 'branch refs/heads/main') {
+                    $mainCheckedOutElsewhere = $true
+                    break
+                }
+            }
+        }
+
         git -C $LauncherRoot show-ref --verify --quiet refs/heads/main
         $localMainExists = ($LASTEXITCODE -eq 0)
-        if ($localMainExists) {
+
+        if ($mainCheckedOutElsewhere) {
+            Write-Host "Local 'main' is already checked out in another worktree (likely the launcher root)."
+            Write-Host "Creating dedicated branch '$PlayBranchFallback' tracking origin/main for the play/build checkout."
+            Write-Host "Attempting: git -C $LauncherRoot worktree add -B $PlayBranchFallback $PlayRoot origin/main"
+            git -C $LauncherRoot worktree add -B $PlayBranchFallback $PlayRoot origin/main
+        } elseif ($localMainExists) {
             Write-Host "Attempting: git -C $LauncherRoot worktree add $PlayRoot main"
             git -C $LauncherRoot worktree add $PlayRoot main
         } else {
@@ -223,21 +250,37 @@ Write-Section "Git pre-checks (play/build root)"
 $Branch = (git rev-parse --abbrev-ref HEAD).Trim()
 Write-Host "Current branch (play/build root): $Branch"
 
+# The play/build checkout normally lives on `main`, but when the launcher root
+# already holds `main` we create the worktree on a dedicated `play-main`
+# branch tracking origin/main. Both are considered canonical for rebuild.
+$CanonicalPlayBranches = @('main', $PlayBranchFallback)
 $Dirty = (git status --porcelain) -join "`n"
-if ($Branch -ne 'main') {
+if ($CanonicalPlayBranches -notcontains $Branch) {
     if ($Dirty -and -not $Force) {
         Write-Host -ForegroundColor Red "Play/build root is on '$Branch' AND its working tree is dirty -- refusing to switch."
         Write-Host -ForegroundColor Red "Commit/stash inside $PlayRoot, or re-run with -Force (DESTRUCTIVE)."
         Write-Host $Dirty
         exit 2
     }
-    Write-Host "Play/build root is on '$Branch' (clean) -- switching to main."
+    # Prefer switching to `main`; fall back to the dedicated `play-main`
+    # branch when `main` is already checked out elsewhere.
+    Write-Host "Play/build root is on '$Branch' (clean) -- switching to a canonical branch."
     if ($DryRun) {
-        Write-Host "[dry-run] git switch main"
+        Write-Host "[dry-run] git switch main (or $PlayBranchFallback if main is checked out elsewhere)"
     } else {
         git switch main
-        if ($LASTEXITCODE -ne 0) { Write-Host -ForegroundColor Red "git switch main failed."; exit 1 }
-        $Branch = 'main'
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "git switch main failed (likely already checked out elsewhere) -- trying '$PlayBranchFallback'."
+            git switch $PlayBranchFallback
+            if ($LASTEXITCODE -ne 0) {
+                Write-Host "git switch $PlayBranchFallback failed -- creating it from origin/main."
+                git switch -c $PlayBranchFallback origin/main
+                if ($LASTEXITCODE -ne 0) { Write-Host -ForegroundColor Red "git switch to a canonical branch failed."; exit 1 }
+            }
+            $Branch = $PlayBranchFallback
+        } else {
+            $Branch = 'main'
+        }
     }
 }
 
@@ -259,29 +302,30 @@ if ($DryRun) {
     if ($LASTEXITCODE -ne 0) { Write-Host -ForegroundColor Red "git fetch failed."; exit 1 }
 }
 
-Write-Section "Fast-forward main -> origin/main"
-$AheadBehind = (git rev-list --left-right --count main...origin/main).Trim()
-Write-Host "main vs origin/main (ahead/behind): $AheadBehind"
+Write-Section "Fast-forward $Branch -> origin/main"
+# Compare HEAD (whichever canonical branch we landed on) against origin/main.
+$AheadBehind = (git rev-list --left-right --count HEAD...origin/main).Trim()
+Write-Host "$Branch vs origin/main (ahead/behind): $AheadBehind"
 $parts = $AheadBehind -split '\s+'
 $ahead  = [int]$parts[0]
 $behind = [int]$parts[1]
 if ($ahead -gt 0 -and -not $Force) {
-    Write-Host -ForegroundColor Red "Refusing to fast-forward: local main is $ahead commit(s) ahead of origin/main. Push or rebase first, or re-run with -Force (DESTRUCTIVE)."
+    Write-Host -ForegroundColor Red "Refusing to fast-forward: local $Branch is $ahead commit(s) ahead of origin/main. Push or rebase first, or re-run with -Force (DESTRUCTIVE)."
     exit 2
 }
 if ($behind -eq 0) {
-    Write-Host "main is already up to date."
+    Write-Host "$Branch is already up to date."
 } elseif ($DryRun) {
     Write-Host "[dry-run] git merge --ff-only origin/main"
 } elseif ($Force -and $ahead -gt 0) {
-    Write-Warning "Force-resetting main to origin/main (discards $ahead local commit(s))."
+    Write-Warning "Force-resetting $Branch to origin/main (discards $ahead local commit(s))."
     git reset --hard origin/main
     if ($LASTEXITCODE -ne 0) { Write-Host -ForegroundColor Red "git reset --hard failed."; exit 1 }
 } else {
     git merge --ff-only origin/main
     if ($LASTEXITCODE -ne 0) { Write-Host -ForegroundColor Red "git merge --ff-only failed."; exit 1 }
 }
-Write-Host "main HEAD: $((git log -1 --oneline).Trim())"
+Write-Host "$Branch HEAD: $((git log -1 --oneline).Trim())"
 
 # ---- 4. Cargo policy -----------------------------------------------------
 Write-Section "Cargo resource policy"
