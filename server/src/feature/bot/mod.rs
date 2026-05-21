@@ -8,11 +8,17 @@
 #![allow(dead_code, unused_imports)]
 
 pub mod action_loop;
+pub mod debug_push;
 pub mod lobby_loop;
 pub mod qa_snapshot;
 pub mod state;
 
 pub use action_loop::{bot_action_loop, BotActionLoopPlugin};
+pub use debug_push::{
+    assemble_debug_bot_state_push, decision_detail, decision_kind_label, BotDebugPushConfig,
+    BotDebugPushPlugin, BotDebugPushState, BOT_DEBUG_PUSH_ENV_VAR, DEBUG_BOT_DECISION_TAIL_CAP,
+    DEFAULT_BOT_DEBUG_PUSH_INTERVAL_MS,
+};
 pub use lobby_loop::{bot_lobby_auto_confirm, deterministic_class_for_bot, BotLobbyPlugin};
 pub use qa_snapshot::{
     BotQaSnapshotConfig, BotQaSnapshotPlugin, BotQaSnapshotState,

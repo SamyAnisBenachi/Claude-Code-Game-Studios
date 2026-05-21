@@ -107,6 +107,12 @@ fn main() {
     // append to `dev-runs/bot-decision-log.jsonl`. Disabled in release by
     // default; enable explicitly via `CCGS_BOT_QA_SNAPSHOT=1`.
     app.add_plugins(feature::bot::BotQaSnapshotPlugin);
+    // PROMPT 1614 (BOT-DEBUG-OVERLAY-IMPLEMENTATION): debug-only god-mode
+    // bot-state push so the client-side F8 overlay can render the bot's
+    // hand / decision tail / last auction valuation. Reliable channel.
+    // Disabled in release by default; enable explicitly via
+    // `CCGS_BOT_DEBUG_UI=1`.
+    app.add_plugins(feature::bot::BotDebugPushPlugin);
 
     // Networking - Lightyear 0.26 WebSocket server and shared protocol manifest.
     app.add_plugins(network::ServerNetworkPlugin);
