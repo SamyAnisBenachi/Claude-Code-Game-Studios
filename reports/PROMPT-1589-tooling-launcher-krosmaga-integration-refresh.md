@@ -93,9 +93,15 @@ Push attempt to `origin` for branch
 typically performs the push). The branch and tip commit are:
 
 - Branch: `integrate/tooling-launcher-krosmaga-1589`
-- Tip: `1a3f3bf4`
+- Tip after merges of 1584+1585: `1a3f3bf4`
+- Final tip (after this report commit): `702078cf`
 
-Main was **not** touched; only the integration branch was created locally.
+Push completed:
+`git push -u origin integrate/tooling-launcher-krosmaga-1589` →
+new remote branch `origin/integrate/tooling-launcher-krosmaga-1589`
+(tracking set up).
+
+Main was **not** touched; only the integration branch was created and pushed.
 
 ## FF-Readiness Statement
 
