@@ -1,5 +1,65 @@
 # Codex Orchestrator State
 
+## Current Resume Snapshot (2026-05-21, post-1593 mainland)
+
+This block is the active orchestration state. It supersedes older resume and
+handoff snapshots below.
+
+Source of truth:
+
+- Root checkout: `D:\_DEV\Work\Claude-Code-Game-Studios`
+- Root branch: `main`
+- Root/source commit: `origin/main@49f5a1367c30e037c36aa20d313624bddee08d60`
+  (`PROMPT 1593 QA-plan + QA-snapshot fields mainland refresh`)
+- Local root checkout was fast-forwarded to the same commit with
+  `git pull --ff-only --autostash origin main`.
+- Root working tree caveat: `.claude/settings.json` is dispatcher runtime churn
+  and must stay out of commits unless intentionally updating hooks.
+- Mainland queue after `1593`: no pending/running entries reported.
+
+Recently processed:
+
+| Prompt | Result | Notes |
+|---|---|---|
+| `1579` | PASS / CLEARED | Dev launcher status UI smoke verify passed. |
+| `1580` | PARTIAL / CLEARED | Live two-client run validated boot, handshake, lobby band, heartbeat, and QA snapshot overlay mount only. It did not exercise manual class confirm, draft/shop/auction, drag/drop placement, accepted ACK, rejection recovery, or resolution. |
+| `1581` | SHIPPED / CLEARED | Next implementation wave map. Recommended safe no-1580-dependency lanes and kept HOT-A/HOT-B/HOT-C gameplay work blocked on real gameplay evidence. |
+| `1582` | SHIPPED / CLEARED | Bot Wave 2 auction bid decision. Landed through `1588`. |
+| `1583` | SHIPPED / CLEARED | Bot lobby ready auto-confirm. Landed through `1588`. |
+| `1584` | SHIPPED / CLEARED | Dev launcher log-tail panel. Landed through `1591`. |
+| `1585` | SHIPPED / CLEARED | Krosmaga dev-proxy validator coverage extension. Landed through `1591`. |
+| `1586` | SHIPPED / CLEARED | QA snapshot resolution-phase fields. Landed through `1593`. |
+| `1587` | SHIPPED / CLEARED | Sprint 18 QA plan paperwork. Landed through `1593`. |
+| `1588` | MAIN-LANDED | Bot Wave 2 integration. Advanced main `9be8827f -> 945cbd71`. |
+| `1589` | SUPERSEDED-BY-1591 | Tooling integration was FF-ready before `1588`, then stale after `1588` landed. |
+| `1590` | SUPERSEDED-BY-1592/1593 | QA-plan + snapshot integration was FF-ready before `1588`, then stale after `1588` landed. |
+| `1591` | MAIN-LANDED | Tooling launcher + Krosmaga validator refresh. Advanced main `945cbd71 -> c7cfc5a4`. |
+| `1592` | SUPERSEDED-BY-1593 | QA-plan + snapshot refresh was FF-ready before `1591`, then stale after `1591` landed. |
+| `1593` | MAIN-LANDED | QA-plan + QA-snapshot fields refresh. Advanced main `c7cfc5a4 -> 49f5a136`. |
+
+Active workers:
+
+- No active worker windows known after clearing `1593`.
+
+Immediate next useful actions:
+
+- Launch focused VERIFY lanes for the newly landed work, keeping Cargo pressure
+  serialized:
+  - bot Wave 2 tests after `1588`;
+  - launcher log-tail panel checks after `1591`;
+  - Krosmaga dev-proxy validator pytest after `1591`;
+  - QA snapshot resolution-field coverage after `1593`.
+- Gameplay HOT paths remain blocked on real gameplay evidence:
+  - HOT-A `client/src/ui/hand/mod.rs` placement/rejection UX;
+  - HOT-B `client/src/presentation/board_rendering.rs` board/combat visuals;
+  - HOT-C `client/src/ui/shop_auction/mod.rs` shop/auction overlay behavior.
+- `1580` did not drive manual gameplay. To unblock HOT gameplay work without a
+  human pass, launch a scripted-input or bot-driver harness lane that can
+  exercise class confirm, draft/shop/auction, drag/drop placement, submit ACK,
+  rejection recovery, and resolution.
+- Do not claim Sprint 18 close-out, Sprint 19 activation, release readiness, or
+  Krosmaga release/legal clearance from this state.
+
 ## Current Resume Snapshot (2026-05-21, post-1579 clear)
 
 This block is the active orchestration state. It supersedes older resume and
