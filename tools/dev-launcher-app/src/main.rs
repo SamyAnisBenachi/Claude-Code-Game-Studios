@@ -71,10 +71,21 @@ const PLAY_REPO_ENV_ALIAS: &str = "CCGS_CANONICAL_MAIN_ROOT";
 #[cfg(test)]
 const EVIDENCE_HINT: &str = "production/qa/evidence/dev-runs/";
 const MAX_LOG_LINES: usize = 2000;
+// PROMPT 1584: the "Last Job Tail" panel surfaces the most recent N lines of
+// the current/last job's stdout/stderr in a dedicated panel pinned just below
+// the SUCCESS/FAIL/RUNNING badge, so the user can see WHY a job ended without
+// scrolling the full Script Output log. 20 lines comfortably fits a typical
+// PowerShell tail (cargo summary line, evidence dir, FINISHED banner, plus a
+// few preceding context lines) inside ~3 grid rows.
+const TAIL_LINES: usize = 20;
+const TAIL_EMPTY_PLACEHOLDER: &str =
+    "(no script output yet -- last 20 lines of the current/last job appear here)";
 const TIMER_INTERVAL_MS: u64 = 150;
 
-const WINDOW_SIZE: (i32, i32) = (980, 720);
-const MIN_WINDOW_SIZE: (i32, i32) = (760, 560);
+// PROMPT 1584: window grew slightly to make room for the tail panel between
+// the status badge and the diagnostics panel without crowding either.
+const WINDOW_SIZE: (i32, i32) = (980, 820);
+const MIN_WINDOW_SIZE: (i32, i32) = (760, 620);
 const LAUNCHER_ICON_BYTES: &[u8] = include_bytes!("../assets/ccgs-dev-launcher.ico");
 
 const COLOR_HEADER_BG: [u8; 3] = [27, 43, 64];
@@ -99,6 +110,12 @@ const COLOR_STATUS_ERROR: [u8; 3] = [192, 32, 32];
 const COLOR_STATUS_ERROR_TEXT: [u8; 3] = [255, 255, 255];
 const COLOR_LOG_BG: [u8; 3] = [18, 25, 34];
 const COLOR_LOG_TEXT: [u8; 3] = [224, 235, 244];
+// PROMPT 1584: tail panel uses a darker plum/charcoal background and warm amber
+// text so it is visually distinct from both the muted-blue diagnostics panel
+// and the deep-navy full script-output log directly below it. The user should
+// never confuse the always-visible 20-line tail with the scrollable full log.
+const COLOR_TAIL_BG: [u8; 3] = [29, 22, 40];
+const COLOR_TAIL_TEXT: [u8; 3] = [253, 220, 156];
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum JobKind {
@@ -363,20 +380,32 @@ pub struct LauncherUi {
     #[nwg_layout_item(layout: layout, col: 0, row: 4, col_span: 8)]
     state_label: nwg::RichLabel,
 
-    #[nwg_control(text: "Diagnostics", flags: "VISIBLE|MULTI_LINE", background_color: Some(COLOR_PANEL_BG))]
+    // PROMPT 1584: tail panel — always visible last 20 lines of the current /
+    // most-recent job's output. Sits between the status badge and the
+    // diagnostics panel so the user can see WHY a FAIL/SUCCESS/RUNNING badge
+    // looks the way it does without scrolling the full Script Output log.
+    #[nwg_control(text: "Last Job Tail (last 20 lines)", flags: "VISIBLE|MULTI_LINE", background_color: Some(COLOR_PANEL_BG))]
     #[nwg_layout_item(layout: layout, col: 0, row: 5, col_span: 8)]
+    tail_heading_label: nwg::RichLabel,
+
+    #[nwg_control(text: "", readonly: true, flags: "VISIBLE|VSCROLL|AUTOVSCROLL|TAB_STOP|SAVE_SELECTION")]
+    #[nwg_layout_item(layout: layout, col: 0, row: 6, col_span: 8, row_span: 4)]
+    tail_box: nwg::RichTextBox,
+
+    #[nwg_control(text: "Diagnostics", flags: "VISIBLE|MULTI_LINE", background_color: Some(COLOR_PANEL_BG))]
+    #[nwg_layout_item(layout: layout, col: 0, row: 10, col_span: 8)]
     diagnostics_heading_label: nwg::RichLabel,
 
     #[nwg_control(text: "", readonly: true, flags: "VISIBLE|VSCROLL|HSCROLL|AUTOVSCROLL|AUTOHSCROLL|TAB_STOP|SAVE_SELECTION")]
-    #[nwg_layout_item(layout: layout, col: 0, row: 6, col_span: 8, row_span: 4)]
+    #[nwg_layout_item(layout: layout, col: 0, row: 11, col_span: 8, row_span: 4)]
     diagnostics_box: nwg::RichTextBox,
 
     #[nwg_control(text: "Script Output", flags: "VISIBLE|MULTI_LINE", background_color: Some(COLOR_PANEL_BG))]
-    #[nwg_layout_item(layout: layout, col: 0, row: 10, col_span: 8)]
+    #[nwg_layout_item(layout: layout, col: 0, row: 15, col_span: 8)]
     log_heading_label: nwg::RichLabel,
 
     #[nwg_control(text: "", readonly: true, flags: "VISIBLE|VSCROLL|HSCROLL|AUTOVSCROLL|AUTOHSCROLL|TAB_STOP|SAVE_SELECTION")]
-    #[nwg_layout_item(layout: layout, col: 0, row: 11, col_span: 8, row_span: 7)]
+    #[nwg_layout_item(layout: layout, col: 0, row: 16, col_span: 8, row_span: 7)]
     log_box: nwg::RichTextBox,
 
     #[nwg_control(interval: Duration::from_millis(TIMER_INTERVAL_MS), active: true)]
@@ -463,11 +492,13 @@ impl LauncherUi {
         apply_font(&self.brand_label, brand_font.as_ref());
         apply_font(&self.diagnostics_heading_label, heading_font.as_ref());
         apply_font(&self.log_heading_label, heading_font.as_ref());
+        apply_font(&self.tail_heading_label, heading_font.as_ref());
         apply_font(&self.rebuild_btn, button_font.as_ref());
         apply_font(&self.launch_btn, button_font.as_ref());
         apply_font(&self.state_label, body_font.as_ref());
         apply_font(&self.diagnostics_box, mono_font.as_ref());
         apply_font(&self.log_box, mono_font.as_ref());
+        apply_font(&self.tail_box, mono_font.as_ref());
 
         *self.brand_font.borrow_mut() = brand_font;
         *self.heading_font.borrow_mut() = heading_font;
@@ -490,8 +521,16 @@ impl LauncherUi {
             COLOR_PANEL_BG,
             Some(nwg::CharEffects::BOLD),
         );
+        set_rich_label_text(
+            &self.tail_heading_label,
+            &format!("Last Job Tail (last {} lines)", TAIL_LINES),
+            COLOR_PANEL_HEADING,
+            COLOR_PANEL_BG,
+            Some(nwg::CharEffects::BOLD),
+        );
         self.log_box.set_background_color(COLOR_LOG_BG);
         self.diagnostics_box.set_background_color(COLOR_PANEL_BG);
+        self.tail_box.set_background_color(COLOR_TAIL_BG);
 
         let resolution = self.resolution_init.borrow_mut().take().unwrap_or_else(|| {
             RepoRootResolution::Failed {
@@ -788,7 +827,11 @@ impl LauncherUi {
     }
 
     fn refresh_log(&self) {
-        let snapshot = {
+        // PROMPT 1584: full log + tail panel are repainted together so they
+        // stay in lockstep with a single drain of the log_dirty flag. Without
+        // this, separate refreshes would race -- the second caller would see
+        // log_dirty == false and skip a paint after the first one consumed it.
+        let (full, tail) = {
             let mut guard = match self.state.lock() {
                 Ok(g) => g,
                 Err(_) => return,
@@ -801,9 +844,12 @@ impl LauncherUi {
                 return;
             }
             state.log_dirty = false;
-            state.log_lines.join("\n")
+            let tail = render_tail_text(&state.log_lines, TAIL_LINES);
+            let full = state.log_lines.join("\n");
+            (full, tail)
         };
-        set_rich_text_box(&self.log_box, &snapshot, COLOR_LOG_TEXT, COLOR_LOG_BG, true);
+        set_rich_text_box(&self.log_box, &full, COLOR_LOG_TEXT, COLOR_LOG_BG, true);
+        set_rich_text_box(&self.tail_box, &tail, COLOR_TAIL_TEXT, COLOR_TAIL_BG, true);
     }
 }
 
@@ -1231,6 +1277,29 @@ fn read_head_branch(repo_root: &Path) -> Option<String> {
     trimmed
         .strip_prefix("ref: refs/heads/")
         .map(|s| s.to_string())
+}
+
+// PROMPT 1584: pure tail extraction so the visible tail panel is unit-testable
+// without spawning a Win32 window. Returns the last `n` lines of `log` (in
+// original order), or fewer if `log.len() < n`. An empty log yields an empty
+// slice; the caller is responsible for rendering a placeholder.
+fn tail_log_lines<'a>(log: &'a [String], n: usize) -> &'a [String] {
+    if n == 0 {
+        return &log[log.len()..];
+    }
+    let take = log.len().min(n);
+    let start = log.len() - take;
+    &log[start..]
+}
+
+// Joins the tail slice into a single newline-separated string for the read-only
+// RichTextBox; emits a placeholder describing the panel when no output has been
+// captured yet (e.g. on first launch before any job is started).
+fn render_tail_text(log: &[String], n: usize) -> String {
+    if log.is_empty() {
+        return TAIL_EMPTY_PLACEHOLDER.to_string();
+    }
+    tail_log_lines(log, n).join("\n")
 }
 
 fn diagnostics_text(state: &LauncherState) -> String {
@@ -2575,5 +2644,130 @@ mod tests {
         let (idle_bg, _) = StatusTone::Idle.colors();
         let (success_bg, _) = StatusTone::Success.colors();
         assert_ne!(idle_bg, success_bg);
+    }
+
+    // ---- PROMPT 1584: tail log panel ----------------------------------
+
+    fn make_log(n: usize) -> Vec<String> {
+        (0..n).map(|i| format!("line {}", i)).collect()
+    }
+
+    #[test]
+    fn tail_log_lines_returns_last_n_when_more_lines_exist() {
+        let log = make_log(50);
+        let tail = tail_log_lines(&log, 5);
+        assert_eq!(tail.len(), 5);
+        assert_eq!(tail[0], "line 45");
+        assert_eq!(tail[4], "line 49");
+    }
+
+    #[test]
+    fn tail_log_lines_returns_all_lines_when_fewer_than_n() {
+        let log = make_log(3);
+        let tail = tail_log_lines(&log, 20);
+        assert_eq!(tail.len(), 3);
+        assert_eq!(tail[0], "line 0");
+        assert_eq!(tail[2], "line 2");
+    }
+
+    #[test]
+    fn tail_log_lines_empty_log_yields_empty_slice() {
+        let log: Vec<String> = Vec::new();
+        let tail = tail_log_lines(&log, 20);
+        assert!(tail.is_empty());
+    }
+
+    #[test]
+    fn tail_log_lines_n_zero_yields_empty_slice() {
+        let log = make_log(10);
+        let tail = tail_log_lines(&log, 0);
+        assert!(tail.is_empty(), "n=0 must yield empty slice");
+    }
+
+    #[test]
+    fn tail_log_lines_n_equal_to_len_returns_full_log() {
+        let log = make_log(7);
+        let tail = tail_log_lines(&log, 7);
+        assert_eq!(tail.len(), 7);
+        assert_eq!(tail[0], "line 0");
+        assert_eq!(tail[6], "line 6");
+    }
+
+    #[test]
+    fn render_tail_text_shows_placeholder_when_log_empty() {
+        let text = render_tail_text(&[], TAIL_LINES);
+        assert_eq!(text, TAIL_EMPTY_PLACEHOLDER);
+        // Placeholder must explain what the panel does so the empty state
+        // is self-documenting; testers should not need to read source.
+        assert!(text.to_lowercase().contains("line"));
+    }
+
+    #[test]
+    fn render_tail_text_joins_lines_with_newline() {
+        let log = vec!["alpha".to_string(), "beta".to_string(), "gamma".to_string()];
+        let text = render_tail_text(&log, TAIL_LINES);
+        assert_eq!(text, "alpha\nbeta\ngamma");
+    }
+
+    #[test]
+    fn render_tail_text_truncates_to_last_n_only() {
+        let log = make_log(100);
+        let text = render_tail_text(&log, TAIL_LINES);
+        let lines: Vec<&str> = text.lines().collect();
+        assert_eq!(lines.len(), TAIL_LINES);
+        assert_eq!(*lines.first().unwrap(), format!("line {}", 100 - TAIL_LINES));
+        assert_eq!(*lines.last().unwrap(), "line 99");
+    }
+
+    #[test]
+    fn tail_lines_constant_is_a_reasonable_default() {
+        // Big enough to capture a FINISHED banner + a few context lines, small
+        // enough to fit in ~3 grid rows without forcing the user to scroll.
+        assert!(TAIL_LINES >= 10, "tail must show enough context to explain a FAIL");
+        assert!(TAIL_LINES <= 50, "tail must stay short enough to glance at");
+    }
+
+    #[test]
+    fn tail_surfaces_finished_banner_after_job_finishes() {
+        // Simulates the real on_tick path: a job emits many lines, then
+        // add_banner("FINISHED: ...") pushes a banner pair onto the log. The
+        // tail panel must surface at least the FINISHED banner so the user can
+        // see WHY the badge turned red/green without scrolling the full log.
+        let mut state = LauncherState::new(Some(PathBuf::from(".")), None, None, None);
+        for i in 0..150 {
+            state.append(format!("[err] cargo: noisy output line {}", i));
+        }
+        state.add_banner("FINISHED: Rebuild Latest Main (exit 1)");
+        let text = render_tail_text(&state.log_lines, TAIL_LINES);
+        assert!(
+            text.contains("FINISHED: Rebuild Latest Main (exit 1)"),
+            "tail should surface the FINISHED banner; got:\n{}",
+            text
+        );
+    }
+
+    #[test]
+    fn tail_color_palette_is_distinct_from_log_and_status_panels() {
+        // The tail panel must be visually distinguishable from the full
+        // Script Output (deep navy) and the muted-blue diagnostics panel so
+        // testers do not confuse the always-visible 20-line tail with the
+        // scrollable full log directly below it.
+        assert_ne!(COLOR_TAIL_BG, COLOR_LOG_BG);
+        assert_ne!(COLOR_TAIL_BG, COLOR_PANEL_BG);
+        assert_ne!(COLOR_TAIL_BG, COLOR_STATUS_SUCCESS);
+        assert_ne!(COLOR_TAIL_BG, COLOR_STATUS_ERROR);
+    }
+
+    #[test]
+    fn tail_panel_capacity_fits_within_log_cap() {
+        // Sanity: the tail window must never request more lines than the full
+        // log can hold, else slicing logic would silently return the whole log
+        // even when the cap kicks in.
+        assert!(
+            TAIL_LINES <= MAX_LOG_LINES,
+            "TAIL_LINES ({}) must not exceed MAX_LOG_LINES ({})",
+            TAIL_LINES,
+            MAX_LOG_LINES
+        );
     }
 }
