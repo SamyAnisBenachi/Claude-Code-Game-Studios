@@ -1,5 +1,49 @@
 # Codex Orchestrator State
 
+## Current Resume Snapshot (2026-05-21, post-1579 clear)
+
+This block is the active orchestration state. It supersedes older resume and
+handoff snapshots below.
+
+Source of truth:
+
+- Root checkout: `D:\_DEV\Work\Claude-Code-Game-Studios`
+- Root branch: `main`
+- Root/source commit: `origin/main@191c9fc5c883d9f66623b69e12ad22d9c00ff7a9`
+  (`state: record post-1577 mainland orchestration state`)
+- Local root checkout is on `main` at the same commit.
+- Root working tree caveat: `.claude/settings.json` is dispatcher runtime churn
+  and must stay out of commits unless intentionally updating hooks.
+- Mainland queue after `1577`: no pending/running entries were known before the
+  current verify/planning workers were launched.
+
+Recently processed:
+
+| Prompt | Result | Notes |
+|---|---|---|
+| `1576` | MAIN-LANDED | Combined refresh for placement accepted ACK protocol, QA snapshot observability fields, and Krosmaga dev-proxy Stage 2. |
+| `1577` | MAIN-LANDED | CCGS dev launcher visible `SUCCESS`/`FAIL`/`RUNNING` job-status UI. |
+| `1578` | PASS | Focused verify lane after `1576`: 50/50 tests passed. Worker cleared; no source edits. |
+| `1579` | PASS / CLEARED | Dev launcher job-status UI smoke verify passed. Full report: `reports/PROMPT-1579-post-1577-dev-launcher-status-ui-smoke-verify.md`. |
+
+Active workers:
+
+| Prompt | Task | Expected next action |
+|---|---|---|
+| `1580` | `POST-1576-ACCEPTED-ACK-LIVE-TWO-CLIENT-GAMEPLAY-RETEST` | On DONE, use findings as the source of truth for gameplay repair lanes. If PASS, schedule next multi-round/full-loop validation. |
+| `1581` | `POST-1578-NEXT-IMPLEMENTATION-WAVE-MAP` | On DONE, use the map to launch only ready, file-disjoint implementation or verify lanes. |
+
+Immediate next useful actions:
+
+- Wait for `1580` and `1581`; do not launch blind gameplay repairs before the
+  fresh two-client retest evidence.
+- If new implementation lanes are launched after `1581`, keep broad Cargo in
+  separate VERIFY prompts and avoid running many heavy test jobs in parallel.
+- If a worker hits push/rebase/protected-branch issues, it should report branch,
+  commit, command, and blocker; the orchestrator handles mainland/Git-sensitive
+  work.
+- Krosmaga assets remain dev-proxy only. No release/legal claim is implied.
+
 ## Current Resume Snapshot (2026-05-21, post-1577 mainland)
 
 This block is the active orchestration state. It supersedes older resume and
