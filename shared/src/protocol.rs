@@ -114,6 +114,13 @@ pub fn register_protocol(registry: &mut impl ProtocolRegistry) {
     register_s2c::<S2CObjectiveIdentities>(registry, ProtocolChannel::Reliable);
     register_s2c::<S2CSangMepriseReveal>(registry, ProtocolChannel::Reliable);
     register_s2c::<S2CGameSnapshot>(registry, ProtocolChannel::Reliable);
+    // PROMPT 1614 (BOT-DEBUG-OVERLAY-IMPLEMENTATION): debug-only god-mode
+    // bot-state push gated server-side by `CCGS_BOT_DEBUG_UI=1` and
+    // client-side rendered only when `CCGS_DEBUG_UI=1`. Registered
+    // unconditionally so the channel binding is symmetric across builds; the
+    // server never emits the message unless its config gate is on, and the
+    // client overlay never spawns UI unless its own gate is on.
+    register_s2c::<S2CDebugBotStatePush>(registry, ProtocolChannel::Reliable);
     // S2CHeartbeat removed by S13-PROTO-ORPHAN-DRAIN-001 (Path B): the GDD's
     // Rule 8 disconnect-detection contract uses `C2SHeartbeat` only (client →
     // server on the unreliable channel); no S2C heartbeat was ever produced or
@@ -994,6 +1001,71 @@ pub struct S2CGameSnapshot {
     pub board: BoardSnapshot,
     pub auction_state: Option<AuctionSnapshot>,
     pub active_sang_meprise_reveals: Option<Vec<ObjectiveReveal>>,
+}
+
+// ---------------------------------------------------------------------------
+// PROMPT 1614 — debug-only bot-state push (data contract: PROMPT 1604).
+// ---------------------------------------------------------------------------
+
+/// Debug-only god-mode view of every bot participant in the session.
+///
+/// The server only emits this message when `CCGS_BOT_DEBUG_UI=1` is set in
+/// its environment **and** at least one bot is in the session. Production
+/// servers never emit it. The reliable channel is used so the client can
+/// trust ordering against `S2CGameSnapshot`, which makes the overlay a
+/// non-flickery aid during human QA.
+///
+/// Carries fields the client cannot reach through normal protocol because
+/// they are either redacted in `S2CGameSnapshot.players` for non-recipient
+/// players (`hand`) or live only inside server resources (`BotDecisionLog`,
+/// `BotState.rng_word_counter`, `AuctionRoundContext.valuation`).
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct S2CDebugBotStatePush {
+    /// One entry per bot in the session. Ordered by `PlayerId` numeric
+    /// value for stable rendering.
+    pub bots: Vec<DebugBotStateEntry>,
+    /// Total entries in the server-side `BotDecisionLog`, so the client
+    /// overlay can render "showing N of M" without inspecting the tail
+    /// vector length.
+    pub decision_log_total: u32,
+    /// Server wallclock ms (`Time::elapsed`) at the moment the push was
+    /// assembled. The client uses this to label the overlay row with a
+    /// staleness indicator.
+    pub assembled_at_ms: u64,
+}
+
+/// Per-bot god-mode payload bundled inside [`S2CDebugBotStatePush`].
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct DebugBotStateEntry {
+    pub player_id: PlayerId,
+    pub class_id: Option<ClassId>,
+    pub gold: u32,
+    pub current_mana: u32,
+    pub mana_cap: u8,
+    pub submitted: bool,
+    /// Full hand (god-mode). Sent only inside the debug push.
+    pub hand: Vec<CardId>,
+    /// Tail of the bot's decision log (capped by the server).
+    pub decision_tail: Vec<DebugBotDecisionEntry>,
+    /// Most recent auction-bid valuation produced by the bot's heuristic.
+    /// `None` when the bot has not bid this session yet or the last bid
+    /// pre-dates the configured tail cap.
+    pub last_bid_valuation: Option<u32>,
+}
+
+/// Serialisable mirror of one server-side `BotDecisionEntry`. Kept flat —
+/// the `kind_label` is the lowercase decision-variant name (e.g.
+/// `"auction_bid"`) and `detail` holds a short human-readable summary
+/// (e.g. `"card=42 amt=4 val=5"`). Decoupled from the server-only
+/// `BotDecisionKind` enum so the shared crate never depends on server
+/// internals (per ADR-003).
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct DebugBotDecisionEntry {
+    pub round_number: u32,
+    pub phase: RoundPhase,
+    pub timestamp_ms: u64,
+    pub kind_label: String,
+    pub detail: Option<String>,
 }
 
 #[cfg(test)]

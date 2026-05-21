@@ -12,6 +12,7 @@ use crate::presentation::board_rendering::{
     BoardRenderSet, BoardRenderState, PendingResolutionScript, ResolutionRevealWait,
 };
 use crate::presentation::connection_lost_overlay::ConnectionLostOverlayPlugin;
+use crate::presentation::debug_bot_overlay::DebugBotOverlayPlugin;
 use crate::presentation::qa_snapshot::QASnapshotPlugin;
 use crate::presentation::result_screen::ResultScreenPlugin;
 use crate::presentation::shared::economy_view::drain_gold_update_receiver_system as drain_shared_gold_update_receiver_system;
@@ -39,6 +40,7 @@ use crate::ui::shop_auction::{
 
 pub mod board_rendering;
 pub mod connection_lost_overlay;
+pub mod debug_bot_overlay;
 pub mod qa_snapshot;
 pub mod result_screen;
 pub mod shared;
@@ -113,6 +115,12 @@ impl Plugin for PresentationPlugin {
         // When disabled, the plugin spawns no UI and adds no per-frame work
         // beyond the inert system registrations.
         app.add_plugins(QASnapshotPlugin);
+        // PROMPT 1614 — debug-only bot god-mode overlay (F8 toggle, env-gated
+        // by `CCGS_DEBUG_UI=1`). Receives `S2CDebugBotStatePush` from the
+        // server (which itself is gated by `CCGS_BOT_DEBUG_UI=1`) and renders
+        // a non-interactive corner panel. When the env gate is off the plugin
+        // spawns no UI and runs no per-frame systems.
+        app.add_plugins(DebugBotOverlayPlugin);
 
         app.configure_sets(
             Update,
