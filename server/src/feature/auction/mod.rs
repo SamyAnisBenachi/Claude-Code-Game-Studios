@@ -16,5 +16,5 @@ pub use system::{
     initialize_auction_pool_on_draft_started, process_bid_batch, settle_expired_auction,
     AuctionAcceptedDispatch, AuctionBid, AuctionCardAcquiredDispatch, AuctionCardDrawFixture,
     AuctionNetworkOutbox, AuctionPool, AuctionRejectionDispatch, AuctionSettledDispatch,
-    S2CAuctionCard,
+    PendingBotBids, S2CAuctionCard,
 };

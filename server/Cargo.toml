@@ -422,6 +422,11 @@ path = "../tests/unit/bot/bot_lobby_loop_test.rs"
 name = "bot_auction_bid_decision_test"
 path = "../tests/unit/bot/bot_auction_bid_decision_test.rs"
 
+# PROMPT 1598 — bot Wave 2.5 auction bid funnel into process_bid_batch.
+[[test]]
+name = "bot_auction_bid_funnel_wave_2_5_test"
+path = "../tests/unit/bot/bot_auction_bid_funnel_wave_2_5_test.rs"
+
 # PROMPT 1583 — end-to-end progression test for the bot lobby auto-confirm
 # loop (lobby → GameActive with single-human room + 1 bot).
 [[test]]
