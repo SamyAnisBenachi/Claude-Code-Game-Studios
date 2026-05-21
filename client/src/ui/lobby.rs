@@ -3,10 +3,11 @@ use bevy::prelude::*;
 use lightyear::prelude::{MessageReceiver, MessageSender};
 use shared::card::ClassId;
 use shared::protocol::{
-    C2SConfirmClass, C2SCreateRoom, C2SJoinRoom, C2SListRooms, C2SSelectClass, GameMode,
-    ReliableChannel, RoomListEntry, S2CClassLocked, S2CClassesRevealed, S2CConfirmClassRejected,
-    S2CCreateRoomRejected, S2CHandshake, S2CHandshakeRejected, S2CJoinAck, S2CJoinRejected,
-    S2CRoomCreated, S2CRoomList, S2CSlotUpdated, SessionSlot,
+    BotKind, C2SAddBot, C2SConfirmClass, C2SCreateRoom, C2SJoinRoom, C2SListRooms, C2SRemoveBot,
+    C2SSelectClass, GameMode, ReliableChannel, RoomListEntry, S2CBotActionRejected, S2CClassLocked,
+    S2CClassesRevealed, S2CConfirmClassRejected, S2CCreateRoomRejected, S2CHandshake,
+    S2CHandshakeRejected, S2CJoinAck, S2CJoinRejected, S2CRoomCreated, S2CRoomList, S2CSlotUpdated,
+    SessionSlot,
 };
 use shared::session::PlayerId;
 
@@ -103,6 +104,7 @@ impl Plugin for LobbyUiPlugin {
                 Update,
                 (
                     drain_lobby_s2c_system,
+                    drain_bot_action_rejected_system,
                     lobby_initial_room_list_refresh_system,
                     lobby_keyboard_input_system,
                     lobby_button_interaction_system,
@@ -216,6 +218,19 @@ pub enum LobbyCommand {
     },
     ConfirmClass {
         class_id: ClassId,
+    },
+    /// PROMPT 1596 — Mode 1 QA helper: ask the server to occupy an empty
+    /// non-local slot with a bot of the given flavour. Sent via
+    /// `C2SAddBot`; success surfaces back through `S2CSlotUpdated`,
+    /// rejection through `S2CBotActionRejected`.
+    AddBot {
+        slot: u8,
+        bot_kind: BotKind,
+    },
+    /// PROMPT 1596 — Mode 1 QA helper: ask the server to evict the bot
+    /// currently occupying `slot`. Sent via `C2SRemoveBot`.
+    RemoveBot {
+        slot: u8,
     },
 }
 
@@ -339,6 +354,34 @@ pub struct LobbyRoomListRow {
     pub requested_slot: u8,
 }
 
+/// PROMPT 1596 (BOT-FLOW-LOBBY-ADD-REMOVE-BOT-UX) — dynamic container for
+/// contextual Add Bot / Remove Bot controls. Spawned empty inside the lobby
+/// panel body during `spawn_lobby_ui_system`; populated reactively by
+/// `refresh_lobby_ui_system` whenever `LobbyViewState` changes so the row of
+/// controls always reflects the authoritative `lobby.slots` snapshot.
+///
+/// The container is sized by its children: empty before the local player
+/// joins/creates a room (no slot data yet) and after both seats are taken by
+/// humans; non-zero only when there is at least one non-local slot that is
+/// either empty (Add Bot eligible) or bot-occupied (Remove Bot eligible).
+#[derive(Component)]
+pub struct LobbyBotControlsContainer;
+
+/// PROMPT 1596 — Add Bot button marker. Carries the target slot index so the
+/// interaction system can dispatch the right `C2SAddBot` payload. Rendered
+/// only when the slot is empty (no `player_id`, `is_bot == false`).
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct LobbyAddBotButton {
+    pub slot: u8,
+}
+
+/// PROMPT 1596 — Remove Bot button marker. Rendered only when the slot is
+/// currently held by a bot (`is_bot == true`).
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct LobbyRemoveBotButton {
+    pub slot: u8,
+}
+
 /// Background portrait image for a class selection card in the lobby class picker.
 /// One entity per `ClassId` variant (7 total). The `ImageNode` is the portrait image;
 /// selection state is conveyed by a separate overlay, not by swapping this image.
@@ -398,6 +441,10 @@ enum LobbyDynamicText {
     RoomListEmpty,
     /// PROMPT 1487 — selected-class identity panel copy.
     SelectedClassIdentity,
+    /// PROMPT 1596 — Add Bot button label, parameterised by target slot.
+    AddBot(u8),
+    /// PROMPT 1596 — Remove Bot button label, parameterised by target slot.
+    RemoveBot(u8),
 }
 
 pub fn drain_lobby_s2c_system(
@@ -564,6 +611,108 @@ pub fn drain_lobby_s2c_system(
 /// function: no I/O, no command writes; exposed for tests.
 pub fn apply_room_list(lobby: &mut LobbyViewState, message: &S2CRoomList) {
     lobby.room_list = message.rooms.clone();
+}
+
+/// PROMPT 1596 (BOT-FLOW-LOBBY-ADD-REMOVE-BOT-UX) — drain
+/// `S2CBotActionRejected` and surface the reason on the lobby status banner.
+///
+/// Split out of `drain_lobby_s2c_system` to keep that system's `SystemParam`
+/// tuple under the Bevy 0.18 16-element ceiling. Pure status-line mutation —
+/// no slot mutation (server emits an authoritative `S2CSlotUpdated` on
+/// success, so no client-side optimistic state needs unwinding on rejection).
+pub fn drain_bot_action_rejected_system(
+    mut lobby: ResMut<LobbyViewState>,
+    mut receivers: Query<&mut MessageReceiver<S2CBotActionRejected>>,
+) {
+    for mut receiver in &mut receivers {
+        for message in receiver.receive() {
+            tracing::info!(
+                reason = ?message.reason,
+                msg_type = "S2CBotActionRejected",
+                "drain_lobby_s2c: recv"
+            );
+            lobby.status = format!("Bot action rejected: {:?}", message.reason);
+        }
+    }
+}
+
+/// PROMPT 1596 — describe the contextual bot control eligible for a slot.
+/// Pure helper exposed for tests; consumed by `rebuild_bot_controls_rows`.
+///
+/// The local player's own slot never receives a control (you cannot evict
+/// yourself, and you do not need to invite yourself). Slots held by remote
+/// humans (a real peer joined) also receive no control — Mode 1 is
+/// 1-human-plus-1-bot, and an Add/Remove Bot affordance next to a human
+/// seat would be misleading.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LobbyBotSlotControl {
+    /// Slot is empty (`player_id.is_none() && !is_bot`) — eligible for
+    /// `C2SAddBot`.
+    AddBot { slot: u8 },
+    /// Slot is held by a bot (`is_bot == true`) — eligible for
+    /// `C2SRemoveBot`.
+    RemoveBot { slot: u8 },
+}
+
+/// PROMPT 1596 — derive the ordered list of contextual bot controls for the
+/// current lobby snapshot. Stable order = ascending slot index, so the row
+/// reads left-to-right in the same order as the slot panels above.
+pub fn lobby_bot_controls_for_slots(
+    slots: &[SessionSlot],
+    local_player_id: Option<PlayerId>,
+) -> Vec<LobbyBotSlotControl> {
+    let mut controls: Vec<LobbyBotSlotControl> = slots
+        .iter()
+        .filter(|slot| match local_player_id {
+            Some(local) => slot.player_id != Some(local),
+            None => true,
+        })
+        .filter_map(|slot| {
+            if slot.is_bot {
+                Some(LobbyBotSlotControl::RemoveBot { slot: slot.slot })
+            } else if slot.player_id.is_none() {
+                Some(LobbyBotSlotControl::AddBot { slot: slot.slot })
+            } else {
+                None
+            }
+        })
+        .collect();
+    controls.sort_by_key(|control| match control {
+        LobbyBotSlotControl::AddBot { slot } | LobbyBotSlotControl::RemoveBot { slot } => *slot,
+    });
+    controls
+}
+
+/// PROMPT 1596 — write a `LobbyCommand::AddBot` after gating on
+/// `session_id.is_some()`. Surfaces a status banner update so the player
+/// gets immediate feedback while the round-trip is in flight.
+pub fn request_add_bot(
+    slot: u8,
+    bot_kind: BotKind,
+    lobby: &mut LobbyViewState,
+    commands: &mut MessageWriter<LobbyCommand>,
+) {
+    if lobby.session_id.is_none() {
+        lobby.status = "Create or join a room before adding a bot".to_string();
+        return;
+    }
+    lobby.status = format!("Adding bot to seat {slot}");
+    commands.write(LobbyCommand::AddBot { slot, bot_kind });
+}
+
+/// PROMPT 1596 — write a `LobbyCommand::RemoveBot` after gating on
+/// `session_id.is_some()`.
+pub fn request_remove_bot(
+    slot: u8,
+    lobby: &mut LobbyViewState,
+    commands: &mut MessageWriter<LobbyCommand>,
+) {
+    if lobby.session_id.is_none() {
+        lobby.status = "Create or join a room before removing a bot".to_string();
+        return;
+    }
+    lobby.status = format!("Removing bot from seat {slot}");
+    commands.write(LobbyCommand::RemoveBot { slot });
 }
 
 /// PROMPT 1160 — request the room list exactly once after the first handshake
@@ -737,6 +886,8 @@ fn lobby_button_interaction_system(
             Option<&LobbyConfirmClassButton>,
             Option<&LobbyRefreshRoomsButton>,
             Option<&LobbyRoomListRow>,
+            Option<&LobbyAddBotButton>,
+            Option<&LobbyRemoveBotButton>,
         ),
         Changed<Interaction>,
     >,
@@ -744,7 +895,7 @@ fn lobby_button_interaction_system(
     mut lobby: ResMut<LobbyViewState>,
     mut commands: MessageWriter<LobbyCommand>,
 ) {
-    for (interaction, room_code, create, join, slot, class, confirm, refresh, row) in
+    for (interaction, room_code, create, join, slot, class, confirm, refresh, row, add_bot, remove_bot) in
         &mut interactions
     {
         if *interaction != Interaction::Pressed {
@@ -774,6 +925,10 @@ fn lobby_button_interaction_system(
             request_refresh_rooms(&mut lobby, &mut commands);
         } else if let Some(row) = row {
             request_join_room_from_row(row, &mut input, &mut lobby, &mut commands);
+        } else if let Some(add_bot) = add_bot {
+            request_add_bot(add_bot.slot, BotKind::Default, &mut lobby, &mut commands);
+        } else if let Some(remove_bot) = remove_bot {
+            request_remove_bot(remove_bot.slot, &mut lobby, &mut commands);
         }
     }
 }
@@ -785,6 +940,8 @@ fn send_lobby_commands_system(
     mut select_class: Query<&mut MessageSender<C2SSelectClass>>,
     mut confirm_class: Query<&mut MessageSender<C2SConfirmClass>>,
     mut list_rooms: Query<&mut MessageSender<C2SListRooms>>,
+    mut add_bot: Query<&mut MessageSender<C2SAddBot>>,
+    mut remove_bot: Query<&mut MessageSender<C2SRemoveBot>>,
 ) {
     for command in commands.read() {
         match command {
@@ -869,6 +1026,41 @@ fn send_lobby_commands_system(
                 sender.send::<ReliableChannel>(C2SConfirmClass {
                     class_id: *class_id,
                 });
+            }
+            LobbyCommand::AddBot { slot, bot_kind } => {
+                let Some(mut sender) = add_bot.iter_mut().next() else {
+                    warn!(
+                        slot = *slot,
+                        bot_kind = ?bot_kind,
+                        "C2S send DROPPED: type=C2SAddBot, handler=send_lobby_commands_system, reason=no_sender_entity"
+                    );
+                    continue;
+                };
+                tracing::info!(
+                    msg_type = "C2SAddBot",
+                    slot = *slot,
+                    bot_kind = ?bot_kind,
+                    "c2s_send: enter"
+                );
+                sender.send::<ReliableChannel>(C2SAddBot {
+                    slot: *slot,
+                    bot_kind: *bot_kind,
+                });
+            }
+            LobbyCommand::RemoveBot { slot } => {
+                let Some(mut sender) = remove_bot.iter_mut().next() else {
+                    warn!(
+                        slot = *slot,
+                        "C2S send DROPPED: type=C2SRemoveBot, handler=send_lobby_commands_system, reason=no_sender_entity"
+                    );
+                    continue;
+                };
+                tracing::info!(
+                    msg_type = "C2SRemoveBot",
+                    slot = *slot,
+                    "c2s_send: enter"
+                );
+                sender.send::<ReliableChannel>(C2SRemoveBot { slot: *slot });
             }
         }
     }
@@ -1791,6 +1983,29 @@ fn spawn_lobby_ui_system(
                                 ));
                             });
                         });
+
+                        // Section 4-bis — PROMPT 1596 contextual bot controls
+                        // (BOT-FLOW-LOBBY-ADD-REMOVE-BOT-UX). Empty container
+                        // spawned once here; `refresh_lobby_ui_system`
+                        // repopulates the row whenever `LobbyViewState`
+                        // changes so the Add Bot / Remove Bot affordances
+                        // always match the authoritative `lobby.slots`
+                        // snapshot. The row collapses to zero height while
+                        // no controls are eligible (pre-room and
+                        // human-vs-human seatings), so it adds no
+                        // viewport-budget pressure on the Confirm CTA.
+                        panel.spawn((
+                            LobbyBotControlsContainer,
+                            Name::new("Lobby Bot Controls"),
+                            Node {
+                                width: Val::Percent(100.0),
+                                flex_direction: FlexDirection::Row,
+                                column_gap: Val::Px(SPACING_SM),
+                                align_items: AlignItems::Center,
+                                flex_shrink: 0.0,
+                                ..default()
+                            },
+                        ));
                     });
 
                 // Section 5 — confirm CTA. Last DIRECT child of the
@@ -1869,6 +2084,7 @@ fn refresh_lobby_ui_system(
     )>,
     mut selected_portraits: Query<&mut ImageNode, With<LobbySelectedClassIdentityPortrait>>,
     room_list_container: Query<Entity, With<LobbyRoomListContainer>>,
+    bot_controls_container: Query<Entity, With<LobbyBotControlsContainer>>,
 ) {
     if !lobby.is_changed() && !input.is_changed() {
         return;
@@ -1903,7 +2119,72 @@ fn refresh_lobby_ui_system(
         for container in &room_list_container {
             rebuild_room_list_rows(&mut commands, container, &lobby);
         }
+        for container in &bot_controls_container {
+            rebuild_bot_controls_rows(&mut commands, container, &lobby);
+        }
     }
+}
+
+/// PROMPT 1596 — re-populate the contextual bot-controls container with one
+/// Add/Remove button per eligible non-local slot. Mirrors
+/// `rebuild_room_list_rows`: always despawns descendants first so successive
+/// `S2CSlotUpdated` payloads do not accumulate stale buttons. When no slot
+/// is eligible (pre-room, fully human-occupied), the container is left empty
+/// and collapses to zero height (`flex` with no children + `Auto` height).
+fn rebuild_bot_controls_rows(
+    commands: &mut Commands,
+    container_entity: Entity,
+    lobby: &LobbyViewState,
+) {
+    commands
+        .entity(container_entity)
+        .despawn_related::<Children>();
+
+    let controls = lobby_bot_controls_for_slots(&lobby.slots, lobby.local_player_id);
+    if controls.is_empty() {
+        return;
+    }
+
+    commands.entity(container_entity).with_children(|parent| {
+        for control in controls {
+            match control {
+                LobbyBotSlotControl::AddBot { slot } => {
+                    parent.spawn((
+                        LobbyAddBotButton { slot },
+                        LobbyDynamicText::AddBot(slot),
+                        Button,
+                        Interaction::None,
+                        Text::new(format!("Add Bot (seat {slot})")),
+                        lobby_text_font(typography::BODY),
+                        TextColor(Color::srgb(0.98, 0.93, 0.72)),
+                        lobby_button_node(
+                            Val::Px(LOBBY_JOIN_BUTTON_WIDTH_PX),
+                            LOBBY_BUTTON_HEIGHT_PX,
+                        ),
+                        BackgroundColor(Color::srgba(0.17, 0.18, 0.14, 0.95)),
+                        BorderColor::all(Color::srgb(0.65, 0.53, 0.24)),
+                    ));
+                }
+                LobbyBotSlotControl::RemoveBot { slot } => {
+                    parent.spawn((
+                        LobbyRemoveBotButton { slot },
+                        LobbyDynamicText::RemoveBot(slot),
+                        Button,
+                        Interaction::None,
+                        Text::new(format!("Remove Bot (seat {slot})")),
+                        lobby_text_font(typography::BODY),
+                        TextColor(Color::srgb(0.95, 0.82, 0.78)),
+                        lobby_button_node(
+                            Val::Px(LOBBY_JOIN_BUTTON_WIDTH_PX),
+                            LOBBY_BUTTON_HEIGHT_PX,
+                        ),
+                        BackgroundColor(Color::srgba(0.22, 0.13, 0.13, 0.95)),
+                        BorderColor::all(Color::srgb(0.66, 0.34, 0.30)),
+                    ));
+                }
+            }
+        }
+    });
 }
 
 /// PROMPT 1160 — re-populate the room-list container with one entity per row.
@@ -2089,6 +2370,8 @@ fn lobby_dynamic_copy(
             }
         }
         LobbyDynamicText::SelectedClassIdentity => lobby_selected_class_identity_text(lobby, input),
+        LobbyDynamicText::AddBot(slot) => format!("Add Bot (seat {slot})"),
+        LobbyDynamicText::RemoveBot(slot) => format!("Remove Bot (seat {slot})"),
     }
 }
 

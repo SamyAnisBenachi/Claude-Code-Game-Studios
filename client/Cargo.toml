@@ -744,6 +744,14 @@ path = "../tests/integration/playable_client/lobby_entry_test.rs"
 name = "playable_client_lobby_room_browser_test"
 path = "../tests/integration/playable_client/lobby_room_browser_test.rs"
 
+# PROMPT 1596 (BOT-FLOW-LOBBY-ADD-REMOVE-BOT-UX) — contextual Add Bot /
+# Remove Bot lobby controls: pure helper deriving control variants from
+# `LobbyViewState.slots`, session-gated request helpers, and ECS-level
+# spawn + rebuild of the LobbyBotControlsContainer's children.
+[[test]]
+name = "playable_client_lobby_bot_controls_test"
+path = "../tests/integration/playable_client/lobby_bot_controls_test.rs"
+
 [[test]]
 name = "playable_client_lobby_confirm_state_text_test"
 path = "../tests/integration/playable_client/lobby_confirm_state_text_test.rs"
