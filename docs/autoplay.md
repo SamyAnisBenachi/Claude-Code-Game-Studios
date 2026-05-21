@@ -112,7 +112,7 @@ placement, resolution acknowledgements) are blockers tracked in the report.
               v
   production/qa/evidence/autoplay-runs/<timestamp>/
     status.json           (last status snapshot)
-    process.log           (client stdout/stderr if launched via run-autoplay.ps1)
+    process.log           (client stdout/stderr if launched via Run-AutoplaySmoke.ps1)
     driver-timeline.jsonl (one row per driver tick)
     screenshots/<seq>.png (one PNG per screenshot RPC)
 ```
@@ -146,11 +146,11 @@ All requests are HTTP `POST /` with JSON-RPC 2.0 envelope. Methods:
 
 | Method | Params | Result |
 | --- | --- | --- |
-| `autoplay/capabilities` | — | `{ version: u32, methods: { … }, env: {…} }` |
+| `autoplay/capabilities` | — | `{ version: u32, methods: { … }, input: {…}, invariants: string }` |
 | `autoplay/status` | — | snapshot (see schema in code) |
-| `autoplay/input` | `{ keys?: [string], mouse_buttons?: [string], cursor?: { screen: [f32,f32] }, scroll?: { x, y } }` | `{ queued: u64 }` |
+| `autoplay/input` | `{ keys_down?: [string], keys_up?: [string], mouse_down?: [string], mouse_up?: [string], cursor?: { screen: [f32,f32] }, scroll?: [f32, f32] }` | `{ queued: u64 }` |
 | `autoplay/clear_input` | — | `{ queued: u64 }` |
-| `autoplay/screenshot` | `{ reason?: string }` | `{ queued: u64, path: string }` |
+| `autoplay/screenshot` | `{ reason?: string }` | `{ queued: u64, relative_path: string }` |
 
 Adding methods is allowed; renaming/removing methods is a breaking change
 that requires bumping the `version` field returned by `capabilities` and
@@ -199,7 +199,7 @@ ranges.
 | --- | --- |
 | `QASnapshotPlugin` (F9 in-game capture, `CCGS_QA_SNAPSHOT=1`) | **Independent.** The QA snapshot is human-operated, captures both a PNG and a structured `snapshot.json` of ECS state, and is gated by `CCGS_QA_SNAPSHOT`. Autoplay's screenshot is just a PNG of the primary window. Both may coexist in the same process. The driver can press `F9` via `autoplay/input` to trigger a QA snapshot when a recipe wants a labelled artifact. |
 | `tools/two-client-runtime/` | **Different layer.** Two-client-runtime ticks server + 2 clients in-process via `App::update()` for protocol-level harness work. Autoplay drives the **windowed** client like a human. They do not compete. |
-| `tools/dev-launcher-app/` | **Compatible.** The launcher app can pass `--features autoplay-remote` + `CCGS_AUTOPLAY=1` when spawning the client. A future dev-launcher job kind ("autoplay run") would call `tools/autoplay/run-autoplay.ps1`. |
+| `tools/dev-launcher-app/` | **Compatible.** The launcher app can pass `--features autoplay-remote` + `CCGS_AUTOPLAY=1` when spawning the client. A future dev-launcher job kind ("autoplay run") would call `tools/autoplay/Run-AutoplaySmoke.ps1`. |
 | Server-side bot participant (PROMPTs 1514 / 1531 / 1582) | **Complementary.** The bot drives the *server* peer; autoplay drives the *human* peer. Together they get one autoplay-driven client + one bot through phases that both sides currently support (Lobby, DraftInitial, DraftAuction decisions). |
 
 ## Verification policy
@@ -208,6 +208,6 @@ ranges.
 - `cargo check -p client --features autoplay-remote` whenever the harness
   code changes. Do NOT add the workspace-wide test suite to the autoplay
   gate; broad verification is a separate VERIFY lane.
-- Runtime smoke when practical: `tools/autoplay/run-smoke.ps1` launches the
+- Runtime smoke when practical: `tools/autoplay/Run-AutoplaySmoke.ps1` launches the
   client, polls `autoplay/status`, sends one input frame, clears, requests a
   screenshot, and exits non-zero on any RPC failure.
