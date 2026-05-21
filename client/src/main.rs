@@ -99,5 +99,11 @@ fn main() {
     app.add_plugins(PresentationPlugin);
     app.add_plugins(LobbyUiPlugin);
     app.add_plugins(AssetWiringPlugin);
+    // PROMPT 1595 -- dev-only autoplay/automation harness. The plugin is a
+    // no-op at runtime unless `CCGS_AUTOPLAY=1` is set in the process
+    // environment. See `docs/autoplay.md` for the hard invariants
+    // (low-level input only; no gameplay mutation).
+    #[cfg(feature = "autoplay-remote")]
+    app.add_plugins(client::autoplay::AutoplayPlugin);
     app.run();
 }
