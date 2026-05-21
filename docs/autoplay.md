@@ -1,6 +1,7 @@
-# Autoplay Harness — Architecture (First Slice)
+# Autoplay Harness — Architecture
 
 Status: First slice landed by PROMPT 1595 (`work/bevy-autoplay-bootstrap-1595`).
+Recipe library v1 layered on top by PROMPT 1609.
 Skill: see `skills/ccgs-autoplay/SKILL.md` for the project-local runbook.
 
 This document is the architecture/policy spec for the in-repo autoplay harness.
@@ -62,7 +63,7 @@ Hard invariants — enforced by code review on every autoplay change:
 | Local docs / runbook | ✅ | — |
 | Project-local autoplay skill | ✅ | — |
 | Launcher / RPC helper scripts | ✅ | — |
-| Internal recipe library | ❌ | yes (next prompt) |
+| Internal recipe library | ✅ (PROMPT 1609) | — |
 | Headless multi-client matrix | ❌ | yes |
 | Capture (video / audio / timeline) | ❌ | `liv-autoplay-capture` |
 | Dashboard / run browser | ❌ | `liv-autoplay-dashboard` |
@@ -81,9 +82,14 @@ The first useful QA target this slice enables is:
   action.
 
 End-to-end "drive a full game lobby → result screen" is **not** claimed by
-this slice. The driver substrate exists; recipe authoring is the next
-prompt's job, and missing/broken bot phases (auction bid ingestion,
-placement, resolution acknowledgements) are blockers tracked in the report.
+PROMPT 1595 alone. PROMPT 1609 ships the recipe library that composes
+phase recipes into a `full-game` path. The composite is gated on
+`CCGS_AUTOPLAY_BOT_ROOM_READY=1` (PROMPT 1607's bot-vs-bot soak room)
+and emits a `local.block` row + driver exit code 4 when that prerequisite
+is missing — so the recipe never silently "passes" against an empty
+opponent slot. The phase sub-recipes (`lobby-create`, `class-select`,
+`draft-auction-probe`, `placement-drag-probe`) run independently against
+a human peer for partial coverage.
 
 ## Architecture
 
@@ -164,9 +170,83 @@ is `YYYYMMDD-HHMMSS-Z` in UTC. Override with `CCGS_AUTOPLAY_ARTIFACT_DIR=<path>`
 - `status.json` — last `autoplay/status` snapshot, rewritten on every poll.
 - `process.log` — client stdout+stderr, written by the launcher script.
 - `driver-timeline.jsonl` — one JSON row per driver tick:
-  `{ elapsed_secs, recipe, status }`.
+  `{ tick, recipe, elapsed_secs, status, action_results }`.
+- `checkpoints.jsonl` — one JSON row per recipe `local.*` pseudo-action
+  (`local.checkpoint`, `local.note`, `local.block`). Created lazily; absent
+  if the recipe never emits any.
+- `capabilities.json` — one-shot capability probe at driver startup.
+- `driver.log` — human-readable progress log.
 - `screenshots/<seq>.png` — one PNG per `autoplay/screenshot` RPC.
 - `screenshots/<seq>.json` — sidecar with `{ requested_at, captured_at, reason }`.
+
+## Recipe library (PROMPT 1609)
+
+Recipes live under `tools/autoplay/recipes/` and are discovered by the
+registry in `tools/autoplay/recipes/__init__.py`. The driver loads a
+recipe by name with `--recipe <name>`; the registered set is:
+
+| Recipe | Phase | Checkpoints |
+| --- | --- | --- |
+| `smoke` | substrate probe | — |
+| `idle` | observability soak | — |
+| `lobby-create` | lobby Create + Confirm | `lobby-loaded`, `lobby-confirmed` |
+| `class-select` | class pick + Confirm | `class-select-loaded`, `class-confirmed` |
+| `draft-auction-probe` | shop click → auction bid → ready | `shop-loaded`, `shop-slot-clicked`, `auction-loaded`, `auction-ready` |
+| `placement-drag-probe` | hand → board drag, Submit | `placement-loaded`, `placement-dragged`, `placement-submitted` |
+| `full-game` | composite, requires PROMPT 1607 soak room | all of the above + `full-game-resolution` |
+
+### How to run
+
+```sh
+python tools/autoplay/driver.py --list-recipes
+python tools/autoplay/driver.py --recipe lobby-create
+python tools/autoplay/driver.py --recipe full-game --timeout 300
+```
+
+### Driver pseudo-actions
+
+`RecipeBuilder` exposes three pseudo-methods that never hit the wire;
+the driver consumes them locally and writes them to
+`checkpoints.jsonl`:
+
+| Method | Purpose | Driver effect |
+| --- | --- | --- |
+| `local.checkpoint` | Mark a phase boundary; optionally also screenshot. | Append `checkpoints.jsonl` row + (by default) emit `autoplay/screenshot`. |
+| `local.note` | Free-form annotation (e.g. "env override failed parse"). | Append `checkpoints.jsonl` row. |
+| `local.block` | Recipe cannot proceed (upstream prerequisite missing). | Append `checkpoints.jsonl` row, flip exit code to 4, stop the run. |
+
+The driver rejects any recipe action whose `method` is outside the
+union of `ALLOWED_RPC_METHODS` ∪ `LOCAL_METHODS` before sending the
+first RPC. This is the second layer of the "no semantic verbs"
+invariant; the Rust harness is the first.
+
+### Coordinate overrides
+
+Phase recipes target UI buttons at default fractional positions
+(centre column / lower third). Override per-key:
+
+```sh
+$env:CCGS_AUTOPLAY_LOBBY_CREATE_BTN  = "0.50,0.60"
+$env:CCGS_AUTOPLAY_LOBBY_CONFIRM_BTN = "0.50,0.88"
+# ...see tools/autoplay/README.md for the full list
+```
+
+Malformed overrides emit a `local.note` row recording the parse
+failure and fall back to the default.
+
+### Blocked steps as of PROMPT 1609
+
+| Recipe | Blocker | Detection |
+| --- | --- | --- |
+| `full-game` | PROMPT 1607 bot-vs-bot soak room (`Start-BotVsBotSoak.ps1`) not yet on main. | If `CCGS_AUTOPLAY_BOT_ROOM_READY != "1"`, recipe emits `local.block` and the driver exits 4. |
+| Auction bid acknowledgement | No observability surface for "bid accepted"; relies on a fixed `CCGS_AUTOPLAY_AUCTION_BID_WAIT` tick budget. | Waits then proceeds; reviewer confirms outcome from the post-bid checkpoint screenshot. |
+| Placement accept/reject | No autoplay-visible signal for accepted submission; same wait-then-screenshot strategy. | Reviewer confirms outcome from `placement-submitted` screenshot. |
+| Resolution / round-end | No autoplay observability for round transitions. | `full-game-resolution` checkpoint marks the wall-clock end of the recipe, not a real round boundary. |
+
+These blockers are by design — the autoplay surface deliberately does
+not expose gameplay state. Upgrading detection beyond
+checkpoint-screenshot review is the job of the QA snapshot harness
+(`F9` / `CCGS_QA_SNAPSHOT=1`), not autoplay.
 
 ## Env vars
 
@@ -175,6 +255,11 @@ is `YYYYMMDD-HHMMSS-Z` in UTC. Override with `CCGS_AUTOPLAY_ARTIFACT_DIR=<path>`
 | `CCGS_AUTOPLAY` | unset (off) | `1` enables the RPC thread at plugin build time. |
 | `CCGS_AUTOPLAY_PORT` | `15873` | TCP port for the RPC server. `0` lets the OS pick. |
 | `CCGS_AUTOPLAY_ARTIFACT_DIR` | `production/qa/evidence/autoplay-runs/<timestamp>` | Artifact root. |
+| `CCGS_AUTOPLAY_DRIVER_ARTIFACT_DIR` | `production/qa/evidence/autoplay-runs/driver` | Override the driver-side artifact dir (used when the driver is launched manually, outside `Run-AutoplaySmoke.ps1`). |
+| `CCGS_AUTOPLAY_BOT_ROOM_READY` | unset | Set to `1` once PROMPT 1607 bot-vs-bot soak room is live; required by the `full-game` recipe. |
+| `CCGS_AUTOPLAY_<KEY>` (button frac) | per `_coords.DEFAULTS` | Per-recipe fractional coordinate overrides; see `tools/autoplay/README.md`. |
+| `CCGS_AUTOPLAY_AUCTION_MOUNT_WAIT` | 12 ticks | Ticks the `draft-auction-probe` recipe waits after the shop confirm click before clicking the bid CTA. |
+| `CCGS_AUTOPLAY_AUCTION_BID_WAIT` | 10 ticks | Ticks the `draft-auction-probe` recipe waits between the bid click and the ready click. |
 
 `15873` was chosen to avoid `15702` (the default `bevy_remote` port we may
 adopt later for the diagnostic surface) and to stay outside common dev port
@@ -184,7 +269,7 @@ ranges.
 
 | Item | Why deferred | Next prompt should… |
 | --- | --- | --- |
-| Internal recipe library (e.g. "lobby-confirm-then-ready") | Recipes need to be small and observable; first prove the substrate works. | Author `tools/autoplay/recipes/*.py` and a recipe schema. |
+| Internal recipe library (e.g. "lobby-confirm-then-ready") | Landed in PROMPT 1609. | Iterate on recipe coverage as new UI lands; add `--checkpoints-only` mode if reviewers want timeline-only runs. |
 | Headless mode | Requires `cargo run -p client --no-default-features --features autoplay-remote,headless` and a headless render target; no `headless` feature exists yet. | Add a `headless` Cargo feature and document a wgpu null-backend run. |
 | Multi-client matrix | Requires per-instance ports + per-instance artifact dirs; substrate already accepts `CCGS_AUTOPLAY_PORT`/`CCGS_AUTOPLAY_ARTIFACT_DIR` overrides. | Drive 2 clients from one orchestrator script using `--port` flags. |
 | Video / audio capture | Out of scope for this skill. | Use `liv-autoplay-capture` when adopted. |
