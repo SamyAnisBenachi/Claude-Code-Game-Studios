@@ -1,5 +1,5 @@
 //! Bot participant action loop, Wave 1 (PROMPT 1531) + Wave 2 auction bid
-//! (PROMPT 1582).
+//! (PROMPT 1582) + Wave 2.5 auction bid funnel (PROMPT 1598).
 //!
 //! After [`bot_lobby_auto_confirm`](super::lobby_loop::bot_lobby_auto_confirm)
 //! lifts a room into `GameActive`, this module advances the bot through the
@@ -8,18 +8,21 @@
 //! - **Draft (initial & shop):** emit a deterministic `DraftReadySignal` so the
 //!   RSM's `DRAFT_* -> Placement|Auction` gate fires without waiting on a
 //!   non-existent human ready click.
-//! - **Auction (Wave 2):** deterministic bid decision behaviour. The bot reads
-//!   `AuctionState` / `PlayerEconomies` / `PlayerHands` (all read-only) and
-//!   records one `BotDecisionKind::AuctionBid { card_id, amount, valuation }`
-//!   per `(player, round, current_price)` tuple when the heuristic decides to
-//!   bid, or `BotDecisionKind::AuctionPass { reason }` with a precise reason
-//!   literal otherwise. Wave 2 owns the **decision** only; submitting the bid
-//!   onto the auction wire (`AuctionBid` message integration) is deferred to a
-//!   later wave per PROMPT 1582 owned-scope (`server/src/feature/bot/*` and
-//!   tests only — no auction-module edits). When `AuctionState` is absent
-//!   (test scaffolding that bypasses the auction plugin) the Wave-1
-//!   "pass once per round" fallback still applies so legacy tests continue to
-//!   compile against the new branch.
+//! - **Auction (Wave 2 + Wave 2.5):** deterministic bid decision behaviour.
+//!   The bot reads `AuctionState` / `PlayerEconomies` / `PlayerHands` (all
+//!   read-only) and records one
+//!   `BotDecisionKind::AuctionBid { card_id, amount, valuation }` per
+//!   `(player, round, current_price)` tuple when the heuristic decides to bid,
+//!   or `BotDecisionKind::AuctionPass { reason }` with a precise reason
+//!   literal otherwise. **Wave 2.5 (PROMPT 1598)** funnels the chosen bid
+//!   amount into the server-internal `PendingBotBids` queue so
+//!   `auction_tick_system` drains it alongside network `C2SPlaceBid` and the
+//!   authoritative `process_bid_batch` validation applies uniformly — same
+//!   price floor, leader gate, gold reservation, hand-full gate, expiry gate.
+//!   No protocol message is added; bots have no `PeerId` and never produce a
+//!   `C2SPlaceBid`. When `AuctionState` / `PendingBotBids` is absent (test
+//!   scaffolding that bypasses the auction plugin) the Wave-1 "pass once per
+//!   round" fallback still applies so legacy tests continue to compile.
 //! - **Placement:** submit an empty (no-op) placement as a fail-safe so the
 //!   `Placement -> Resolution` gate fires without waiting on the bot to place
 //!   units. Heuristic placement (legal-cell pick) is explicitly deferred to a
@@ -56,7 +59,7 @@ use crate::core::rsm::{
 };
 use crate::core::session::config::SessionConfig;
 use crate::feature::acquisition::{PlayerHands, MAX_HAND_SIZE};
-use crate::feature::auction::{AuctionPhase, AuctionState};
+use crate::feature::auction::{AuctionBid, AuctionPhase, AuctionState, PendingBotBids};
 use crate::feature::board::PlacementSubmissionReceived;
 use crate::feature::bot::state::{
     BotDecisionEntry, BotDecisionKind, BotDecisionLog, BotPlayers,
@@ -230,6 +233,13 @@ fn run_auction_branch(
     decision_log: &mut BotDecisionLog,
     auction_pass_logged: &mut HashSet<(PlayerId, u32)>,
     auction_round_ctx: &mut HashMap<(PlayerId, u32), AuctionRoundContext>,
+    // PROMPT 1598: when `Some`, every `AuctionDecision::Bid` is funnelled
+    // into the auction module's server-internal queue so the bot bid is
+    // validated and applied by `process_bid_batch` on the same tick (one
+    // frame of MessageWriter latency notwithstanding). When `None` (legacy
+    // tests that bypass the auction plugin) Wave-2 decision-only behaviour
+    // is preserved.
+    mut pending_bot_bids: Option<&mut PendingBotBids>,
 ) {
     // Wave-1 fallback when AuctionState is absent (legacy tests, pre-auction
     // scaffolds). Preserves the "pass once per round" contract.
@@ -355,6 +365,21 @@ fn run_auction_branch(
                     seed,
                     seed_word_counter: counter,
                 });
+                // PROMPT 1598 (Wave 2.5): funnel the chosen bid into the
+                // server-internal queue drained by `auction_tick_system`.
+                // `peer_id: None` — bots have no client peer; the auction
+                // outbox layer broadcasts acceptance to connected peers and
+                // skips the unicast `S2CCardAcquired` (no peer to send to)
+                // without affecting authoritative state (hand_push + gold
+                // settlement still run in `settle_expired_auction`).
+                let queued = pending_bot_bids.is_some();
+                if let Some(queue) = pending_bot_bids.as_mut() {
+                    queue.push(AuctionBid {
+                        bidder: *player_id,
+                        peer_id: None,
+                        amount,
+                    });
+                }
                 tracing::info!(
                     target: "server::bot",
                     bot_player_id = ?player_id,
@@ -363,7 +388,8 @@ fn run_auction_branch(
                     amount,
                     valuation,
                     current_price = auction.current_price,
-                    "bot_action_loop: auction bid decision (decision-only; not wired to auction yet)"
+                    queued,
+                    "bot_action_loop: auction bid funnelled into PendingBotBids (Wave 2.5)"
                 );
             }
             AuctionDecision::Pass { reason } => {
@@ -429,6 +455,10 @@ pub fn bot_action_loop(
     mut decision_log: ResMut<BotDecisionLog>,
     mut ready_signals: MessageWriter<DraftReadySignal>,
     mut placement_submissions: MessageWriter<PlacementSubmissionReceived>,
+    // PROMPT 1598: bot bid funnel destination. `Option<ResMut<_>>` so
+    // legacy tests that bypass `AuctionPlugin` still compile (the bot
+    // logs an auction pass decision; nothing is funnelled).
+    mut pending_bot_bids: Option<ResMut<PendingBotBids>>,
     mut auction_pass_logged: Local<HashSet<(PlayerId, u32)>>,
     mut auction_round_ctx: Local<HashMap<(PlayerId, u32), AuctionRoundContext>>,
 ) {
@@ -493,6 +523,7 @@ pub fn bot_action_loop(
                 &mut decision_log,
                 &mut auction_pass_logged,
                 &mut auction_round_ctx,
+                pending_bot_bids.as_deref_mut(),
             );
         }
         RoundPhase::Placement => {

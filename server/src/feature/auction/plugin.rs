@@ -5,7 +5,7 @@ use crate::core::rsm::{AuctionSettled, DraftStarted, RsmSet};
 use crate::core::session::{reconnect_snapshot_system, SessionSystemSet};
 use crate::feature::auction::{
     auction_tick_system, clear_auction_pool_on_game_over, initialize_auction_pool_on_draft_started,
-    AuctionCardDrawFixture, AuctionPool, AuctionState, S2CAuctionCard,
+    AuctionCardDrawFixture, AuctionPool, AuctionState, PendingBotBids, S2CAuctionCard,
 };
 
 /// Auction system ordering labels.
@@ -22,6 +22,10 @@ impl Plugin for AuctionPlugin {
         app.insert_resource(AuctionState::default())
             .init_resource::<AuctionPool>()
             .init_resource::<AuctionCardDrawFixture>()
+            // PROMPT 1598: bot bid funnel — initialized here so any feature
+            // (bot action loop today, future AI agents tomorrow) can push
+            // bids that flow through `process_bid_batch` alongside humans.
+            .init_resource::<PendingBotBids>()
             .add_message::<AuctionSettled>()
             .add_message::<DraftStarted>()
             .add_message::<S2CAuctionCard>()

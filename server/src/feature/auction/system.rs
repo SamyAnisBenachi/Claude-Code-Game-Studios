@@ -98,6 +98,18 @@ pub struct AuctionStaticData<'w> {
     config: Res<'w, GameConfig>,
 }
 
+/// Per-frame bid intake bundle. Bundled into a `SystemParam` (PROMPT 1598)
+/// so adding `PendingBotBids` does not push `auction_tick_system` past
+/// Bevy's 16-arg `IntoSystem` ceiling.
+#[derive(SystemParam)]
+pub struct AuctionBidIntake<'w, 's> {
+    bid_receivers: Query<'w, 's, (&'static RemoteId, &'static mut MessageReceiver<C2SPlaceBid>)>,
+    /// Server-internal queue of bot-originated bids. `Option<ResMut<_>>` so
+    /// test scaffolds that bypass `AuctionPlugin` still compile (the bot
+    /// just never funnels a bid).
+    pending_bot_bids: Option<ResMut<'w, PendingBotBids>>,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum AuctionDrawOutcome {
     Drawn(CardId),
@@ -136,6 +148,49 @@ pub struct AuctionCardAcquiredDispatch {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct AuctionSettledDispatch {
     pub message: S2CAuctionSettled,
+}
+
+/// Server-internal queue of auction bids whose origin is the bot action loop
+/// rather than a network `C2SPlaceBid` message (PROMPT 1598 — bot-flow auction
+/// bid funnel Wave 2.5).
+///
+/// PROMPT 1582 added the bot's auction *decision* heuristic but explicitly
+/// deferred wire integration. Bots have no `PeerId` and never produce a
+/// `C2SPlaceBid` over the network, so this resource is the single intake
+/// channel for bot-originated `AuctionBid` items. Drained every frame by
+/// `auction_tick_system` and merged with the network bid batch so the
+/// authoritative `process_bid_batch` validation (price floor, leader gate,
+/// gold reservation, hand-full gate, expiry gate) applies uniformly to bots
+/// and humans alike. No new protocol message is introduced and no auction
+/// rule is shortcut by this funnel.
+///
+/// Bid items pushed here carry `peer_id: None`; the outbox layer's
+/// `peer_for_player` / `accepted_bid_target` already handle the no-peer case
+/// (acceptance broadcasts to all connected peers; the bot has no client to
+/// notify so a missing peer simply drops the unicast).
+#[derive(Resource, Clone, Debug, Default)]
+pub struct PendingBotBids {
+    bids: Vec<AuctionBid>,
+}
+
+impl PendingBotBids {
+    /// Enqueue a bot-originated bid for the next `auction_tick_system` drain.
+    pub fn push(&mut self, bid: AuctionBid) {
+        self.bids.push(bid);
+    }
+
+    /// Drain all queued bids in insertion order, leaving the queue empty.
+    pub fn drain(&mut self) -> Vec<AuctionBid> {
+        std::mem::take(&mut self.bids)
+    }
+
+    pub fn len(&self) -> usize {
+        self.bids.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.bids.is_empty()
+    }
 }
 
 #[derive(Resource, Clone, Debug, Default)]
@@ -220,7 +275,12 @@ pub fn auction_tick_system(
     time_real: Option<Res<Time<bevy::time::Real>>>,
     connections: Option<Res<PlayerConnectionMap>>,
     mut reconnect_tracker: Option<ResMut<ReconnectTracker>>,
-    mut bid_receivers: Query<(&RemoteId, &mut MessageReceiver<C2SPlaceBid>)>,
+    // PROMPT 1598: bundled bid intake — network `C2SPlaceBid` receivers
+    // plus the server-internal `PendingBotBids` queue. Drained on the same
+    // frame so `process_bid_batch` validates bot bids under the exact same
+    // rules as human bids (price floor, leader gate, gold, hand size,
+    // expiry).
+    mut intake: AuctionBidIntake,
     server: Query<&Server>,
     mut sender: Option<ServerMultiMessageSender>,
     mut writers: AuctionMessageWriters,
@@ -344,7 +404,23 @@ pub fn auction_tick_system(
         handle_abort_auction(&mut auction, &mut economies);
     }
 
-    let bids = drain_bids(&mut bid_receivers, connections.as_deref());
+    let mut bids = drain_bids(&mut intake.bid_receivers, connections.as_deref());
+    // PROMPT 1598: append bot bids after network bids so a human bid placed in
+    // the same frame races first against `current_price`. Either ordering is
+    // correct under `process_bid_batch` validation (a stale bot bid that no
+    // longer clears the +1 floor is rejected as `AmountTooLow`), but
+    // network-first preserves human latency parity with the pre-1598 path.
+    if let Some(pending) = intake.pending_bot_bids.as_deref_mut() {
+        let drained = pending.drain();
+        if !drained.is_empty() {
+            tracing::debug!(
+                target: "server::game",
+                bot_bid_count = drained.len(),
+                "auction_tick_system: draining PendingBotBids into bid batch"
+            );
+            bids.extend(drained);
+        }
+    }
     let mut frame_outbox = AuctionNetworkOutbox::default();
     let mut frame_gold_broadcasts = Vec::new();
     process_bid_batch(
