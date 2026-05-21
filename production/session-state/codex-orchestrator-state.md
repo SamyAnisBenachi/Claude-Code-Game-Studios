@@ -1,5 +1,72 @@
 # Codex Orchestrator State
 
+## Current Resume Snapshot (2026-05-21, post-1613 autoplay recipe mainland)
+
+Source-of-truth at this snapshot:
+
+- Root checkout: `D:\_DEV\Work\Claude-Code-Game-Studios`
+- Root branch: `main`
+- Root/source commit: `origin/main@6e16951f5f8f5e63f98e3754a54934f1ddb3b9b0`
+  (`PROMPT 1613 Autoplay recipe library main-ready refresh`)
+- Root caveat: `.claude/settings.json` is local dispatcher/runtime churn and
+  must stay out of commits unless intentionally updating hooks.
+
+Bot/autoplay state:
+
+- Bot participant flow is on main through the Wave A/B/C, Wave 1, Wave 2, and
+  Wave 3 sequence. Notable landed points: Add/Remove Bot lobby UX, server bot
+  QA snapshot / decision JSONL, auction bid funnel, bot participant action loop,
+  and bot placement heuristic.
+- Bot-vs-bot soak entrypoint is on main via PROMPT 1607 and focused verify
+  PROMPT 1610 PASS. Files include the debug-only lobby bot-room path,
+  `tools/dev-launcher/Start-BotVsBotSoak.ps1`, `start-bot-vs-bot-soak.bat`,
+  and `tests/integration/playable_client/lobby_create_bot_room_test.rs`.
+- Bot/autoplay sprint-story ledger is on main via PROMPT 1611. The new
+  `production/epics/bot-and-autoplay/` epic contains five stories:
+  bot room participant, bot-vs-bot soak entrypoint, autoplay recipe library v1,
+  autoplay-vs-bot QA flow, and bot debug overlay. Sprint 19 is NOT activated.
+- Autoplay bootstrap is on main via PROMPT 1601; docs/schema fix is on main via
+  PROMPT 1606; recipe library v1 is on main via PROMPT 1613. The recipe library
+  registers 7 recipes: `class-select`, `draft-auction-probe`, `full-game`,
+  `idle`, `lobby-create`, `placement-drag-probe`, and `smoke`.
+- Autoplay remains a real UI-input automation layer: low-level keyboard,
+  mouse, cursor, screenshot, status, and checkpoint flow only. It must not add
+  semantic gameplay mutation endpoints or bypass the UI/game rules.
+
+Active / waiting workers at pause:
+
+| Prompt | State | Notes |
+|---|---|---|
+| `1614` | RUNNING | Bot debug overlay implementation from PROMPT 1604 contract. Debug/observability only; should be dev-gated and avoid release UI changes by default. |
+| `1615` | RUNNING | Runtime verify lane for autoplay-vs-bot / recipe behavior. Should run focused recipe/runtime checks only, no broad Cargo. |
+| `1616` | RUNNING | Bot/autoplay QA companion agent for direct user discussion/guidance. Advisory only unless explicitly re-tasked. |
+
+Recent dispositions:
+
+| Prompt | Result | Notes |
+|---|---|---|
+| `1604` | COMPLETE / CLEARED | Bot debug overlay data contract consumed; implementation follow-up is `1614`. |
+| `1607` | MAIN-LANDED / CLEARED | Bot-vs-bot soak entrypoint integration. Advanced main `576fbe8c -> ee9109c8`. |
+| `1608` | SHIPPED / CLEARED | Bot/autoplay story ledger authored; integrated by `1611`. |
+| `1609` | SHIPPED / CLEARED | Autoplay recipe library authored; integrated by `1613`. |
+| `1610` | PASS / CLEARED | Focused verify for two-bot soak entrypoint. |
+| `1611` | MAIN-LANDED / CLEARED | Bot/autoplay sprint-story ledger. Advanced main `ee9109c8 -> 271f21bc`. |
+| `1612` | SUPERSEDED / CLEARED | Stale autoplay recipe integration based on `ee9109c8`; not mainlanded because it predated `1611`. |
+| `1613` | MAIN-LANDED / CLEARED | Autoplay recipe library refreshed after `1611`. Advanced main `271f21bc -> 6e16951f`. |
+
+Immediate next steps after token/context reset:
+
+1. Wait for `1614` and `1615` outputs. Do not launch additional broad work
+   until these return or the user explicitly asks. `1616` is available as the
+   user-facing bot/autoplay QA companion only.
+2. If `1614` ships an implementation branch, refresh/integrate it, then run a
+   focused verify lane for debug overlay protocol/UI/snapshot behavior.
+3. If `1615` passes runtime recipe checks, record autoplay-vs-bot QA readiness
+   and decide whether to run a longer bot/autoplay soak. If it fails or blocks,
+   launch a focused repair from the exact failing recipe/output.
+4. Keep Cargo-heavy verification in dedicated lanes only. Implementation
+   workers should not all run broad tests.
+
 ## Current Resume Snapshot (2026-05-21, post-1608 bot/autoplay ledger)
 
 Ledger-only refresh by PROMPT 1608. Source-of-truth at this snapshot:
