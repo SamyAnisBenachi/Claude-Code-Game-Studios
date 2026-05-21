@@ -48,6 +48,12 @@ ui_picking = ["bevy/ui_picking", "bevy/bevy_picking"]
 # every launch). Build with `cargo build -p client --features wgpu-validation`
 # when debugging GPU issues to restore wgpu's `from_build_config()` defaults.
 wgpu-validation = []
+# PROMPT 1595 -- dev-only autoplay/automation harness. OFF by default; opt in
+# with `cargo run -p client --features autoplay-remote` plus the runtime env
+# var `CCGS_AUTOPLAY=1`. The harness exposes a localhost JSON-RPC server that
+# injects low-level input only (no gameplay mutation). See `docs/autoplay.md`
+# and `skills/ccgs-autoplay/SKILL.md`.
+autoplay-remote = []
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 js-sys = "0.3"
