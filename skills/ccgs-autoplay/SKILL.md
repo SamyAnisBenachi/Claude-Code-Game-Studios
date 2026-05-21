@@ -14,15 +14,19 @@ this skill from the repo root when **operating** the harness.
 - Manual remote autoplay (RPC): **✅ landed** (PROMPT 1595)
 - Continuous driver loop: **✅ landed** (`tools/autoplay/driver.py`)
 - Smoke launcher: **✅ landed** (`tools/autoplay/Run-AutoplaySmoke.ps1`)
-- Internal recipes (`smoke`, `idle`): **✅ landed** (Python; extend via `RECIPES` dict)
+- Recipe library v1: **✅ landed** (PROMPT 1609; `tools/autoplay/recipes/`)
+  - `smoke`, `idle` — substrate probes
+  - `lobby-create`, `class-select`, `draft-auction-probe`, `placement-drag-probe` — per-phase
+  - `full-game` — composite (gated on PROMPT 1607 bot-vs-bot soak room)
 - Screenshots: **✅ landed** (`autoplay/screenshot` → `<artifact-dir>/screenshots/<seq>.png`)
+- Checkpoints (`checkpoints.jsonl`): **✅ landed** (PROMPT 1609; phase boundaries + blocker rows)
 - Headless mode: **❌ deferred** (no `headless` Cargo feature yet)
 - Multi-client matrix: **❌ deferred** (substrate supports per-instance ports already)
 - Video / audio capture: **❌ deferred** (`liv-autoplay-capture` when adopted)
 - Dashboard: **❌ deferred** (`liv-autoplay-dashboard` when adopted)
-- Bot-vs-driven full-flow recipe: **❌ deferred** (substrate ready; missing
-  server-side bot ingestion for auction bids, placement submissions, and
-  resolution acknowledgement — see "Known gaps")
+- PROMPT 1607 bot-vs-bot soak room: **❌ not on main**; `full-game` recipe
+  emits `local.block` + driver exits with code 4 until
+  `CCGS_AUTOPLAY_BOT_ROOM_READY=1` is set against a live soak room.
 
 ## Fast path
 
@@ -35,7 +39,10 @@ pwsh -File tools/autoplay/Run-AutoplaySmoke.ps1
 Run the autoplay loop against an already-running client:
 
 ```sh
+python tools/autoplay/driver.py --list-recipes
 python tools/autoplay/driver.py --port 15873 --recipe smoke --ticks 20 --hz 5
+python tools/autoplay/driver.py --recipe lobby-create
+python tools/autoplay/driver.py --recipe full-game --timeout 300
 ```
 
 One-shot status / screenshot / input:
@@ -57,9 +64,19 @@ production/qa/evidence/autoplay-runs/<timestamp>/
   capabilities.json        # one-shot capability probe (driver only)
   driver-timeline.jsonl    # one row per driver tick (driver only)
   driver.log               # human-readable driver progress (driver only)
+  checkpoints.jsonl        # one row per local.checkpoint / local.note / local.block (PROMPT 1609)
   screenshots/000000.png
   screenshots/000000.json  # sidecar: { seq, reason, requested_at_unix_ms }
 ```
+
+### Driver exit codes
+
+| Code | Meaning |
+| --- | --- |
+| 0 | recipe completed cleanly (or hit `--timeout`) |
+| 1 | RPC error during the run |
+| 2 | RPC server never bound during `--startup-grace` |
+| 4 | recipe emitted `local.block` — upstream prerequisite missing |
 
 Override the artifact root with `CCGS_AUTOPLAY_ARTIFACT_DIR=<path>` before
 launching the client, or pass `-ArtifactDir <path>` to the smoke script.
@@ -115,9 +132,30 @@ Optional env vars:
 
 ### Adding a recipe
 
-Edit `tools/autoplay/driver.py`. Recipes are Python functions registered
-in `RECIPES`; each returns a list of `{ tick, method, params }` actions.
-Recipes may only call the methods listed above.
+Recipes are one Python module per recipe under
+`tools/autoplay/recipes/`. Each module exposes `NAME`, `DESCRIPTION`,
+and `build(ctx) -> list[dict]`; register it in
+`tools/autoplay/recipes/__init__.py`. Use the `RecipeBuilder`
+primitives from `recipes._builder` (click, drag, press, checkpoint,
+note, block); the driver rejects any action whose `method` is outside
+the autoplay allowlist or the `local.*` pseudo-method set.
+
+### Recipe library
+
+| Recipe | Phase | Checkpoints |
+| --- | --- | --- |
+| `smoke` | substrate probe | — |
+| `idle` | observability soak | — |
+| `lobby-create` | lobby Create + Confirm | `lobby-loaded`, `lobby-confirmed` |
+| `class-select` | class pick + Confirm | `class-select-loaded`, `class-confirmed` |
+| `draft-auction-probe` | shop click → auction bid → ready | `shop-loaded`, `shop-slot-clicked`, `auction-loaded`, `auction-ready` |
+| `placement-drag-probe` | hand → board drag, Submit | `placement-loaded`, `placement-dragged`, `placement-submitted` |
+| `full-game` | composite, gated by PROMPT 1607 | all of the above + `full-game-resolution` |
+
+The `full-game` recipe requires the PROMPT 1607 bot-vs-bot soak room.
+Until that lane lands, set `CCGS_AUTOPLAY_BOT_ROOM_READY=1` only when
+running against a live soak instance; otherwise the recipe writes a
+`local.block` row to `checkpoints.jsonl` and the driver exits 4.
 
 ## Remote surface
 
