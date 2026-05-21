@@ -416,3 +416,8 @@ path = "../tests/unit/bot/bot_foundation_state_test.rs"
 [[test]]
 name = "bot_lobby_loop_test"
 path = "../tests/unit/bot/bot_lobby_loop_test.rs"
+
+# PROMPT 1582 — bot Wave 2 auction bid decision heuristic.
+[[test]]
+name = "bot_auction_bid_decision_test"
+path = "../tests/unit/bot/bot_auction_bid_decision_test.rs"
