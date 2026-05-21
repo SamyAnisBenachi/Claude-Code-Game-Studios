@@ -42,6 +42,8 @@ then exits 1.
 | `fixtures/dev-proxy-pack-repo-assets-source.json` | Example FAIL manifest where a proxy source path points into `assets/**`. |
 | `fixtures/dev-proxy-pack-stage2-candidate.json` | Example PASS Stage-2 candidate covering active UI lanes (hand frame, HUD class figurines, board cell, objective dot, Sang Méprise marker). Documentation/test fixture only — no payload is committed. |
 | `fixtures/dev-proxy-pack-bad-logical-id.json` | Example FAIL manifest where a row uses a non-conformant `logical_id` (missing `lid_` prefix). |
+| `fixtures/dev-proxy-pack-stage3-candidate.json` | Example PASS Stage-3 readiness candidate exercising optional `atlas_binding`, `pack.sprite_sheets`, `pack.license_provenance`, and `stage_readiness`. Documentation/test fixture only. |
+| `fixtures/dev-proxy-pack-atlas-binding-bad.json` | Example FAIL manifest where `stage_readiness=stage3_binding` is claimed without an `atlas_binding`, and another row references an atlas not registered in `pack.sprite_sheets`. |
 
 ## Release CLI Usage
 
@@ -137,6 +139,36 @@ The validator fails clearly when:
 - `pack.workflow_status`, when present, is anything other than `needed` — a
   Krosmaga pack cannot advance the workflow.
 - `pack.pack_id` is missing or empty.
+
+### Stage 3 Readiness (Optional Fields)
+
+These additive fields surface metadata that becomes relevant as a proxy row
+moves from logical declaration toward atlas binding. All four fields are
+optional — manifests that omit them keep their existing pass/fail behaviour.
+
+- `atlas_binding` (per-entry object): names the sprite-sheet frame a row will
+  bind to. When present it must declare `atlas_id` (non-empty lowercase token),
+  `frame_index` (integer >= 0), and `frame_size_px` (`[width, height]` of
+  positive integers); an optional `frame_origin_px` must be a `[x, y]` pair of
+  non-negative integers. Rows whose `match_quality` is `missing`, `no_art_needed`,
+  or `ambiguous` must not declare `atlas_binding` — there is nothing concrete
+  yet to bind.
+- `pack.sprite_sheets` (pack-level list): per-pack atlas registry. Each entry
+  declares `sheet_id` (non-empty lowercase token, unique), `dimensions_px`
+  (positive `[w, h]`), and `frame_count` (positive integer). When this registry
+  is present, every entry's `atlas_binding.atlas_id` must reference one of the
+  declared sheets.
+- `pack.license_provenance` (pack-level object): structured rights statement
+  complementing the per-row `license_provenance_warning`. Requires `holder`
+  (non-empty string), `kind` (one of `licensed_krosmaga_dev_proxy` or
+  `licensed_external_release`, and matching `pack.source_class`), and
+  `dev_only_statement` (non-empty string that explicitly states the pack is
+  dev-only / not release-approved).
+- `stage_readiness` (per-entry string): opt-in marker advertising how far a row
+  has progressed toward binding. Valid values: `stage1_logical`,
+  `stage2_candidate`, `stage3_binding`. `stage3_binding` additionally requires
+  an `atlas_binding` block and a `match_quality` of `exact`, `good`, or
+  `needs_conversion`.
 
 ## Non-Claims
 

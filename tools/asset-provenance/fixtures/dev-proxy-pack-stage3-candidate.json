@@ -1,0 +1,109 @@
+{
+  "pack": {
+    "pack_id": "krosmaga-proxy-v1",
+    "description": "Stage 3 readiness candidate: demonstrates optional atlas binding metadata, pack sprite-sheet registry, and a structured license-provenance block on top of the Stage 2 row shape. Documentation/test fixture only — no Krosmaga payload is committed.",
+    "dev_only": true,
+    "source_class": "licensed_krosmaga_dev_proxy",
+    "release_class": "dev_only",
+    "workflow_status": "needed",
+    "license_provenance": {
+      "holder": "Ankama Games",
+      "kind": "licensed_krosmaga_dev_proxy",
+      "dev_only_statement": "Dev-only Krosmaga reference material; never release-approved."
+    },
+    "sprite_sheets": [
+      {
+        "sheet_id": "hand_card_frames_v1",
+        "dimensions_px": [256, 192],
+        "frame_count": 4
+      },
+      {
+        "sheet_id": "hud_class_figurines_v1",
+        "dimensions_px": [512, 512],
+        "frame_count": 7
+      }
+    ]
+  },
+  "entries": [
+    {
+      "logical_id": "lid_card_frame_common",
+      "source_path": "D:/_GAMES/Ankama/Krosmaga/_extracted/_extracted/AssetStudio_All/assets/art/cards/frames/frame_common.png",
+      "match_quality": "needs_conversion",
+      "dev_only": true,
+      "source_class": "licensed_krosmaga_dev_proxy",
+      "release_class": "dev_only",
+      "workflow_status": "needed",
+      "license_provenance_warning": "Dev-only Krosmaga proxy; not release-approved.",
+      "expected_consumer_surface": "hand.card_frame_common",
+      "conversion_notes": "Crop/resize Krosmaga frame to CCGS hand card frame dimensions; atlas-pack with the other rarity frames before bevy_ui wiring.",
+      "stage_readiness": "stage3_binding",
+      "atlas_binding": {
+        "atlas_id": "hand_card_frames_v1",
+        "frame_index": 0,
+        "frame_size_px": [64, 96],
+        "frame_origin_px": [0, 0]
+      }
+    },
+    {
+      "logical_id": "lid_hud_class_figurine_iop",
+      "source_path": "D:/_GAMES/Ankama/Krosmaga/_extracted/_extracted/AssetStudio_All/assets/art/ui/customisations/medallions/god_medallion_iop_500/god_medallion_iop_500.png",
+      "match_quality": "good",
+      "dev_only": true,
+      "source_class": "licensed_krosmaga_dev_proxy",
+      "release_class": "dev_only",
+      "workflow_status": "needed",
+      "license_provenance_warning": "Dev-only Krosmaga proxy; never release-safe.",
+      "expected_consumer_surface": "hud.class_figurine_iop",
+      "stage_readiness": "stage3_binding",
+      "atlas_binding": {
+        "atlas_id": "hud_class_figurines_v1",
+        "frame_index": 0,
+        "frame_size_px": [128, 128]
+      }
+    },
+    {
+      "logical_id": "lid_hud_class_figurine_cra",
+      "source_path": "D:/_GAMES/Ankama/Krosmaga/_extracted/_extracted/AssetStudio_All/assets/art/ui/customisations/medallions/god_medallion_cra_500/god_medallion_cra_500.png",
+      "match_quality": "good",
+      "dev_only": true,
+      "source_class": "licensed_krosmaga_dev_proxy",
+      "release_class": "dev_only",
+      "workflow_status": "needed",
+      "license_provenance_warning": "Dev-only Krosmaga proxy; never release-safe.",
+      "expected_consumer_surface": "hud.class_figurine_cra",
+      "stage_readiness": "stage3_binding",
+      "atlas_binding": {
+        "atlas_id": "hud_class_figurines_v1",
+        "frame_index": 1,
+        "frame_size_px": [128, 128]
+      }
+    },
+    {
+      "logical_id": "lid_hud_objective_dot_real_revealed",
+      "source_path": "D:/_GAMES/Ankama/Krosmaga/_extracted/_extracted/AssetStudio_All/assets/art/particles/materials/flashs/particleadd_flash_10_v01/Flash_10_Gray.png",
+      "match_quality": "ambiguous",
+      "dev_only": true,
+      "source_class": "licensed_krosmaga_dev_proxy",
+      "release_class": "dev_only",
+      "workflow_status": "needed",
+      "license_provenance_warning": "Dev-only Krosmaga proxy; not release-approved.",
+      "expected_consumer_surface": "hud.objective_dot_real_revealed",
+      "manual_review_required": true,
+      "ambiguity_notes": "Flash sprite is a candidate for the reveal frame but multiple flash variants exist in the bank; art-lead review required before final selection.",
+      "stage_readiness": "stage2_candidate"
+    },
+    {
+      "logical_id": "lid_board_cell_idle_32x32",
+      "source_path": null,
+      "match_quality": "missing",
+      "dev_only": true,
+      "source_class": "licensed_krosmaga_dev_proxy",
+      "release_class": "dev_only",
+      "workflow_status": "needed",
+      "license_provenance_warning": "Dev-only Krosmaga proxy row; not release-approved.",
+      "expected_consumer_surface": "board.cell_idle",
+      "missing_handling": "No Krosmaga proxy reuse intended; leave unresolved until CCGS-original cell sprite ships per design/assets/specs/board-rendering-assets.md ASSET-023.",
+      "stage_readiness": "stage1_logical"
+    }
+  ]
+}
