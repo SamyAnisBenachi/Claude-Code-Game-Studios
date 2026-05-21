@@ -1,6 +1,6 @@
 # Codex Orchestrator State
 
-## Current Resume Snapshot (2026-05-21, post-1599 mainland)
+## Current Resume Snapshot (2026-05-21, post-1601 mainland)
 
 This block is the active orchestration state. It supersedes older resume and
 handoff snapshots below.
@@ -9,13 +9,13 @@ Source of truth:
 
 - Root checkout: `D:\_DEV\Work\Claude-Code-Game-Studios`
 - Root branch: `main`
-- Root/source commit: `origin/main@b3dc0a39998bf671095f0b9d7622d356081c004f`
-  (`PROMPT 1599 bot-flow MVP Wave A/B/C mainland refresh`)
+- Root/source commit: `origin/main@799e89b7`
+  (`PROMPT 1601 Bevy autoplay bootstrap mainland refresh`)
 - Local root checkout was fast-forwarded to the same commit with
   `git pull --ff-only --autostash origin main`.
 - Root working tree caveat: `.claude/settings.json` is dispatcher runtime churn
   and must stay out of commits unless intentionally updating hooks.
-- Mainland queue after `1599`: no pending/running entries reported.
+- Mainland queue after `1601`: no pending/running entries reported.
 
 Recently processed:
 
@@ -37,26 +37,23 @@ Recently processed:
 | `1592` | SUPERSEDED-BY-1593 | QA-plan + snapshot refresh was FF-ready before `1591`, then stale after `1591` landed. |
 | `1593` | MAIN-LANDED | QA-plan + QA-snapshot fields refresh. Advanced main `c7cfc5a4 -> 49f5a136`. |
 | `1594` | SHIPPED / CLEARED | Bot-flow inventory follow-up. Produced 10 missing bot-flow items and recommended ordering A..H. |
-| `1595` | SHIPPED | Bevy autoplay bootstrap first slice. Branch `work/bevy-autoplay-bootstrap-1595` commit `14f1536f`; integration refresh is `1600`. |
+| `1595` | SHIPPED | Bevy autoplay bootstrap first slice. Landed through `1601`. |
 | `1596` | SHIPPED / CLEARED | Bot lobby Add/Remove Bot UX. Landed through `1599`. |
 | `1597` | SHIPPED / CLEARED | Server QA snapshot and streamed bot-decision log. Landed through `1599`. |
 | `1598` | SHIPPED / CLEARED | Bot-flow auction bid funnel Wave 2.5. Landed through `1599`. |
 | `1599` | MAIN-LANDED / CLEARED | Bot-flow MVP Wave A/B/C integration. Advanced main `3a4603af -> b3dc0a39`. |
+| `1600` | SHIPPED / CLEARED | Bevy autoplay bootstrap integration refresh. Superseded by `1601` because it was FF-ready against pre-state-commit `origin/main@b3dc0a39`. |
+| `1601` | MAIN-LANDED / CLEARED | Bevy autoplay bootstrap main-ready refresh. Advanced main `e903ac6b -> 799e89b7`; includes `client/src/autoplay.rs`, project-local `skills/ccgs-autoplay`, `tools/autoplay/**`, and docs. |
 
 Active workers:
 
-| Prompt | Task | Expected next action |
-|---|---|---|
-| `1600` | `BEVY-AUTOPLAY-BOOTSTRAP-INTEGRATION-REFRESH` | On DONE, clear it, inspect the reported integration branch, then use `MAINLAND_LIST` and `MAINLAND_ENQUEUE` if the branch is FF-ready. |
+- No active worker windows known after clearing `1601`.
 
 Immediate next useful actions:
 
-- Do not launch another implementation wave until `1600` reports or is
-  dispositioned. The active focus is integrating the autoplay bootstrap over
-  current `origin/main@b3dc0a39`.
-- After `1600` lands, sync the root checkout with
-  `git pull --ff-only --autostash origin main`, then update this state block.
-- Next bot-flow implementation candidates after autoplay is integrated:
+- Run focused verify for the autoplay bootstrap only when needed; keep it
+  separate from implementation workers to avoid Cargo contention.
+- Next bot-flow implementation candidates:
   - Placement Wave 3 bot decision/action path;
   - debug overlay gated by `CCGS_DEBUG_UI=1` and F8;
   - debug-only 2-bot soak room and `Start-BotVsBotSoak.ps1`;
