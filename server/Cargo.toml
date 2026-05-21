@@ -432,3 +432,8 @@ path = "../tests/unit/bot/bot_auction_bid_funnel_wave_2_5_test.rs"
 [[test]]
 name = "bot_lobby_auto_confirm_test"
 path = "../tests/unit/bot/bot_lobby_auto_confirm_test.rs"
+
+# PROMPT 1602 — bot Wave 3 placement heuristic.
+[[test]]
+name = "bot_placement_wave_3_test"
+path = "../tests/unit/bot/bot_placement_wave_3_test.rs"

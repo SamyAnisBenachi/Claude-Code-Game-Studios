@@ -23,10 +23,16 @@
 //!   `C2SPlaceBid`. When `AuctionState` / `PendingBotBids` is absent (test
 //!   scaffolding that bypasses the auction plugin) the Wave-1 "pass once per
 //!   round" fallback still applies so legacy tests continue to compile.
-//! - **Placement:** submit an empty (no-op) placement as a fail-safe so the
-//!   `Placement -> Resolution` gate fires without waiting on the bot to place
-//!   units. Heuristic placement (legal-cell pick) is explicitly deferred to a
-//!   later wave.
+//! - **Placement (Wave 3, PROMPT 1602):** walk the bot's hand and assemble a
+//!   legal placement batch — pick a forward-most spawn-range cell per Minion,
+//!   first free `(lane, cell)` per Trap/Structure, first free lane per Field.
+//!   Spell / Order / DoubleFace cards stay in hand (they need engagement-aware
+//!   targeting a later wave will own). Budgets track `(current_mana,
+//!   reserve_mana)` across the batch, paying from current first. When no
+//!   legal placement exists the bot still submits an empty vector — that
+//!   keeps the `Placement -> Resolution` gate firing without stalling the
+//!   round and matches the pre-Wave-3 fail-safe contract that
+//!   `handle_placement_submission` already accepts.
 //!
 //! Scope discipline (PROMPT 1531 owned-scope, preserved by PROMPT 1582):
 //! - **No new protocol messages.** We write the *internal* server-side
@@ -48,6 +54,7 @@
 
 use std::collections::{HashMap, HashSet};
 
+use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 use lightyear::prelude::PeerId;
 use rand::RngCore;
@@ -60,12 +67,18 @@ use crate::core::rsm::{
 use crate::core::session::config::SessionConfig;
 use crate::feature::acquisition::{PlayerHands, MAX_HAND_SIZE};
 use crate::feature::auction::{AuctionBid, AuctionPhase, AuctionState, PendingBotBids};
-use crate::feature::board::PlacementSubmissionReceived;
+use crate::feature::board::{
+    is_field_slot_available, is_minion_slot_available, is_structure_slot_available,
+    is_trap_slot_available, validate_spawn_range, BoardConfig, BoardOccupancy,
+    PlacementSubmissionReceived, SpawnRangeState,
+};
 use crate::feature::bot::state::{
     BotDecisionEntry, BotDecisionKind, BotDecisionLog, BotPlayers,
     BOT_AUCTION_PASS_THRESHOLD_MS, BOT_AUCTION_VALUATION_NOISE_DENOMINATOR,
 };
-use shared::card::CardId;
+use crate::foundation::config::CardCatalog;
+use shared::card::{CardId, CardType};
+use shared::protocol::{PlacedCardSubmit, PlayTarget};
 use shared::session::PlayerId;
 
 /// Convert the server-internal `RoundPhase` into the wire `shared::protocol`
@@ -424,6 +437,275 @@ fn now_ms(time: &Time) -> u64 {
     (time.elapsed().as_secs_f64() * 1_000.0) as u64
 }
 
+// =============================================================================
+// PROMPT 1602 — Placement Wave 3 heuristic
+// =============================================================================
+//
+// Goal: replace the Wave-1 empty-vector fail-safe with a deterministic legal
+// placement so bot-vs-bot soak progresses past the 0-units / 0-damage
+// stalemate. The heuristic is intentionally minimal:
+//
+// 1. Walk the bot's hand in insertion order (`PlayerHands.hands[bot]` is a
+//    `Vec<CardId>` — order is the same the bot saw at acquisition time).
+// 2. For each card, attempt to build a legal target deterministically:
+//    - `Minion`  → forward-most spawn-range cell in the lowest available lane.
+//    - `Trap`    → first free `(lane, cell)` in lane/cell ascending order.
+//    - `Structure` → same iteration as `Trap`.
+//    - `Field`   → first lane with a free Field slot.
+//    - `Spell` / `Order` / `DoubleFace` → skipped (no usable target the bot
+//      can pick without a board-aware engagement heuristic).
+// 3. Track a staged budget (current/reserve mana) and a staged occupancy clone
+//    across the batch so the assembled placements collectively pass
+//    `validate_submission_batch`. The bot consumes its own current mana first
+//    and only spills into reserve when current is exhausted, mirroring the
+//    natural human pay-from-current-first behaviour.
+// 4. Cards we can't legally place (no slot, insufficient mana, no target)
+//    are skipped — the loop never aborts the whole batch, so a single
+//    bad card never blocks the others.
+//
+// Determinism: the heuristic reads no clock, no RNG, and iterates everything in
+// a stable order. Two identical observable inputs produce identical outputs.
+
+/// Lowest team-id constant used to derive the forward-direction for Minion
+/// spawn-cell preference. Mirrors the private constants in
+/// `feature::board::placement` so the bot does not depend on a wider re-export.
+const BOT_PLAYER_A_TEAM_ID: u8 = 0;
+const BOT_PLAYER_B_TEAM_ID: u8 = 1;
+
+/// Resources the placement heuristic needs to make a legal choice. Bundled so
+/// the call-site can early-return cleanly when any of them is missing on a
+/// test scaffold.
+struct PlacementInputs<'a> {
+    session: &'a SessionConfig,
+    board_config: &'a BoardConfig,
+    spawn_ranges: &'a SpawnRangeState,
+    occupancy: &'a BoardOccupancy,
+    catalog: &'a CardCatalog,
+    economies: &'a PlayerEconomies,
+    hands: &'a PlayerHands,
+}
+
+/// `SystemParam` bundle of the Wave-3 placement resources. The bot system
+/// parameter list is already at Bevy's 16-arg cap; this bundle keeps the new
+/// inputs accessible without spilling past the limit. All four resources are
+/// `Option<Res<_>>` so legacy scaffolds (no board plugin, no card catalog)
+/// continue to compile — the call-site falls back to the empty-failsafe
+/// when any of them is missing.
+#[derive(SystemParam)]
+pub struct PlacementHeuristicResources<'w> {
+    pub board_config: Option<Res<'w, BoardConfig>>,
+    pub spawn_ranges: Option<Res<'w, SpawnRangeState>>,
+    pub occupancy: Option<Res<'w, BoardOccupancy>>,
+    pub catalog: Option<Res<'w, CardCatalog>>,
+}
+
+/// Pick the forward-most legal Minion spawn cell for `player` in `lane`,
+/// preferring cells closest to the opponent objective. Returns `None` when no
+/// cell in the configured spawn range is legal (the player has no spawn-range
+/// state in the session — defensive only).
+fn forward_minion_cell(
+    player: PlayerId,
+    lane: u8,
+    inputs: &PlacementInputs<'_>,
+) -> Option<(u8, u8)> {
+    let team = inputs.session.team_map.get(&player).copied()?;
+    // Read the player's fakes_destroyed indirectly through validate_spawn_range
+    // by walking the candidate window. Both teams have at most three legal
+    // cells (cell_min..=cell_min+2 for team A; cell_max-2..=cell_max for team
+    // B) so an O(cells_per_lane) walk is trivial.
+    let board_config = inputs.board_config;
+    let cell_min = board_config.cell_min;
+    let cell_max = board_config.cell_max;
+    let fakes_destroyed =
+        super_fakes_destroyed_for(inputs.spawn_ranges, player, inputs.session).unwrap_or(0);
+    let candidates: Vec<u8> = match team {
+        BOT_PLAYER_A_TEAM_ID => {
+            // Team A spawns at cell_min and advances toward cell_max. Forward
+            // = higher cell index → iterate descending.
+            (cell_min..=cell_max).rev().collect()
+        }
+        BOT_PLAYER_B_TEAM_ID => {
+            // Team B spawns at cell_max and advances toward cell_min. Forward
+            // = lower cell index → iterate ascending.
+            (cell_min..=cell_max).collect()
+        }
+        _ => return None,
+    };
+    for cell in candidates {
+        if validate_spawn_range(cell, player, fakes_destroyed, inputs.session, board_config) {
+            return Some((lane, cell));
+        }
+    }
+    None
+}
+
+/// Local mirror of `feature::board::placement::fakes_destroyed_for` so the bot
+/// does not need to widen that helper's visibility. Returns `None` when the
+/// player is not on a known team.
+fn super_fakes_destroyed_for(
+    spawn_ranges: &SpawnRangeState,
+    player: PlayerId,
+    session: &SessionConfig,
+) -> Option<u8> {
+    match session.team_map.get(&player).copied() {
+        Some(BOT_PLAYER_A_TEAM_ID) => Some(spawn_ranges.fakes_destroyed[0]),
+        Some(BOT_PLAYER_B_TEAM_ID) => Some(spawn_ranges.fakes_destroyed[1]),
+        _ => None,
+    }
+}
+
+/// Try to build a legal target for `card` owned by `player`, respecting the
+/// `staged_occupancy` snapshot built up from earlier batch entries. Returns
+/// `None` when no legal target exists for this card type.
+fn pick_target_for_card(
+    player: PlayerId,
+    card_type: CardType,
+    staged_occupancy: &BoardOccupancy,
+    inputs: &PlacementInputs<'_>,
+) -> Option<PlayTarget> {
+    let lane_count = inputs.board_config.lane_count;
+    let cell_min = inputs.board_config.cell_min;
+    let cell_max = inputs.board_config.cell_max;
+    match card_type {
+        CardType::Minion => {
+            for lane in 1..=lane_count {
+                if !is_minion_slot_available(staged_occupancy, player, lane, inputs.session) {
+                    continue;
+                }
+                if let Some((lane, cell)) = forward_minion_cell(player, lane, inputs) {
+                    return Some(PlayTarget::BoardCell { lane, cell });
+                }
+            }
+            None
+        }
+        CardType::Trap => {
+            for lane in 1..=lane_count {
+                for cell in cell_min..=cell_max {
+                    if is_trap_slot_available(staged_occupancy, player, lane, cell) {
+                        return Some(PlayTarget::BoardCell { lane, cell });
+                    }
+                }
+            }
+            None
+        }
+        CardType::Structure => {
+            for lane in 1..=lane_count {
+                for cell in cell_min..=cell_max {
+                    if is_structure_slot_available(staged_occupancy, player, lane, cell) {
+                        return Some(PlayTarget::BoardCell { lane, cell });
+                    }
+                }
+            }
+            None
+        }
+        CardType::Field => {
+            for lane in 1..=lane_count {
+                if is_field_slot_available(staged_occupancy, player, lane) {
+                    return Some(PlayTarget::LaneWide { lane });
+                }
+            }
+            None
+        }
+        // Spells/Orders/DoubleFace need engagement-aware targeting (TargetUnit
+        // / TargetObj / Instant). Wave 3 owns spatial placements only; effect
+        // cards stay in hand until a later wave teaches the bot how to pick
+        // useful targets.
+        CardType::Spell | CardType::Order | CardType::DoubleFace => None,
+    }
+}
+
+/// Apply the same occupancy stage that the server's
+/// `validate_submission_batch` applies between placements in a single batch.
+/// Mirrors `feature::board::placement::stage_occupancy` (private there) so the
+/// bot's staged view stays consistent with the server's validation walk.
+fn stage_occupancy_for_bot(
+    staged: &mut BoardOccupancy,
+    player: PlayerId,
+    target: &PlayTarget,
+    card_type: CardType,
+) {
+    match (card_type, target) {
+        (CardType::Minion, PlayTarget::BoardCell { lane, .. }) => {
+            staged
+                .minion_slots
+                .insert((player, *lane), Entity::PLACEHOLDER);
+        }
+        (CardType::Trap, PlayTarget::BoardCell { lane, cell }) => {
+            staged
+                .traps
+                .insert((player, *lane, *cell), Entity::PLACEHOLDER);
+        }
+        (CardType::Structure, PlayTarget::BoardCell { lane, cell }) => {
+            staged
+                .structures
+                .insert((player, *lane, *cell), Entity::PLACEHOLDER);
+        }
+        (CardType::Field, PlayTarget::LaneWide { lane }) => {
+            staged.fields.insert((player, *lane), Entity::PLACEHOLDER);
+        }
+        _ => {}
+    }
+}
+
+/// Build the bot's placement batch for one round. Deterministic and read-only
+/// w.r.t. the world state. Returns an empty vector when no legal placement
+/// exists, which keeps the empty-failsafe contract intact for downstream
+/// consumers (`handle_placement_submission` accepts an empty batch).
+fn build_bot_placements(player: PlayerId, inputs: &PlacementInputs<'_>) -> Vec<PlacedCardSubmit> {
+    let mut placements = Vec::new();
+    let Some(hand) = inputs.hands.hands.get(&player) else {
+        return placements;
+    };
+    if hand.is_empty() {
+        return placements;
+    }
+    let Some(economy) = inputs.economies.0.get(&player) else {
+        return placements;
+    };
+
+    let mut staged_occupancy = inputs.occupancy.clone();
+    let mut current_left = economy.current_mana;
+    let mut reserve_left = economy.reserve_mana;
+    let mut seen: HashSet<CardId> = HashSet::new();
+
+    for &card_id in hand {
+        // Hand may contain duplicate card ids only across copies of the same
+        // card; the placement validator rejects duplicates within one batch,
+        // so we dedupe defensively even though the hand vector is normally
+        // free of duplicates in production paths.
+        if !seen.insert(card_id) {
+            continue;
+        }
+        let Some(card) = inputs.catalog.cards.get(&card_id) else {
+            continue;
+        };
+        let total_left = current_left.saturating_add(reserve_left);
+        if card.cost > total_left {
+            continue;
+        }
+        let Some(target) =
+            pick_target_for_card(player, card.card_type, &staged_occupancy, inputs)
+        else {
+            continue;
+        };
+        // Pay-from-current-first; spill into reserve only when current runs out.
+        let from_current = card.cost.min(current_left);
+        let from_reserve = card.cost.saturating_sub(from_current);
+
+        stage_occupancy_for_bot(&mut staged_occupancy, player, &target, card.card_type);
+        current_left = current_left.saturating_sub(from_current);
+        reserve_left = reserve_left.saturating_sub(from_reserve);
+        placements.push(PlacedCardSubmit {
+            card_id,
+            target,
+            current_mana_spend: from_current,
+            reserve_mana_spend: from_reserve,
+        });
+    }
+
+    placements
+}
+
 /// Bot action-loop system.
 ///
 /// Runs every frame after the RSM input reader and before phase transitions
@@ -452,6 +734,12 @@ pub fn bot_action_loop(
     auction: Option<Res<AuctionState>>,
     economies: Option<Res<PlayerEconomies>>,
     hands: Option<Res<PlayerHands>>,
+    // PROMPT 1602: Wave-3 placement heuristic inputs. Bundled into a single
+    // `SystemParam` so the bot-action-loop stays inside Bevy's 16-arg cap.
+    // All four resources inside the bundle are `Option<Res<_>>`; when any
+    // is missing on a test scaffold, the Placement arm falls back to the
+    // Wave-1 empty-vector fail-safe instead of panicking.
+    placement_resources: PlacementHeuristicResources,
     mut decision_log: ResMut<BotDecisionLog>,
     mut ready_signals: MessageWriter<DraftReadySignal>,
     mut placement_submissions: MessageWriter<PlacementSubmissionReceived>,
@@ -527,38 +815,93 @@ pub fn bot_action_loop(
             );
         }
         RoundPhase::Placement => {
+            // PROMPT 1602 (Wave 3): build a legal placement batch when all
+            // heuristic inputs are present. Falls back to the Wave-1
+            // empty-vector fail-safe when any resource is missing (test
+            // scaffolds, pre-board worlds) — that preserves the
+            // `placements: Vec::new()` contract `handle_placement_submission`
+            // already accepts as a deliberate "submit nothing".
+            let heuristic_inputs = match (
+                placement_resources.board_config.as_deref(),
+                placement_resources.spawn_ranges.as_deref(),
+                placement_resources.occupancy.as_deref(),
+                placement_resources.catalog.as_deref(),
+                economies.as_deref(),
+                hands.as_deref(),
+            ) {
+                (
+                    Some(board_config),
+                    Some(spawn_ranges),
+                    Some(occupancy),
+                    Some(catalog),
+                    Some(economies),
+                    Some(hands),
+                ) => Some(PlacementInputs {
+                    session: &*session,
+                    board_config,
+                    spawn_ranges,
+                    occupancy,
+                    catalog,
+                    economies,
+                    hands,
+                }),
+                _ => None,
+            };
+
             for player_id in &bot_players {
                 if round_state.submissions_received.contains(player_id) {
                     continue;
                 }
-                // Empty placement = legal no-op fail-safe. The board placement
-                // pipeline treats an empty vector as a deliberate "submit
-                // nothing"; the bot does not consume hand or gold.
+
+                let placements = heuristic_inputs
+                    .as_ref()
+                    .map(|inputs| build_bot_placements(*player_id, inputs))
+                    .unwrap_or_default();
+                let placements_len = placements.len();
+
                 let submission = PlacementSubmissionReceived {
                     player: *player_id,
                     peer_id: None::<PeerId>,
-                    placements: Vec::new(),
+                    placements,
                 };
                 placement_submissions.write(submission);
 
                 let (seed, counter) = seed_snapshot(&bots, *player_id);
+                let decision = if placements_len == 0 {
+                    BotDecisionKind::EmptyPlacementFailsafe
+                } else {
+                    BotDecisionKind::PlacementSubmitted {
+                        placements_len: u8::try_from(placements_len).unwrap_or(u8::MAX),
+                    }
+                };
                 decision_log.push(BotDecisionEntry {
                     round_number: round,
                     phase: protocol_phase(phase),
                     bot_player_id: *player_id,
-                    decision: BotDecisionKind::EmptyPlacementFailsafe,
+                    decision,
                     timestamp_ms: ts,
-                    legal_action_count: Some(0),
+                    legal_action_count: Some(placements_len as u32),
                     seed,
                     seed_word_counter: counter,
                 });
 
-                tracing::info!(
-                    target: "server::bot",
-                    bot_player_id = ?player_id,
-                    round,
-                    "bot_action_loop: empty placement submitted (wave1 no-op fail-safe)"
-                );
+                if placements_len == 0 {
+                    tracing::info!(
+                        target: "server::bot",
+                        bot_player_id = ?player_id,
+                        round,
+                        heuristic_inputs_available = heuristic_inputs.is_some(),
+                        "bot_action_loop: empty placement submitted (no legal placement found; wave3 fail-safe)"
+                    );
+                } else {
+                    tracing::info!(
+                        target: "server::bot",
+                        bot_player_id = ?player_id,
+                        round,
+                        placements_len,
+                        "bot_action_loop: placement batch submitted (wave3 heuristic)"
+                    );
+                }
             }
         }
         RoundPhase::Lobby | RoundPhase::Resolution | RoundPhase::GameOver => {
