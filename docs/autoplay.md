@@ -6,6 +6,7 @@ PowerShell 5.1 compatibility fix landed by PROMPT 1619, integrated in PROMPT 162
 Runtime smoke verified in PROMPT 1621 — non-GUI phases PASS; GUI client launch is
 **BLOCKED-HUMAN-GUI** (requires an interactive desktop session; not a script regression).
 Skill: see `skills/ccgs-autoplay/SKILL.md` for the project-local runbook.
+Operator guide: see [`docs/autoplay/evidence-operator-guide.md`](autoplay/evidence-operator-guide.md) for how to run the suite, read PASS/FAIL/BLOCKED outcomes, and use the observability tools (F8 overlay, F9 snapshot, decision logs).
 
 This document is the architecture/policy spec for the in-repo autoplay harness.
 It is read alongside the external `liv-bevy-autoplay-bootstrap` skill and the
