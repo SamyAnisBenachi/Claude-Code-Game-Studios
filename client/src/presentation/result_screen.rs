@@ -586,6 +586,11 @@ pub fn result_screen_outcome_copy(
             cause: "Resolution timed out without declaring a winner.".to_string(),
             has_result: true,
         },
+        GameOverReason::MaxRoundsReached => ResultScreenOutcomeCopy {
+            headline: "SOAK COMPLETE".to_string(),
+            cause: "Bot soak reached the configured round limit.".to_string(),
+            has_result: true,
+        },
     }
 }
 

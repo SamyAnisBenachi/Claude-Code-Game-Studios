@@ -179,6 +179,9 @@ pub enum GameOverReason {
     Disconnect,
     Draw,
     ResolutionTimeout,
+    /// Soak / QA only: server reached the `CCGS_BOT_MAX_ROUNDS` limit.
+    /// Never emitted in normal (non-soak) sessions.
+    MaxRoundsReached,
 }
 
 #[derive(

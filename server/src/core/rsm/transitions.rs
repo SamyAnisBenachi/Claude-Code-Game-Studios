@@ -15,6 +15,7 @@ use crate::core::objective_contract::ObjectiveCounters;
 use crate::core::session::{
     LobbyHeartbeats, PlayerConnectionMap, PlayerSessions, SessionConfig, SessionReady,
 };
+use crate::feature::bot::soak_config::BotSoakConfig;
 use crate::foundation::rng::ServerRng;
 use bevy::prelude::*;
 use lightyear::prelude::{Connected, Disconnected, RemoteId};
@@ -470,6 +471,7 @@ pub fn advance_phase(
     session: Option<Res<SessionConfig>>,
     config: Option<Res<crate::foundation::config::GameConfig>>,
     mut sessions: Option<ResMut<PlayerSessions>>,
+    soak_config: Option<Res<BotSoakConfig>>,
     mut lobby_complete: MessageWriter<LobbyComplete>,
     mut draft_started: MessageWriter<DraftStarted>,
     mut shop_refresh: MessageWriter<ShopRefreshTriggered>,
@@ -725,6 +727,33 @@ pub fn advance_phase(
                 rsm.round_number >= 1,
                 "round_number was not initialized before resolution exit"
             );
+
+            // Soak bound: CCGS_BOT_MAX_ROUNDS — opt-in only, never fires in normal play.
+            if let Some(max) = soak_config.as_deref().and_then(|c| c.max_rounds) {
+                if rsm.round_number >= max {
+                    tracing::info!(
+                        round = rsm.round_number,
+                        max_rounds = max,
+                        "BotSoakConfig: max-rounds limit reached — triggering GameOver"
+                    );
+                    rsm.phase = RoundPhase::GameOver;
+                    rsm.draft_shop_timer = None;
+                    rsm.draft_initial_timer = None;
+                    rsm.auction_safety_timer = None;
+                    game_over_emitted.write(GameOverEmitted {
+                        reason: GameOverReason::MaxRoundsReached,
+                        loser: None,
+                        round: rsm.round_number,
+                    });
+                    broadcast.write(BroadcastPhaseChanged {
+                        phase: RoundPhase::GameOver,
+                        round: rsm.round_number,
+                        timer_ms: 0,
+                    });
+                    return;
+                }
+            }
+
             let enters_auction = is_auction_round(rsm.round_number);
             let next_round = rsm.round_number;
             let draft_phase = if enters_auction {

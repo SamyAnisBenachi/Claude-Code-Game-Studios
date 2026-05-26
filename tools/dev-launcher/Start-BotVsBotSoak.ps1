@@ -47,6 +47,10 @@ param(
     [switch]$Release,
     [int]$ServerWaitSeconds = 8,
     [int]$DurationSeconds = 300,
+    # PROMPT 1640: opt-in round-count bound. 0 = disabled (default).
+    # When set to N > 0 the server exits cleanly after N completed rounds via
+    # CCGS_BOT_MAX_ROUNDS env var; GameOverReason::MaxRoundsReached is emitted.
+    [int]$MaxRounds = 0,
     [switch]$DryRun,
     [switch]$Help,
     [string]$PlayRepoRoot = ''
@@ -69,6 +73,10 @@ PARAMETERS
   -ServerWaitSeconds N   How long to wait for the server bind line (default 8).
   -DurationSeconds N     Wall-clock soak duration in seconds (default 300 = 5 min).
                          At expiry the launcher Stop-Process's the server.
+  -MaxRounds N           Opt-in round-count bound (default 0 = disabled).
+                         Sets CCGS_BOT_MAX_ROUNDS=N so the server triggers
+                         GameOver (MaxRoundsReached) after N completed rounds.
+                         Normal multiplayer sessions are not affected.
   -DryRun                Print every step but do not start any process.
   -PlayRepoRoot P        Absolute path to the dedicated play/build checkout.
                          Falls back to `$env:CCGS_PLAY_REPO_ROOT,
@@ -217,10 +225,16 @@ $env:SERVER_URL  = $serverUrl
 # its own.
 $env:CCGS_BOT_DECISION_LOG_PATH = $botDecisionLogPath
 $env:CCGS_QA_SNAPSHOT_DIR       = $snapshotsDir
+if ($MaxRounds -gt 0) {
+    $env:CCGS_BOT_MAX_ROUNDS = "$MaxRounds"
+} else {
+    Remove-Item Env:CCGS_BOT_MAX_ROUNDS -ErrorAction SilentlyContinue
+}
 Write-Host "SERVER_PORT                  = $env:SERVER_PORT"
 Write-Host "SERVER_URL                   = $serverUrl"
 Write-Host "CCGS_BOT_DECISION_LOG_PATH   = $env:CCGS_BOT_DECISION_LOG_PATH"
 Write-Host "CCGS_QA_SNAPSHOT_DIR         = $env:CCGS_QA_SNAPSHOT_DIR"
+Write-Host "CCGS_BOT_MAX_ROUNDS          = $(if ($MaxRounds -gt 0) { $MaxRounds } else { '(disabled)' })"
 
 $serverProc = $null
 if (-not $DryRun) {
@@ -292,8 +306,9 @@ $summary = [ordered]@{
     profile                     = $profileDir
     ccgs_bot_decision_log_path  = $env:CCGS_BOT_DECISION_LOG_PATH
     ccgs_qa_snapshot_dir        = $env:CCGS_QA_SNAPSHOT_DIR
+    ccgs_bot_max_rounds         = if ($MaxRounds -gt 0) { $MaxRounds } else { $null }
     dry_run                     = [bool]$DryRun
-    notes                       = "PROMPT 1603 launcher; bot-vs-bot driver lands under PROMPT 1602."
+    notes                       = "PROMPT 1603 launcher; max-rounds bound via PROMPT 1640 (CCGS_BOT_MAX_ROUNDS)."
 }
 $summaryPath = Join-Path $evidenceDir 'soak-summary.json'
 if (-not $DryRun) {

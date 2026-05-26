@@ -11,6 +11,7 @@ pub mod action_loop;
 pub mod debug_push;
 pub mod lobby_loop;
 pub mod qa_snapshot;
+pub mod soak_config;
 pub mod state;
 
 pub use action_loop::{bot_action_loop, BotActionLoopPlugin};
@@ -26,6 +27,7 @@ pub use qa_snapshot::{
     DEFAULT_BOT_DECISION_LOG_PATH, DEFAULT_BOT_QA_SNAPSHOT_DIR,
     DEFAULT_PERIODIC_SNAPSHOT_INTERVAL_MS,
 };
+pub use soak_config::{BotSoakConfig, BotSoakPlugin, BOT_MAX_ROUNDS_ENV_VAR};
 pub use state::{
     BotDecisionEntry, BotDecisionKind, BotDecisionLog, BotDifficulty, BotPhaseTiming, BotPlayers,
     BotState, BotThinkDelayWindow, BOT_AUCTION_PASS_THRESHOLD_MS, BOT_SAFETY_MARGIN_MS,

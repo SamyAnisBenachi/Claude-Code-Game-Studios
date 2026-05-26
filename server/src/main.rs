@@ -113,6 +113,9 @@ fn main() {
     // Disabled in release by default; enable explicitly via
     // `CCGS_BOT_DEBUG_UI=1`.
     app.add_plugins(feature::bot::BotDebugPushPlugin);
+    // PROMPT 1640 (BOT-VS-BOT-MAX-ROUNDS-BOUNDED-SOAK): opt-in soak bound
+    // via `CCGS_BOT_MAX_ROUNDS=N`. Reads env var at startup; no-op when unset.
+    app.add_plugins(feature::bot::BotSoakPlugin);
 
     // Networking - Lightyear 0.26 WebSocket server and shared protocol manifest.
     app.add_plugins(network::ServerNetworkPlugin);

@@ -155,6 +155,7 @@ fn game_over_reason_index(reason: GameOverReason) -> u8 {
         GameOverReason::Disconnect => 1,
         GameOverReason::Draw => 2,
         GameOverReason::ResolutionTimeout => 3,
+        GameOverReason::MaxRoundsReached => 4,
     }
 }
 
