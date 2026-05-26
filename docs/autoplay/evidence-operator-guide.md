@@ -284,4 +284,18 @@ Use both for comprehensive checkpoint evidence.
 
 ---
 
-_Last updated: PROMPT 1637 — 2026-05-27 (materialized from PROMPT 1624 scratch guide)_
+---
+
+## 9. Recording a Run Result
+
+After each human-run smoke, fill in the result template and save it alongside
+the run artifacts:
+
+→ **[live-gui-smoke-result-template.md](live-gui-smoke-result-template.md)**
+
+Copy it to `production/qa/evidence/autoplay-runs/<run-stamp>/RESULT.md` and
+complete every `<!-- fill -->` field.
+
+---
+
+_Last updated: PROMPT 1643 — 2026-05-27_
