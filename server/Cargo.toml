@@ -447,3 +447,8 @@ path = "../tests/unit/bot/bot_debug_push_test.rs"
 [[test]]
 name = "bot_soak_config_test"
 path = "../tests/unit/bot/bot_soak_config_test.rs"
+
+# PROMPT 1629/1645 — bot-vs-bot soak entrypoint integration test scaffold.
+[[test]]
+name = "bot_soak_entrypoint_test"
+path = "../tests/integration/bot/soak_entrypoint_test.rs"
