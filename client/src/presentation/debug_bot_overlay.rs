@@ -47,10 +47,10 @@ pub const DEBUG_UI_ENV_VAR: &str = "CCGS_DEBUG_UI";
 /// the client (`reports/PROMPT-1604-…md` §2.5).
 pub const DEBUG_BOT_OVERLAY_SHORTCUT_KEY: KeyCode = KeyCode::F8;
 
-/// Maximum number of decision-tail rows the overlay paints per bot. Capped
-/// here as well as on the server so the panel does not balloon if a future
-/// server bumps the wire cap.
-pub const DEBUG_BOT_OVERLAY_TAIL_RENDER_CAP: usize = 12;
+/// Maximum number of decision-tail rows the overlay paints per bot. Matches
+/// the server-side [`DEBUG_BOT_DECISION_TAIL_CAP`](server::feature::bot::debug_push::DEBUG_BOT_DECISION_TAIL_CAP)
+/// (16) so the full server tail is always shown without silent truncation.
+pub const DEBUG_BOT_OVERLAY_TAIL_RENDER_CAP: usize = 16;
 
 // ---------------------------------------------------------------------------
 // Config + state

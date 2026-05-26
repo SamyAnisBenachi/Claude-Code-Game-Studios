@@ -1106,3 +1106,12 @@ path = "../tests/integration/playable_client/protocol_receiver_drain_test.rs"
 [[test]]
 name = "phase_banner_test"
 path = "../tests/integration/ui_clean_pass/phase_banner_test.rs"
+
+# PROMPT 1627 (GAP-03 from PROMPT 1622) — standalone integration tests for the
+# debug bot overlay (PROMPT 1617 landing). Covers: enabled spawn starts hidden,
+# visibility state syncs, disabled plugin is inert, payload in state.latest
+# updates body text, drain system no-op without a receiver entity, and
+# apply_overlay_toggle via RunSystemOnce.
+[[test]]
+name = "bot_debug_overlay_integration_test"
+path = "../tests/integration/playable_client/bot_debug_overlay_test.rs"

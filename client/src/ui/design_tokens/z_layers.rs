@@ -19,7 +19,7 @@
 //! | [`UI_OVERLAY`] | `400` | Translucent overlays painted above the UI base: HUD dim, settlement scrim, draft-initial objective overlay, drag ghost, connection-lost overlay. |
 //! | [`MODAL`]      | `500` | Centred modal panels that demand player attention: result screen, photosensitivity warning, settings shell. |
 //! | [`TOAST`]      | `600` | Transient notifications painted above modals: shop / auction toasts. |
-//! | [`DEBUG`]      | `700` | Diagnostic / dev-only overlays (not shipped in release builds). |
+//! | [`DEBUG`]      | `700` | Diagnostic / dev-only overlays (default-off; runtime-gated via `CCGS_DEBUG_UI` env var — can be enabled in release with `CCGS_DEBUG_UI=1`). |
 //!
 //! Each adjacent layer is separated by 100 integer units, leaving headroom
 //! for future intermediate layers without re-ordering existing constants.
@@ -82,8 +82,8 @@ pub const MODAL: GlobalZIndex = GlobalZIndex(500);
 pub const TOAST: GlobalZIndex = GlobalZIndex(600);
 
 /// Diagnostic / dev-only overlays. Reserved for the highest painted layer
-/// so dev tooling sits above all production UI; not shipped in release
-/// builds.
+/// so dev tooling sits above all production UI. Default-off in release —
+/// enabled at runtime via `CCGS_DEBUG_UI=1` (see `DebugBotOverlayConfig`).
 pub const DEBUG: GlobalZIndex = GlobalZIndex(700);
 
 /// Strictly-ascending list of every named layer, lowest → highest.
