@@ -2,6 +2,9 @@
 
 Status: First slice landed by PROMPT 1595 (`work/bevy-autoplay-bootstrap-1595`).
 Recipe library v1 layered on top by PROMPT 1609.
+PowerShell 5.1 compatibility fix landed by PROMPT 1619, integrated in PROMPT 1620.
+Runtime smoke verified in PROMPT 1621 — non-GUI phases PASS; GUI client launch is
+**BLOCKED-HUMAN-GUI** (requires an interactive desktop session; not a script regression).
 Skill: see `skills/ccgs-autoplay/SKILL.md` for the project-local runbook.
 
 This document is the architecture/policy spec for the in-repo autoplay harness.
@@ -64,7 +67,11 @@ Hard invariants — enforced by code review on every autoplay change:
 | Project-local autoplay skill | ✅ | — |
 | Launcher / RPC helper scripts | ✅ | — |
 | Internal recipe library | ✅ (PROMPT 1609) | — |
-| Headless multi-client matrix | ❌ | yes |
+| PowerShell 5.1 compatibility (`Run-AutoplaySmoke.ps1`) | ✅ (PROMPT 1619/1620) | — |
+| Non-GUI smoke phases (parse, help, env, offline checks) | ✅ PASS (PROMPT 1621) | — |
+| GUI client launch (Bevy windowed, interactive desktop) | ❌ BLOCKED-HUMAN-GUI | requires interactive desktop session |
+| Headless CI smoke (no display) | ❌ | Pending PROMPT 1626 feasibility conclusion — do not claim implemented |
+| Headless multi-client matrix | ❌ | future |
 | Capture (video / audio / timeline) | ❌ | `liv-autoplay-capture` |
 | Dashboard / run browser | ❌ | `liv-autoplay-dashboard` |
 | Custom scenario authoring | ❌ | future |
@@ -270,7 +277,7 @@ ranges.
 | Item | Why deferred | Next prompt should… |
 | --- | --- | --- |
 | Internal recipe library (e.g. "lobby-confirm-then-ready") | Landed in PROMPT 1609. | Iterate on recipe coverage as new UI lands; add `--checkpoints-only` mode if reviewers want timeline-only runs. |
-| Headless mode | Requires `cargo run -p client --no-default-features --features autoplay-remote,headless` and a headless render target; no `headless` feature exists yet. | Add a `headless` Cargo feature and document a wgpu null-backend run. |
+| Headless mode | The autoplay harness depends on WinitPlugin + RenderPlugin for screenshot capture and cursor injection; stripping them eliminates its primary value. PROMPT 1626 feasibility analysis is in progress — verdict pending. The `tools/two-client-runtime` headless path (MinimalPlugins, no display) already covers server/protocol-level CI; it is the recommended CI-grade headless smoke until a virtual display is available. | Wait for PROMPT 1626 verdict before scheduling headless autoplay work. |
 | Multi-client matrix | Requires per-instance ports + per-instance artifact dirs; substrate already accepts `CCGS_AUTOPLAY_PORT`/`CCGS_AUTOPLAY_ARTIFACT_DIR` overrides. | Drive 2 clients from one orchestrator script using `--port` flags. |
 | Video / audio capture | Out of scope for this skill. | Use `liv-autoplay-capture` when adopted. |
 | Dashboard | Out of scope for this skill. | Use `liv-autoplay-dashboard` when adopted. |

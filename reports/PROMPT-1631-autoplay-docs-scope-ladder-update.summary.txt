@@ -1,0 +1,1 @@
+DONE PROMPT-1631: 1631: AUTOPLAY-DOCS-SCOPE-LADDER-UPDATE: SHIPPED // full report at reports/PROMPT-1631-autoplay-docs-scope-ladder-update.md
