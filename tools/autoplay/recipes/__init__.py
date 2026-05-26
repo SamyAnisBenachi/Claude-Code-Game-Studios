@@ -43,6 +43,7 @@ from . import (
     lobby_create,
     placement_drag_probe,
     resolution_observe,
+    round_loop,
     smoke,
 )
 
@@ -76,6 +77,7 @@ REGISTRY: dict[str, tuple[str, Builder]] = {
     placement_drag_probe.NAME: (placement_drag_probe.DESCRIPTION, placement_drag_probe.build),
     resolution_observe.NAME: (resolution_observe.DESCRIPTION, resolution_observe.build),
     game_over_observe.NAME: (game_over_observe.DESCRIPTION, game_over_observe.build),
+    round_loop.NAME: (round_loop.DESCRIPTION, round_loop.build),
     full_game.NAME: (full_game.DESCRIPTION, full_game.build),
 }
 
