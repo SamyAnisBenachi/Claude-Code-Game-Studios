@@ -38,9 +38,11 @@ from . import (
     class_select,
     draft_auction_probe,
     full_game,
+    game_over_observe,
     idle,
     lobby_create,
     placement_drag_probe,
+    resolution_observe,
     smoke,
 )
 
@@ -72,6 +74,8 @@ REGISTRY: dict[str, tuple[str, Builder]] = {
     class_select.NAME: (class_select.DESCRIPTION, class_select.build),
     draft_auction_probe.NAME: (draft_auction_probe.DESCRIPTION, draft_auction_probe.build),
     placement_drag_probe.NAME: (placement_drag_probe.DESCRIPTION, placement_drag_probe.build),
+    resolution_observe.NAME: (resolution_observe.DESCRIPTION, resolution_observe.build),
+    game_over_observe.NAME: (game_over_observe.DESCRIPTION, game_over_observe.build),
     full_game.NAME: (full_game.DESCRIPTION, full_game.build),
 }
 
