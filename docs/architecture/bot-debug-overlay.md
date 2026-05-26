@@ -1,8 +1,8 @@
 # Bot Debug Overlay — Architecture
 
-**Status:** Implemented (PROMPT 1614), verified (PROMPT 1618)  
-**Commit:** `37306162` on `origin/main`  
-**Story AC:** Story 005 AC7  
+**Status:** Implemented (PROMPT 1614), verified (PROMPT 1618)
+**Commit:** `37306162` on `origin/main`
+**Story AC:** Story 005 AC7
 **References:** [PROMPT 1604 data-contract audit](../../reports/PROMPT-1604-bot-flow-debug-overlay-data-contract.md) · [PROMPT 1614 implementation](../../reports/PROMPT-1614-bot-debug-overlay-implementation.md) · [PROMPT 1618 focused verify](../../reports/PROMPT-1618-bot-debug-overlay-focused-verify.md)
 
 ---
@@ -193,7 +193,7 @@ to avoid panics under `MinimalPlugins`.
 
 ## 4. Client Overlay (`DebugBotOverlayPlugin`)
 
-**File:** `client/src/presentation/debug_bot_overlay.rs` (NEW)  
+**File:** `client/src/presentation/debug_bot_overlay.rs` (NEW)
 **Registration:** `client/src/presentation/mod.rs` — `app.add_plugins(DebugBotOverlayPlugin)` after `QASnapshotPlugin`.
 
 ### 4.1 UI layout
