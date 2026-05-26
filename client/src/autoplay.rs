@@ -39,6 +39,8 @@ use bevy::prelude::*;
 use bevy::render::view::screenshot::{save_to_disk, Screenshot};
 use bevy::window::{PrimaryWindow, Window};
 
+use crate::state::{ClientState, CurrentClientPhase};
+
 pub const AUTOPLAY_ENABLE_ENV: &str = "CCGS_AUTOPLAY";
 pub const AUTOPLAY_PORT_ENV: &str = "CCGS_AUTOPLAY_PORT";
 pub const AUTOPLAY_ARTIFACT_DIR_ENV: &str = "CCGS_AUTOPLAY_ARTIFACT_DIR";
@@ -46,7 +48,7 @@ pub const DEFAULT_AUTOPLAY_PORT: u16 = 15873;
 
 /// Schema/protocol version returned by `autoplay/capabilities`. Bump when
 /// the RPC surface changes in a backwards-incompatible way.
-pub const AUTOPLAY_RPC_VERSION: u32 = 1;
+pub const AUTOPLAY_RPC_VERSION: u32 = 2;
 
 /// Plugin entry point. Build-safe to register; does nothing observable
 /// unless `CCGS_AUTOPLAY=1` is set in the process environment at plugin
@@ -272,6 +274,14 @@ struct AutoplayStatusSnapshot {
     last_screenshot_path: Option<String>,
     /// Last error string from the harness (input parse, screenshot, …).
     last_error: Option<String>,
+    /// Debug name of the current `RoundPhase` (e.g. `"Placement"`). `null`
+    /// before the first `S2CPhaseChanged` lands on the client.
+    phase_label: Option<String>,
+    /// Round number from `CurrentClientPhase`. `null` until first phase change.
+    round: Option<u32>,
+    /// Debug name of the `ClientState` machine state (`"Lobby"` or
+    /// `"InSession"`). `null` if the state resource is absent.
+    client_state_label: Option<String>,
 }
 
 // ---------- Bevy systems ----------
@@ -399,6 +409,8 @@ fn publish_status_system(
     keys: Res<ButtonInput<KeyCode>>,
     mouse: Res<ButtonInput<MouseButton>>,
     windows: Query<&Window, With<PrimaryWindow>>,
+    phase: Option<Res<CurrentClientPhase>>,
+    client_state: Option<Res<State<ClientState>>>,
     mut frame_counter: Local<u64>,
 ) {
     *frame_counter = frame_counter.wrapping_add(1);
@@ -417,6 +429,12 @@ fn publish_status_system(
         .get_pressed()
         .map(|b| format!("{:?}", b))
         .collect();
+    let (phase_label, round) = if let Some(p) = phase {
+        (Some(format!("{:?}", p.phase)), Some(p.round))
+    } else {
+        (None, None)
+    };
+    let client_state_label = client_state.map(|s| format!("{:?}", s.get()));
 
     let mut inner = match handle.0.inner.lock() {
         Ok(g) => g,
@@ -428,6 +446,9 @@ fn publish_status_system(
     inner.last_status.cursor_logical = cursor;
     inner.last_status.keys_pressed = keys_pressed;
     inner.last_status.mouse_pressed = mouse_pressed;
+    inner.last_status.phase_label = phase_label;
+    inner.last_status.round = round;
+    inner.last_status.client_state_label = client_state_label;
 
     let snapshot = inner.last_status.clone();
     let artifact_dir = handle.0.artifact_dir.clone();
@@ -607,7 +628,7 @@ fn push_command(shared: &Arc<AutoplayShared>, cmd: AutoplayCommand) {
 
 fn capabilities_json() -> String {
     format!(
-        "{{\"version\":{ver},\"methods\":{{\"capabilities\":\"autoplay/capabilities\",\"status\":\"autoplay/status\",\"input\":\"autoplay/input\",\"clear\":\"autoplay/clear_input\",\"screenshot\":\"autoplay/screenshot\"}},\"input\":{{\"keys\":\"by name (KeyA, Space, Escape, F9 …); see KeyCode debug names\",\"mouse_buttons\":\"Left|Right|Middle|Back|Forward\",\"cursor\":\"logical [x,y] in primary window coords\",\"scroll\":\"[x,y] mouse-wheel delta\"}},\"invariants\":\"low-level input only; no semantic gameplay verbs or ECS mutation\"}}",
+        "{{\"version\":{ver},\"methods\":{{\"capabilities\":\"autoplay/capabilities\",\"status\":\"autoplay/status\",\"input\":\"autoplay/input\",\"clear\":\"autoplay/clear_input\",\"screenshot\":\"autoplay/screenshot\"}},\"input\":{{\"keys\":\"by name (KeyA, Space, Escape, F9 …); see KeyCode debug names\",\"mouse_buttons\":\"Left|Right|Middle|Back|Forward\",\"cursor\":\"logical [x,y] in primary window coords\",\"scroll\":\"[x,y] mouse-wheel delta\"}},\"status_fields\":{{\"phase_label\":\"Debug name of current RoundPhase (e.g. Placement); null before first S2CPhaseChanged\",\"round\":\"round number from CurrentClientPhase; null until first phase change\",\"client_state_label\":\"ClientState machine state (Lobby or InSession); null if absent\"}},\"invariants\":\"low-level input only; no semantic gameplay verbs or ECS mutation\"}}",
         ver = AUTOPLAY_RPC_VERSION,
     )
 }
@@ -615,7 +636,7 @@ fn capabilities_json() -> String {
 fn render_status_json(s: &AutoplayStatusSnapshot) -> String {
     let mut out = String::new();
     out.push_str("{");
-    out.push_str(&format!("\"schema\":\"autoplay_status_v1\","));
+    out.push_str(&format!("\"schema\":\"autoplay_status_v2\","));
     out.push_str(&format!("\"frame\":{},", s.frame));
     out.push_str(&format!("\"uptime_secs\":{},", json_float(s.uptime_secs)));
     out.push_str(&format!(
@@ -653,9 +674,30 @@ fn render_status_json(s: &AutoplayStatusSnapshot) -> String {
         }
     ));
     out.push_str(&format!(
-        "\"last_error\":{}",
+        "\"last_error\":{},",
         match &s.last_error {
             Some(e) => json_string(e),
+            None => "null".to_string(),
+        }
+    ));
+    out.push_str(&format!(
+        "\"phase_label\":{},",
+        match &s.phase_label {
+            Some(p) => json_string(p),
+            None => "null".to_string(),
+        }
+    ));
+    out.push_str(&format!(
+        "\"round\":{},",
+        match s.round {
+            Some(r) => r.to_string(),
+            None => "null".to_string(),
+        }
+    ));
+    out.push_str(&format!(
+        "\"client_state_label\":{}",
+        match &s.client_state_label {
+            Some(l) => json_string(l),
             None => "null".to_string(),
         }
     ));
@@ -1253,12 +1295,61 @@ mod tests {
             screenshots_requested: 1,
             last_screenshot_path: Some("screenshots/000000.png".into()),
             last_error: None,
+            phase_label: None,
+            round: None,
+            client_state_label: None,
         });
         let v = parse_json_value(&s).expect("status json valid");
         assert_eq!(v.get("frame").and_then(JsonValue::as_f64), Some(42.0));
         assert_eq!(
             v.get("schema").and_then(JsonValue::as_str),
-            Some("autoplay_status_v1")
+            Some("autoplay_status_v2")
         );
+    }
+
+    #[test]
+    fn render_status_json_includes_phase_fields() {
+        let s = render_status_json(&AutoplayStatusSnapshot {
+            frame: 10,
+            uptime_secs: 0.5,
+            phase_label: Some("Placement".into()),
+            round: Some(3),
+            client_state_label: Some("InSession".into()),
+            ..AutoplayStatusSnapshot::default()
+        });
+        let v = parse_json_value(&s).expect("valid json");
+        assert_eq!(
+            v.get("phase_label").and_then(JsonValue::as_str),
+            Some("Placement")
+        );
+        assert_eq!(v.get("round").and_then(JsonValue::as_f64), Some(3.0));
+        assert_eq!(
+            v.get("client_state_label").and_then(JsonValue::as_str),
+            Some("InSession")
+        );
+    }
+
+    #[test]
+    fn render_status_json_phase_null_when_absent() {
+        let s = render_status_json(&AutoplayStatusSnapshot::default());
+        let v = parse_json_value(&s).expect("valid json");
+        // Before any phase message, all three fields are null.
+        assert!(matches!(v.get("phase_label"), Some(JsonValue::Null)));
+        assert!(matches!(v.get("round"), Some(JsonValue::Null)));
+        assert!(matches!(v.get("client_state_label"), Some(JsonValue::Null)));
+    }
+
+    #[test]
+    fn capabilities_json_lists_status_fields() {
+        let s = capabilities_json();
+        let v = parse_json_value(&s).expect("valid json");
+        assert_eq!(
+            v.get("version").and_then(JsonValue::as_f64),
+            Some(AUTOPLAY_RPC_VERSION as f64)
+        );
+        let sf = v.get("status_fields").expect("status_fields present");
+        assert!(sf.get("phase_label").is_some());
+        assert!(sf.get("round").is_some());
+        assert!(sf.get("client_state_label").is_some());
     }
 }
