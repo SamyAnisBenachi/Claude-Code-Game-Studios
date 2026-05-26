@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CCGS-Lite — State Cockpit</title>
+<style>
+  :root{
+    --bg:#0b1220;--bg2:#101a2e;--card:#121d33;--card2:#172545;
+    --line:#1f2f4f;--line2:#2b4071;
+    --ink:#e6ecf5;--ink-dim:#9aa9c5;--ink-mute:#6c7e9e;
+    --cyan:#5cd8ff;--amber:#ffc857;--green:#5bd99c;--red:#ff6b6b;--gray:#7a8aa6;--violet:#b78bff;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:radial-gradient(1200px 800px at 10% -10%,#152444 0%,var(--bg) 55%) fixed;color:var(--ink);font:14px/1.45 ui-sans-serif,system-ui,Segoe UI,Roboto,Inter,Arial,sans-serif}
+  code,.mono{font:13px/1.4 ui-monospace,Consolas,Menlo,monospace;color:#cfe1ff}
+  header.top{padding:18px 22px 6px;display:flex;align-items:baseline;justify-content:space-between;gap:16px;flex-wrap:wrap}
+  header.top h1{margin:0;font-size:19px;letter-spacing:.08em;text-transform:uppercase;color:var(--cyan)}
+  header.top h1 .sub{color:var(--ink-dim);letter-spacing:.04em;text-transform:none;font-weight:500;font-size:13px;margin-left:10px}
+  .stamp{font-size:12px;color:var(--ink-dim)}
+  .stamp b{color:var(--amber)}
+  main{padding:10px 22px 24px;display:grid;gap:14px}
+  .grid{display:grid;grid-template-columns:1fr 1.4fr 1fr;gap:14px}
+  @media (max-width:1100px){.grid{grid-template-columns:1fr}}
+  @media (max-width:900px){main{padding:10px 12px 24px}}
+  .card{background:linear-gradient(180deg,var(--card) 0%,var(--bg2) 100%);border:1px solid var(--line);border-radius:10px;padding:14px 16px;box-shadow:0 2px 0 #0006 inset,0 1px 0 #ffffff08 inset}
+  .card h2{margin:0 0 10px;font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--cyan);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .card h2 .tag{font-size:10px;color:var(--ink-mute);letter-spacing:.12em}
+  .pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;letter-spacing:.06em;text-transform:uppercase;border:1px solid transparent;white-space:nowrap}
+  .pill.green{background:#13371f;color:var(--green);border-color:#1f5a34}
+  .pill.amber{background:#3a2c0a;color:var(--amber);border-color:#5c4514}
+  .pill.red{background:#3a1414;color:var(--red);border-color:#5e1f1f}
+  .pill.gray{background:#222b40;color:var(--gray);border-color:#384660}
+  .pill.cyan{background:#0d2a3a;color:var(--cyan);border-color:#1b4763}
+  .pill.violet{background:#231538;color:var(--violet);border-color:#3d2860}
+  .row{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;padding:8px 0;border-top:1px dashed #243759}
+  .row:first-of-type{border-top:0;padding-top:2px}
+  .row .left{min-width:0;flex:1}
+  .row .left .id{font:12px/1.2 ui-monospace,Consolas,Menlo,monospace;color:#dde7ff}
+  .row .left .desc{color:var(--ink-dim);font-size:12.5px;margin-top:2px;overflow:hidden;text-overflow:ellipsis}
+  .strip{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+  .chip{font:11.5px/1 ui-monospace,Consolas,Menlo,monospace;padding:5px 8px;border-radius:6px;background:#0d1830;border:1px solid var(--line2);color:#bcd1ff}
+  .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:8px;margin:8px 0 2px}
+  .stat{background:#0c1730;border:1px solid var(--line);border-radius:8px;padding:8px 10px;text-align:center}
+  .stat .n{font:600 22px/1 ui-sans-serif,system-ui;color:var(--cyan)}
+  .stat .l{font-size:10.5px;letter-spacing:.1em;color:var(--ink-mute);text-transform:uppercase;margin-top:4px}
+  .stat.warn .n{color:var(--amber)}
+  .stat.danger .n{color:var(--red)}
+  .stat.ok .n{color:var(--green)}
+  .meta{font-size:12px;color:var(--ink-dim)}
+  .meta b{color:var(--ink)}
+  .sha{font-family:ui-monospace,Consolas,Menlo,monospace;background:#0d1c33;border:1px solid var(--line2);padding:1px 6px;border-radius:4px;color:#bcd1ff;font-size:12px}
+  .session{border-left:3px solid var(--cyan)}
+  .activity .row .id{color:var(--cyan)}
+  .activity .row .when{font-size:11px;color:var(--ink-mute);font-family:ui-monospace,Consolas,Menlo,monospace;margin-right:6px}
+  .footer{margin:18px 0 4px;padding:10px 22px;border-top:1px dashed #1c2b4d;color:var(--ink-mute);font-size:12px;display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between}
+  .footer code{color:#cfe1ff}
+  .nodata{color:var(--ink-mute);font-size:12px;font-style:italic;padding:8px 0}
+  .legend{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  .panebar{display:flex;gap:6px;align-items:center;margin-left:auto}
+  details>summary{cursor:pointer;color:var(--ink-dim);font-size:12px}
+  details>summary:hover{color:var(--cyan)}
+  .subhead{margin:14px 0 2px;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-mute)}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <h1>CCGS-Lite State Cockpit <span class="sub">Bevy 0.18 · Lightyear 0.26 · branch <code>main</code></span></h1>
+  <div class="stamp">Generated <b>2026-05-22</b> · by Claude</div>
+</header>
+
+<main>
+
+  <!-- ACTIVE SESSION STRIP -->
+  <section class="card session">
+    <h2>Active Session
+      <span class="tag">production/session-state/active.md</span>
+      <span class="panebar">
+        <span class="pill cyan">Stage · Polish</span>
+        <span class="pill amber">Sprint 18 · active</span>
+      </span>
+    </h2>
+    <div class="meta">
+      <b>Updated</b> 2026-05-19 by orchestrator ·
+      <b>Source of truth</b> <span class="sha">origin/main@7b683ead</span> (PROMPT 1471).
+      Header: <i>Post-Placement Repair Main-Land Sweep</i>.
+    </div>
+    <div class="strip" aria-label="Recent landed PROMPT chain">
+      <span class="chip">1399 placement-submit repair</span>
+      <span class="chip">1410 board picking drag-to-cell</span>
+      <span class="chip">1433 lobby confirm CTA</span>
+      <span class="chip">1436 HUD opp class/mana microbadge</span>
+      <span class="chip">1438 board-picking main-land</span>
+      <span class="chip">1439 bot foundation scaffold</span>
+      <span class="chip">1441 bot protocol room foundations</span>
+      <span class="chip">1444 drag cursor target trace</span>
+      <span class="chip">1450 auction leader label</span>
+      <span class="chip">1451 shop slots client receive</span>
+      <span class="chip">1452 HUD phase timer countdown</span>
+      <span class="chip">1456 placement board hit-test</span>
+      <span class="chip">1457 placement drag live verify PASS</span>
+      <span class="chip">1458 QA snapshot forensic fields</span>
+      <span class="chip">1460 accepted unit visibility</span>
+      <span class="chip">1466 board grid overlay toggle</span>
+      <span class="chip">1463 HUD obj/timer readability</span>
+      <span class="chip">1468 placement rejection recovery</span>
+      <span class="chip">1470 shop-auction z-order/readability</span>
+      <span class="chip">1471 connection-lost overlay observability</span>
+    </div>
+    <div class="row">
+      <div class="left">
+        <div class="id">PROMPT 1472 · POST-REPAIR-LIVE-TWO-CLIENT-QA-RETEST</div>
+        <div class="desc">Next required orchestration: rebuild latest main, run two-client flow, capture logs+snapshots; validate lobby confirm, shop offers, auction timer/leader, drag/drop, accepted unit visibility, rejection recovery, HUD timer/readability, grid overlay, forensic fields.</div>
+      </div>
+      <span class="pill amber">QUEUED · VERIFY-ONLY</span>
+    </div>
+    <div class="row">
+      <div class="left">
+        <div class="id">PROMPT 1440 / 1449 live-verify failures</div>
+        <div class="desc">Historical evidence preserved — NOT current blockers in isolation. PROMPT 1457 only verified board hit-test path, not the full two-client loop.</div>
+      </div>
+      <span class="pill gray">HISTORICAL</span>
+    </div>
+    <div class="row">
+      <div class="left">
+        <div class="id">PROMPT 761 · Polish→Release gate-check</div>
+        <div class="desc">FAIL preserved at <code>production/gate-checks/gate-polish-release-2026-05-12.md</code> — no retry in Sprint 18.</div>
+      </div>
+      <span class="pill red">FAIL · NO RETRY</span>
+    </div>
+  </section>
+
+  <!-- 3-COLUMN GRID -->
+  <section class="grid">
+
+    <!-- LEFT: SPRINT & MILESTONE -->
+    <div class="card">
+      <h2>Sprint &amp; Milestone <span class="tag">sprint-18 · stage Polish</span></h2>
+      <div class="meta">
+        <b>Goal</b> Polish-stage UI cohesion + observability. Convert documented S18 candidates into closed rows; finish auction-won card disposition; ui-clean-pass wave 2 (stories 020–027); hand-ui mana-preview / idle-affordance follow-ups.
+      </div>
+      <div class="meta" style="margin-top:6px">
+        <b>Activated</b> 2026-05-18 (PROMPT 1301) · <b>Day</b> 5 of provisional 10-day window ·
+        <b>Capacity</b> ~5.4d active / 7.5d available
+      </div>
+
+      <div class="stat-grid">
+        <div class="stat ok"><div class="n">3</div><div class="l">Done</div></div>
+        <div class="stat"><div class="n">8</div><div class="l">Ready</div></div>
+        <div class="stat warn"><div class="n">1</div><div class="l">Blocked</div></div>
+        <div class="stat"><div class="n">12</div><div class="l">Active rows</div></div>
+      </div>
+
+      <div class="subhead">Must Have (4)</div>
+      <div class="row"><div class="left"><div class="id">S11-HUD-TIMER-EYEBALL-VISUAL-001</div><div class="desc">Carry from Sprint 13→18; human-operator-blocked.</div></div><span class="pill amber">BLOCKED · HUMAN</span></div>
+      <div class="row"><div class="left"><div class="id">S18-AUCTION-WON-CARD-DISPOSITION-001</div><div class="desc">P0 implementation surface; needs /dev-story after /qa-plan.</div></div><span class="pill cyan">READY</span></div>
+      <div class="row"><div class="left"><div class="id">S18-UI-PLAY-AREA-CONTAINER-001</div><div class="desc">Lane A structural enabler; precedes card-art-and-label-strip.</div></div><span class="pill cyan">READY</span></div>
+      <div class="row"><div class="left"><div class="id">S18-UI-LAYOUT-CONTRACT-DOC-AND-LINT-001</div><div class="desc">Closed by PROMPT 1337 on origin/main@72b89ca (2026-05-19).</div></div><span class="pill green">DONE</span></div>
+
+      <div class="subhead">Should Have (6)</div>
+      <div class="row"><div class="left"><div class="id">S18-UI-HAND-MANA-PREVIEW-DURING-DRAG-001</div><div class="desc">Impl landed (PROMPT 1228 / 8d0a3d3) — paperwork-only.</div></div><span class="pill cyan">READY</span></div>
+      <div class="row"><div class="left"><div class="id">S18-UI-HAND-IDLE-PLAYABLE-AFFORDANCE-001</div><div class="desc">Closed by PROMPT 1357 on origin/main@516b642 (2026-05-19).</div></div><span class="pill green">DONE</span></div>
+      <div class="row"><div class="left"><div class="id">S18-UI-VIEWPORT-INVARIANT-LIVE-HARNESS-001</div><div class="desc">Impl landed (PROMPT 1185 / 671c677) — paperwork-only.</div></div><span class="pill cyan">READY</span></div>
+      <div class="row"><div class="left"><div class="id">S18-UI-CARD-ART-AND-LABEL-STRIP-001</div><div class="desc">Lane C; unimplemented at activation tip.</div></div><span class="pill cyan">READY</span></div>
+      <div class="row"><div class="left"><div class="id">S18-OBS-SNAPSHOT-LAYOUT-FIELDS-001</div><div class="desc">Impl landed (PROMPT 1229 / e68ac4f) — paperwork-only.</div></div><span class="pill cyan">READY</span></div>
+      <div class="row"><div class="left"><div class="id">S18-UI-SETTINGS-PANEL-FLEX-RELAYOUT-001</div><div class="desc">Closed by PROMPT 1331 (paperwork) on origin/main@4940a7b.</div></div><span class="pill green">DONE</span></div>
+
+      <div class="subhead">Nice to Have (2)</div>
+      <div class="row"><div class="left"><div class="id">S18-UI-INTERACTION-STATE-MIGRATION-WAVE-2-001</div><div class="desc">J-class polish; unimplemented at activation tip.</div></div><span class="pill cyan">READY</span></div>
+      <div class="row"><div class="left"><div class="id">S18-UI-OVERLAY-PANEL-OVERFLOW-HARDENING-001</div><div class="desc">J-class polish; unimplemented at activation tip.</div></div><span class="pill cyan">READY</span></div>
+
+      <div class="subhead">Milestones <span class="tag">production/milestones · locked 2026-04-29</span></div>
+      <div class="row"><div class="left"><div class="id">M1 — Core Loop</div><div class="desc">Two players connect, play one round, resolve correctly.</div></div><span class="pill green">DONE</span></div>
+      <div class="row"><div class="left"><div class="id">M2 — Playable Game</div><div class="desc">Complete 1v1 — auction, acquisition, combat, shop, win condition, board.</div></div><span class="pill amber">IN-FLIGHT</span></div>
+      <div class="row"><div class="left"><div class="id">M3 — Full Feature</div><div class="desc">Keywords, prisms, classes, animations.</div></div><span class="pill gray">QUEUED</span></div>
+    </div>
+
+    <!-- CENTER: RECENT ACTIVITY -->
+    <div class="card activity">
+      <h2>Recent Activity <span class="tag">git log · last 25 · no PROGRESS.md at root</span></h2>
+
+      <div class="row"><div class="left"><div class="id">24ca4a90 · state</div><div class="desc">record autoplay runtime verify partial</div></div><div><span class="when">05-21</span><span class="pill amber">PARTIAL</span></div></div>
+      <div class="row"><div class="left"><div class="id">26ef46e1 · state</div><div class="desc">record bot autoplay current pause state</div></div><div><span class="when">05-21</span><span class="pill gray">INFO</span></div></div>
+      <div class="row"><div class="left"><div class="id">6e16951f · PROMPT-1613</div><div class="desc">docs(reports): autoplay recipe library main-ready refresh after 1611</div></div><div><span class="when">05-21</span><span class="pill green">SHIPPED</span></div></div>
+      <div class="row"><div class="left"><div class="id">fb21b045 · PROMPT 1609</div><div class="desc">feat(autoplay): recipe library v1</div></div><div><span class="when">05-21</span><span class="pill green">SHIPPED</span></div></div>
+      <div class="row"><div class="left"><div class="id">271f21bc · PROMPT-1611</div><div class="desc">integration refresh report — strict-FF onto origin/main@ee9109c8</div></div><div><span class="when">05-21</span><span class="pill green">SHIPPED</span></div></div>
+      <div class="row"><div class="left"><div class="id">ae9bdde3 · PROMPT 1608</div><div class="desc">ledger(bot,autoplay): sprint/story ledger alignment</div></div><div><span class="when">05-21</span><span class="pill green">SHIPPED</span></div></div>
+      <div class="row"><div class="left"><div class="id">ee9109c8 · PROMPT-1607</div><div class="desc">docs(reports): integration refresh report — strict-FF onto 576fbe8c</div></div><div><span class="when">05-21</span><span class="pill green">SHIPPED</span></div></div>
+      <div class="row"><div class="left"><div class="id">51dbb9c0 · PROMPT 1603</div><div class="desc">feat(client,tools): debug-only 2-bot soak entrypoint + headless launcher</div></div><div><span class="when">05-21</span><span class="pill green">SHIPPED</span></div></div>
+      <div class="row"><div class="left"><div class="id">576fbe8c · PROMPT 1602</div><div class="desc">feat(bot): Wave 3 placement heuristic</div></div><div><span class="when">05-21</span><span class="pill green">SHIPPED</span></div></div>
+      <div class="row"><div class="left"><div class="id">0cb29c23 · docs</div><div class="desc">align autoplay RPC schema</div></div><div><span class="when">05-21</span><span class="pill green">SHIPPED</span></div></div>
+      <div class="row"><div class="left"><div class="id">237572af · state</div><div class="desc">record post-1601 autoplay mainland</div></div><div><span class="when">05-21</span><span class="pill gray">INFO</span></div></div>
+      <div class="row"><div class="left"><div class="id">799e89b7 · PROMPT-1601</div><div class="desc">report: push outcome — integrate/bevy-autoplay-bootstrap-1601 strict-FF</div></div><div><span class="when">05-21</span><span class="pill green">SHIPPED</span></div></div>
+      <div class="row"><div class="left"><div class="id">45864eff · PROMPT-1601</div><div class="desc">bevy-autoplay-bootstrap main-ready refresh (1595+1600)</div></div><div><span class="when">05-21</span><span class="pill green">SHIPPED</span></div></div>
+      <div class="row"><div class="left"><div class="id">db62478a · PROMPT-1600</div><div class="desc">report: push outcome — 69e81cb7 strict-FF vs b3dc0a39</div></div><div><span class="when">05-21</span><span class="pill green">SHIPPED</span></div></div>
+      <div class="row"><div class="left"><div class="id">dfaf6881 · PROMPT-1600</div><div class="desc">bevy-autoplay-bootstrap integration refresh (1595 onto b3dc0a39)</div></div><div><span class="when">05-21</span><span class="pill green">SHIPPED</span></div></div>
+      <div class="row"><div class="left"><div class="id">82497c76 · PROMPT-1595</div><div class="desc">BEVY-AUTOPLAY-BOOTSTRAP-FIRST-SLICE: dev-only client autoplay harness</div></div><div><span class="when">05-21</span><span class="pill green">SHIPPED</span></div></div>
+      <div class="row"><div class="left"><div class="id">e903ac6b · state</div><div class="desc">record post-1599 orchestration state</div></div><div><span class="when">05-21</span><span class="pill gray">INFO</span></div></div>
+      <div class="row"><div class="left"><div class="id">b3dc0a39 · PROMPT-1599</div><div class="desc">bot-flow MVP Wave A/B/C integration refresh (1596+1597+1598)</div></div><div><span class="when">05-21</span><span class="pill green">SHIPPED</span></div></div>
+      <div class="row"><div class="left"><div class="id">219d1377 · PROMPT-1598</div><div class="desc">BOT-FLOW-AUCTION-BID-FUNNEL: funnel bot bid decision into process_bid_batch</div></div><div><span class="when">05-21</span><span class="pill green">SHIPPED</span></div></div>
+      <div class="row"><div class="left"><div class="id">d4f58392 · PROMPT-1597</div><div class="desc">bot-flow server QA snapshot + decision-log JSONL streamer</div></div><div><span class="when">05-21</span><span class="pill green">SHIPPED</span></div></div>
+      <div class="row"><div class="left"><div class="id">009f3fbd · PROMPT-1596</div><div class="desc">BOT-FLOW-LOBBY-ADD-REMOVE-BOT-UX: contextual Add/Remove Bot lobby controls</div></div><div><span class="when">05-21</span><span class="pill green">SHIPPED</span></div></div>
+      <div class="row"><div class="left"><div class="id">3a4603af · state</div><div class="desc">record post-1593 orchestration state</div></div><div><span class="when">05-21</span><span class="pill gray">INFO</span></div></div>
+      <div class="row"><div class="left"><div class="id">49f5a136 · PROMPT-1593</div><div class="desc">report: backfill final tip hash + push outcome</div></div><div><span class="when">05-21</span><span class="pill green">SHIPPED</span></div></div>
+      <div class="row"><div class="left"><div class="id">7196bdad · PROMPT-1593</div><div class="desc">QA-plan + snapshot fields mainland refresh after 1591 (1586+1587+1590+1592)</div></div><div><span class="when">05-21</span><span class="pill green">SHIPPED</span></div></div>
+      <div class="row"><div class="left"><div class="id">7f78b553 · PROMPT-1592</div><div class="desc">QA-plan + snapshot fields mainland refresh after 1588 (1586+1587+1590)</div></div><div><span class="when">05-21</span><span class="pill green">SHIPPED</span></div></div>
+
+      <div class="legend">
+        <span class="pill green">SHIPPED</span>
+        <span class="pill amber">PARTIAL</span>
+        <span class="pill red">FAILED</span>
+        <span class="pill gray">INFO / state</span>
+      </div>
+    </div>
+
+    <!-- RIGHT: ARCHITECTURE PULSE -->
+    <div class="card">
+      <h2>Architecture Pulse <span class="tag">docs/architecture · design/gdd</span></h2>
+
+      <div class="stat-grid">
+        <div class="stat"><div class="n">26</div><div class="l">ADRs</div></div>
+        <div class="stat ok"><div class="n">25</div><div class="l">Accepted</div></div>
+        <div class="stat"><div class="n">0</div><div class="l">Pending</div></div>
+        <div class="stat"><div class="n">0</div><div class="l">Superseded</div></div>
+      </div>
+
+      <div class="subhead">Recently modified ADRs</div>
+      <div class="row"><div class="left"><div class="id">ADR-025</div><div class="desc">Asset-Pack Provenance Architecture and Dev-Only Krosmaga Proxy Boundary</div></div><span class="pill green">Accepted</span></div>
+      <div class="row"><div class="left"><div class="id">ADR-021</div><div class="desc">Presentation Layer Architecture</div></div><span class="pill green">Accepted</span></div>
+      <div class="row"><div class="left"><div class="id">ADR-024</div><div class="desc">Sang Méprise Reveal Mechanism — recipient scope, lifecycle, client cache</div></div><span class="pill green">Accepted</span></div>
+      <div class="row"><div class="left"><div class="id">ADR-011</div><div class="desc">Reconnect Flow and Game Snapshot Protocol</div></div><span class="pill green">Accepted</span></div>
+      <div class="row"><div class="left"><div class="id">ADR-023</div><div class="desc">Placement Timer Accessibility Authority</div></div><span class="pill green">Accepted</span></div>
+
+      <div class="subhead">GDDs <span class="tag">design/gdd</span></div>
+      <div class="stat-grid">
+        <div class="stat"><div class="n">30</div><div class="l">GDD files</div></div>
+        <div class="stat"><div class="n">05-19</div><div class="l">Newest mtime</div></div>
+      </div>
+      <div class="meta" style="margin-top:6px"><b>Most recently touched:</b> <code>board-rendering.md</code> · 2026-05-19</div>
+
+      <div class="subhead">Carried conditions</div>
+      <div class="row"><div class="left"><div class="id">S8-QA-001-W1</div><div class="desc">Two-client GAME_OVER manual gap.</div></div><span class="pill red">OPEN</span></div>
+      <div class="row"><div class="left"><div class="id">QA-COND-0005</div><div class="desc">Standard-tier accessibility — friend-game scope only.</div></div><span class="pill amber">ACCEPT-RISK</span></div>
+      <div class="row"><div class="left"><div class="id">QA-COND-0006</div><div class="desc">Playtest / fun-hypothesis validation deferred.</div></div><span class="pill amber">ACCEPT-RISK</span></div>
+      <div class="row"><div class="left"><div class="id">PAW-TD-*-a</div><div class="desc">Placeholder-art accept-risk across PAW-002..006.</div></div><span class="pill amber">ACCEPT-RISK</span></div>
+      <div class="row"><div class="left"><div class="id">TQ-S12-C1..C7</div><div class="desc">Test-quality conditions preserved; C7 not closed.</div></div><span class="pill amber">PRESERVED</span></div>
+      <div class="row"><div class="left"><div class="id">PROMPT 1054</div><div class="desc">P1 UI snapshot visual retest.</div></div><span class="pill red">BLOCKED · HUMAN</span></div>
+    </div>
+
+  </section>
+
+  <!-- BOTTOM: TEST & BUILD SIGNAL -->
+  <section class="card">
+    <h2>Test &amp; Build Signal <span class="tag">tests/ · production/qa/smoke-*</span></h2>
+    <div class="stat-grid">
+      <div class="stat"><div class="n">288</div><div class="l">*_test.rs files</div></div>
+      <div class="stat ok"><div class="n">1355</div><div class="l">Passed (last smoke)</div></div>
+      <div class="stat"><div class="n">0</div><div class="l">Failed</div></div>
+      <div class="stat"><div class="n">0</div><div class="l">Ignored</div></div>
+      <div class="stat warn"><div class="n">1</div><div class="l">Env warning</div></div>
+    </div>
+    <div class="row">
+      <div class="left">
+        <div class="id">Latest smoke · Sprint 14 rerun · PROMPT 983</div>
+        <div class="desc">HEAD <span class="sha">f94f4893</span> — 214 effective binaries · 1355/0/0 net. Windows AppCompat shim blocks one binary whose name contains "update"; runs clean when renamed. Workspace fmt clean; cargo check workspace PASS.</div>
+      </div>
+      <span class="pill amber">PASS-WITH-WARNINGS · 2026-05-16</span>
+    </div>
+    <div class="row">
+      <div class="left">
+        <div class="id">Latest gate-check · Polish→Release · PROMPT 761</div>
+        <div class="desc"><code>production/gate-checks/gate-polish-release-2026-05-12.md</code> — no retry in Sprint 18.</div>
+      </div>
+      <span class="pill red">FAIL · 2026-05-12</span>
+    </div>
+    <details style="margin-top:10px">
+      <summary>Other smoke reports on file (mtime order)</summary>
+      <div class="meta" style="margin-top:6px">
+        <code>smoke-sprint-14-2026-05-16-rerun.md</code> · <code>smoke-sprint-12-2026-05-14.md</code> · <code>smoke-sprint-11-2026-05-13.md</code> ·
+        <code>smoke-2026-05-12.md</code> · <code>smoke-sprint-10-2026-05-12-retry-7.md</code> · <code>smoke-sprint-10-2026-05-11.md</code> ·
+        <code>smoke-sprint-8-2026-05-07.md</code> · <code>smoke-sprint-7-2026-05-07.md</code> · <code>smoke-2026-05-06.md</code> · <code>smoke-2026-05-05.md</code> · <code>smoke-2026-04-30.md</code>
+      </div>
+    </details>
+  </section>
+
+</main>
+
+<footer class="footer">
+  <div>Generated by Claude · sources: <code>production/session-state/active.md</code> · <code>production/sprint-status.yaml</code> · <code>production/sprints/sprint-18.md</code> · <code>docs/architecture/</code> · <code>design/gdd/</code> · <code>git log</code></div>
+  <div>Refresh: re-run the cockpit prompt against this repo, or open in your browser after each milestone closure.</div>
+</footer>
+
+</body>
+</html>
