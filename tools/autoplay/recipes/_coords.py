@@ -33,6 +33,7 @@ class FracPoint(NamedTuple):
 # Defaults: fractional logical-window positions.
 DEFAULTS: dict[str, FracPoint] = {
     "LOBBY_CREATE_BTN": FracPoint(0.5, 0.55),
+    "LOBBY_ADD_BOT_BTN": FracPoint(0.5, 0.72),
     "LOBBY_CONFIRM_BTN": FracPoint(0.5, 0.85),
     "CLASS_FIRST_CARD": FracPoint(0.25, 0.45),
     "CLASS_CONFIRM_BTN": FracPoint(0.5, 0.85),

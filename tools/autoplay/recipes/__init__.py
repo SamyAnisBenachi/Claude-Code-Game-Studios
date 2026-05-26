@@ -34,6 +34,7 @@ from dataclasses import dataclass
 from typing import Callable
 
 from . import (
+    add_bot_lobby,
     class_select,
     draft_auction_probe,
     full_game,
@@ -66,6 +67,7 @@ Builder = Callable[[RecipeContext], list[dict]]
 REGISTRY: dict[str, tuple[str, Builder]] = {
     smoke.NAME: (smoke.DESCRIPTION, smoke.build),
     idle.NAME: (idle.DESCRIPTION, idle.build),
+    add_bot_lobby.NAME: (add_bot_lobby.DESCRIPTION, add_bot_lobby.build),
     lobby_create.NAME: (lobby_create.DESCRIPTION, lobby_create.build),
     class_select.NAME: (class_select.DESCRIPTION, class_select.build),
     draft_auction_probe.NAME: (draft_auction_probe.DESCRIPTION, draft_auction_probe.build),
