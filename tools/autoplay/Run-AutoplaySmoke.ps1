@@ -14,8 +14,9 @@
 #   - exercising bot-vs-driven gameplay (deferred; see docs/autoplay.md)
 #   - headless mode (no headless Cargo feature exists yet)
 #
-# Usage from the repo root:
-#   pwsh -File tools/autoplay/Run-AutoplaySmoke.ps1
+# Usage from the repo root (works with both PowerShell 5.1 and 7+):
+#   powershell -File tools/autoplay/Run-AutoplaySmoke.ps1
+#   pwsh       -File tools/autoplay/Run-AutoplaySmoke.ps1
 #   pwsh -File tools/autoplay/Run-AutoplaySmoke.ps1 -Port 15874 -ArtifactDir D:/Tmp/autoplay-test
 
 [CmdletBinding()]
@@ -34,7 +35,7 @@ $repoRoot = Resolve-Path (Join-Path $PSScriptRoot '..\..')
 Set-Location $repoRoot
 
 if ([string]::IsNullOrWhiteSpace($ArtifactDir)) {
-    $stamp = (Get-Date -AsUTC -Format "yyyyMMdd-HHmmss") + "-Z"
+    $stamp = [DateTime]::UtcNow.ToString("yyyyMMdd-HHmmss") + "-Z"
     $ArtifactDir = Join-Path "production/qa/evidence/autoplay-runs" $stamp
 }
 
@@ -58,7 +59,7 @@ if ($build.ExitCode -ne 0) {
 
 # Launch the client. Env vars activate the autoplay harness; the launcher
 # captures stdout+stderr to process.log so the report has a paper trail.
-$startedAt = (Get-Date -AsUTC).ToString("o")
+$startedAt = [DateTime]::UtcNow.ToString("o")
 $env:CCGS_AUTOPLAY = "1"
 $env:CCGS_AUTOPLAY_PORT = "$Port"
 $env:CCGS_AUTOPLAY_ARTIFACT_DIR = (Resolve-Path $ArtifactDir).Path
@@ -87,7 +88,7 @@ if (-not $ready) {
     if (-not $client.HasExited) {
         $client.Kill() | Out-Null
     }
-    $finishedAt = (Get-Date -AsUTC).ToString("o")
+    $finishedAt = [DateTime]::UtcNow.ToString("o")
     Set-Content -Path $launcherStatusPath -Value (@{
         schema           = "autoplay_launcher_status_v1"
         outcome          = "rpc_port_never_bound"
@@ -120,7 +121,7 @@ if (-not $client.HasExited) {
     Start-Sleep -Seconds 1
 }
 
-$finishedAt = (Get-Date -AsUTC).ToString("o")
+$finishedAt = [DateTime]::UtcNow.ToString("o")
 Set-Content -Path $launcherStatusPath -Value (@{
     schema           = "autoplay_launcher_status_v1"
     outcome          = if ($driverExit -eq 0) { "ok" } else { "driver_failed" }
