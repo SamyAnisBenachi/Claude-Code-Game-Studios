@@ -442,3 +442,8 @@ path = "../tests/unit/bot/bot_placement_wave_3_test.rs"
 [[test]]
 name = "bot_debug_push_test"
 path = "../tests/unit/bot/bot_debug_push_test.rs"
+
+# PROMPT 1640 — BotSoakConfig max-rounds bound (env-var parsing + resource).
+[[test]]
+name = "bot_soak_config_test"
+path = "../tests/unit/bot/bot_soak_config_test.rs"
