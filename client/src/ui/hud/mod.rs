@@ -2153,6 +2153,10 @@ pub fn sync_gold_text_system(
     }
 }
 
+/// PROMPT 1696 — mana text color when the drag card would overdraw the pool.
+/// Reuses `SEMANTIC_ERROR #EB5757` already established in Sprint 14 shop_auction.
+const MANA_PREVIEW_OVERDRAWN_COLOR: Color = Color::srgb(0.922, 0.341, 0.341);
+
 pub fn sync_mana_text_system(
     entities: Option<Res<HudEntities>>,
     economy_view: Res<PlayerEconomyView>,
@@ -2165,6 +2169,7 @@ pub fn sync_mana_text_system(
             &mut ManaDisplayState,
             &mut ManaTweenTarget,
             &mut Text,
+            &mut TextColor,
             Option<&TweenAnim>,
         ),
         With<ManaLabel>,
@@ -2172,7 +2177,9 @@ pub fn sync_mana_text_system(
     mut reserve_labels: Query<&mut Text, (With<ReserveManaLabel>, Without<ManaLabel>)>,
     mut visibility: Query<&mut Visibility>,
 ) {
-    let Ok((mut state, mut target, mut mana_text, animator)) = mana_labels.single_mut() else {
+    let Ok((mut state, mut target, mut mana_text, mut mana_color, animator)) =
+        mana_labels.single_mut()
+    else {
         return;
     };
     let Ok(mut reserve_text) = reserve_labels.single_mut() else {
@@ -2188,6 +2195,7 @@ pub fn sync_mana_text_system(
         reserve_text.0.clear();
         if state.preview_overdrawn {
             state.preview_overdrawn = false;
+            mana_color.0 = HUD_PRIMARY_TEXT_COLOR;
         }
         set_reserve_mana_visibility(&entities, &mut visibility, Visibility::Hidden);
         return;
@@ -2226,6 +2234,14 @@ pub fn sync_mana_text_system(
         if state.preview_overdrawn != outcome.overdrawn {
             state.preview_overdrawn = outcome.overdrawn;
         }
+        // PROMPT 1696 — surface overdrawn state via red text so the player
+        // sees immediately that the card cannot be paid for. Restores to
+        // the standard HUD primary color when the drag is affordable.
+        mana_color.0 = if outcome.overdrawn {
+            MANA_PREVIEW_OVERDRAWN_COLOR
+        } else {
+            HUD_PRIMARY_TEXT_COLOR
+        };
         mana_text.0 = format!(
             "{} / {}",
             outcome.current,
@@ -2247,6 +2263,8 @@ pub fn sync_mana_text_system(
     if state.preview_overdrawn {
         state.preview_overdrawn = false;
     }
+    // Restore normal color when preview is suppressed (drag ended / non-Minion).
+    mana_color.0 = HUD_PRIMARY_TEXT_COLOR;
 
     mana_text.0 = format!(
         "{} / {}",
