@@ -2,21 +2,21 @@
 
 > **Epic**: UI Clean-Pass
 > **Story ID**: S18-OBS-SNAPSHOT-LAYOUT-FIELDS-001
-> **Status**: Draft -- future Sprint 18 candidate; NOT activated by this authoring run
+> **Status**: Done -- Sprint 18 Should Have (closed PROMPT 1714 on `origin/main@3a4f7721`; impl PROMPT 1186 `d75db1af`; 14-test coverage suite 14/14 PASS; AC1..AC18 PASS; AC13 3 null-field limitations documented in `production/qa/evidence/sprint-18-snapshot-layout-fields/evidence.md`)
 > **Layer**: Presentation -- QA snapshot tooling (`client/src/presentation/qa_snapshot.rs` only)
 > **Type**: Tech Debt -- observability extension
-> **Sprint**: Future Sprint 18 candidate per PROMPT 1180 §6 Lane D.
+> **Sprint**: Sprint 18 Should Have (activated PROMPT 1301; closed PROMPT 1714)
 > **Authored**: 2026-05-18 by PROMPT 1189
 > **Authoring source-of-truth**: `origin/main@efb698e`
 > **Estimated effort**: ~0.4d
 > **Source audit**: PROMPT 1180 §4 (Q-01..Q-10), §6 Lane D (PROMPT 1193 candidate)
-> **Active impl PROMPT**: PROMPT 1186. If 1186 lands first, this story may close via `/story-done`.
+> **Impl PROMPT**: PROMPT 1186 (`d75db1af`). Landed on `origin/main` before Sprint 18 activation; story closed via `/story-done` PROMPT 1714 (paperwork-only).
 
 ---
 
 ## Status / No-Claim Banner
 
-Future Sprint 18 candidate. **No sprint activated.** No claim on release readiness, `QA-COND-*`, `PAW-TD-*-a`, 24 PROMPT 1022 findings, or any audit finding outside Lane D.
+**Done — Sprint 18 Should Have.** Closed by PROMPT 1714 on `origin/main@3a4f7721` (2026-05-27). Implementation: PROMPT 1186 commit `d75db1af`. No claim on release readiness, `QA-COND-*`, `PAW-TD-*-a`, 24 PROMPT 1022 findings, or any audit finding outside Lane D. Sprint 18 stage remains Polish; `production/stage.txt` NOT modified.
 
 ## Problem Class / Prevention Target
 
@@ -76,15 +76,15 @@ Q-* enumeration:
 
 ## Acceptance Criteria
 
-- [ ] AC1..AC10 -- Each Q-01..Q-10 field emitted per the enumeration above; `null` allowed where ECS data missing.
-- [ ] AC11 -- `layout_field_coverage_test.rs` (NEW) spawns minimal scene per marker family, drives ≥3 frames, asserts presence of every Q-* field (null-emission path exercised where applicable).
-- [ ] AC12 -- `CCGS_QA_SNAPSHOT=1` contract preserved.
-- [ ] AC13 -- No invented values; evidence note lists every `null`-emitted field + missing-query file:line.
-- [ ] AC14 -- `liv-bevy-018` activated.
-- [ ] AC15 -- Cargo resource policy applied.
-- [ ] AC16 -- No accept-risk closure; 24 PROMPT 1022 findings preserved.
-- [ ] AC17 -- Sprint disposition preserved.
-- [ ] AC18 -- Worker branch scope contained; slug `work/s18-obs-snapshot-layout-fields`.
+- [x] AC1..AC10 -- Each Q-01..Q-10 field emitted per the enumeration above; `null` allowed where ECS data missing.
+- [x] AC11 -- `layout_field_coverage_test.rs` (NEW) spawns minimal scene per marker family, drives ≥3 frames, asserts presence of every Q-* field (null-emission path exercised where applicable). 14/14 tests pass.
+- [x] AC12 -- `CCGS_QA_SNAPSHOT=1` contract preserved.
+- [x] AC13 -- No invented values; 3 null-emitted fields documented in `production/qa/evidence/sprint-18-snapshot-layout-fields/evidence.md` with file:line references (Q-05 best-effort text, Q-06 aspect_ratio null, Q-07 disabled not emitted).
+- [x] AC14 -- `liv-bevy-018` activated (PROMPT 1186 worker).
+- [x] AC15 -- Cargo resource policy applied.
+- [x] AC16 -- No accept-risk closure; 24 PROMPT 1022 findings preserved.
+- [x] AC17 -- Sprint disposition preserved; Sprint 18 Polish stage unchanged.
+- [x] AC18 -- Worker branch scope contained; slug `work/s18-obs-snapshot-layout-fields`.
 
 ## Implementation Notes
 

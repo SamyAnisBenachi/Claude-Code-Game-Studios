@@ -339,17 +339,27 @@ stories:
       - "Unimplemented at activation tip per PROMPT 1287 Section 2 note; requires /dev-story after Sprint 18 /qa-plan lands."
 
   - id: "S18-OBS-SNAPSHOT-LAYOUT-FIELDS-001"
-    name: "QA snapshot layout fields lift (implementation landed on origin/main via PROMPT 1229 e68ac4f; activation-time paperwork-only)"
+    name: "QA snapshot layout-debug fields Q-01..Q-10 (impl PROMPT 1186 d75db1af; closed Done by PROMPT 1714 paperwork-only on origin/main@3a4f7721)"
     file: "production/epics/ui-clean-pass/story-023-obs-snapshot-layout-fields.md"
     priority: should-have
-    status: ready
+    status: done
+    completed: "2026-05-27"
     owner: "ui-programmer"
     estimate_days: 0.5
-    story_readiness_prompt: "pending (must rerun against Sprint 18 activation HEAD 1345c6b)"
-    story_readiness_verdict: "pending"
-    landed_on_main_basis: "PROMPT 1229 implementation main-landed at e68ac4f per PROMPT 1287 Section 2 Sprint 17 candidate roster inventory (lifts placement_state / auction_state / current_phase.timer_remaining_ms to top-level snapshot keys)."
+    story_readiness_prompt: "1324 (READY_FOR_STORY_DONE, row 5)"
+    story_readiness_verdict: "READY_FOR_STORY_DONE"
+    worker_prompt: "1186"
+    worker_commit: "d75db1afd1d7bb7c7881826a0b4942491120a239"
+    integration_prompt: "n/a (dev-story landed directly on origin/main pre-Sprint-18 activation)"
+    integration_commit: "n/a (inherited at Sprint 18 activation tip 1345c6b per PROMPT 1301)"
+    story_done_prompt: "1714"
+    closure_source_of_truth: "origin/main@3a4f772113c0a49fbdf37df7bbac51bfd99359ac"
+    landed_on_main_basis: "PROMPT 1186 (d75db1af) dev-story(s18-obs-snapshot-layout-fields): add Q-01..Q-10 layout-debug fields to QA snapshot. Citation correction: sprint-status previously attributed e68ac4f (PROMPT 1229 placement/auction state lift) in error; real Q-01..Q-10 impl is d75db1af."
+    evidence: "client/src/presentation/qa_snapshot.rs (+603/-2, Q-01..Q-10 as LayoutSnapshot struct); tests/integration/qa_snapshot/layout_field_coverage_test.rs (NEW, 682 lines, 14 #[test] — 14/14 PASS per PROMPT 1186 worker); production/qa/evidence/sprint-18-snapshot-layout-fields/evidence.md (AC13 limitations: Q-05 best-effort text fit, Q-06 aspect_ratio null-emitted, Q-07 disabled not emitted)"
     notes:
-      - "Activation-time /story-readiness then /story-done paperwork only."
+      - "Activation-time story-done paperwork only. PROMPT 1330 was paused before any write (orchestrator correction at the time; PROMPT 1327 was the active shared-status writer)."
+      - "Citation correction: sprint-18.md and qa-plan-sprint-18.md both reference e68ac4f (PROMPT 1229) as the implementation commit. Real Q-01..Q-10 impl is d75db1af (PROMPT 1186). Correction applied in the closure block only; sprint plan/QA plan narratives not rewritten per PROMPT 1330 scope."
+      - "AC1..AC18 PASS. AC13 three limitations: Q-05 text fit best-effort (no per-glyph clipping), Q-06 aspect_ratio null (forbidden write scope), Q-07 disabled not emitted (Bevy 0.18 Interaction has no Disabled variant). Documented in production/qa/evidence/sprint-18-snapshot-layout-fields/evidence.md."
 
   - id: "S18-UI-SETTINGS-PANEL-FLEX-RELAYOUT-001"
     name: "Settings panel flex relayout (impl PROMPT 1187 8eeb94e; closed Done by PROMPT 1331 paperwork-only on origin/main@4940a7b)"
