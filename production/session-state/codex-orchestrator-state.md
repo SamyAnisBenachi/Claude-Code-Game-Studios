@@ -1,14 +1,15 @@
 # Codex Orchestrator State
 
-## Current Resume Snapshot (2026-05-27, post-1673 bot soak config test isolation)
+## Current Resume Snapshot (2026-05-27, post-1672 bot soak trigger mainland)
 
 Source-of-truth at this snapshot:
 
 - Root checkout: `D:\_DEV\Work\Claude-Code-Game-Studios`
 - Root branch: `main`
-- Root/source commit: `origin/main@71909e88`
-  (`PROMPT 1673 bot soak config test isolation`; PROMPT 1671 launcher repair
-  and PROMPT 1670 AC5 prep are also in the current main ancestry)
+- Root/source commit: `origin/main@828f7674`
+  (`PROMPT 1672 bot soak trigger`; PROMPT 1673 test isolation,
+  PROMPT 1671 launcher repair, and PROMPT 1670 AC5 prep are also in the
+  current main ancestry)
 - Root caveat: local `.claude/**`, `.gcs-app/`, and `tmpwt-*` runtime/tooling
   files are not part of the game source and must stay out of commits unless
   explicitly requested.
@@ -71,26 +72,39 @@ Recent mainland state:
   environment mutation. Worker validation reported 7/7 PASS under default
   parallelism and 7/7 PASS with `--test-threads=1`. Report:
   `reports/PROMPT-1673-bot-soak-config-test-serial-isolation.md`.
+- `1672` completed, was cleared, refreshed, and mainlanded:
+  the selected path is a normal-protocol headless Lightyear client driver,
+  not a server-side bypass. New `bot-soak-trigger` binary connects to a running
+  server, sends `C2SHello`, `C2SCreateBotRoom`, class selection/confirm, and
+  minimal round actions through production C2S messages. `Start-BotVsBotSoak.ps1`
+  now builds/runs that trigger and records trigger evidence instead of sleeping
+  with no client connected. Worker build reported
+  `cargo build -p two-client-runtime --bin bot-soak-trigger` PASS; integration
+  diff-check passed. Report:
+  `reports/PROMPT-1672-bot-soak-room-trigger-path-disposition-integration.md`.
 
 Active workers / expected relays:
 
-| Prompt | State | Notes |
-|---|---|---|
-| `1672` | RUNNING / waiting | Bot-soak room trigger path disposition; decide/implement normal-protocol trigger without gameplay-rule bypass. |
+- No active workers expected in this workstream at this snapshot.
 
 Immediate next actions:
 
-1. Wait for `1672`; clear it, read its report, and only then integrate or
-   relaunch from concrete output.
-2. After trigger-path decision/work (`1672`), rerun bot-vs-bot bounded
-   soak and require decision log + server snapshots + max-round termination
-   evidence before closing story-002 AC2-AC5.
-3. Do not launch story-done/shared-status writers for bot/autoplay until Sprint
+1. Run the live bot-vs-bot bounded soak on latest main:
+   `tools/dev-launcher/Start-BotVsBotSoak.ps1 -MaxRounds 3 -DurationSeconds 60`.
+   Required evidence: trigger exit code `0`, `bot-soak-trigger/final_state.json`,
+   server log with max-round/game-over endpoint, bot decision log, and server
+   snapshots.
+2. If the soak fails, launch a focused repair from the failing evidence only:
+   trigger connection/protocol, launcher process control, server max-round
+   termination, decision log, or snapshot output.
+3. If the soak passes, update BOT-SOAK-ENTRYPOINT-001 AC2-AC5 evidence and then
+   prepare the serialized story-done/status path.
+4. Do not launch story-done/shared-status writers for bot/autoplay until Sprint
    19 activation is explicitly handled.
-4. The next human-facing validation gate is live GUI evidence:
+5. The next human-facing validation gate is live GUI evidence:
    `tools/dev-launcher/Start-AutoplayVsBot.ps1 -Recipe full-game`, then inspect
    `production/qa/evidence/composite-runs/*-autoplay-vs-bot/`.
-5. Keep broad Cargo suites in dedicated verify lanes; implementation/report
+6. Keep broad Cargo suites in dedicated verify lanes; implementation/report
    workers should not block on broad checks or protected-branch pushes.
 
 ## Current Resume Snapshot (2026-05-27, post-1656 composite evidence docs)
