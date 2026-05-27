@@ -33,18 +33,21 @@ Recent mainland state:
   main and PROMPT 1661's `NEEDS_REPAIR` classification was stale/incorrect.
   Remaining work is story-status cleanup plus a readiness ruling for AC5
   runtime/env-gating versus the original compile-time-exclusion wording.
+- `1669` completed, was cleared, refreshed, and mainlanded:
+  AUTOPLAY-RECIPE-LIBRARY-001 AC1 now documents the actual 11-recipe registry,
+  maps renamed/merged concepts, and descopes `placement_reject_recovery` from
+  v1 as a future standalone recipe/story candidate.
 
 Active workers / expected relays:
 
 | Prompt | State | Notes |
 |---|---|---|
 | `1664` | RUNNING / waiting | Bot-vs-bot bounded soak live verify. |
-| `1669` | RUNNING / waiting | Story-only AC1 recipe inventory mapping edit after `1667`. |
 | `1670` | RUNNING / waiting | Bot debug overlay story status cleanup + AC5 readiness ruling prep. |
 
 Immediate next actions:
 
-1. When `1664`, `1669`, or `1670` relays DONE, clear the worker, read its
+1. When `1664` or `1670` relays DONE, clear the worker, read its
    report, and only then launch a focused follow-up.
 2. Do not launch story-done/shared-status writers for bot/autoplay until Sprint
    19 activation is explicitly handled.
