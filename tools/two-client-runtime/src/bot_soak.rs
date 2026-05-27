@@ -30,12 +30,14 @@
 mod bot_route;
 mod logging;
 
+use std::collections::HashMap;
 use std::fs;
 use std::io::Write;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 use std::sync::atomic::Ordering;
+use std::sync::Arc;
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -44,7 +46,7 @@ use lightyear::prelude::client::*;
 use lightyear::prelude::*;
 use serde::Serialize;
 
-use crate::bot_route::BotSoakRoute;
+use crate::bot_route::{BotSoakRoute, TriggerCardEntry};
 use crate::logging::{init_role_subscriber, set_role, Role, RoleLogPaths};
 
 const TICK_HZ: f64 = 60.0;
@@ -180,7 +182,13 @@ fn main() -> ExitCode {
         "bot-soak-trigger boot"
     );
 
-    let route = BotSoakRoute::default();
+    let card_info = load_card_info();
+    let loaded = card_info.len();
+    tracing::info!(loaded, "bot-soak-trigger: card_info loaded");
+    let route = BotSoakRoute {
+        card_info: Arc::new(card_info),
+        ..BotSoakRoute::default()
+    };
     let mut client_app = build_client_app(args.server_url.clone(), route.clone());
 
     let started = Instant::now();
@@ -278,6 +286,59 @@ fn main() -> ExitCode {
     }
 }
 
+/// Load card cost + type info from `assets/data/cards.json` for placement decisions.
+///
+/// Tries several candidate paths relative to the CWD (the soak scripts run from
+/// the project root).  Returns an empty map when the file cannot be found or
+/// parsed — the trigger falls back to empty placements, preserving the PROMPT
+/// 1678 contract.
+fn load_card_info() -> HashMap<u32, TriggerCardEntry> {
+    let candidates = [
+        "assets/data/cards.json",
+        "../assets/data/cards.json",
+        "../../assets/data/cards.json",
+    ];
+
+    for path in &candidates {
+        let Ok(data) = std::fs::read_to_string(path) else {
+            continue;
+        };
+        let Ok(json) = serde_json::from_str::<serde_json::Value>(&data) else {
+            tracing::warn!(path, "bot-soak-trigger: cards.json parse error");
+            continue;
+        };
+        let Some(arr) = json.as_array() else {
+            continue;
+        };
+
+        let mut map = HashMap::new();
+        for card in arr {
+            let (Some(id), Some(cost), Some(card_type)) = (
+                card["id"].as_u64(),
+                card["cost"].as_u64(),
+                card["card_type"].as_str(),
+            ) else {
+                continue;
+            };
+            map.insert(
+                id as u32,
+                TriggerCardEntry {
+                    cost: cost as u32,
+                    is_minion: card_type == "Minion",
+                },
+            );
+        }
+
+        if !map.is_empty() {
+            tracing::info!(path, count = map.len(), "bot-soak-trigger: cards.json loaded");
+            return map;
+        }
+    }
+
+    tracing::warn!("bot-soak-trigger: cards.json not found — placement will use empty fallback");
+    HashMap::new()
+}
+
 fn prepare_evidence_dir(args: &Args) -> PathBuf {
     let dir = match &args.evidence_dir {
         Some(p) => p.clone(),
@@ -346,6 +407,9 @@ fn build_client_app(url: String, route: BotSoakRoute) -> App {
             bot_route::send_create_bot_room,
             bot_route::record_room_created,
             bot_route::send_class_selection,
+            // record_gold_update before record_draft_offering so the mana budget
+            // is populated when we pick a card from the offering (PROMPT 1692).
+            bot_route::record_gold_update,
             bot_route::record_draft_offering,
             bot_route::send_initial_purchase,
             bot_route::record_card_acquired,
