@@ -1,15 +1,15 @@
 # Codex Orchestrator State
 
-## Current Resume Snapshot (2026-05-27, post-1672 bot soak trigger mainland)
+## Current Resume Snapshot (2026-05-27, post-1672 live soak triage)
 
 Source-of-truth at this snapshot:
 
 - Root checkout: `D:\_DEV\Work\Claude-Code-Game-Studios`
 - Root branch: `main`
-- Root/source commit: `origin/main@828f7674`
-  (`PROMPT 1672 bot soak trigger`; PROMPT 1673 test isolation,
-  PROMPT 1671 launcher repair, and PROMPT 1670 AC5 prep are also in the
-  current main ancestry)
+- Root/source commit: `origin/main@191dd4c1`
+  (`PROMPT 1672 bot soak trigger` plus the orchestrator-state update after
+  PROMPT 1672; PROMPT 1673 test isolation, PROMPT 1671 launcher repair, and
+  PROMPT 1670 AC5 prep are also in the current main ancestry)
 - Root caveat: local `.claude/**`, `.gcs-app/`, and `tmpwt-*` runtime/tooling
   files are not part of the game source and must stay out of commits unless
   explicitly requested.
@@ -82,29 +82,50 @@ Recent mainland state:
   `cargo build -p two-client-runtime --bin bot-soak-trigger` PASS; integration
   diff-check passed. Report:
   `reports/PROMPT-1672-bot-soak-room-trigger-path-disposition-integration.md`.
+- Post-1672 live bot-vs-bot bounded soak was run on latest main with
+  `Start-BotVsBotSoak.ps1 -MaxRounds 3 -DurationSeconds 60 -PlayRepoRoot
+  D:\_DEV\Work\Claude-Code-Game-Studios`. Evidence directory:
+  `production/qa/evidence/dev-runs/2026-05-27-112340-bot-vs-bot-soak`.
+  Result is NOT PASS. The trigger itself reached `game_over` and wrote
+  `bot-soak-trigger/final_state.json` with `exit_code=0`, but the launcher
+  summary wrote `trigger_exit_code: null` and exited `1`. Server log reached
+  max-round gameover, but `server.err` also recorded a Bevy panic in
+  `server::feature::bot::lobby_loop::bot_lobby_auto_confirm` because
+  `ClassSelections` was absent. `server-snapshots/` existed but had `0` files,
+  and `bot-decision-log.jsonl` was large/noisy due repeated
+  `empty_placement_failsafe` decisions. Treat this as a focused repair set,
+  not a gameplay PASS.
 
 Active workers / expected relays:
 
-- No active workers expected in this workstream at this snapshot.
+| Prompt | State | Purpose |
+|---|---|---|
+| `1674` | RUNNING | Repair `Start-BotVsBotSoak.ps1` trigger exit-code capture/reconciliation so `trigger_exit_code` is numeric when final_state reports `exit_code=0`. Initial `SPAWN` timed out at the dispatcher, retry confirmed the terminal is live. |
+| `1675` | RUNNING | Repair `bot_lobby_auto_confirm` so missing `ClassSelections` after/around gameover does not panic. |
+| `1676` | RUNNING | Repair bot-soak server snapshot emission; `CCGS_QA_SNAPSHOT_DIR` was configured but `server-snapshots/` stayed empty. |
+| `1677` | RUNNING | Debounce repeated bot placement `empty_placement_failsafe` submissions/logs without bypassing gameplay. |
 
 Immediate next actions:
 
-1. Run the live bot-vs-bot bounded soak on latest main:
+1. Wait for `1674`-`1677` relays, integrate ready branches, and use
+   `MAINLAND_ENQUEUE` for fast-forward-only main landings.
+2. After those repairs land, rerun the live bot-vs-bot bounded soak on latest
+   main:
    `tools/dev-launcher/Start-BotVsBotSoak.ps1 -MaxRounds 3 -DurationSeconds 60`.
-   Required evidence: trigger exit code `0`, `bot-soak-trigger/final_state.json`,
-   server log with max-round/game-over endpoint, bot decision log, and server
-   snapshots.
-2. If the soak fails, launch a focused repair from the failing evidence only:
-   trigger connection/protocol, launcher process control, server max-round
-   termination, decision log, or snapshot output.
-3. If the soak passes, update BOT-SOAK-ENTRYPOINT-001 AC2-AC5 evidence and then
+   Required evidence: trigger exit code `0`, `bot-soak-trigger/final_state.json`
+   showing `received_game_over=true`, server log with max-round/game-over
+   endpoint, compact bot decision log, and non-empty server snapshots.
+3. If the rerun fails, launch one focused repair from the new failing evidence
+   only: trigger connection/protocol, launcher process control, server
+   max-round termination, decision log, or snapshot output.
+4. If the soak passes, update BOT-SOAK-ENTRYPOINT-001 AC2-AC5 evidence and then
    prepare the serialized story-done/status path.
-4. Do not launch story-done/shared-status writers for bot/autoplay until Sprint
+5. Do not launch story-done/shared-status writers for bot/autoplay until Sprint
    19 activation is explicitly handled.
-5. The next human-facing validation gate is live GUI evidence:
+6. The next human-facing validation gate is live GUI evidence:
    `tools/dev-launcher/Start-AutoplayVsBot.ps1 -Recipe full-game`, then inspect
    `production/qa/evidence/composite-runs/*-autoplay-vs-bot/`.
-6. Keep broad Cargo suites in dedicated verify lanes; implementation/report
+7. Keep broad Cargo suites in dedicated verify lanes; implementation/report
    workers should not block on broad checks or protected-branch pushes.
 
 ## Current Resume Snapshot (2026-05-27, post-1656 composite evidence docs)
