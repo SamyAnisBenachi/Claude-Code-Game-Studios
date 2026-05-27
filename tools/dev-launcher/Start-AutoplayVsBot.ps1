@@ -154,9 +154,14 @@ if ($PSBoundParameters.ContainsKey('PlayRepoRoot') -and $PlayRepoRoot.Trim().Len
 } elseif ($env:CCGS_CANONICAL_MAIN_ROOT) {
     $PlayRoot       = $env:CCGS_CANONICAL_MAIN_ROOT.Trim()
     $PlayRootSource = '$env:CCGS_CANONICAL_MAIN_ROOT (alias)'
-} elseif (Test-Path $DefaultPlayRoot) {
+} elseif ((Test-Path $DefaultPlayRoot) -and (Test-Path (Join-Path $DefaultPlayRoot 'Cargo.toml'))) {
     $PlayRoot       = $DefaultPlayRoot
     $PlayRootSource = 'documented dedicated default'
+} elseif (Test-Path $DefaultPlayRoot) {
+    # Directory exists but has no Cargo.toml — treat as a stub/evidence-only directory and fall back.
+    $PlayRoot       = $LauncherRoot
+    $PlayRootSource = 'launcher root (default play root is a stub without Cargo.toml)'
+    Write-Warning "'$DefaultPlayRoot' exists but contains no Cargo.toml. Ignoring stub and falling back to launcher root. Set CCGS_PLAY_REPO_ROOT or -PlayRepoRoot to suppress this warning."
 } else {
     $PlayRoot       = $LauncherRoot
     $PlayRootSource = 'launcher root (no dedicated checkout configured)'
