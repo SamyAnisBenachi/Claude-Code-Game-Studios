@@ -2,12 +2,13 @@
 
 > **Epic**: UI Clean-Pass
 > **Story ID**: S18-UI-CARD-ART-AND-LABEL-STRIP-001
-> **Status**: Draft -- future Sprint 18 candidate; NOT activated by this authoring run
+> **Status**: Done — closed by PROMPT 1715 on origin/main@ac55edfc (PROMPT 1726 tip)
 > **Layer**: Presentation -- card-slot primitive extension + per-surface consumer migration (hand + shop_auction)
 > **Type**: Tech Debt -- structural primitive extension (root-cause RC-3)
-> **Sprint**: Future Sprint 18 candidate per PROMPT 1180 §6 Lane C.
+> **Sprint**: Sprint 18 (Should Have)
 > **Authored**: 2026-05-18 by PROMPT 1189
 > **Authoring source-of-truth**: `origin/main@efb698e`
+> **Completed**: 2026-05-28 by PROMPT 1715
 > **Estimated effort**: ~0.5d
 > **Source audit**: PROMPT 1180 §2 RC-3, §6 Lane C (PROMPT 1192 candidate); cross-refs F-02, S-04, UI-1129-05 / -09 / -02.
 
@@ -15,7 +16,7 @@
 
 ## Status / No-Claim Banner
 
-Future Sprint 18 candidate. **No sprint activated.** No claim on release readiness, `QA-COND-*`, `PAW-TD-*-a`, gate-check retry, stage advance, or closure of any audit finding outside RC-3 / Lane C.
+**Done.** Closed by PROMPT 1715 paperwork on origin/main@ac55edfc. Implementation on main via PROMPT 1348 worker (26bc1204) + PROMPT 1373 integration (fbb1c697) + PROMPT 1381/1389 main-land. AC1–AC14 all PASS. No claim on release readiness, `QA-COND-*`, `PAW-TD-*-a`, gate-check retry, stage advance, or closure of any audit finding outside RC-3 / Lane C.
 
 ## Problem Class / Prevention Target
 
@@ -66,20 +67,20 @@ Prerequisites: story 009 (Done); 017 / 018 (Draft S17) preferred first.
 
 ## Acceptance Criteria
 
-- [ ] AC1 -- Markers `CardSlotArtImage` + `CardSlotLabelStrip` defined and exported; `card_slot_node` spawns both as children.
-- [ ] AC2 -- Card-art `ImageNode` carries `image_mode: NodeImageMode::Fit` (or `Auto` with justification); default `Stretch` forbidden.
-- [ ] AC3 -- Label strip carries opaque `BackgroundColor` (`alpha ≥ 0.85`), `min_width` clamp, `Overflow::clip_x()` OR wrapping policy.
-- [ ] AC4 -- `sync_hand_fan_card_art_system` migrated (F-02 / UI-1129-05 resolved).
-- [ ] AC5 -- `handle_draft_offering_system` migrated.
-- [ ] AC6 -- `auction_featured_card_node` migrated (S-04 / UI-1129-02 resolved).
-- [ ] AC7 -- Chrome-preservation rule structural (carried by primitive); `asset_wiring.rs` may stay READ-only.
-- [ ] AC8 -- `card_art_aspect_fit_test.rs` (NEW) asserts rendered aspect ratio matches source within 1% across `CardSlotKind` variants.
-- [ ] AC9 -- `auction_featured_art_binding_test.rs` (NEW) asserts featured-card spawn produces Fit art + opaque label strip + 4 text children parented into the strip.
-- [ ] AC10 -- No accept-risk closure.
-- [ ] AC11 -- `liv-bevy-018` activated.
-- [ ] AC12 -- Cargo resource policy applied.
-- [ ] AC13 -- Sprint disposition preserved.
-- [ ] AC14 -- Worker branch scope contained; slug `work/s18-ui-card-art-and-label-strip`.
+- [x] AC1 -- Markers `CardSlotArtImage` + `CardSlotLabelStrip` defined and exported; `card_slot_node` spawns both as children.
+- [x] AC2 -- Card-art `ImageNode` carries `image_mode: NodeImageMode::Auto` (Bevy 0.18 has no `NodeImageMode::Fit`; `Auto` is the canonical equivalent per PROMPT 1348 commit message); default `Stretch` forbidden.
+- [x] AC3 -- Label strip carries opaque `BackgroundColor` (alpha 0.92 ≥ 0.85 floor), `min_width` = 24 px clamp, `Overflow::clip_x()`.
+- [x] AC4 -- `sync_hand_fan_card_art_system` migrated (F-02 / UI-1129-05 resolved).
+- [x] AC5 -- `handle_draft_offering_system` migrated.
+- [x] AC6 -- `auction_featured_card_node` / `spawn_auction_contents` migrated (S-04 / UI-1129-02 resolved).
+- [x] AC7 -- Chrome-preservation rule structural (carried by primitive); `asset_wiring.rs` stays READ-only.
+- [x] AC8 -- `card_art_aspect_fit_test.rs` (NEW) 8 / 8 PASS (PROMPT 1373 + 1381 + 1389 verification).
+- [x] AC9 -- `auction_featured_art_binding_test.rs` (NEW) 8 / 8 PASS (PROMPT 1373 + 1381 + 1389 verification).
+- [x] AC10 -- No accept-risk closure.
+- [x] AC11 -- `liv-bevy-018` activated (per PROMPT 1348 worker contract).
+- [x] AC12 -- Cargo resource policy applied (PROMPT 1373 + 1381 verification sections).
+- [x] AC13 -- Sprint 18 active + stage Polish unchanged (preserved across PROMPT 1348 / 1373 / 1381 / 1389).
+- [x] AC14 -- Worker branch slug `work/s18-ui-card-art-and-label-strip` used.
 
 ## Implementation Notes
 

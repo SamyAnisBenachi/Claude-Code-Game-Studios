@@ -326,17 +326,28 @@ stories:
       - "Activation-time /story-readiness then /story-done paperwork only."
 
   - id: "S18-UI-CARD-ART-AND-LABEL-STRIP-001"
-    name: "Card art + label strip (PROMPT 1180 Lane C; unimplemented at activation tip)"
+    name: "Card art + label strip (PROMPT 1180 Lane C; closed Done by PROMPT 1715 paperwork on origin/main@ac55edfc)"
     file: "production/epics/ui-clean-pass/story-022-ui-card-art-and-label-strip.md"
     priority: should-have
-    status: ready
+    status: done
+    completed: "2026-05-28"
     owner: "ui-programmer"
     estimate_days: 0.5
-    story_readiness_prompt: "pending (must rerun against Sprint 18 activation HEAD 1345c6b before /dev-story)"
-    story_readiness_verdict: "pending"
+    story_readiness_prompt: "n/a (implementation confirmed on origin/main prior to formal readiness run; PROMPT 1715 /story-done accepted inline)"
+    story_readiness_verdict: "READY_FOR_STORY_DONE (inline by PROMPT 1715; implementation on origin/main@26bc1204 confirmed ancestor of current main)"
+    worker_prompt: "1348"
+    worker_commit: "26bc120452de18dbc0d7be09c04f74827afa3e85"
+    integration_prompt: "1373"
+    integration_commit: "fbb1c69709743970c5536b8e3617b5f1c0fefc66"
+    main_land_prompt: "1381 (refresh1) + 1389 (push)"
+    main_land_commit: "26bc120452de18dbc0d7be09c04f74827afa3e85"
+    story_done_prompt: "1715"
+    evidence: "tests/integration/ui_clean_pass/card_art_aspect_fit_test.rs (NEW, 8/8 PASS, AC8); tests/integration/shop_auction_ui/auction_featured_art_binding_test.rs (NEW, 8/8 PASS, AC9); client/src/ui/design_tokens/card_slot.rs (+241, AC1-AC3); client/src/ui/hand/mod.rs (+72, AC4); client/src/ui/shop_auction/mod.rs (+168, AC5+AC6); client/Cargo.toml (+23, [[test]] registrations). Total: 72/72 targeted tests PASS across PROMPT 1373 + 1381."
     notes:
-      - "Sequenced after S18-UI-PLAY-AREA-CONTAINER-001."
-      - "Unimplemented at activation tip per PROMPT 1287 Section 2 note; requires /dev-story after Sprint 18 /qa-plan lands."
+      - "Closure paperwork by PROMPT 1715 on origin/main@ac55edfc (PROMPT 1726 tip). AC1–AC14 all PASS: AC1 CardSlotArtImage + CardSlotLabelStrip markers defined + spawned PASS; AC2 NodeImageMode::Auto (Bevy 0.18 canonical; no ::Fit exists; justification accepted) PASS; AC3 alpha 0.92 + min_width 24px + Overflow::clip_x() PASS; AC4 sync_hand_fan_card_art_system migrated PASS; AC5 handle_draft_offering_system migrated PASS; AC6 spawn_auction_contents migrated PASS; AC7 asset_wiring.rs READ-only PASS; AC8 card_art_aspect_fit_test 8/8 PASS; AC9 auction_featured_art_binding_test 8/8 PASS; AC10 no accept-risk closure PASS; AC11 liv-bevy-018 activated PASS; AC12 Cargo resource policy applied PASS; AC13 Sprint 18 active + Polish stage unchanged PASS; AC14 branch slug work/s18-ui-card-art-and-label-strip PASS."
+      - "Sequenced after S18-UI-PLAY-AREA-CONTAINER-001 (Lane A precondition discharged by PROMPT 1712)."
+      - "Carried conditions preserved verbatim: QA-COND-0005 Standard-tier accessibility accept-risk + QA-COND-0006 playtest accept-risk + PAW-TD-*-a placeholder-art accept-risk + S8-QA-001-W1 OPEN + TQ-S12-C1..C7 + S11-HUD-TIMER-EYEBALL-VISUAL-001 human-operator-blocked + PROMPT 761 Polish->Release FAIL."
+      - "PROMPT 1715 paperwork-only: no Cargo invocation; all test evidence trusted from PROMPT 1373 + 1381 commit lineage per /story-done paperwork policy."
 
   - id: "S18-OBS-SNAPSHOT-LAYOUT-FIELDS-001"
     name: "QA snapshot layout fields lift (implementation landed on origin/main via PROMPT 1229 e68ac4f; activation-time paperwork-only)"
