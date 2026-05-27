@@ -152,13 +152,23 @@ Write-Host "CARGO_TARGET_DIR = $env:CARGO_TARGET_DIR"
 # ---- 3. Port selection ---------------------------------------------------
 function Test-PortFree {
     param([int]$P)
-    $listener = $null
+    # TCP connect probe: the old TcpListener.Start() approach was a false-negative
+    # on Windows -- binding 127.0.0.1:$P succeeds even when a server is already
+    # listening on 0.0.0.0:$P (SO_REUSEADDR + wildcard vs. specific-address semantics).
+    # A connect attempt is reliable: ConnectionRefused means free; success means occupied.
+    # Returns $true (free) / $false (occupied).
+    $client = $null
     try {
-        $listener = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Loopback, $P)
-        $listener.Start()
-        $true
-    } catch { $false }
-    finally { if ($null -ne $listener) { try { $listener.Stop() } catch {} } }
+        $client = [System.Net.Sockets.TcpClient]::new()
+        $ar = $client.BeginConnect([System.Net.IPAddress]::Loopback, $P, $null, $null)
+        $connected = $ar.AsyncWaitHandle.WaitOne(300)   # 300 ms timeout
+        if ($connected -and $client.Connected) { return $false }
+        return $true
+    } catch {
+        return $true
+    } finally {
+        if ($null -ne $client) { try { $client.Close() } catch {} }
+    }
 }
 
 Write-Section "Port selection"
@@ -249,16 +259,27 @@ if (-not $DryRun) {
 
     $deadline = (Get-Date).AddSeconds($ServerWaitSeconds)
     $bound = $false
+    $exitedEarly = $false
     while ((Get-Date) -lt $deadline) {
+        # Process-alive guard: if the server crashed before binding, stop polling.
+        if ($serverProc.HasExited) { $exitedEarly = $true; break }
         if (-not (Test-PortFree $chosen)) { $bound = $true; break }
         Start-Sleep -Milliseconds 250
     }
     if (-not $bound) {
-        Write-Host -ForegroundColor Red "Server did not bind port $chosen within $ServerWaitSeconds s. See $serverLog / $serverErr."
-        try { Stop-Process -Id $serverProc.Id -Force -ErrorAction Stop } catch {}
+        if ($exitedEarly) {
+            Write-Host -ForegroundColor Red "Server failed to start: process exited (code $($serverProc.ExitCode)) before binding port $chosen."
+            Write-Host "  stdout: $serverLog"
+            Write-Host "  stderr: $serverErr"
+        } else {
+            Write-Host -ForegroundColor Red "Server timed out: port $chosen was not reachable within $ServerWaitSeconds s (process still running)."
+            Write-Host "  stdout: $serverLog"
+            Write-Host "  stderr: $serverErr"
+            try { Stop-Process -Id $serverProc.Id -Force -ErrorAction Stop } catch {}
+        }
         exit 3
     }
-    Write-Host "Server bound port $chosen."
+    Write-Host "Server bound port $chosen (PID $($serverProc.Id) alive)."
 }
 
 # ---- 7. Soak wall-clock timer -------------------------------------------
