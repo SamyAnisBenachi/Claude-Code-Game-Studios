@@ -26,8 +26,9 @@ param(
     [string]$ArtifactDir = "",
     [string]$Recipe = "smoke",
     [string]$Python = "python",
-    [int]$DriverTicks = 10,
+    [int]$DriverTicks = 0,
     [double]$DriverHz = 10.0,
+    [int]$DriverTimeoutSecs = 300,
     [int]$ClientStartupSecs = 60
 )
 
@@ -113,7 +114,7 @@ $driver = Start-Process -FilePath $Python -ArgumentList @(
     "--recipe", $Recipe,
     "--ticks", $DriverTicks,
     "--hz", $DriverHz,
-    "--timeout", "30"
+    "--timeout", $DriverTimeoutSecs
 ) -NoNewWindow -PassThru -Wait
 $driverExit = $driver.ExitCode
 

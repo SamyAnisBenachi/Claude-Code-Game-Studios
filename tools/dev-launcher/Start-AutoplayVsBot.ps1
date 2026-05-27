@@ -62,6 +62,8 @@ param(
     [int]$SoakReadySecs  = 20,
     [int]$SoakDurationSeconds = 300,
     [int]$ClientStartupSecs = 60,
+    [int]$DriverTicks     = 0,
+    [int]$DriverTimeoutSecs = 300,
     [string]$Python      = 'python',
     [switch]$DryRun,
     [switch]$Help,
@@ -92,6 +94,10 @@ PARAMETERS
   -SoakDurationSeconds N Wall-clock soak window forwarded to the soak launcher
                          (default 300). Ignored when -SkipSoakLaunch is set.
   -ClientStartupSecs N   Max seconds to wait for the client RPC port (default 60).
+  -DriverTicks N         Tick cap passed to the Python driver (0 = follow recipe length;
+                         default 0). DO NOT set to 10 or other small values — the full-game
+                         recipe has ~235 ticks; a small cap causes silent early exit.
+  -DriverTimeoutSecs N   Wall-clock timeout for the Python driver in seconds (default 300).
   -Python EXE            Python executable (default: python).
   -DryRun                Print every step without launching any process.
   -PlayRepoRoot P        Absolute path to the dedicated play/build checkout.
@@ -315,7 +321,9 @@ if (-not $DryRun) {
         '-Recipe', $Recipe,
         '-ArtifactDir', $autoplayArtifactDir,
         '-Python', $Python,
-        '-ClientStartupSecs', $ClientStartupSecs
+        '-ClientStartupSecs', $ClientStartupSecs,
+        '-DriverTicks', $DriverTicks,
+        '-DriverTimeoutSecs', $DriverTimeoutSecs
     )
     Write-Host "powershell $($smokeArgs -join ' ')"
     $smokeProc = Start-Process -FilePath 'powershell.exe' `
@@ -325,7 +333,7 @@ if (-not $DryRun) {
     Write-Host "Run-AutoplaySmoke.ps1 exited: $smokeExit"
 } else {
     Write-Section "Autoplay smoke (DRY RUN -- skipped)"
-    Write-Host "[DRY RUN] would launch: powershell -ExecutionPolicy Bypass -File $smokeScript -Port $RpcPort -Recipe $Recipe -ArtifactDir $autoplayArtifactDir -Python $Python -ClientStartupSecs $ClientStartupSecs"
+    Write-Host "[DRY RUN] would launch: powershell -ExecutionPolicy Bypass -File $smokeScript -Port $RpcPort -Recipe $Recipe -ArtifactDir $autoplayArtifactDir -Python $Python -ClientStartupSecs $ClientStartupSecs -DriverTicks $DriverTicks -DriverTimeoutSecs $DriverTimeoutSecs"
 }
 
 # ---- 8. Stop soak job -------------------------------------------------------
