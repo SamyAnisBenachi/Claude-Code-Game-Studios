@@ -1,13 +1,14 @@
 # Codex Orchestrator State
 
-## Current Resume Snapshot (2026-05-27, post-1670 bot debug overlay AC5 prep)
+## Current Resume Snapshot (2026-05-27, post-1671 bot soak launcher repair)
 
 Source-of-truth at this snapshot:
 
 - Root checkout: `D:\_DEV\Work\Claude-Code-Game-Studios`
 - Root branch: `main`
-- Root/source commit: `origin/main@2a3afe53`
-  (`PROMPT 1670 Bot Debug Overlay Story Status + AC5 Ruling Prep`)
+- Root/source commit: `origin/main@92793425`
+  (`PROMPT 1670 AC5 prep + orchestrator state update`; PROMPT 1671 launcher
+  repair is also in the current main ancestry)
 - Root caveat: local `.claude/**`, `.gcs-app/`, and `tmpwt-*` runtime/tooling
   files are not part of the game source and must stay out of commits unless
   explicitly requested.
@@ -56,21 +57,26 @@ Recent mainland state:
   compile-time exclusion before story-done. The worker branch omitted the
   promised report file, so the orchestrator reconstructed and landed
   `reports/PROMPT-1670-bot-debug-overlay-story-status-ac5-ruling-prep.md`.
+- `1671` completed and was cleared as SHIPPED:
+  `tools/dev-launcher/Start-BotVsBotSoak.ps1` now uses a TCP connect probe
+  instead of `TcpListener.Start()` for port readiness, which fixes the Windows
+  false-negative where `127.0.0.1:$port` looked free while the server was bound
+  on `0.0.0.0:$port`. The readiness loop now distinguishes early server exit
+  from timeout while the process is still alive. Report:
+  `reports/PROMPT-1671-bot-soak-launcher-port-detection-repair.md`.
 
 Active workers / expected relays:
 
 | Prompt | State | Notes |
 |---|---|---|
-| `1671` | RUNNING / waiting | Bot-soak launcher port-readiness false-negative repair for `Start-BotVsBotSoak.ps1`. |
 | `1672` | RUNNING / waiting | Bot-soak room trigger path disposition; decide/implement normal-protocol trigger without gameplay-rule bypass. |
 | `1673` | RUNNING / waiting | `bot_soak_config_test` global-env parallel flakiness isolation. |
 
 Immediate next actions:
 
-1. Wait for `1671`, `1672`, and `1673`; clear each worker, read its report, and
-   only then integrate or relaunch from concrete output.
-2. After the launcher repair (`1671`) and trigger-path decision/work (`1672`),
-   rerun bot-vs-bot bounded
+1. Wait for `1672` and `1673`; clear each worker, read its report, and only
+   then integrate or relaunch from concrete output.
+2. After trigger-path decision/work (`1672`), rerun bot-vs-bot bounded
    soak and require decision log + server snapshots + max-round termination
    evidence before closing story-002 AC2-AC5.
 3. If `1673` ships a test-isolation fix, integrate it before relying on default
