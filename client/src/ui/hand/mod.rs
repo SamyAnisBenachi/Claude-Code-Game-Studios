@@ -5,7 +5,7 @@ use bevy::ecs::query::QueryFilter;
 use bevy::ecs::system::SystemParam;
 use bevy::math::curve::EaseFunction;
 use bevy::prelude::*;
-use bevy::window::PrimaryWindow;
+use bevy::window::{CursorIcon, PrimaryWindow, SystemCursorIcon};
 use bevy_tweening::{lens::TransformPositionLens, Tween, TweenAnim};
 use lightyear::prelude::{MessageReceiver, MessageSender};
 use shared::card::{CardCatalog, CardId, CardType, ClassId, Rarity};
@@ -29,7 +29,15 @@ use crate::state::{ClientPhaseView, ClientSessionIdentity, ClientState, CurrentC
 use crate::ui::design_tokens::card_slot::{
     card_slot_art_image_component, card_slot_art_image_node, CardSlotArtImage, CardSlotKind,
 };
-use crate::ui::design_tokens::{spacing, strips, typography, z_layers};
+use crate::ui::design_tokens::{
+    interaction_states::{
+        DISABLED_BG_TINT_ALPHA, HOVER_BG_TINT_ALPHA, HOVER_BORDER_ALPHA, PRESSED_BG_TINT_ALPHA,
+    },
+    spacing,
+    strips,
+    typography,
+    z_layers,
+};
 use crate::ui::lobby::PlayerTeamMapUpdated;
 use crate::ui::shared::{BoardLayout, LaneCell, BOARD_CELL_COUNT, BOARD_LANE_COUNT};
 
@@ -1377,6 +1385,10 @@ impl Plugin for HandUiPlugin {
                         // Read-only over `HandCardCatalog` + the resource;
                         // only mutates `Commands` when the resource changes.
                         inspect::sync_hand_card_inspect_overlay_system,
+                        // Wave-2: Changed<Interaction> + Changed<HandSubmitInteractionState>
+                        // overlay for the submit button. Inactive → disabled tint;
+                        // Active → canonical hover / pressed tokens.
+                        hand_submit_button_interaction_overlay_system,
                     )
                         .chain()
                         .in_set(HandUiSystemSet::StateSync),
@@ -4488,6 +4500,7 @@ pub fn spawn_hand_ui(
             HandSubmitInteractionState::Inactive,
             Button,
             Interaction::None,
+            CursorIcon::System(SystemCursorIcon::Pointer),
             Text::new("Submit (0 cards)"),
             TextColor(PLACEMENT_ACTION_PANEL_BUTTON_TEXT_COLOR),
             TextFont {
@@ -6167,5 +6180,77 @@ fn cancel_hand_ui_tweens(
             warn!("Failed to cancel Hand UI tween on entity {entity:?}: {error}");
         }
         commands.entity(entity).remove::<TweenAnim>();
+    }
+}
+
+/// Wave-2 interaction-state overlay for `HandSubmitButton`.  Runs on
+/// `Changed<Interaction>` and `Changed<HandSubmitInteractionState>` so the
+/// visual tint stays coherent both when the cursor moves and when the two-
+/// state Active / Inactive semantic changes.  When `Inactive` the button
+/// renders the disabled-bg tint regardless of cursor state; when `Active`
+/// the canonical hover / pressed tokens apply.
+pub fn hand_submit_button_interaction_overlay_system(
+    mut buttons: Query<
+        (
+            &Interaction,
+            &HandSubmitInteractionState,
+            &mut BackgroundColor,
+            &mut BorderColor,
+        ),
+        (
+            Or<(Changed<Interaction>, Changed<HandSubmitInteractionState>)>,
+            With<HandSubmitButton>,
+        ),
+    >,
+) {
+    for (interaction, submit_state, mut bg, mut border) in &mut buttons {
+        let Color::Srgba(base_bg) = PLACEMENT_ACTION_PANEL_BUTTON_BACKGROUND else {
+            continue;
+        };
+        let Color::Srgba(base_bd) = PLACEMENT_ACTION_PANEL_BUTTON_BORDER else {
+            continue;
+        };
+        let (new_bg, new_bd) = if *submit_state == HandSubmitInteractionState::Inactive {
+            let dk = |b: f32| b * (1.0 - DISABLED_BG_TINT_ALPHA);
+            (
+                Color::srgba(dk(base_bg.red), dk(base_bg.green), dk(base_bg.blue), base_bg.alpha),
+                PLACEMENT_ACTION_PANEL_BUTTON_BORDER,
+            )
+        } else {
+            match interaction {
+                Interaction::Hovered => {
+                    let wh = |b: f32| b * (1.0 - HOVER_BG_TINT_ALPHA) + HOVER_BG_TINT_ALPHA;
+                    (
+                        Color::srgba(
+                            wh(base_bg.red),
+                            wh(base_bg.green),
+                            wh(base_bg.blue),
+                            base_bg.alpha,
+                        ),
+                        Color::srgba(
+                            base_bd.red,
+                            base_bd.green,
+                            base_bd.blue,
+                            base_bd.alpha.max(HOVER_BORDER_ALPHA),
+                        ),
+                    )
+                }
+                Interaction::Pressed => {
+                    let dk = |b: f32| b * (1.0 - PRESSED_BG_TINT_ALPHA);
+                    (
+                        Color::srgba(
+                            dk(base_bg.red),
+                            dk(base_bg.green),
+                            dk(base_bg.blue),
+                            base_bg.alpha,
+                        ),
+                        PLACEMENT_ACTION_PANEL_BUTTON_BORDER,
+                    )
+                }
+                Interaction::None => (PLACEMENT_ACTION_PANEL_BUTTON_BACKGROUND, PLACEMENT_ACTION_PANEL_BUTTON_BORDER),
+            }
+        };
+        *bg = BackgroundColor(new_bg);
+        *border = BorderColor::all(new_bd);
     }
 }
