@@ -1,8 +1,8 @@
 # PROMPT 1662 — AUTOPLAY-VS-BOT-PLAYROOT-RESOLUTION-REPAIR
 
-**Date:** 2026-05-27  
-**Branch:** `fix/1662-autoplay-vsbot-playroot-resolution`  
-**Worktree:** `D:\_DEV\Work\ccgs-wt-1662-playroot-repair`  
+**Date:** 2026-05-27
+**Branch:** `fix/1662-autoplay-vsbot-playroot-resolution`
+**Worktree:** `D:\_DEV\Work\ccgs-wt-1662-playroot-repair`
 **Source-of-truth at start:** `origin/main@9fa54ea7`
 
 ---
