@@ -19,6 +19,7 @@ use crate::feature::acquisition::PlayerHands;
 use crate::feature::board::{
     BoardCell, BoardConfig, BoardGrid, BoardOccupancy, LaneId, SpawnRangeState,
 };
+use crate::feature::bot::state::BotPlayers;
 use crate::foundation::config::CardCatalog;
 
 const PLAYER_A_TEAM_ID: u8 = 0;
@@ -574,6 +575,7 @@ pub fn send_placement_rejection_dispatches(
     mut rejections: MessageReader<PlacementRejectionDispatch>,
     server: Query<&Server>,
     sender: Option<ServerMultiMessageSender>,
+    bot_players: Option<Res<BotPlayers>>,
 ) {
     let Ok(server) = server.single() else {
         for _ in rejections.read() {}
@@ -592,12 +594,24 @@ pub fn send_placement_rejection_dispatches(
             "send_placement_rejection_dispatches: dispatching S2CPlacementRejected enter"
         );
         let Some(peer_id) = dispatch.peer_id else {
-            tracing::warn!(
-                target: "server::game",
-                player_id = dispatch.player.0,
-                reason = ?dispatch.reason,
-                "send_placement_rejection_dispatches: S2CPlacementRejected DROPPED — peer_id unresolved; player not in PlayerConnectionMap or stale entry"
-            );
+            if bot_players
+                .as_deref()
+                .map(|b| b.contains(dispatch.player))
+                .unwrap_or(false)
+            {
+                tracing::trace!(
+                    target: "server::game",
+                    player_id = dispatch.player.0,
+                    "send_placement_rejection_dispatches: S2CPlacementRejected skipped — bot participant (server-internal, no peer)"
+                );
+            } else {
+                tracing::warn!(
+                    target: "server::game",
+                    player_id = dispatch.player.0,
+                    reason = ?dispatch.reason,
+                    "send_placement_rejection_dispatches: S2CPlacementRejected DROPPED — peer_id unresolved; player not in PlayerConnectionMap or stale entry"
+                );
+            }
             continue;
         };
         let message = S2CPlacementRejected {
@@ -632,6 +646,7 @@ pub fn send_placement_acceptance_dispatches(
     mut acceptances: MessageReader<PlacementAcceptanceDispatch>,
     server: Query<&Server>,
     sender: Option<ServerMultiMessageSender>,
+    bot_players: Option<Res<BotPlayers>>,
 ) {
     let Ok(server) = server.single() else {
         for _ in acceptances.read() {}
@@ -651,12 +666,25 @@ pub fn send_placement_acceptance_dispatches(
             "send_placement_acceptance_dispatches: dispatching S2CPlacementAccepted enter"
         );
         let Some(peer_id) = dispatch.peer_id else {
-            tracing::warn!(
-                target: "server::game",
-                player_id = dispatch.player.0,
-                placements_len = dispatch.placements_len,
-                "send_placement_acceptance_dispatches: S2CPlacementAccepted DROPPED — peer_id unresolved; player not in PlayerConnectionMap or stale entry"
-            );
+            if bot_players
+                .as_deref()
+                .map(|b| b.contains(dispatch.player))
+                .unwrap_or(false)
+            {
+                tracing::trace!(
+                    target: "server::game",
+                    player_id = dispatch.player.0,
+                    placements_len = dispatch.placements_len,
+                    "send_placement_acceptance_dispatches: S2CPlacementAccepted skipped — bot participant (server-internal, no peer)"
+                );
+            } else {
+                tracing::warn!(
+                    target: "server::game",
+                    player_id = dispatch.player.0,
+                    placements_len = dispatch.placements_len,
+                    "send_placement_acceptance_dispatches: S2CPlacementAccepted DROPPED — peer_id unresolved; player not in PlayerConnectionMap or stale entry"
+                );
+            }
             continue;
         };
         let message = S2CPlacementAccepted {
