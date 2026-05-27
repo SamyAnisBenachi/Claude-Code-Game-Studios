@@ -433,3 +433,93 @@ fn test_close_deduction_applies_accepted_explicit_split_exactly() {
     assert_eq!(economies.0[&player(1)].current_mana, 4);
     assert_eq!(economies.0[&player(1)].reserve_mana, 2);
 }
+
+// =============================================================================
+// PROMPT 1678 regression — empty-batch submission with absent hand entry
+// =============================================================================
+
+/// Regression: before PROMPT 1678, an empty placement batch submitted by a
+/// player with no entry in `PlayerHands` (e.g. a bot that never bought a card)
+/// was rejected with `CardNotInHand`. The fix treats absent hand entries as
+/// empty hands so that empty batches succeed, unblocking the RSM's
+/// `submissions_received` tracking without relying on the phase timer.
+#[test]
+fn test_empty_batch_with_no_hand_entry_is_accepted_not_card_not_in_hand() {
+    // Arrange — player 2 has no hand entry at all.
+    let catalog = catalog(vec![card(10, CardType::Minion, 1)]);
+    let mut economies = PlayerEconomies(HashMap::from([(player(2), economy(5, 0))]));
+    let hands_empty = PlayerHands::default(); // player 2 absent from hands map
+    let mut pending = PendingPlacements::default();
+
+    // Act — submit empty batch for player 2.
+    let result = process_placement_submission(
+        &mut pending,
+        player(2),
+        vec![],
+        Some(RoundPhase::Placement),
+        Some(&session_config()),
+        &BoardConfig::default(),
+        &SpawnRangeState::default(),
+        &BoardOccupancy::default(),
+        Some(&catalog),
+        Some(&economies),
+        Some(&hands_empty),
+    );
+
+    // Assert — empty batch should be accepted even with no hand entry.
+    assert_eq!(
+        result,
+        PlacementSubmissionResult::Accepted,
+        "empty placement batch must not be rejected CardNotInHand when player \
+         has no hand entry (regression: PROMPT 1678 / bot soak fail-safe path)"
+    );
+    assert!(
+        pending.submissions.contains_key(&player(2)),
+        "accepted submission must be recorded in PendingPlacements"
+    );
+
+    // Invariant: the accepted submission has zero placements.
+    let submission = &pending.submissions[&player(2)];
+    assert!(submission.placements.is_empty());
+    assert!(submission.is_final);
+}
+
+/// Complementary test: a non-empty batch from a player with no hand entry
+/// (trying to place a card they don't own) must still be rejected with
+/// `CardNotInHand` — the fix only relaxes the check for empty batches.
+#[test]
+fn test_non_empty_batch_with_no_hand_entry_is_still_card_not_in_hand() {
+    // Arrange — player 2 has no hand entry, yet tries to place card 10.
+    let catalog = catalog(vec![card(10, CardType::Minion, 1)]);
+    let economies = PlayerEconomies(HashMap::from([(player(2), economy(5, 0))]));
+    let hands_empty = PlayerHands::default();
+    let mut pending = PendingPlacements::default();
+
+    // Act
+    let result = process_placement_submission(
+        &mut pending,
+        player(2),
+        vec![placement(
+            card_id(10),
+            PlayTarget::BoardCell { lane: 1, cell: 1 },
+            1,
+            0,
+        )],
+        Some(RoundPhase::Placement),
+        Some(&session_config()),
+        &BoardConfig::default(),
+        &SpawnRangeState::default(),
+        &BoardOccupancy::default(),
+        Some(&catalog),
+        Some(&economies),
+        Some(&hands_empty),
+    );
+
+    // Assert — card not in the (absent = empty) hand must still fail.
+    assert_eq!(
+        result,
+        PlacementSubmissionResult::CardNotInHand,
+        "non-empty batch with no hand entry must still be rejected CardNotInHand"
+    );
+    assert!(pending.submissions.is_empty());
+}
