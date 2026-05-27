@@ -18,11 +18,13 @@
 #   powershell -File tools/autoplay/Run-AutoplaySmoke.ps1
 #   pwsh       -File tools/autoplay/Run-AutoplaySmoke.ps1
 #   pwsh -File tools/autoplay/Run-AutoplaySmoke.ps1 -Port 15874 -ArtifactDir D:/Tmp/autoplay-test
+#   pwsh -File tools/autoplay/Run-AutoplaySmoke.ps1 -Recipe full-game
 
 [CmdletBinding()]
 param(
     [int]$Port = 15873,
     [string]$ArtifactDir = "",
+    [string]$Recipe = "smoke",
     [string]$Python = "python",
     [int]$DriverTicks = 10,
     [double]$DriverHz = 10.0,
@@ -102,13 +104,13 @@ if (-not $ready) {
     exit 3
 }
 
-Write-Host "[autoplay-smoke] RPC port bound; running driver (recipe=smoke ticks=$DriverTicks hz=$DriverHz)"
+Write-Host "[autoplay-smoke] RPC port bound; running driver (recipe=$Recipe ticks=$DriverTicks hz=$DriverHz)"
 $driverPath = Join-Path $PSScriptRoot "driver.py"
 $driver = Start-Process -FilePath $Python -ArgumentList @(
     $driverPath,
     "--port", $Port,
     "--artifact-dir", $ArtifactDir,
-    "--recipe", "smoke",
+    "--recipe", $Recipe,
     "--ticks", $DriverTicks,
     "--hz", $DriverHz,
     "--timeout", "30"

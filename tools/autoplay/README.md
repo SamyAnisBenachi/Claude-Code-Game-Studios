@@ -46,17 +46,21 @@ python tools/autoplay/rpc.py input --keys-down KeyA --cursor 400 300
 python tools/autoplay/rpc.py clear
 ```
 
-## Recipes (PROMPT 1609)
+## Recipes (PROMPT 1609 + 1634 + 1636 + 1639)
 
 | Name | Purpose | Checkpoints |
 | --- | --- | --- |
 | `smoke` | Substrate probe: one input frame, clear, screenshot. | — |
 | `idle` | Status-only ticks for soak / observability. | — |
 | `lobby-create` | Click Create, wait, click Confirm. | `lobby-loaded`, `lobby-confirmed` |
+| `add-bot-lobby` | Lobby flow: click Create, Add Bot, Confirm. Requires `CCGS_DEBUG_UI=1`. | `lobby-loaded`, `bot-added`, `lobby-confirmed` |
 | `class-select` | Click first class card, click Confirm. | `class-select-loaded`, `class-confirmed` |
 | `draft-auction-probe` | Click shop slot, confirm, bid on auction, ready. | `shop-loaded`, `shop-slot-clicked`, `auction-loaded`, `auction-ready` |
 | `placement-drag-probe` | Drag from hand to board, click Submit. | `placement-loaded`, `placement-dragged`, `placement-submitted` |
-| `full-game` | Composite (lobby → class → draft/auction → placement). Requires `CCGS_AUTOPLAY_BOT_ROOM_READY=1`. | All of the above + `full-game-resolution` |
+| `resolution-observe` | Passive resolution-phase observation: soak + screenshots. No input. Override soak via `CCGS_AUTOPLAY_RESOLUTION_SOAK_TICKS` (default 60). | `resolution-started`, `resolution-complete` |
+| `game-over-observe` | Passive game-over screen observation: soak + screenshots. No input. Override via `CCGS_AUTOPLAY_GAMEOVER_SOAK_TICKS` (default 120). | `game-over-screen`, `winner-confirmed` |
+| `round-loop` | Multi-round composite: full-game → resolution-observe × N → game-over-observe. Requires `CCGS_AUTOPLAY_BOT_ROOM_READY=1`. Configure via `CCGS_AUTOPLAY_ROUND_LOOP_COUNT` (default 2). | All composite checkpoints |
+| `full-game` | Composite (lobby → class → draft/auction → placement → resolution soak). Requires `CCGS_AUTOPLAY_BOT_ROOM_READY=1`. GameOver opt-in via `CCGS_AUTOPLAY_FULL_GAME_GAMEOVER=1`. | All of the above + `full-game-post-placement`, `full-game-post-resolution`, `full-game-complete` |
 
 ### Driver exit codes
 
