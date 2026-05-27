@@ -909,7 +909,10 @@ pub enum SpawnHighlightState {
 impl SpawnHighlightState {
     pub fn tint(self) -> Color {
         match self {
-            Self::Inactive => Color::srgba(0.17, 0.29, 0.33, 0.72),
+            // PROMPT 1695 — reduced alpha so inactive affordance dots are subtle
+            // against the lane surfaces, leaving placed units as the dominant
+            // visual at the cell level rather than the dot grid.
+            Self::Inactive => Color::srgba(0.18, 0.30, 0.34, 0.52),
             Self::ValidSpawn { .. } => Color::srgba(1.0, 0.76, 0.18, 0.94),
         }
     }
@@ -3509,13 +3512,17 @@ fn spawn_board_background(
     board_assets: &BoardRuntimeAssets,
 ) {
     let board_center = board_center(board_layout);
+    // PROMPT 1695 — extend the background sprite by BOARD_CHROME_MARGIN_PX on
+    // every edge so the board reads as a physical frame around the grid rather
+    // than a surface that is flush with the outermost cell centres.
+    let margin = rendering_constants::BOARD_CHROME_MARGIN_PX * 2.0;
     commands.spawn((
         BoardRenderingEntity,
         direct_sprite(
             board_assets.board_background.clone(),
             Vec2::new(
-                board_layout.cell_width * f32::from(BOARD_CELL_COUNT),
-                board_layout.lane_height * f32::from(BOARD_LANE_COUNT),
+                board_layout.cell_width * f32::from(BOARD_CELL_COUNT) + margin,
+                board_layout.lane_height * f32::from(BOARD_LANE_COUNT) + margin,
             ),
             Color::srgba(1.0, 1.0, 1.0, 1.0),
         ),
@@ -3543,7 +3550,7 @@ fn spawn_board_lane_surfaces(commands: &mut Commands, board_layout: &BoardLayout
         let lane_start = board_layout.cell_to_world(lane, 1);
         let lane_end = board_layout.cell_to_world(lane, BOARD_CELL_COUNT);
         let center = (lane_start + lane_end) * 0.5;
-        let surface_size = Vec2::new(width, board_layout.lane_height * 0.82);
+        let surface_size = Vec2::new(width, board_layout.lane_height * rendering_constants::LANE_SURFACE_HEIGHT_RATIO);
         let surface_tint = lane_surface_tint(lane);
 
         commands.spawn((
@@ -3558,7 +3565,9 @@ fn spawn_board_lane_surfaces(commands: &mut Commands, board_layout: &BoardLayout
             BoardRenderingEntity,
             BoardLaneRail,
             Sprite::from_color(
-                Color::srgba(0.72, 0.84, 0.86, 0.26),
+                // PROMPT 1695 — raised alpha from 0.26 → LANE_RAIL_ALPHA_INNER
+                // so lane dividers read as physical separators, not ghost lines.
+                Color::srgba(0.72, 0.84, 0.86, rendering_constants::LANE_RAIL_ALPHA_INNER),
                 Vec2::new(rail_width, rendering_constants::LANE_RAIL_THICKNESS),
             ),
             Transform::from_xyz(center.x, rail_y, rendering_constants::Z_LANE_RAILS),
@@ -3574,7 +3583,9 @@ fn spawn_board_lane_surfaces(commands: &mut Commands, board_layout: &BoardLayout
         BoardRenderingEntity,
         BoardLaneRail,
         Sprite::from_color(
-            Color::srgba(0.72, 0.84, 0.86, 0.30),
+            // PROMPT 1695 — raised alpha from 0.30 → LANE_RAIL_ALPHA_OUTER so
+            // the top board edge reads as visually closed.
+            Color::srgba(0.72, 0.84, 0.86, rendering_constants::LANE_RAIL_ALPHA_OUTER),
             Vec2::new(rail_width, rendering_constants::LANE_RAIL_THICKNESS),
         ),
         Transform::from_xyz(top_center.x, top_y, rendering_constants::Z_LANE_RAILS),
@@ -3582,10 +3593,14 @@ fn spawn_board_lane_surfaces(commands: &mut Commands, board_layout: &BoardLayout
 }
 
 fn lane_surface_tint(lane: u8) -> Color {
+    // PROMPT 1695 — improved alternating contrast.  Even lanes are slightly
+    // cooler and darker; odd lanes are slightly warmer and lighter.  The delta
+    // is enough to distinguish adjacent lanes at a glance without fighting the
+    // unit sprites for attention.
     if lane % 2 == 0 {
-        Color::srgba(0.16, 0.25, 0.27, 0.56)
+        Color::srgba(0.14, 0.22, 0.26, 0.62)
     } else {
-        Color::srgba(0.20, 0.31, 0.32, 0.62)
+        Color::srgba(0.21, 0.32, 0.34, 0.70)
     }
 }
 
@@ -3595,13 +3610,16 @@ fn spawn_board_chrome(
     board_assets: &BoardRuntimeAssets,
 ) {
     let board_center = board_center(board_layout);
+    // PROMPT 1695 — match the background margin so chrome art aligns with the
+    // physical board frame rather than ending flush with the outermost cells.
+    let margin = rendering_constants::BOARD_CHROME_MARGIN_PX * 2.0;
     commands.spawn((
         BoardRenderingEntity,
         direct_sprite(
             board_assets.board_chrome.clone(),
             Vec2::new(
-                board_layout.cell_width * f32::from(BOARD_CELL_COUNT),
-                board_layout.lane_height * f32::from(BOARD_LANE_COUNT),
+                board_layout.cell_width * f32::from(BOARD_CELL_COUNT) + margin,
+                board_layout.lane_height * f32::from(BOARD_LANE_COUNT) + margin,
             ),
             Color::srgba(1.0, 1.0, 1.0, 1.0),
         ),
