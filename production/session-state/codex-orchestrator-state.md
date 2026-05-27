@@ -29,18 +29,22 @@ Recent mainland state:
 - `1667` completed and was cleared: AUTOPLAY-RECIPE-LIBRARY-001 AC1 has one
   real inventory gap (`placement_reject_recovery` has no standalone recipe).
   The recommended next step is a story-only AC1 mapping/descoping edit.
+- `1666` completed and was cleared: bot debug overlay implementation is on
+  main and PROMPT 1661's `NEEDS_REPAIR` classification was stale/incorrect.
+  Remaining work is story-status cleanup plus a readiness ruling for AC5
+  runtime/env-gating versus the original compile-time-exclusion wording.
 
 Active workers / expected relays:
 
 | Prompt | State | Notes |
 |---|---|---|
 | `1664` | RUNNING / waiting | Bot-vs-bot bounded soak live verify. |
-| `1666` | RUNNING / waiting | Bot debug overlay status reconcile after stale `1661` classification. |
 | `1669` | RUNNING / waiting | Story-only AC1 recipe inventory mapping edit after `1667`. |
+| `1670` | RUNNING / waiting | Bot debug overlay story status cleanup + AC5 readiness ruling prep. |
 
 Immediate next actions:
 
-1. When `1664`, `1666`, or `1669` relays DONE, clear the worker, read its
+1. When `1664`, `1669`, or `1670` relays DONE, clear the worker, read its
    report, and only then launch a focused follow-up.
 2. Do not launch story-done/shared-status writers for bot/autoplay until Sprint
    19 activation is explicitly handled.
