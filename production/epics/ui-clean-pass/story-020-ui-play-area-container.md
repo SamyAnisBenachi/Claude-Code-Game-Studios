@@ -2,7 +2,7 @@
 
 > **Epic**: UI Clean-Pass
 > **Story ID**: S18-UI-PLAY-AREA-CONTAINER-001
-> **Status**: Draft -- future Sprint 18 candidate; NOT activated by this authoring run
+> **Status**: Done -- closed PROMPT 1712; worker PROMPT 1328 (`work/s18-ui-play-area-container`) + integration PROMPT 1339 + main-land PROMPT 1343 at `origin/main@a24b3f42`
 > **Layer**: Presentation -- design-token + per-surface consumer migration (shop_auction + hand)
 > **Type**: Tech Debt -- structural refactor (root-cause RC-1)
 > **Sprint**: Future Sprint 18 candidate per `reports/PROMPT-1180-global-ui-layout-system-deep-audit.md` §6 Lane A.
@@ -71,20 +71,20 @@ Pre-condition for Lane J (story 026).
 
 ## Acceptance Criteria
 
-- [ ] AC1 -- `PlayArea` module exists with marker + builder per Control Manifest.
-- [ ] AC2 -- Shop panel parents into `PlayArea`; viewport-anchored literal removed.
-- [ ] AC3 -- Auction panel parents into `PlayArea` (was `top: 80, bottom: 140`).
-- [ ] AC4 -- Shop footer parents into `PlayArea` (was `bottom: 100, height: 96`).
-- [ ] AC5 -- Shop toast parents into `PlayArea` (may stay absolute within `PlayArea`).
-- [ ] AC6 -- Placement action panel parents into `PlayArea` with `max_height` + `overflow::scroll_y()` OR `flex_wrap` OR pagination per §5 C-3.
-- [ ] AC7 -- Integration test `play_area_budget_test.rs` asserts budget edges + consumer containment at 1280×720 / 1366×768 / 1920×1080.
-- [ ] AC8 -- Strip primitives unchanged.
-- [ ] AC9 -- Zero changes under `server/`, `shared/`, `tests/integration/server/`.
-- [ ] AC10 -- `liv-bevy-018` activated.
-- [ ] AC11 -- Cargo resource policy applied (`CARGO_TARGET_DIR=D:\_DEV\cargo-target\ccgs-msvc`, `CARGO_PROFILE_DEV_DEBUG=0`, `CARGO_PROFILE_TEST_DEBUG=0`, `CARGO_INCREMENTAL=0`, `RUSTFLAGS='-C debuginfo=0 -C link-arg=/DEBUG:NONE'`).
-- [ ] AC12 -- No accept-risk closure.
-- [ ] AC13 -- Sprint disposition preserved.
-- [ ] AC14 -- Worker branch scope contained; slug `work/s18-ui-play-area-container`.
+- [x] AC1 -- `PlayArea` module exists with marker + builder per Control Manifest.
+- [x] AC2 -- Shop panel parents into `PlayArea`; viewport-anchored literal removed.
+- [x] AC3 -- Auction panel parents into `PlayArea` (was `top: 80, bottom: 140`).
+- [x] AC4 -- Shop footer parents into `PlayArea` (was `bottom: 100, height: 96`).
+- [x] AC5 -- Shop toast parents into `PlayArea` (may stay absolute within `PlayArea`).
+- [x] AC6 -- Placement action panel parents into `PlayArea` with `max_height` + `overflow::scroll_y()` OR `flex_wrap` OR pagination per §5 C-3.
+- [x] AC7 -- Integration test `play_area_budget_test.rs` asserts budget edges + consumer containment at 1280×720 / 1366×768 / 1920×1080.
+- [x] AC8 -- Strip primitives unchanged.
+- [x] AC9 -- Zero changes under `server/`, `shared/`, `tests/integration/server/`.
+- [x] AC10 -- `liv-bevy-018` activated.
+- [x] AC11 -- Cargo resource policy applied (`CARGO_TARGET_DIR=D:\_DEV\cargo-target\ccgs-msvc`, `CARGO_PROFILE_DEV_DEBUG=0`, `CARGO_PROFILE_TEST_DEBUG=0`, `CARGO_INCREMENTAL=0`, `RUSTFLAGS='-C debuginfo=0 -C link-arg=/DEBUG:NONE'`).
+- [x] AC12 -- No accept-risk closure.
+- [x] AC13 -- Sprint disposition preserved.
+- [x] AC14 -- Worker branch scope contained; slug `work/s18-ui-play-area-container`.
 
 ## Implementation Notes
 
@@ -115,3 +115,18 @@ Pre-condition for Lane J (story 026).
 6. Push worker branch only.
 
 Build gate scoped to owned files + new test bin per the user's `feedback_build_gate_isolated_files_only` rule.
+
+---
+
+## Closure Trail
+
+| Step | PROMPT | Commit | Outcome |
+|------|--------|--------|---------|
+| Worker implementation | 1328 | `475269b7` (worker branch) | 8 files, 933 ins, 17 del; `play_area_budget_test` 13 PASS |
+| Integration cherry-pick | 1339 | `e4a19fa9` (`integrate/s18-ui-play-area-container-1339`) | All test suites PASS; scope-clean; no conflicts |
+| Main-land replay | 1343 | `a24b3f42` (origin/main) | Byte-identical to integration; `play_area_budget_test` 13 PASS |
+| Story-done paperwork | 1712 | — | AC1–AC14 all PASS; status flipped to Done |
+
+**Closed**: 2026-05-27 by PROMPT 1712 against `origin/main@7f9c605e` (PROMPT 1700 tip).
+
+**Preserved non-claims**: QA-COND-0005 Standard-tier accessibility accept-risk + QA-COND-0006 playtest accept-risk + PAW-TD-*-a placeholder-art accept-risk + S8-QA-001-W1 OPEN + TQ-S12-C1..C7 + S11-HUD-TIMER-EYEBALL-VISUAL-001 human-operator-blocked carry + S17-UI-HUD-OPP-MANA-CLEANUP-001 parent-row paperwork gap + PROMPT 761 Polish->Release FAIL + all AUDIT-1131-* / AUDIT-1076-* / SOURCE-1077-* / PROMPT 1022 / 1076 / 1077 findings outside concrete repairs already on origin/main. Sprint 18 active. Stage: Polish. production/stage.txt NOT modified. Sprint 19 NOT activated.

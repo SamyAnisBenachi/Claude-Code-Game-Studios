@@ -218,17 +218,28 @@ stories:
       - "Unimplemented at activation tip; requires /dev-story after Sprint 18 /qa-plan lands."
 
   - id: "S18-UI-PLAY-AREA-CONTAINER-001"
-    name: "Play-area container (PROMPT 1180 Lane A structural enabler: shop / auction / hand / placement-action panels stop colliding with HandBar + FooterBar)"
+    name: "Play-area container (PROMPT 1180 Lane A structural enabler: shop / auction / hand / placement-action panels stop colliding with HandBar + FooterBar; closed PROMPT 1712)"
     file: "production/epics/ui-clean-pass/story-020-ui-play-area-container.md"
     priority: must-have
-    status: ready
+    status: done
+    completed: "2026-05-27"
     owner: "ui-programmer"
     estimate_days: 0.75
-    story_readiness_prompt: "pending (must rerun against Sprint 18 activation HEAD 1345c6b)"
-    story_readiness_verdict: "pending"
+    story_readiness_prompt: "1323 (Sprint 18 Must Have readiness batch; returned READY_FOR_DEV_STORY — implementation not yet landed at readiness time)"
+    story_readiness_verdict: "READY_FOR_DEV_STORY (PROMPT 1323); implementation landed origin/main@a24b3f42 via PROMPT 1328 worker + PROMPT 1339 integration + PROMPT 1343 main-land; all ACs pass"
+    landed_on_main_basis: "PROMPT 1328 worker commit 475269b7 (NEW client/src/ui/design_tokens/play_area.rs + NEW tests/integration/ui_clean_pass/play_area_budget_test.rs + 6 modified files; 933 ins, 17 del) cherry-picked by PROMPT 1339 (integrate/s18-ui-play-area-container-1339 @ e4a19fa9) and replayed by PROMPT 1343 onto origin/main@a24b3f42 (byte-identical; play_area_budget_test 13 PASS)."
+    worker_prompt: "1328"
+    worker_commit: "475269b7"
+    integration_prompt: "1339"
+    integration_commit: "e4a19fa9"
+    main_land_prompt: "1343"
+    main_land_commit: "a24b3f424718888d81e0809f6d53974889489840"
+    story_done_prompt: "1712"
     notes:
-      - "Sequencing-sensitive: this row before S18-UI-CARD-ART-AND-LABEL-STRIP-001."
-      - "Unimplemented at activation tip; requires /dev-story after Sprint 18 /qa-plan lands."
+      - "Closure paperwork by PROMPT 1712 on origin/main@7f9c605e (PROMPT 1700 tip). AC1–AC14 all PASS: AC1 play_area_node shape PASS; AC2–AC6 consumer migrations PASS (all 5 node builders migrated in a24b3f42); AC7 play_area_budget_test 13 PASS (1280x720 / 1366x768 / 1920x1080 matrix); AC8 strip primitives unchanged PASS; AC9 zero server/shared changes PASS; AC10 liv-bevy-018 activated PASS; AC11 Cargo resource policy PASS; AC12 no accept-risk closure PASS; AC13 sprint disposition preserved PASS; AC14 worker branch slug work/s18-ui-play-area-container PASS."
+      - "Sequencing-sensitive: Lane A precondition for S18-UI-CARD-ART-AND-LABEL-STRIP-001 (Lane C) and Story 026 Lane J discharged."
+      - "Carried conditions preserved verbatim: QA-COND-0005 Standard-tier accessibility accept-risk + QA-COND-0006 playtest accept-risk + PAW-TD-*-a placeholder-art accept-risk + S8-QA-001-W1 OPEN + TQ-S12-C1..C7 + S11-HUD-TIMER-EYEBALL-VISUAL-001 human-operator-blocked + S17-UI-HUD-OPP-MANA-CLEANUP-001 parent-row paperwork gap + PROMPT 761 Polish->Release FAIL."
+      - "PROMPT 1712 paperwork-only: no Cargo invocation; AC7 + AC11 trusted from PROMPT 1339 + PROMPT 1343 commit lineage per /story-done paperwork policy."
 
   - id: "S18-UI-LAYOUT-CONTRACT-DOC-AND-LINT-001"
     name: "UI layout contract documentation + lint (PROMPT 1188 implementation + PROMPT 1208 baseline refresh + PROMPT 1334/1335 AC9 cross-link backfill; closed PROMPT 1337)"
