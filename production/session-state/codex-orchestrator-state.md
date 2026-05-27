@@ -1,5 +1,50 @@
 # Codex Orchestrator State
 
+## Current Resume Snapshot (2026-05-27, post-1662 autoplay playroot repair)
+
+Source-of-truth at this snapshot:
+
+- Root checkout: `D:\_DEV\Work\Claude-Code-Game-Studios`
+- Root branch: `main`
+- Root/source commit: `origin/main@e4249f07`
+  (`PROMPT 1662 Autoplay vs Bot Playroot Resolution Repair`)
+- Root caveat: local `.claude/**`, `.gcs-app/`, and `tmpwt-*` runtime/tooling
+  files are not part of the game source and must stay out of commits unless
+  explicitly requested.
+
+Recent mainland state:
+
+- `1662` landed through `MAINLAND_ENQUEUE` after report whitespace cleanup.
+  It fixes `Start-AutoplayVsBot.ps1` playroot resolution so an existing stub
+  `D:\_DEV\ccgs-play-main` without `Cargo.toml` no longer wins over the
+  canonical repo root.
+- `1663` verified the `1662` dry-run path as PARTIAL: tooling fallback is fixed,
+  but live GUI/composite autoplay-vs-bot signoff still needs a human-visible run.
+- `1665` completed and was cleared: BOT-ROOM-PARTICIPANT-001 AC8 is formally
+  out of scope and owned by BOT-DISCONNECT-REJOIN-006. Remaining story-001 gate
+  is AC7 human/live GUI smoke.
+
+Active workers / expected relays:
+
+| Prompt | State | Notes |
+|---|---|---|
+| `1664` | RUNNING / waiting | Bot-vs-bot bounded soak live verify. |
+| `1666` | RUNNING / waiting | Bot debug overlay status reconcile after stale `1661` classification. |
+| `1667` | RUNNING / waiting | Autoplay recipe-library AC1 inventory reconcile. |
+| `1668` | RUNNING / waiting | Operator pack for BOT-ROOM AC7 and autoplay-vs-bot live GUI smoke. |
+
+Immediate next actions:
+
+1. When `1664`, `1666`, `1667`, or `1668` relays DONE, clear the worker, read
+   its report, and only then launch a focused follow-up.
+2. Do not launch story-done/shared-status writers for bot/autoplay until Sprint
+   19 activation is explicitly handled.
+3. The next human-facing validation gate is live GUI evidence:
+   `tools/dev-launcher/Start-AutoplayVsBot.ps1 -Recipe full-game`, then inspect
+   `production/qa/evidence/composite-runs/*-autoplay-vs-bot/`.
+4. Keep broad Cargo suites in dedicated verify lanes; implementation/report
+   workers should not block on broad checks or protected-branch pushes.
+
 ## Current Resume Snapshot (2026-05-27, post-1656 composite evidence docs)
 
 Source-of-truth at this snapshot:
