@@ -1,9 +1,11 @@
-// CCGS Dev Launcher -- two-button Windows EXE wrapping the dev-launcher
-// PowerShell scripts (`tools/dev-launcher/Update-LatestMain.ps1` and
-// `tools/dev-launcher/Start-TwoClients.ps1`).
+// CCGS Dev Launcher -- three-button Windows EXE wrapping the dev-launcher
+// PowerShell scripts (`tools/dev-launcher/Update-LatestMain.ps1`,
+// `tools/dev-launcher/Start-TwoClients.ps1`, and
+// `tools/dev-launcher/Start-AutoplayVsBot.ps1`).
 //
 // Button 1 -- "Rebuild Latest Main" -- invokes Update-LatestMain.ps1.
 // Button 2 -- "Start Two-Client Play Session" -- invokes Start-TwoClients.ps1.
+// Button 3 -- "Autoplay vs Bot QA" -- invokes Start-AutoplayVsBot.ps1.
 //
 // The launcher is intentionally a thin wrapper: it does not duplicate any
 // launcher logic. Repo root is resolved from the `CCGS_REPO_ROOT` env
@@ -37,11 +39,13 @@ use std::time::Duration;
 
 const APP_TITLE: &str = "CCGS Dev Launcher";
 const APP_SUBTITLE: &str =
-    "Windows desktop utility for latest-main rebuilds and local two-client sessions.";
+    "Windows desktop utility for latest-main rebuilds, two-client sessions, and autoplay-vs-bot QA.";
 const REBUILD_BUTTON_LABEL: &str = "Rebuild Latest Main";
 const LAUNCH_BUTTON_LABEL: &str = "Start Two-Client Play Session";
+const AUTOPLAY_BUTTON_LABEL: &str = "Autoplay vs Bot QA";
 const REBUILD_SCRIPT: &str = "tools\\dev-launcher\\Update-LatestMain.ps1";
 const LAUNCH_SCRIPT: &str = "tools\\dev-launcher\\Start-TwoClients.ps1";
+const AUTOPLAY_SCRIPT: &str = "tools\\dev-launcher\\Start-AutoplayVsBot.ps1";
 // Sidecar written next to the EXE by `tools/dev-launcher/build-launcher-exe.ps1`.
 // Contains the absolute repo root path on the first non-blank line.
 const SIDECAR_FILENAME: &str = "ccgs-dev-launcher.repo-root.txt";
@@ -121,13 +125,15 @@ const COLOR_TAIL_TEXT: [u8; 3] = [253, 220, 156];
 enum JobKind {
     Rebuild,
     Launch,
+    Autoplay,
 }
 
 impl JobKind {
     fn human(self) -> &'static str {
         match self {
-            JobKind::Rebuild => "Rebuild Latest Main",
-            JobKind::Launch => "Start Two-Client Play Session",
+            JobKind::Rebuild => REBUILD_BUTTON_LABEL,
+            JobKind::Launch => LAUNCH_BUTTON_LABEL,
+            JobKind::Autoplay => AUTOPLAY_BUTTON_LABEL,
         }
     }
 
@@ -135,6 +141,7 @@ impl JobKind {
         match self {
             JobKind::Rebuild => REBUILD_SCRIPT,
             JobKind::Launch => LAUNCH_SCRIPT,
+            JobKind::Autoplay => AUTOPLAY_SCRIPT,
         }
     }
 }
@@ -313,12 +320,15 @@ impl StatusTone {
 // pure helper that maps a `JobOutcome` to the (text, tone) pair surfaced on
 // the launcher status row. Kept pure so the success/fail UI contract is
 // unit-testable without spawning a real Win32 window.
+// PROMPT 1652: `Blocked` is added for Autoplay-vs-Bot BLOCKED-* exit codes
+// (4, 10, 11, 12) which are expected precondition failures, not program bugs.
 #[derive(Clone, Debug, PartialEq, Eq)]
 enum JobOutcome {
     Ready,
     Running(JobKind),
     Success(JobKind),
     Fail { job: JobKind, code: i32 },
+    Blocked { job: JobKind, code: i32 },
     Error { job: JobKind, reason: String },
     ConfigError(String),
 }
@@ -341,12 +351,35 @@ fn compose_status_line(outcome: &JobOutcome) -> (String, StatusTone) {
             format!("FAIL - {} exited {} (nonzero).", job.human(), code),
             StatusTone::Error,
         ),
+        JobOutcome::Blocked { job, code } => (
+            format!(
+                "BLOCKED - {} exited {} (BLOCKED-HUMAN-GUI / BLOCKED-PRECONDITION / BLOCKED-RECIPE-GUARD). \
+                 Check script output for details.",
+                job.human(),
+                code
+            ),
+            StatusTone::Warning,
+        ),
         JobOutcome::Error { job, reason } => (
             format!("FAIL - {} aborted: {}", job.human(), reason),
             StatusTone::Error,
         ),
         JobOutcome::ConfigError(msg) => (format!("FAIL - {}", msg), StatusTone::Error),
     }
+}
+
+// Maps (job, exit_code) to the appropriate `JobOutcome`. For `Autoplay`,
+// exit codes 4/10/11/12 are recognised BLOCKED-* conditions from
+// Start-AutoplayVsBot.ps1 and surface as `Blocked` (yellow warning tone)
+// rather than `Fail` (red error tone).
+fn classify_exit(job: JobKind, code: i32) -> JobOutcome {
+    if code == 0 {
+        return JobOutcome::Success(job);
+    }
+    if matches!(job, JobKind::Autoplay) && matches!(code, 4 | 10 | 11 | 12) {
+        return JobOutcome::Blocked { job, code };
+    }
+    JobOutcome::Fail { job, code }
 }
 
 #[derive(Default, NwgUi)]
@@ -368,13 +401,18 @@ pub struct LauncherUi {
 
     #[nwg_control(text: REBUILD_BUTTON_LABEL)]
     #[nwg_events(OnButtonClick: [LauncherUi::on_rebuild])]
-    #[nwg_layout_item(layout: layout, col: 0, row: 2, col_span: 4, row_span: 2)]
+    #[nwg_layout_item(layout: layout, col: 0, row: 2, col_span: 3, row_span: 2)]
     rebuild_btn: nwg::Button,
 
     #[nwg_control(text: LAUNCH_BUTTON_LABEL)]
     #[nwg_events(OnButtonClick: [LauncherUi::on_launch])]
-    #[nwg_layout_item(layout: layout, col: 4, row: 2, col_span: 4, row_span: 2)]
+    #[nwg_layout_item(layout: layout, col: 3, row: 2, col_span: 2, row_span: 2)]
     launch_btn: nwg::Button,
+
+    #[nwg_control(text: AUTOPLAY_BUTTON_LABEL)]
+    #[nwg_events(OnButtonClick: [LauncherUi::on_autoplay])]
+    #[nwg_layout_item(layout: layout, col: 5, row: 2, col_span: 3, row_span: 2)]
+    autoplay_btn: nwg::Button,
 
     #[nwg_control(text: "READY - idle. Click a button to start a job.", flags: "VISIBLE|MULTI_LINE", background_color: Some(COLOR_STATUS_IDLE))]
     #[nwg_layout_item(layout: layout, col: 0, row: 4, col_span: 8)]
@@ -428,6 +466,7 @@ impl LauncherUi {
     fn set_buttons_enabled(&self, enabled: bool) {
         self.rebuild_btn.set_enabled(enabled);
         self.launch_btn.set_enabled(enabled);
+        self.autoplay_btn.set_enabled(enabled);
     }
 
     fn set_status(&self, text: &str, tone: StatusTone) {
@@ -495,6 +534,7 @@ impl LauncherUi {
         apply_font(&self.tail_heading_label, heading_font.as_ref());
         apply_font(&self.rebuild_btn, button_font.as_ref());
         apply_font(&self.launch_btn, button_font.as_ref());
+        apply_font(&self.autoplay_btn, button_font.as_ref());
         apply_font(&self.state_label, body_font.as_ref());
         apply_font(&self.diagnostics_box, mono_font.as_ref());
         apply_font(&self.log_box, mono_font.as_ref());
@@ -640,6 +680,10 @@ impl LauncherUi {
 
     fn on_launch(&self) {
         self.start_job(JobKind::Launch);
+    }
+
+    fn on_autoplay(&self) {
+        self.start_job(JobKind::Autoplay);
     }
 
     fn start_job(&self, job: JobKind) {
@@ -802,11 +846,7 @@ impl LauncherUi {
 
         if let Some((job, code)) = finished {
             self.set_buttons_enabled(true);
-            let outcome = if code == 0 {
-                JobOutcome::Success(job)
-            } else {
-                JobOutcome::Fail { job, code }
-            };
+            let outcome = classify_exit(job, code);
             let (msg, tone) = compose_status_line(&outcome);
             self.set_status(&msg, tone);
         }
@@ -1319,6 +1359,10 @@ fn diagnostics_text(state: &LauncherState) -> String {
                 "Two-client script: {}",
                 root.join(Path::new(LAUNCH_SCRIPT)).display()
             ));
+            lines.push(format!(
+                "Autoplay-vs-Bot script: {}",
+                root.join(Path::new(AUTOPLAY_SCRIPT)).display()
+            ));
         }
         _ => {
             lines.push("Launcher repo root: UNRESOLVED".to_string());
@@ -1599,18 +1643,23 @@ mod tests {
     fn job_kind_human_labels_match_button_text() {
         assert_eq!(JobKind::Rebuild.human(), REBUILD_BUTTON_LABEL);
         assert_eq!(JobKind::Launch.human(), LAUNCH_BUTTON_LABEL);
+        assert_eq!(JobKind::Autoplay.human(), AUTOPLAY_BUTTON_LABEL);
     }
 
     #[test]
     fn job_kind_script_paths_use_dev_launcher_dir() {
         assert!(JobKind::Rebuild.script_rel().contains("dev-launcher"));
         assert!(JobKind::Launch.script_rel().contains("dev-launcher"));
+        assert!(JobKind::Autoplay.script_rel().contains("dev-launcher"));
         assert!(JobKind::Rebuild
             .script_rel()
             .ends_with("Update-LatestMain.ps1"));
         assert!(JobKind::Launch
             .script_rel()
             .ends_with("Start-TwoClients.ps1"));
+        assert!(JobKind::Autoplay
+            .script_rel()
+            .ends_with("Start-AutoplayVsBot.ps1"));
     }
 
     #[test]
@@ -2251,6 +2300,7 @@ mod tests {
         assert!(!APP_SUBTITLE.trim().is_empty());
         assert_ne!(APP_TITLE, APP_SUBTITLE);
         assert!(APP_SUBTITLE.contains("Windows desktop utility"));
+        assert!(APP_SUBTITLE.contains("autoplay"));
     }
 
     #[test]
@@ -2273,6 +2323,7 @@ mod tests {
         assert!(text.contains("Launcher repo root:"));
         assert!(text.contains(REBUILD_SCRIPT));
         assert!(text.contains(LAUNCH_SCRIPT));
+        assert!(text.contains(AUTOPLAY_SCRIPT));
         assert!(text.contains("Evidence:"));
         // PROMPT 1309: both the launcher root AND the play/build root should
         // appear in diagnostics so testers can see they are distinct paths.
@@ -2644,6 +2695,110 @@ mod tests {
         let (idle_bg, _) = StatusTone::Idle.colors();
         let (success_bg, _) = StatusTone::Success.colors();
         assert_ne!(idle_bg, success_bg);
+    }
+
+    // ---- PROMPT 1652: Autoplay-vs-Bot BLOCKED exit codes ------------------
+
+    #[test]
+    fn classify_exit_zero_is_success_for_all_job_kinds() {
+        for job in [JobKind::Rebuild, JobKind::Launch, JobKind::Autoplay] {
+            assert_eq!(classify_exit(job, 0), JobOutcome::Success(job));
+        }
+    }
+
+    #[test]
+    fn classify_exit_nonzero_is_fail_for_rebuild_and_launch() {
+        for job in [JobKind::Rebuild, JobKind::Launch] {
+            for code in [1, 4, 10, 11, 12, 255] {
+                let outcome = classify_exit(job, code);
+                assert_eq!(
+                    outcome,
+                    JobOutcome::Fail { job, code },
+                    "expected Fail for {:?} exit {}, got {:?}",
+                    job,
+                    code,
+                    outcome
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn classify_exit_blocked_codes_are_blocked_for_autoplay() {
+        for code in [4i32, 10, 11, 12] {
+            let outcome = classify_exit(JobKind::Autoplay, code);
+            assert_eq!(
+                outcome,
+                JobOutcome::Blocked { job: JobKind::Autoplay, code },
+                "expected Blocked for Autoplay exit {}, got {:?}",
+                code,
+                outcome
+            );
+        }
+    }
+
+    #[test]
+    fn classify_exit_generic_fail_is_fail_for_autoplay() {
+        // Exit codes that are NOT recognised BLOCKED-* values should still
+        // surface as Fail, not silently swallowed as Blocked.
+        for code in [1i32, 2, -1, 255] {
+            let outcome = classify_exit(JobKind::Autoplay, code);
+            assert_eq!(
+                outcome,
+                JobOutcome::Fail { job: JobKind::Autoplay, code },
+                "expected Fail for Autoplay exit {}, got {:?}",
+                code,
+                outcome
+            );
+        }
+    }
+
+    #[test]
+    fn compose_status_line_blocked_uses_warning_tone_and_says_blocked() {
+        let (text, tone) = compose_status_line(&JobOutcome::Blocked {
+            job: JobKind::Autoplay,
+            code: 10,
+        });
+        assert!(text.starts_with("BLOCKED"), "got: {}", text);
+        assert!(text.contains("10"), "exit code missing in: {}", text);
+        assert!(
+            matches!(tone, StatusTone::Warning),
+            "expected Warning tone for Blocked, got other"
+        );
+    }
+
+    #[test]
+    fn compose_status_line_blocked_mentions_job_name() {
+        let (text, _) = compose_status_line(&JobOutcome::Blocked {
+            job: JobKind::Autoplay,
+            code: 11,
+        });
+        assert!(
+            text.contains(AUTOPLAY_BUTTON_LABEL),
+            "job name missing in: {}",
+            text
+        );
+    }
+
+    #[test]
+    fn blocked_tone_is_visually_distinct_from_fail_and_success() {
+        let (blocked_bg, _) = StatusTone::Warning.colors();
+        let (fail_bg, _) = StatusTone::Error.colors();
+        let (success_bg, _) = StatusTone::Success.colors();
+        assert_ne!(blocked_bg, fail_bg, "BLOCKED and FAIL must not share colour");
+        assert_ne!(blocked_bg, success_bg, "BLOCKED and SUCCESS must not share colour");
+    }
+
+    #[test]
+    fn autoplay_script_constant_is_correct_ps1_name() {
+        assert!(
+            AUTOPLAY_SCRIPT.ends_with("Start-AutoplayVsBot.ps1"),
+            "AUTOPLAY_SCRIPT should reference Start-AutoplayVsBot.ps1"
+        );
+        assert!(
+            AUTOPLAY_SCRIPT.contains("dev-launcher"),
+            "AUTOPLAY_SCRIPT should be under tools/dev-launcher"
+        );
     }
 
     // ---- PROMPT 1584: tail log panel ----------------------------------
