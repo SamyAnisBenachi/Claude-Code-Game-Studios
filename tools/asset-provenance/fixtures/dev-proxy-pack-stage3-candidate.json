@@ -1,7 +1,7 @@
 {
   "pack": {
     "pack_id": "krosmaga-proxy-v1",
-    "description": "Stage 3 readiness candidate: demonstrates optional atlas binding metadata, pack sprite-sheet registry, and a structured license-provenance block on top of the Stage 2 row shape. Documentation/test fixture only — no Krosmaga payload is committed.",
+    "description": "Stage 3 binding candidate covering all 4 active UI lanes (hand/card, HUD, shop/auction, board). Demonstrates atlas_binding for all stage3_binding rows, stage2_candidate placeholders for ambiguous rows, and stage1_logical sentinels for missing/blocked rows. Documentation/test fixture only — no Krosmaga payload is committed.",
     "dev_only": true,
     "source_class": "licensed_krosmaga_dev_proxy",
     "release_class": "dev_only",
@@ -45,6 +45,45 @@
       }
     },
     {
+      "logical_id": "lid_card_frame_rare",
+      "source_path": null,
+      "match_quality": "missing",
+      "dev_only": true,
+      "source_class": "licensed_krosmaga_dev_proxy",
+      "release_class": "dev_only",
+      "workflow_status": "needed",
+      "license_provenance_warning": "Dev-only Krosmaga proxy row; not release-approved.",
+      "expected_consumer_surface": "hand.card_frame_rare",
+      "missing_handling": "No Krosmaga frame_rare candidate identified in Stage 1 map; CCGS-original art required. Slot reserved as frame_index 1 in hand_card_frames_v1.",
+      "stage_readiness": "stage1_logical"
+    },
+    {
+      "logical_id": "lid_card_frame_epic",
+      "source_path": null,
+      "match_quality": "missing",
+      "dev_only": true,
+      "source_class": "licensed_krosmaga_dev_proxy",
+      "release_class": "dev_only",
+      "workflow_status": "needed",
+      "license_provenance_warning": "Dev-only Krosmaga proxy row; not release-approved.",
+      "expected_consumer_surface": "hand.card_frame_epic",
+      "missing_handling": "No Krosmaga frame_epic candidate identified in Stage 1 map; CCGS-original art required. Slot reserved as frame_index 2 in hand_card_frames_v1.",
+      "stage_readiness": "stage1_logical"
+    },
+    {
+      "logical_id": "lid_card_frame_legendary",
+      "source_path": null,
+      "match_quality": "missing",
+      "dev_only": true,
+      "source_class": "licensed_krosmaga_dev_proxy",
+      "release_class": "dev_only",
+      "workflow_status": "needed",
+      "license_provenance_warning": "Dev-only Krosmaga proxy row; not release-approved.",
+      "expected_consumer_surface": "hand.card_frame_legendary",
+      "missing_handling": "No Krosmaga frame_legendary candidate identified in Stage 1 map; CCGS-original art required. Slot reserved as frame_index 3 in hand_card_frames_v1.",
+      "stage_readiness": "stage1_logical"
+    },
+    {
       "logical_id": "lid_hud_class_figurine_iop",
       "source_path": "D:/_GAMES/Ankama/Krosmaga/_extracted/_extracted/AssetStudio_All/assets/art/ui/customisations/medallions/god_medallion_iop_500/god_medallion_iop_500.png",
       "match_quality": "good",
@@ -79,6 +118,87 @@
       }
     },
     {
+      "logical_id": "lid_hud_class_figurine_sacrier",
+      "source_path": "D:/_GAMES/Ankama/Krosmaga/_extracted/_extracted/AssetStudio_All/assets/art/ui/customisations/medallions/god_medallion_sacri_500/god_medallion_sacri_500.png",
+      "match_quality": "good",
+      "dev_only": true,
+      "source_class": "licensed_krosmaga_dev_proxy",
+      "release_class": "dev_only",
+      "workflow_status": "needed",
+      "license_provenance_warning": "Dev-only Krosmaga proxy; never release-safe.",
+      "expected_consumer_surface": "hud.class_figurine_sacrier",
+      "stage_readiness": "stage3_binding",
+      "atlas_binding": {
+        "atlas_id": "hud_class_figurines_v1",
+        "frame_index": 2,
+        "frame_size_px": [128, 128]
+      }
+    },
+    {
+      "logical_id": "lid_hud_class_figurine_xelor",
+      "source_path": "D:/_GAMES/Ankama/Krosmaga/_extracted/_extracted/AssetStudio_All/assets/art/ui/customisations/medallions/god_medallion_xelor_500/god_medallion_xelor_500.png",
+      "match_quality": "good",
+      "dev_only": true,
+      "source_class": "licensed_krosmaga_dev_proxy",
+      "release_class": "dev_only",
+      "workflow_status": "needed",
+      "license_provenance_warning": "Dev-only Krosmaga proxy; never release-safe.",
+      "expected_consumer_surface": "hud.class_figurine_xelor",
+      "stage_readiness": "stage3_binding",
+      "atlas_binding": {
+        "atlas_id": "hud_class_figurines_v1",
+        "frame_index": 3,
+        "frame_size_px": [128, 128]
+      }
+    },
+    {
+      "logical_id": "lid_hud_class_figurine_ecaflip",
+      "source_path": "D:/_GAMES/Ankama/Krosmaga/_extracted/_extracted/AssetStudio_All/assets/art/ui/customisations/medallions/god_medallion_eca_500/god_medallion_eca_500.png",
+      "match_quality": "good",
+      "dev_only": true,
+      "source_class": "licensed_krosmaga_dev_proxy",
+      "release_class": "dev_only",
+      "workflow_status": "needed",
+      "license_provenance_warning": "Dev-only Krosmaga proxy; never release-safe.",
+      "expected_consumer_surface": "hud.class_figurine_ecaflip",
+      "stage_readiness": "stage3_binding",
+      "atlas_binding": {
+        "atlas_id": "hud_class_figurines_v1",
+        "frame_index": 4,
+        "frame_size_px": [128, 128]
+      }
+    },
+    {
+      "logical_id": "lid_hud_class_figurine_sadida",
+      "source_path": "D:/_GAMES/Ankama/Krosmaga/_extracted/_extracted/AssetStudio_All/assets/art/ui/customisations/medallions/god_medallion_sadida_500/god_medallion_sadida_500.png",
+      "match_quality": "good",
+      "dev_only": true,
+      "source_class": "licensed_krosmaga_dev_proxy",
+      "release_class": "dev_only",
+      "workflow_status": "needed",
+      "license_provenance_warning": "Dev-only Krosmaga proxy; never release-safe.",
+      "expected_consumer_surface": "hud.class_figurine_sadida",
+      "stage_readiness": "stage3_binding",
+      "atlas_binding": {
+        "atlas_id": "hud_class_figurines_v1",
+        "frame_index": 5,
+        "frame_size_px": [128, 128]
+      }
+    },
+    {
+      "logical_id": "lid_hud_class_figurine_unknown",
+      "source_path": null,
+      "match_quality": "missing",
+      "dev_only": true,
+      "source_class": "licensed_krosmaga_dev_proxy",
+      "release_class": "dev_only",
+      "workflow_status": "needed",
+      "license_provenance_warning": "Dev-only Krosmaga proxy row; not release-approved.",
+      "expected_consumer_surface": "hud.class_figurine_unknown",
+      "missing_handling": "No Krosmaga proxy for unknown/not-selected figurine; CCGS-original placeholder required. Slot reserved as frame_index 6 in hud_class_figurines_v1.",
+      "stage_readiness": "stage1_logical"
+    },
+    {
       "logical_id": "lid_hud_objective_dot_real_revealed",
       "source_path": "D:/_GAMES/Ankama/Krosmaga/_extracted/_extracted/AssetStudio_All/assets/art/particles/materials/flashs/particleadd_flash_10_v01/Flash_10_Gray.png",
       "match_quality": "ambiguous",
@@ -91,6 +211,73 @@
       "manual_review_required": true,
       "ambiguity_notes": "Flash sprite is a candidate for the reveal frame but multiple flash variants exist in the bank; art-lead review required before final selection.",
       "stage_readiness": "stage2_candidate"
+    },
+    {
+      "logical_id": "lid_hud_objective_dot_unknown",
+      "source_path": null,
+      "match_quality": "missing",
+      "dev_only": true,
+      "source_class": "licensed_krosmaga_dev_proxy",
+      "release_class": "dev_only",
+      "workflow_status": "needed",
+      "license_provenance_warning": "Dev-only Krosmaga proxy row; not release-approved.",
+      "expected_consumer_surface": "hud.objective_dot_unknown",
+      "missing_handling": "No Krosmaga proxy identified for objective_dot_unknown; CCGS-original art required per design/assets/specs/hud-assets.md.",
+      "stage_readiness": "stage1_logical"
+    },
+    {
+      "logical_id": "lid_auction_panel_chrome",
+      "source_path": "D:/_GAMES/Ankama/Krosmaga/_extracted/_extracted/AssetStudio_All/assets/art/ui/textures/common/panel_black2/panel_black2.png",
+      "match_quality": "ambiguous",
+      "dev_only": true,
+      "source_class": "licensed_krosmaga_dev_proxy",
+      "release_class": "dev_only",
+      "workflow_status": "needed",
+      "license_provenance_warning": "Dev-only Krosmaga proxy; not release-approved.",
+      "expected_consumer_surface": "shop_auction.auction_panel_chrome",
+      "manual_review_required": true,
+      "ambiguity_notes": "panel_black2 is the best indexed lead for auction panel chrome but exact dimensions and nine-patch split points need art-lead review before advancing to stage3_binding.",
+      "stage_readiness": "stage2_candidate"
+    },
+    {
+      "logical_id": "lid_shop_panel_chrome",
+      "source_path": null,
+      "match_quality": "missing",
+      "dev_only": true,
+      "source_class": "licensed_krosmaga_dev_proxy",
+      "release_class": "dev_only",
+      "workflow_status": "needed",
+      "license_provenance_warning": "Dev-only Krosmaga proxy row; not release-approved.",
+      "expected_consumer_surface": "shop_auction.shop_panel_chrome",
+      "missing_handling": "No concrete Krosmaga shop chrome candidate identified in Stage 1 map (ASSET-005/ASSET-006 ambiguous); CCGS-original art required per design/assets/specs/shop-auction-ui-assets.md.",
+      "stage_readiness": "stage1_logical"
+    },
+    {
+      "logical_id": "lid_overlay_targeting_marker_real",
+      "source_path": "D:/_GAMES/Ankama/Krosmaga/_extracted/_extracted/AssetStudio_All/assets/art/particles/materials/flashs/particleadd_flash_11_2x2_v01/Flash_11_GrayA_2x2.png",
+      "match_quality": "ambiguous",
+      "dev_only": true,
+      "source_class": "licensed_krosmaga_dev_proxy",
+      "release_class": "dev_only",
+      "workflow_status": "needed",
+      "license_provenance_warning": "Dev-only Krosmaga proxy; not release-approved.",
+      "expected_consumer_surface": "overlay.targeting_marker_real",
+      "manual_review_required": true,
+      "ambiguity_notes": "Two prism-edge flash candidates score equally; ASSET-129/ASSET-205 reuse the same sprite — manual disambiguation required before binding.",
+      "stage_readiness": "stage2_candidate"
+    },
+    {
+      "logical_id": "lid_result_panel_chrome_win",
+      "source_path": null,
+      "match_quality": "missing",
+      "dev_only": true,
+      "source_class": "licensed_krosmaga_dev_proxy",
+      "release_class": "dev_only",
+      "workflow_status": "needed",
+      "license_provenance_warning": "Dev-only Krosmaga proxy row; not release-approved.",
+      "expected_consumer_surface": "result.panel_chrome_win",
+      "missing_handling": "Result screen chrome blocked pending result-screen UX unblock (ASSET-211/213). No proxy mapping until UX spec is final.",
+      "stage_readiness": "stage1_logical"
     },
     {
       "logical_id": "lid_board_cell_idle_32x32",
