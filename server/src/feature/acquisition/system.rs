@@ -27,6 +27,29 @@ use crate::foundation::rng::ServerRng;
 use super::hands::{PlayerHands, MAX_HAND_SIZE};
 use super::messages::{ShopRefreshTrigger, ShopRefreshTriggered};
 use super::state::{PlayerShopState, ShopPhase, ShopStates, SHOP_SLOT_COUNT};
+use bevy::ecs::system::SystemParam;
+use crate::feature::bot::state::BotPlayers;
+
+/// Bundles peer-connection and bot-identity lookups into a single `SystemParam`
+/// so `card_acquisition_tick_system` stays within Bevy's 16-arg `IntoSystem` limit.
+#[derive(SystemParam)]
+pub struct PeerBotLookup<'w> {
+    connections: Option<Res<'w, PlayerConnectionMap>>,
+    bot_players: Option<Res<'w, BotPlayers>>,
+}
+
+impl<'w> PeerBotLookup<'w> {
+    fn connections(&self) -> Option<&PlayerConnectionMap> {
+        self.connections.as_deref()
+    }
+
+    fn is_bot(&self, player_id: PlayerId) -> bool {
+        self.bot_players
+            .as_deref()
+            .map(|b| b.contains(player_id))
+            .unwrap_or(false)
+    }
+}
 
 pub const DRAFT_INITIAL_OFFERING_COUNT: u8 = 9;
 pub const SHOP_DEDUP_RETRY_LIMIT: usize = 20;
@@ -127,7 +150,7 @@ pub fn card_acquisition_tick_system(
     mut server_rng: Option<ResMut<ServerRng>>,
     catalog: Option<Res<CardCatalog>>,
     config: Option<Res<GameConfig>>,
-    connections: Option<Res<PlayerConnectionMap>>,
+    peer_bot: PeerBotLookup,
     mut reconnect_tracker: Option<ResMut<ReconnectTracker>>,
     mut shop_refreshes: MessageReader<ShopRefreshTriggered>,
     mut c2s_receivers: ParamSet<(
@@ -174,7 +197,8 @@ pub fn card_acquisition_tick_system(
                 let to_send = std::mem::take(&mut *pending_draft_offerings);
                 for dispatch in to_send {
                     if !defer_draft_offering(reconnect_tracker.as_deref_mut(), &dispatch) {
-                        send_draft_offering(sender, server, &dispatch);
+                        let is_bot = peer_bot.is_bot(dispatch.player_id);
+                        send_draft_offering(sender, server, &dispatch, is_bot);
                         sent_count += 1;
                     }
                 }
@@ -283,7 +307,7 @@ pub fn card_acquisition_tick_system(
                         prepare_draft_offering_dispatch(
                             refresh.player_id,
                             message,
-                            connections.as_deref(),
+                            peer_bot.connections(),
                         )
                     })
                 }
@@ -335,7 +359,8 @@ pub fn card_acquisition_tick_system(
                             pending_draft_offerings.push(dispatch);
                         }
                         (Some(server), Some(sender)) => {
-                            send_draft_offering(sender, server, &dispatch);
+                            let is_bot = peer_bot.is_bot(dispatch.player_id);
+                            send_draft_offering(sender, server, &dispatch, is_bot);
                             tracing::info!(
                                 target: "server::game",
                                 player_id = dispatch.player_id.0,
@@ -387,7 +412,7 @@ pub fn card_acquisition_tick_system(
                         prepare_shop_slots_dispatch(
                             refresh.player_id,
                             message,
-                            connections.as_deref(),
+                            peer_bot.connections(),
                         )
                     })
                 }
@@ -400,7 +425,8 @@ pub fn card_acquisition_tick_system(
             if let Some(dispatch) = dispatch.as_ref() {
                 if !defer_shop_slots(reconnect_tracker.as_deref_mut(), dispatch) {
                     if let (Some(server), Some(sender)) = (server, sender.as_mut()) {
-                        send_shop_slots(sender, server, dispatch);
+                        let is_bot = peer_bot.is_bot(dispatch.player_id);
+                        send_shop_slots(sender, server, dispatch, is_bot);
                     }
                 }
             }
@@ -410,7 +436,7 @@ pub fn card_acquisition_tick_system(
         apply_shop_refresh_trigger(&mut shop_states, **refresh);
     }
 
-    let connections = connections.as_deref();
+    let connections = peer_bot.connections();
     for (remote, mut receiver) in c2s_receivers.p0().iter_mut() {
         for _message in receiver.receive() {
             tracing::info!(
@@ -468,7 +494,8 @@ pub fn card_acquisition_tick_system(
             if let Some(dispatch) = dispatch.as_ref() {
                 if !defer_shop_slots(reconnect_tracker.as_deref_mut(), dispatch) {
                     if let (Some(server), Some(sender)) = (server, sender.as_mut()) {
-                        send_shop_slots(sender, server, dispatch);
+                        // C2SRefreshShop arrives from a remote peer — always human, never bot.
+                        send_shop_slots(sender, server, dispatch, false);
                     }
                 }
             }
@@ -1128,6 +1155,7 @@ fn send_draft_offering(
     sender: &mut ServerMultiMessageSender,
     server: &Server,
     dispatch: &DraftOfferingDispatch,
+    is_bot: bool,
 ) {
     tracing::info!(
         target: "server::game",
@@ -1138,11 +1166,19 @@ fn send_draft_offering(
     );
 
     let Some(peer_id) = dispatch.peer_id else {
-        tracing::warn!(
-            target: "server::game",
-            player_id = dispatch.player_id.0,
-            "send_draft_offering DROPPED — peer_id unresolved; player not in PlayerConnectionMap or stale entry"
-        );
+        if is_bot {
+            tracing::trace!(
+                target: "server::game",
+                player_id = dispatch.player_id.0,
+                "send_draft_offering skipped — bot participant (server-internal, no peer)"
+            );
+        } else {
+            tracing::warn!(
+                target: "server::game",
+                player_id = dispatch.player_id.0,
+                "send_draft_offering DROPPED — peer_id unresolved; player not in PlayerConnectionMap or stale entry"
+            );
+        }
         return;
     };
 
@@ -1184,6 +1220,7 @@ fn send_shop_slots(
     sender: &mut ServerMultiMessageSender,
     server: &Server,
     dispatch: &ShopSlotsDispatch,
+    is_bot: bool,
 ) {
     tracing::info!(
         target: "server::game",
@@ -1194,11 +1231,19 @@ fn send_shop_slots(
     );
 
     let Some(peer_id) = dispatch.peer_id else {
-        tracing::warn!(
-            target: "server::game",
-            player_id = dispatch.player_id.0,
-            "send_shop_slots DROPPED — peer_id unresolved; player not in PlayerConnectionMap or stale entry"
-        );
+        if is_bot {
+            tracing::trace!(
+                target: "server::game",
+                player_id = dispatch.player_id.0,
+                "send_shop_slots skipped — bot participant (server-internal, no peer)"
+            );
+        } else {
+            tracing::warn!(
+                target: "server::game",
+                player_id = dispatch.player_id.0,
+                "send_shop_slots DROPPED — peer_id unresolved; player not in PlayerConnectionMap or stale entry"
+            );
+        }
         return;
     };
 
@@ -1240,7 +1285,8 @@ fn dispatch_purchase_network_events(
     if let Some(dispatch) = events.shop_slots.as_ref() {
         if !defer_shop_slots(tracker.as_deref_mut(), dispatch) {
             if let (Some(server), Some(sender)) = (server, sender.as_deref_mut()) {
-                send_shop_slots(sender, server, dispatch);
+                // C2SPurchaseCard arrives from a remote peer — always human, never bot.
+                send_shop_slots(sender, server, dispatch, false);
             }
         }
     }

@@ -10,6 +10,7 @@ use crate::core::economy::{
 };
 use crate::core::session::PlayerConnectionMap;
 use crate::feature::acquisition::CardAcquisitionSet;
+use crate::feature::bot::state::BotPlayers;
 
 #[derive(SystemSet, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum EconomyNetworkSet {
@@ -67,6 +68,7 @@ impl EconomyNetworkOutbox {
 pub fn dispatch_gold_update(
     mut updates: MessageReader<EconomyGoldUpdate>,
     connections: Res<PlayerConnectionMap>,
+    bot_players: Option<Res<BotPlayers>>,
     mut outbox: Option<ResMut<EconomyNetworkOutbox>>,
     server: Query<&Server>,
     mut sender: Option<ServerMultiMessageSender>,
@@ -75,10 +77,22 @@ pub fn dispatch_gold_update(
 
     for update in updates.read() {
         let Some(peer_id) = peer_for_player(&connections, update.player) else {
-            warn!(
-                player_id = update.player.0,
-                "dispatch_gold_update skipped because no PeerId is mapped"
-            );
+            if bot_players
+                .as_deref()
+                .map(|b| b.contains(update.player))
+                .unwrap_or(false)
+            {
+                tracing::trace!(
+                    target: "server::network",
+                    player_id = update.player.0,
+                    "dispatch_gold_update skipped — bot participant (server-internal, no peer)"
+                );
+            } else {
+                warn!(
+                    player_id = update.player.0,
+                    "dispatch_gold_update skipped because no PeerId is mapped"
+                );
+            }
             continue;
         };
 
