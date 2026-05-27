@@ -84,6 +84,15 @@ pub struct BotSoakRoute {
     pub card_info: Arc<HashMap<u32, TriggerCardEntry>>,
     // terminal
     pub received_game_over: Arc<AtomicBool>,
+    // game-over outcome — populated only when received_game_over is true
+    /// Our PlayerId from S2CHandshake; 0 = not yet received.
+    pub our_player_id: Arc<AtomicU64>,
+    /// Losing player's id from S2CGameOver.loser; None = draw (or not yet received).
+    pub game_over_loser_id: Arc<Mutex<Option<u64>>>,
+    /// Debug string of S2CGameOver.reason (e.g. "ObjectivesDestroyed"); None until received.
+    pub game_over_reason_str: Arc<Mutex<Option<String>>>,
+    /// S2CGameOver.round; None until received.
+    pub game_over_round_num: Arc<Mutex<Option<u32>>>,
 }
 
 impl Default for BotSoakRoute {
@@ -112,6 +121,10 @@ impl Default for BotSoakRoute {
             tracked_reserve_mana: Arc::new(AtomicU32::new(0)),
             card_info: Arc::new(HashMap::new()),
             received_game_over: Arc::new(AtomicBool::new(false)),
+            our_player_id: Arc::new(AtomicU64::new(0)),
+            game_over_loser_id: Arc::new(Mutex::new(None)),
+            game_over_reason_str: Arc::new(Mutex::new(None)),
+            game_over_round_num: Arc::new(Mutex::new(None)),
         }
     }
 }
@@ -423,6 +436,7 @@ pub fn record_handshake(
                 player_id = message.player_id.0,
                 "bot_soak_trigger: S2CHandshake received"
             );
+            route.our_player_id.store(message.player_id.0, Ordering::SeqCst);
             route.received_handshake.store(true, Ordering::SeqCst);
         }
     }
@@ -575,11 +589,28 @@ pub fn record_game_over(
 ) {
     for mut receiver in &mut receivers {
         for message in receiver.receive() {
+            let loser_id = message.loser.map(|p| p.0);
+            let reason_str = format!("{:?}", message.reason);
             tracing::info!(
                 round = message.round,
-                reason = ?message.reason,
+                loser_id,
+                reason = %reason_str,
                 "bot_soak_trigger: S2CGameOver received — trigger complete"
             );
+            *route
+                .game_over_loser_id
+                .lock()
+                .expect("game_over_loser_id mutex must not be poisoned") = loser_id;
+            *route
+                .game_over_reason_str
+                .lock()
+                .expect("game_over_reason_str mutex must not be poisoned") =
+                Some(reason_str);
+            *route
+                .game_over_round_num
+                .lock()
+                .expect("game_over_round_num mutex must not be poisoned") =
+                Some(message.round);
             route.received_game_over.store(true, Ordering::SeqCst);
         }
     }

@@ -149,6 +149,19 @@ struct FinalState {
     received_game_over: bool,
     elapsed_secs: f64,
     exit_code: u8,
+    // Game-over outcome fields (PROMPT 1720).
+    // All four are null when received_game_over is false.
+    /// "trigger_won" | "bot_won" | "draw" | null.
+    /// Derived from game_over_loser_id vs our_player_id.
+    game_over_outcome: Option<String>,
+    /// GameOverReason as its Debug string, e.g. "ObjectivesDestroyed". null = not received.
+    game_over_reason: Option<String>,
+    /// Round number at which S2CGameOver was emitted. null = not received.
+    game_over_round: Option<u32>,
+    /// Our PlayerId as assigned by S2CHandshake. null = handshake never received.
+    our_player_id: Option<u64>,
+    /// Losing player's id from S2CGameOver.loser. null = draw or not received.
+    game_over_loser_id: Option<u64>,
 }
 
 fn main() -> ExitCode {
@@ -259,6 +272,31 @@ fn main() -> ExitCode {
     let elapsed = started.elapsed().as_secs_f64();
     tracing::info!(endpoint_reached, success, elapsed_secs = elapsed, "bot-soak-trigger exit");
 
+    // Extract game-over outcome fields before constructing FinalState (PROMPT 1720).
+    let our_player_id_raw = route.our_player_id.load(Ordering::SeqCst);
+    let our_player_id = if our_player_id_raw == 0 { None } else { Some(our_player_id_raw) };
+    let game_over_loser_id = *route
+        .game_over_loser_id
+        .lock()
+        .expect("game_over_loser_id mutex must not be poisoned");
+    let game_over_reason = route
+        .game_over_reason_str
+        .lock()
+        .expect("game_over_reason_str mutex must not be poisoned")
+        .clone();
+    let game_over_round = *route
+        .game_over_round_num
+        .lock()
+        .expect("game_over_round_num mutex must not be poisoned");
+    // Derive a human-readable outcome from loser vs our own player id.
+    let game_over_outcome = game_over_reason.as_ref().map(|_| {
+        match game_over_loser_id {
+            None => "draw".to_owned(),
+            Some(loser_id) if our_player_id == Some(loser_id) => "bot_won".to_owned(),
+            _ => "trigger_won".to_owned(),
+        }
+    });
+
     let final_state = FinalState {
         binary: env!("CARGO_BIN_NAME"),
         server_url: args.server_url.clone(),
@@ -273,6 +311,11 @@ fn main() -> ExitCode {
         received_game_over: route.received_game_over.load(Ordering::SeqCst),
         elapsed_secs: elapsed,
         exit_code,
+        game_over_outcome,
+        game_over_reason,
+        game_over_round,
+        our_player_id,
+        game_over_loser_id,
     };
 
     if let Err(err) = write_final_state(&evidence_dir, &final_state) {
