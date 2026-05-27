@@ -23,6 +23,9 @@ Recent mainland state:
 - `1665` completed and was cleared: BOT-ROOM-PARTICIPANT-001 AC8 is formally
   out of scope and owned by BOT-DISCONNECT-REJOIN-006. Remaining story-001 gate
   is AC7 human/live GUI smoke.
+- `1668` completed and was cleared: the operator pack for BOT-ROOM AC7 and
+  autoplay-vs-bot live GUI smoke is available at
+  `reports/PROMPT-1668-bot-room-ac7-autoplay-gui-smoke-operator-pack.md`.
 
 Active workers / expected relays:
 
@@ -31,12 +34,11 @@ Active workers / expected relays:
 | `1664` | RUNNING / waiting | Bot-vs-bot bounded soak live verify. |
 | `1666` | RUNNING / waiting | Bot debug overlay status reconcile after stale `1661` classification. |
 | `1667` | RUNNING / waiting | Autoplay recipe-library AC1 inventory reconcile. |
-| `1668` | RUNNING / waiting | Operator pack for BOT-ROOM AC7 and autoplay-vs-bot live GUI smoke. |
 
 Immediate next actions:
 
-1. When `1664`, `1666`, `1667`, or `1668` relays DONE, clear the worker, read
-   its report, and only then launch a focused follow-up.
+1. When `1664`, `1666`, or `1667` relays DONE, clear the worker, read its
+   report, and only then launch a focused follow-up.
 2. Do not launch story-done/shared-status writers for bot/autoplay until Sprint
    19 activation is explicitly handled.
 3. The next human-facing validation gate is live GUI evidence:
