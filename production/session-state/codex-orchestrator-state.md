@@ -1,14 +1,14 @@
 # Codex Orchestrator State
 
-## Current Resume Snapshot (2026-05-27, post-1671 bot soak launcher repair)
+## Current Resume Snapshot (2026-05-27, post-1673 bot soak config test isolation)
 
 Source-of-truth at this snapshot:
 
 - Root checkout: `D:\_DEV\Work\Claude-Code-Game-Studios`
 - Root branch: `main`
-- Root/source commit: `origin/main@92793425`
-  (`PROMPT 1670 AC5 prep + orchestrator state update`; PROMPT 1671 launcher
-  repair is also in the current main ancestry)
+- Root/source commit: `origin/main@71909e88`
+  (`PROMPT 1673 bot soak config test isolation`; PROMPT 1671 launcher repair
+  and PROMPT 1670 AC5 prep are also in the current main ancestry)
 - Root caveat: local `.claude/**`, `.gcs-app/`, and `tmpwt-*` runtime/tooling
   files are not part of the game source and must stay out of commits unless
   explicitly requested.
@@ -64,29 +64,33 @@ Recent mainland state:
   on `0.0.0.0:$port`. The readiness loop now distinguishes early server exit
   from timeout while the process is still alive. Report:
   `reports/PROMPT-1671-bot-soak-launcher-port-detection-repair.md`.
+- `1673` completed, was cleared, refreshed, and mainlanded:
+  `tests/unit/bot/bot_soak_config_test.rs` now serializes only the
+  env-mutating test cases behind a local `ENV_LOCK` mutex, leaving pure cases
+  concurrent while removing default-parallel flakiness from shared process
+  environment mutation. Worker validation reported 7/7 PASS under default
+  parallelism and 7/7 PASS with `--test-threads=1`. Report:
+  `reports/PROMPT-1673-bot-soak-config-test-serial-isolation.md`.
 
 Active workers / expected relays:
 
 | Prompt | State | Notes |
 |---|---|---|
 | `1672` | RUNNING / waiting | Bot-soak room trigger path disposition; decide/implement normal-protocol trigger without gameplay-rule bypass. |
-| `1673` | RUNNING / waiting | `bot_soak_config_test` global-env parallel flakiness isolation. |
 
 Immediate next actions:
 
-1. Wait for `1672` and `1673`; clear each worker, read its report, and only
-   then integrate or relaunch from concrete output.
+1. Wait for `1672`; clear it, read its report, and only then integrate or
+   relaunch from concrete output.
 2. After trigger-path decision/work (`1672`), rerun bot-vs-bot bounded
    soak and require decision log + server snapshots + max-round termination
    evidence before closing story-002 AC2-AC5.
-3. If `1673` ships a test-isolation fix, integrate it before relying on default
-   parallel `bot_soak_config_test` results.
-4. Do not launch story-done/shared-status writers for bot/autoplay until Sprint
+3. Do not launch story-done/shared-status writers for bot/autoplay until Sprint
    19 activation is explicitly handled.
-5. The next human-facing validation gate is live GUI evidence:
+4. The next human-facing validation gate is live GUI evidence:
    `tools/dev-launcher/Start-AutoplayVsBot.ps1 -Recipe full-game`, then inspect
    `production/qa/evidence/composite-runs/*-autoplay-vs-bot/`.
-6. Keep broad Cargo suites in dedicated verify lanes; implementation/report
+5. Keep broad Cargo suites in dedicated verify lanes; implementation/report
    workers should not block on broad checks or protected-branch pushes.
 
 ## Current Resume Snapshot (2026-05-27, post-1656 composite evidence docs)
