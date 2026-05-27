@@ -5532,7 +5532,7 @@ fn spawn_auction_contents(
             ShopAuctionUiEntity,
             AuctionFeaturedCardTimerLabel,
             Text::new(""),
-            shop_auction_text_font(typography::CAPTION),
+            shop_auction_text_font(typography::H3),
             TextColor(Color::srgb(0.86, 0.90, 0.96)),
             auction_featured_card_timer_label_node(),
             Visibility::Inherited,
@@ -6260,16 +6260,16 @@ fn auction_featured_card_price_label_node() -> Node {
 }
 
 fn auction_featured_card_timer_label_node() -> Node {
-    // PROMPT 1085 — numeric time-left readout anchored just under the
-    // price line. Caption-height row keeps the typography subordinate to
-    // the price line above so the read order is `name → price → timer →
-    // stats → keyword` per `docs/ux/global-ui-design-spec.md` §8.
+    // PROMPT 1697 — timer bumped from CAPTION (13 px) to H3 (18 px) so the
+    // countdown reads clearly in time-critical moments. H3 height replaces
+    // the former CAPTION height; the strip's 64 px interior still fits the
+    // label (35.5 top + 22.5 = 58 px, 6 px clear at the bottom).
     Node {
         position_type: PositionType::Absolute,
         left: Val::Px(spacing::SPACING_LG),
         right: Val::Px(spacing::SPACING_LG),
         top: Val::Px(spacing::SPACING_SM + typography::H2 * typography::LINE_HEIGHT_DEFAULT_RATIO),
-        height: Val::Px(typography::CAPTION * typography::LINE_HEIGHT_DEFAULT_RATIO),
+        height: Val::Px(typography::H3 * typography::LINE_HEIGHT_DEFAULT_RATIO),
         ..default()
     }
 }
@@ -6409,6 +6409,8 @@ fn auction_bid_button_node(index: usize) -> Node {
     // they read alongside (not on top of) the panel-centered featured
     // card. Bid target 44 × 44 CSS px (story 011) and focus-ring width
     // (story 011) are unchanged; only the absolute offset moves.
+    // PROMPT 1697: border bumped from 1px to 2px for stronger button
+    // affordance at 1280×720.
     Node {
         position_type: PositionType::Absolute,
         left: Val::Px(
@@ -6418,7 +6420,7 @@ fn auction_bid_button_node(index: usize) -> Node {
         bottom: Val::Px(72.0),
         width: Val::Px(AUCTION_BID_TARGET_WIDTH_PX),
         height: Val::Px(AUCTION_BID_TARGET_HEIGHT_PX),
-        border: UiRect::all(Val::Px(1.0)),
+        border: UiRect::all(Val::Px(2.0)),
         ..default()
     }
 }
@@ -6612,11 +6614,11 @@ fn auction_bid_status_copy(
     opponent_leading: bool,
 ) -> &'static str {
     if local_leading {
-        "YOU LEAD"
+        "YOU ARE LEADING"
     } else if hand_full {
-        "HAND FULL - NO BIDS"
+        "Hand full - no bids possible this auction"
     } else if opponent_leading {
-        "OPPONENT LEADS"
+        "OPPONENT LEADING"
     } else {
         ""
     }
