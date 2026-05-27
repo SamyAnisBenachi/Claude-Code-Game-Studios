@@ -47,7 +47,8 @@
 #   1   generic failure (missing files, I/O error, smoke launcher failed)
 #   4   driver emitted local.block (BLOCKED — upstream recipe guard fired)
 #  10   BLOCKED-HUMAN-GUI (non-interactive session; Bevy window cannot open)
-#  11   BLOCKED-PRECONDITION (soak server not running and Start-BotVsBotSoak.ps1 missing)
+#  11   BLOCKED-PRECONDITION (no Cargo.toml at play root; OR Run-AutoplaySmoke.ps1 missing; OR
+#                             -SkipSoakLaunch not set and Start-BotVsBotSoak.ps1 missing)
 #  12   BLOCKED-PRECONDITION (soak server did not bind within -SoakReadySecs)
 
 [CmdletBinding()]
@@ -101,7 +102,8 @@ PARAMETERS
 
 BLOCKED EXIT CODES
   10   BLOCKED-HUMAN-GUI       -- non-interactive; Bevy needs a visible desktop.
-  11   BLOCKED-PRECONDITION    -- soak server absent and Start-BotVsBotSoak.ps1 missing.
+  11   BLOCKED-PRECONDITION    -- no Cargo.toml at play root; OR Run-AutoplaySmoke.ps1 missing;
+                               OR -SkipSoakLaunch not set and Start-BotVsBotSoak.ps1 missing.
   12   BLOCKED-PRECONDITION    -- soak server did not bind within -SoakReadySecs.
 
 OUTPUT (per run)
@@ -318,7 +320,7 @@ if (-not $DryRun) {
     Write-Host "Run-AutoplaySmoke.ps1 exited: $smokeExit"
 } else {
     Write-Section "Autoplay smoke (DRY RUN -- skipped)"
-    Write-Host "[DRY RUN] would launch: powershell -ExecutionPolicy Bypass -File $smokeScript -Port $RpcPort -Recipe $Recipe -ArtifactDir $autoplayArtifactDir"
+    Write-Host "[DRY RUN] would launch: powershell -ExecutionPolicy Bypass -File $smokeScript -Port $RpcPort -Recipe $Recipe -ArtifactDir $autoplayArtifactDir -Python $Python -ClientStartupSecs $ClientStartupSecs"
 }
 
 # ---- 8. Stop soak job -------------------------------------------------------
@@ -366,8 +368,12 @@ Write-Host "Composite summary: $compositeSummaryPath"
 
 # Human-readable outcome
 if ($smokeExit -eq 0) {
-    Write-Host -ForegroundColor Green "Composite run COMPLETE (recipe=$Recipe exit=0)."
-    Write-Host -ForegroundColor Yellow "NOTE: This is NOT a live PASS for AUTOPLAY-VS-BOT-QA-001. An operator must review artifacts and sign off."
+    if ($DryRun) {
+        Write-Host -ForegroundColor Cyan "[DRY RUN] Simulated outcome: COMPLETE (no processes launched; exit=0 assumed)."
+    } else {
+        Write-Host -ForegroundColor Green "Composite run COMPLETE (recipe=$Recipe exit=0)."
+        Write-Host -ForegroundColor Yellow "NOTE: This is NOT a live PASS for AUTOPLAY-VS-BOT-QA-001. An operator must review artifacts and sign off."
+    }
 } elseif ($smokeExit -eq 4) {
     Write-Host -ForegroundColor Yellow "Composite run BLOCKED-RECIPE-GUARD (driver exit 4 -- local.block fired in recipe)."
 } elseif ($smokeExit -in 10, 11, 12) {
