@@ -3452,8 +3452,12 @@ pub fn sync_hand_drag_sprite_position_system(
         return;
     };
     for mut node in &mut drag_sprite {
-        node.left = Val::Px(position.x);
-        node.top = Val::Px(position.y);
+        // PROMPT 1696 — center the ghost under the cursor rather than
+        // anchoring its top-left corner there. The Node is sized
+        // HAND_CARD_DISPLAY_WIDTH_PX × HAND_CARD_DISPLAY_HEIGHT_PX, so
+        // half-width / half-height gives the centering offset.
+        node.left = Val::Px(position.x - HAND_CARD_DISPLAY_WIDTH_PX / 2.0);
+        node.top = Val::Px(position.y - HAND_CARD_DISPLAY_HEIGHT_PX / 2.0);
     }
 }
 
@@ -4331,6 +4335,9 @@ pub fn spawn_hand_ui(
             HandUiEntity,
             HandDragSprite,
             hand_drag_sprite_node(),
+            // PROMPT 1696 — accent border so the ghost reads as a distinct
+            // floating card and not a duplicate of the source slot.
+            BorderColor::all(drag_state_visuals::accent_color()),
             Transform::from_scale(Vec3::splat(HAND_DRAG_SPRITE_SCALE)),
             Visibility::Hidden,
             ChildOf(fan_root),
@@ -4639,8 +4646,13 @@ fn unaffordable_affordance_overlay_node() -> Node {
     }
 }
 
-const PLAYABLE_AFFORDANCE_FILL: Color = Color::srgba(0.95, 0.78, 0.28, 0.10);
-const UNAFFORDABLE_AFFORDANCE_DIM: Color = Color::srgba(0.0, 0.0, 0.0, 0.28);
+// PROMPT 1696 — raised alpha values for better readability at 1280×720.
+// Playable fill was 0.10 (barely visible); 0.22 reads clearly without
+// obscuring the card art. Unaffordable dim was 0.28; 0.40 matches the
+// drag-state DIM_ALPHA (0.45) more closely so the two states are
+// consistently distinguishable.
+const PLAYABLE_AFFORDANCE_FILL: Color = Color::srgba(0.95, 0.78, 0.28, 0.22);
+const UNAFFORDABLE_AFFORDANCE_DIM: Color = Color::srgba(0.0, 0.0, 0.0, 0.40);
 const UNAFFORDABLE_AFFORDANCE_BORDER: Color = Color::srgba(0.46, 0.50, 0.56, 0.72);
 
 /// Spawn the two idle-affordance overlay child nodes for a single pre-pooled
@@ -4944,6 +4956,9 @@ fn hand_drag_sprite_node() -> Node {
         position_type: PositionType::Absolute,
         width: Val::Px(HAND_CARD_DISPLAY_WIDTH_PX),
         height: Val::Px(HAND_CARD_DISPLAY_HEIGHT_PX),
+        // PROMPT 1696 — 2 px accent border makes the ghost visually
+        // distinct from the source slot while dragging.
+        border: UiRect::all(Val::Px(2.0)),
         ..default()
     }
 }
