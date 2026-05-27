@@ -1,7 +1,7 @@
 # PROMPT 1675 — Bot Lobby Auto-Confirm Missing ClassSelections Repair
 
-**Status**: SHIPPED  
-**Branch**: worktree-1675-bot-lobby-auto-confirm-missing-classselections  
+**Status**: SHIPPED
+**Branch**: worktree-1675-bot-lobby-auto-confirm-missing-classselections
 **Date**: 2026-05-27
 
 ## Problem
