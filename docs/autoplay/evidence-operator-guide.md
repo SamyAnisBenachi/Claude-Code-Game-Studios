@@ -135,8 +135,9 @@ Each recipe defines named phase gates:
 
 | Checkpoint | Recipe | Meaning |
 |---|---|---|
-| `lobby-loaded` | `lobby-create` | Lobby screen interactive |
-| `lobby-confirmed` | `lobby-create` | Confirm CTA clicked |
+| `lobby-loaded` | `lobby-create`, `add-bot-lobby` | Lobby screen interactive |
+| `lobby-confirmed` | `lobby-create`, `add-bot-lobby` | Confirm CTA clicked |
+| `bot-added` | `add-bot-lobby` | Add Bot clicked + server round-trip settled |
 | `class-select-loaded` | `class-select` | Class selection rendered |
 | `class-confirmed` | `class-select` | First card selected + Confirm clicked |
 | `shop-loaded` | `draft-auction-probe` | Shop phase mounted |
@@ -146,7 +147,15 @@ Each recipe defines named phase gates:
 | `placement-loaded` | `placement-drag-probe` | Placement board appeared |
 | `placement-dragged` | `placement-drag-probe` | Drag from hand to board completed |
 | `placement-submitted` | `placement-drag-probe` | Submit button clicked |
-| `full-game-resolution` | `full-game` | Resolution phase reached end |
+| `resolution-started` | `resolution-observe` | Resolution soak begins (screenshot) |
+| `resolution-complete` | `resolution-observe` | Resolution soak ended (screenshot) |
+| `game-over-screen` | `game-over-observe` | Post-soak screenshot of result screen |
+| `winner-confirmed` | `game-over-observe` | Winner animation settled (screenshot) |
+| `full-game-post-resolution` | `full-game` | Composite ended after resolution soak (default) |
+| `full-game-post-placement` | `full-game` | Composite ended at placement (resolution skipped) |
+| `full-game-complete` | `full-game` | Composite ended after game-over soak (opt-in) |
+| `round-{k}-start` | `round-loop` | Round k (≥2) starting marker |
+| `round-loop-complete` | `round-loop` | All rounds + game-over finished |
 
 **Reading `checkpoints.jsonl`:**
 
@@ -261,11 +270,15 @@ Use both for comprehensive checkpoint evidence.
 |---|---|---|---|
 | `smoke` | — | — | Proves RPC infra only |
 | `idle` | — | — | Status-polling soak |
-| `lobby-create` | `lobby-loaded`, `lobby-confirmed` | — | |
+| `add-bot-lobby` | `lobby-loaded`, `bot-added`, `lobby-confirmed` | `CCGS_DEBUG_UI=1` | Seats a bot in the lobby; emits BLOCKED if debug UI absent |
+| `lobby-create` | `lobby-loaded`, `lobby-confirmed` | — | Human-vs-human lobby; no bot required |
 | `class-select` | `class-select-loaded`, `class-confirmed` | — | |
 | `draft-auction-probe` | `shop-loaded`, `shop-slot-clicked`, `auction-loaded`, `auction-ready` | — | |
 | `placement-drag-probe` | `placement-loaded`, `placement-dragged`, `placement-submitted` | — | |
-| `full-game` | all above + `full-game-resolution` | `CCGS_AUTOPLAY_BOT_ROOM_READY=1` | Complete loop; needs bot peer |
+| `resolution-observe` | `resolution-started`, `resolution-complete` | — | Passive soak; no input driven |
+| `game-over-observe` | `game-over-screen`, `winner-confirmed` | — | Passive soak; no input driven |
+| `full-game` | all phase checkpoints + `full-game-post-resolution` (default) | `CCGS_AUTOPLAY_BOT_ROOM_READY=1` | Resolution soak on by default; GameOver opt-in via `CCGS_AUTOPLAY_FULL_GAME_GAMEOVER=1` |
+| `round-loop` | all above + `round-{k}-start`, `round-loop-complete` | `CCGS_AUTOPLAY_BOT_ROOM_READY=1` | Multi-round; configure via `CCGS_AUTOPLAY_ROUND_LOOP_COUNT` (default 2) |
 
 ---
 
@@ -298,4 +311,4 @@ complete every `<!-- fill -->` field.
 
 ---
 
-_Last updated: PROMPT 1643 — 2026-05-27_
+_Last updated: PROMPT 1646 — 2026-05-27_

@@ -187,21 +187,25 @@ is `YYYYMMDD-HHMMSS-Z` in UTC. Override with `CCGS_AUTOPLAY_ARTIFACT_DIR=<path>`
 - `screenshots/<seq>.png` — one PNG per `autoplay/screenshot` RPC.
 - `screenshots/<seq>.json` — sidecar with `{ requested_at, captured_at, reason }`.
 
-## Recipe library (PROMPT 1609)
+## Recipe library (PROMPTs 1609 / 1634 / 1636 / 1639 / 1641 / 1644)
 
 Recipes live under `tools/autoplay/recipes/` and are discovered by the
 registry in `tools/autoplay/recipes/__init__.py`. The driver loads a
 recipe by name with `--recipe <name>`; the registered set is:
 
-| Recipe | Phase | Checkpoints |
-| --- | --- | --- |
-| `smoke` | substrate probe | — |
-| `idle` | observability soak | — |
-| `lobby-create` | lobby Create + Confirm | `lobby-loaded`, `lobby-confirmed` |
-| `class-select` | class pick + Confirm | `class-select-loaded`, `class-confirmed` |
-| `draft-auction-probe` | shop click → auction bid → ready | `shop-loaded`, `shop-slot-clicked`, `auction-loaded`, `auction-ready` |
-| `placement-drag-probe` | hand → board drag, Submit | `placement-loaded`, `placement-dragged`, `placement-submitted` |
-| `full-game` | composite, requires PROMPT 1607 soak room | all of the above + `full-game-resolution` |
+| Recipe | Phase | Checkpoints | Notes |
+| --- | --- | --- | --- |
+| `smoke` | substrate probe | — | — |
+| `idle` | observability soak | — | — |
+| `add-bot-lobby` | lobby Create + Add Bot + Confirm | `lobby-loaded`, `bot-added`, `lobby-confirmed` | Requires `CCGS_DEBUG_UI=1`; emits `local.block` otherwise (PROMPT 1634) |
+| `lobby-create` | lobby Create + Confirm | `lobby-loaded`, `lobby-confirmed` | — |
+| `class-select` | class pick + Confirm | `class-select-loaded`, `class-confirmed` | — |
+| `draft-auction-probe` | shop click → auction bid → ready | `shop-loaded`, `shop-slot-clicked`, `auction-loaded`, `auction-ready` | — |
+| `placement-drag-probe` | hand → board drag, Submit | `placement-loaded`, `placement-dragged`, `placement-submitted` | — |
+| `resolution-observe` | passive Resolution-phase soak | `resolution-started`, `resolution-complete` | Pure observation, no input (PROMPT 1636) |
+| `game-over-observe` | passive GameOver/result-screen soak | `game-over-screen`, `winner-confirmed` | Pure observation, no input (PROMPT 1636) |
+| `round-loop` | multi-round composite (N rounds) | all above + `round-{k}-start`, `round-loop-complete` | Requires `CCGS_AUTOPLAY_BOT_ROOM_READY=1` (PROMPT 1639) |
+| `full-game` | composite lobby→class→draft/auction→placement→resolution | all phase checkpoints + `full-game-post-resolution` (or `full-game-post-placement` / `full-game-complete`) | Requires `CCGS_AUTOPLAY_BOT_ROOM_READY=1`; resolution soak on by default; GameOver opt-in via `CCGS_AUTOPLAY_FULL_GAME_GAMEOVER=1` (PROMPTs 1609 / 1641) |
 
 ### How to run
 
@@ -242,16 +246,17 @@ $env:CCGS_AUTOPLAY_LOBBY_CONFIRM_BTN = "0.50,0.88"
 Malformed overrides emit a `local.note` row recording the parse
 failure and fall back to the default.
 
-### Blocked steps as of PROMPT 1609
+### Known detection limits (as of PROMPT 1644)
 
-| Recipe | Blocker | Detection |
+| Recipe / area | Limit | Detection strategy |
 | --- | --- | --- |
-| `full-game` | PROMPT 1607 bot-vs-bot soak room (`Start-BotVsBotSoak.ps1`) not yet on main. | If `CCGS_AUTOPLAY_BOT_ROOM_READY != "1"`, recipe emits `local.block` and the driver exits 4. |
-| Auction bid acknowledgement | No observability surface for "bid accepted"; relies on a fixed `CCGS_AUTOPLAY_AUCTION_BID_WAIT` tick budget. | Waits then proceeds; reviewer confirms outcome from the post-bid checkpoint screenshot. |
+| `full-game`, `round-loop` | Require `CCGS_AUTOPLAY_BOT_ROOM_READY=1`; emit `local.block` and exit code 4 if unset. | Launch `Start-BotVsBotSoak.ps1` first, then set the var. |
+| `add-bot-lobby` | Add Bot control only renders when `CCGS_DEBUG_UI=1`; emits `local.block` if absent. | Set `CCGS_DEBUG_UI=1` on client launch. |
+| Auction bid acknowledgement | No RPC-visible "bid accepted" signal; relies on a fixed `CCGS_AUTOPLAY_AUCTION_BID_WAIT` tick budget. | Wait then proceed; reviewer confirms outcome from the post-bid checkpoint screenshot. |
 | Placement accept/reject | No autoplay-visible signal for accepted submission; same wait-then-screenshot strategy. | Reviewer confirms outcome from `placement-submitted` screenshot. |
-| Resolution / round-end | No autoplay observability for round transitions. | `full-game-resolution` checkpoint marks the wall-clock end of the recipe, not a real round boundary. |
+| Phase name / round boundary | `autoplay/status` does not expose the current game-phase name. `resolution-observe` and `game-over-observe` cannot positively confirm the client is in the expected phase. | Screenshots are the primary evidence artefacts; cross-reference with `checkpoints.jsonl` timestamps. |
 
-These blockers are by design — the autoplay surface deliberately does
+These limits are by design — the autoplay surface deliberately does
 not expose gameplay state. Upgrading detection beyond
 checkpoint-screenshot review is the job of the QA snapshot harness
 (`F9` / `CCGS_QA_SNAPSHOT=1`), not autoplay.
@@ -264,10 +269,17 @@ checkpoint-screenshot review is the job of the QA snapshot harness
 | `CCGS_AUTOPLAY_PORT` | `15873` | TCP port for the RPC server. `0` lets the OS pick. |
 | `CCGS_AUTOPLAY_ARTIFACT_DIR` | `production/qa/evidence/autoplay-runs/<timestamp>` | Artifact root. |
 | `CCGS_AUTOPLAY_DRIVER_ARTIFACT_DIR` | `production/qa/evidence/autoplay-runs/driver` | Override the driver-side artifact dir (used when the driver is launched manually, outside `Run-AutoplaySmoke.ps1`). |
-| `CCGS_AUTOPLAY_BOT_ROOM_READY` | unset | Set to `1` once PROMPT 1607 bot-vs-bot soak room is live; required by the `full-game` recipe. |
+| `CCGS_AUTOPLAY_BOT_ROOM_READY` | unset | Set to `1` once the bot-vs-bot soak room is live; required by `full-game` and `round-loop`. |
 | `CCGS_AUTOPLAY_<KEY>` (button frac) | per `_coords.DEFAULTS` | Per-recipe fractional coordinate overrides; see `tools/autoplay/README.md`. |
 | `CCGS_AUTOPLAY_AUCTION_MOUNT_WAIT` | 12 ticks | Ticks the `draft-auction-probe` recipe waits after the shop confirm click before clicking the bid CTA. |
 | `CCGS_AUTOPLAY_AUCTION_BID_WAIT` | 10 ticks | Ticks the `draft-auction-probe` recipe waits between the bid click and the ready click. |
+| `CCGS_AUTOPLAY_FULL_GAME_RESOLUTION` | `1` (on) | Set to `0` to skip the resolution-observe soak in `full-game`. |
+| `CCGS_AUTOPLAY_FULL_GAME_GAMEOVER` | unset (off) | Set to `1` to chain a `game-over-observe` soak at the end of `full-game`. |
+| `CCGS_AUTOPLAY_RESOLUTION_SOAK_TICKS` | `60` | Ticks `resolution-observe` waits between `resolution-started` and `resolution-complete`. |
+| `CCGS_AUTOPLAY_GAMEOVER_SOAK_TICKS` | `120` | Ticks `game-over-observe` waits before the `game-over-screen` checkpoint. |
+| `CCGS_AUTOPLAY_GAMEOVER_RESULT_SOAK_TICKS` | `30` | Additional ticks after `game-over-screen` before `winner-confirmed`. |
+| `CCGS_AUTOPLAY_ROUND_LOOP_COUNT` | `2` | Total rounds `round-loop` drives (round 1 uses `full-game`; each extra round runs draft/auction → placement → resolution). |
+| `CCGS_AUTOPLAY_ROUND_SETTLE_TICKS` | `4` | Gap ticks inserted between sub-recipe phase boundaries in `round-loop`. |
 
 `15873` was chosen to avoid `15702` (the default `bevy_remote` port we may
 adopt later for the diagnostic surface) and to stay outside common dev port
