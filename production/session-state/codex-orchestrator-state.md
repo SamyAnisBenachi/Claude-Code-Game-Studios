@@ -53,30 +53,28 @@ Active workers / expected relays:
 | Prompt | State | Notes |
 |---|---|---|
 | `1670` | RUNNING / waiting | Bot debug overlay story status cleanup + AC5 readiness ruling prep. |
+| `1671` | RUNNING / waiting | Bot-soak launcher port-readiness false-negative repair for `Start-BotVsBotSoak.ps1`. |
+| `1672` | RUNNING / waiting | Bot-soak room trigger path disposition; decide/implement normal-protocol trigger without gameplay-rule bypass. |
+| `1673` | RUNNING / waiting | `bot_soak_config_test` global-env parallel flakiness isolation. |
 
 Immediate next actions:
 
-1. Launch a focused launcher repair for `Start-BotVsBotSoak.ps1`
-   port-readiness detection. Replace the current `Test-PortFree` gate with a
-   reliable process-alive or WebSocket connect probe so a bound server is not
-   killed as an exit-code-3 false negative.
-2. Decide the bot-room trigger path for full soak verification: either run the
-   existing human/GUI operator flow from PROMPT 1668, or author/implement a
-   dev-only trigger that sends `C2SCreateBotRoom` without mutating gameplay
-   state directly. Do not bypass rules with semantic server mutation.
-3. After the launcher repair and trigger decision, rerun bot-vs-bot bounded
+1. Wait for `1671`, `1672`, and `1673`; clear each worker, read its report, and
+   only then integrate or relaunch from concrete output.
+2. After the launcher repair (`1671`) and trigger-path decision/work (`1672`),
+   rerun bot-vs-bot bounded
    soak and require decision log + server snapshots + max-round termination
    evidence before closing story-002 AC2-AC5.
-4. Optional follow-up: fix or document `bot_soak_config_test` env-var parallel
-   flakiness by serializing that test lane.
-5. When `1670` relays DONE, clear the worker, read its report, and only then
+3. If `1673` ships a test-isolation fix, integrate it before relying on default
+   parallel `bot_soak_config_test` results.
+4. When `1670` relays DONE, clear the worker, read its report, and only then
    launch a focused follow-up.
-6. Do not launch story-done/shared-status writers for bot/autoplay until Sprint
+5. Do not launch story-done/shared-status writers for bot/autoplay until Sprint
    19 activation is explicitly handled.
-7. The next human-facing validation gate is live GUI evidence:
+6. The next human-facing validation gate is live GUI evidence:
    `tools/dev-launcher/Start-AutoplayVsBot.ps1 -Recipe full-game`, then inspect
    `production/qa/evidence/composite-runs/*-autoplay-vs-bot/`.
-8. Keep broad Cargo suites in dedicated verify lanes; implementation/report
+7. Keep broad Cargo suites in dedicated verify lanes; implementation/report
    workers should not block on broad checks or protected-branch pushes.
 
 ## Current Resume Snapshot (2026-05-27, post-1656 composite evidence docs)
