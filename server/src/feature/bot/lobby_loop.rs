@@ -74,13 +74,21 @@ fn bot_seed_for(bot_player_id: PlayerId) -> u64 {
 ///
 /// Runs before `evaluate_room_session_ready` so a freshly-added bot can lift
 /// the room into `GameActive` in the same Update tick as the human's confirm.
+///
+/// `ClassSelections` is removed during session teardown / game-over, so we
+/// accept `Option<ResMut<…>>` and bail early when the resource is absent.
+/// This mirrors the pattern used in `core::session::system` and prevents the
+/// panic observed in the 2026-05-27 bot-vs-bot soak run.
 pub fn bot_lobby_auto_confirm(
     time: Res<Time>,
     mut rooms: ResMut<RoomSessions>,
-    mut selections: ResMut<ClassSelections>,
+    mut selections: Option<ResMut<ClassSelections>>,
     mut bots: ResMut<BotPlayers>,
     mut decision_log: ResMut<BotDecisionLog>,
 ) {
+    let Some(ref mut selections) = selections else {
+        return;
+    };
     let now_ms = (time.elapsed().as_secs_f64() * 1_000.0) as u64;
 
     for session_id in rooms.session_ids() {
