@@ -30,6 +30,17 @@ pub const Z_GRID_OVERLAY: f32 = 3.6;
 pub const Z_BOARD_CAMERA: f32 = 999.0;
 pub const CELL_NODE_SIZE: f32 = 28.0;
 pub const LANE_RAIL_THICKNESS: f32 = 3.0;
+// PROMPT 1695 — Stage 2 board/play-area polish constants.
+// Background and chrome sprites extend this many px beyond the playable grid on
+// every edge, giving the board a physical frame around the cell matrix.
+pub const BOARD_CHROME_MARGIN_PX: f32 = 10.0;
+// Lane surfaces fill this fraction of the lane height.  Increased from 0.82
+// to narrow the gap between adjacent bands and improve lane readability.
+pub const LANE_SURFACE_HEIGHT_RATIO: f32 = 0.87;
+// Rail alpha for inner dividers (between lanes) and the outer top-edge rail.
+// Raised from 0.26 / 0.30 so the lane boundaries read as physical separators.
+pub const LANE_RAIL_ALPHA_INNER: f32 = 0.40;
+pub const LANE_RAIL_ALPHA_OUTER: f32 = 0.48;
 pub const UNIT_SPRITE_SIZE: bevy::prelude::Vec2 = bevy::prelude::Vec2::new(48.0, 64.0);
 // PROMPT 1489 — Krosmaga-style footing shadow anchors each unit to its cell.
 // The footing is a non-pickable child sprite tucked just below the unit body
