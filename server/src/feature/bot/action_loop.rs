@@ -76,7 +76,7 @@ use crate::feature::board::{
     PlacementSubmissionReceived, SpawnRangeState,
 };
 use crate::feature::bot::state::{
-    BotDecisionEntry, BotDecisionKind, BotDecisionLog, BotPlayers,
+    BotDecisionEntry, BotDecisionKind, BotDecisionLog, BotPlayers, PlacementCoord,
     BOT_AUCTION_PASS_THRESHOLD_MS, BOT_AUCTION_VALUATION_NOISE_DENOMINATOR,
 };
 use crate::foundation::config::CardCatalog;
@@ -875,6 +875,24 @@ pub fn bot_action_loop(
                     .unwrap_or_default();
                 let placements_len = placements.len();
 
+                // Extract coords before placements is moved into the submission.
+                let coords: Vec<PlacementCoord> = placements
+                    .iter()
+                    .filter_map(|p| {
+                        if let PlayTarget::BoardCell { lane, cell } = p.target {
+                            Some(PlacementCoord {
+                                card_id: p.card_id,
+                                lane,
+                                cell,
+                                mana: p.total_mana_spend(),
+                            })
+                        } else {
+                            None
+                        }
+                    })
+                    .take(16)
+                    .collect();
+
                 let submission = PlacementSubmissionReceived {
                     player: *player_id,
                     peer_id: None::<PeerId>,
@@ -888,6 +906,7 @@ pub fn bot_action_loop(
                 } else {
                     BotDecisionKind::PlacementSubmitted {
                         placements_len: u8::try_from(placements_len).unwrap_or(u8::MAX),
+                        coords,
                     }
                 };
                 decision_log.push(BotDecisionEntry {

@@ -414,7 +414,7 @@ pub enum DecisionKindSnapshot {
     DraftReady,
     AuctionBid { card_id: CardId, amount: u32, valuation: u32 },
     AuctionPass { reason: String },
-    PlacementSubmitted { placements_len: u8 },
+    PlacementSubmitted { placements_len: u8, coords: Vec<crate::feature::bot::state::PlacementCoord> },
     PlacementSkipped { reason: String },
     EmptyPlacementFailsafe,
     ResultAcknowledged,
@@ -466,8 +466,11 @@ impl From<&BotDecisionKind> for DecisionKindSnapshot {
             BotDecisionKind::AuctionPass { reason } => {
                 DecisionKindSnapshot::AuctionPass { reason: (*reason).to_string() }
             }
-            BotDecisionKind::PlacementSubmitted { placements_len } => {
-                DecisionKindSnapshot::PlacementSubmitted { placements_len: *placements_len }
+            BotDecisionKind::PlacementSubmitted { placements_len, coords } => {
+                DecisionKindSnapshot::PlacementSubmitted {
+                    placements_len: *placements_len,
+                    coords: coords.clone(),
+                }
             }
             BotDecisionKind::PlacementSkipped { reason } => {
                 DecisionKindSnapshot::PlacementSkipped { reason: (*reason).to_string() }
