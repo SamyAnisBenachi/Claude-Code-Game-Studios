@@ -111,10 +111,12 @@ activate Sprint 19, and NOT modify the Sprint 18 active row set.
 | 003 | [Autoplay Full-Game Recipe Library v1 (Real UI Input)](story-003-autoplay-recipe-library-v1.md) | Integration | Draft -- Sprint 19 candidate | Sprint 19 candidate (autoplay bootstrap on `origin/main` via PROMPT 1601; recipe library extension is the next slice) |
 | 004 | [Autoplay-vs-Bot QA Flow](story-004-autoplay-vs-bot-qa-flow.md) | Integration | Draft -- Sprint 19 candidate (gated on 001 + 002 + 003) | Sprint 19 candidate (depends on 001/002/003) |
 | 005 | [Debug-Only Bot Overlay -- Data Push Path](story-005-bot-debug-overlay.md) | Integration | Draft -- Sprint 19 candidate | Sprint 19 candidate (data contract defined by PROMPT 1604; gated behind `CCGS_DEBUG_UI=1` and F8 per orchestrator note) |
+| 006 | [Bot Disconnect / Re-join Hardening](story-006-bot-disconnect-rejoin-hardening.md) | Integration | Draft -- future-sprint candidate (NOT activated) | Sprint 20+ candidate (gated on BOT-ROOM-PARTICIPANT-001 story-done; authored PROMPT 1650 to close open follow-ups in story 001) |
 
 ## Non-Claims
 
 - NO Sprint 19 activation.
+- NO Sprint 20 activation.
 - NO closure of any landed bot/autoplay PROMPT.
 - NO release / RC / full-game / accessibility / playtest validation claim.
 - NO stage advance from `Polish`.
