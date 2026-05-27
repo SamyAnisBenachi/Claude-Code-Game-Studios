@@ -1,5 +1,76 @@
 # Codex Orchestrator State
 
+## Current Resume Snapshot (2026-05-27, post-1677 bot soak PASS)
+
+Source-of-truth at this snapshot:
+
+- Root checkout: `D:\_DEV\Work\Claude-Code-Game-Studios`
+- Root branch: `main`
+- Root/source commit: `origin/main@c20eb100`
+  (`PROMPT 1674` launcher trigger exit-code reconciliation plus combined
+  `PROMPT 1675/1676/1677` bot-soak fixes)
+- Root caveat: local `.claude/**`, `.gcs-app/`, `dev-runs/`, and `tmpwt-*`
+  runtime/tooling files are not game source and must stay out of commits unless
+  explicitly requested.
+
+Recent bot-soak repair landings:
+
+- `1674` landed through `MAINLAND_ENQUEUE`:
+  `origin/integrate/bot-soak-launcher-exit-code-1674 -> main`
+  advanced `origin/main` `276e78f1..5696668e`. It fixes
+  `Start-BotVsBotSoak.ps1` so null `Start-Process` exit codes are reconciled
+  from `bot-soak-trigger/final_state.json` and recorded with
+  `trigger_exit_code_source`.
+- `1675/1676/1677` landed through `MAINLAND_ENQUEUE` as a combined refresh:
+  `origin/integrate/bot-soak-post-1674-fixes-1675-1677 -> main`
+  advanced `origin/main` `5696668e..c20eb100`. It covers the missing
+  `ClassSelections` panic guard in `bot_lobby_auto_confirm`, server snapshot
+  output wiring for `CCGS_BOT_QA_SNAPSHOT_DIR`, and bot placement fail-safe
+  debounce.
+- Worker windows `1674`, `1675`, `1676`, and `1677` have been cleared or are
+  no longer live; no active worker is known for this repair set.
+
+Post-landing verification:
+
+- Initial rerun after landing used stale `server.exe`/`bot-soak-trigger.exe`
+  binaries and failed with old evidence; do not treat
+  `production/qa/evidence/dev-runs/2026-05-27-121103-bot-vs-bot-soak` as a
+  current source-code failure.
+- Targeted rebuild was run with the MSVC Cargo policy:
+  `cargo build -p server` and
+  `cargo build -p two-client-runtime --bin bot-soak-trigger` PASS.
+- Fresh bounded bot-vs-bot soak PASS:
+  `tools/dev-launcher/Start-BotVsBotSoak.ps1 -MaxRounds 3 -DurationSeconds 60
+  -PlayRepoRoot D:\_DEV\Work\Claude-Code-Game-Studios`.
+  Evidence directory:
+  `production/qa/evidence/dev-runs/2026-05-27-121832-bot-vs-bot-soak`.
+- Fresh evidence summary:
+  `bot-soak-trigger/final_state.json` reports `endpoint_reached=game_over`,
+  `received_game_over=true`, `rounds_observed=2`, `exit_code=0`, elapsed about
+  21 seconds. `soak-summary.json` reports `trigger_exit_code=0` and
+  `trigger_exit_code_source=final_state.json`. `server.err` is empty.
+  `server-snapshots/` contains 10 files. `bot-decision-log.jsonl` is compact
+  at about 1052 bytes.
+
+Remaining caveat:
+
+- Bot-vs-bot soak infrastructure now passes the bounded max-rounds gate, but
+  logs still show bot placement falling back to empty submissions because no
+  legal placement is found for the bot in these rounds. This is not a launcher
+  or snapshot failure anymore; it is the next bot gameplay-quality gap.
+
+Immediate next actions:
+
+1. Treat BOT-SOAK-ENTRYPOINT-001 runtime gate as PASS for the bounded headless
+   path, using the `2026-05-27-121832-bot-vs-bot-soak` evidence.
+2. Launch the next implementation lane only if desired: improve bot placement
+   quality so the bot can acquire/play legal units instead of repeatedly using
+   the empty-placement fallback.
+3. Keep live GUI autoplay-vs-bot as a separate human/interactive evidence gate;
+   do not conflate it with the headless bot-vs-bot soak PASS.
+4. Do not launch story-done/shared-status writers for bot/autoplay until Sprint
+   19 activation or explicit orchestrator instruction.
+
 ## Current Resume Snapshot (2026-05-27, post-1672 live soak triage)
 
 Source-of-truth at this snapshot:
