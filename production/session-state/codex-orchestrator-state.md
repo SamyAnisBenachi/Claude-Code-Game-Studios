@@ -1,15 +1,16 @@
 # Codex Orchestrator State
 
-## Current Resume Snapshot (2026-05-27, post-1679 launcher guard land)
+## Current Resume Snapshot (2026-05-27, post-1678 bot placement repair land)
 
 Source-of-truth at this snapshot:
 
 - Root checkout: `D:\_DEV\Work\Claude-Code-Game-Studios`
 - Root branch: `main`
-- Root/source commit: `origin/main@8af941bd`
+- Root/source commit: `origin/main@aa9f4ae5`
   (`PROMPT 1674` launcher trigger exit-code reconciliation plus combined
   `PROMPT 1675/1676/1677` bot-soak fixes, orchestrator state commits, and
-  `PROMPT 1679` stale-binary launcher guard)
+  `PROMPT 1679` stale-binary launcher guard, followed by `PROMPT 1678` bot
+  legal-unit acquisition repair)
 - Root caveat: local `.claude/**`, `.gcs-app/`, `dev-runs/`, and `tmpwt-*`
   runtime/tooling files are not game source and must stay out of commits unless
   explicitly requested.
@@ -35,11 +36,17 @@ Recent bot-soak repair landings:
   `server_build_reason` / `trigger_build_reason` / `rebuild_flag` fields in
   `soak-summary.json`. Validation used `-Help` and `-DryRun -Rebuild`; no broad
   Cargo suite was run.
-- Worker windows `1674`, `1675`, `1676`, `1677`, and `1679` have been cleared
-  or are no longer live.
-- Active follow-up worker:
-  `1678 BOT-PLACEMENT-LEGAL-UNIT-ACQUISITION-REPAIR` owns the remaining bot
-  gameplay-quality gap.
+- `1678` landed through `MAINLAND_ENQUEUE`:
+  `origin/integrate/bot-placement-legal-unit-acquisition-1678 -> main`
+  advanced `origin/main` `bc03a87e..aa9f4ae5`. It changes server placement
+  validation so an absent hand entry behaves like an empty hand for empty
+  placement batches while non-empty placement still rejects with `CardNotInHand`.
+  It also adds bot draft auto-pick after shop card acquisition ticks, choosing
+  the cheapest affordable minion first, then any affordable card. Worker
+  validation reported 133 server tests plus focused placement/bot tests passing;
+  integration `git diff --check` passed.
+- Worker windows `1674`, `1675`, `1676`, `1677`, `1678`, and `1679` have been
+  cleared or are no longer live.
 
 Post-landing verification:
 
@@ -65,21 +72,27 @@ Post-landing verification:
 
 Remaining caveat:
 
-- Bot-vs-bot soak infrastructure now passes the bounded max-rounds gate, but
-  logs still show bot placement falling back to empty submissions because no
-  legal placement is found for the bot in these rounds. This is not a launcher
-  or snapshot failure anymore; it is the next bot gameplay-quality gap.
+- Bot-vs-bot soak infrastructure passed the bounded max-rounds gate before
+  `1678`, but the evidence still showed bot placement falling back to empty
+  submissions because no legal placement was found. `1678` is the targeted fix
+  for that gameplay-quality gap and needs a fresh post-landed soak verify with
+  the `1679` `-Rebuild` guard before the gap can be closed.
 
 Immediate next actions:
 
-1. Treat BOT-SOAK-ENTRYPOINT-001 runtime gate as PASS for the bounded headless
-   path, using the `2026-05-27-121832-bot-vs-bot-soak` evidence.
-2. Wait for `1678` relay, integrate its branch if shipped, then run a focused
-   post-integration bot-vs-bot soak verify using the landed `1679` `-Rebuild`
-   guard at least once.
-3. Keep live GUI autoplay-vs-bot as a separate human/interactive evidence gate;
+1. Run a focused post-1678 bot-vs-bot soak verify on latest main using:
+   `tools/dev-launcher/Start-BotVsBotSoak.ps1 -MaxRounds 3 -DurationSeconds 60
+   -PlayRepoRoot D:\_DEV\Work\Claude-Code-Game-Studios -Rebuild`.
+2. Required evidence for PASS: trigger exit code `0`,
+   `bot-soak-trigger/final_state.json` with `received_game_over=true`, server
+   max-round/game-over endpoint, compact bot decision log, non-empty server
+   snapshots, and no repeated empty-placement fallback spam.
+3. If the rerun fails, launch one focused repair from the new evidence only:
+   bot draft acquisition, bot placement decision, server placement authority,
+   launcher process control, or snapshot/decision-log emission.
+4. Keep live GUI autoplay-vs-bot as a separate human/interactive evidence gate;
    do not conflate it with the headless bot-vs-bot soak PASS.
-4. Do not launch story-done/shared-status writers for bot/autoplay until Sprint
+5. Do not launch story-done/shared-status writers for bot/autoplay until Sprint
    19 activation or explicit orchestrator instruction.
 
 ## Current Resume Snapshot (2026-05-27, post-1672 live soak triage)
