@@ -8,7 +8,9 @@
 #   2. Applies the shared Windows/MSVC Cargo resource policy.
 #   3. Picks a server port (default 5000, override with -Port). Auto-bumps to
 #      the next free port unless -StrictPort is passed.
-#   4. Builds `server.exe` if missing under the resolved CARGO_TARGET_DIR.
+#   4. Builds `server.exe` and `bot-soak-trigger.exe` when missing or when any
+#      tracked source file is newer than the binary. Pass -Rebuild to force a
+#      rebuild unconditionally (guards against stale binaries from prior runs).
 #   5. Creates a timestamped evidence directory under
 #      production/qa/evidence/dev-runs/<UTC-YYYY-MM-DD-HHMMSS>-bot-vs-bot-soak/
 #      with the layout documented in
@@ -52,6 +54,11 @@ param(
     # When set to N > 0 the server exits cleanly after N completed rounds via
     # CCGS_BOT_MAX_ROUNDS env var; GameOverReason::MaxRoundsReached is emitted.
     [int]$MaxRounds = 0,
+    # PROMPT 1679: force-rebuild both binaries even when they appear fresh.
+    # Without this flag the launcher still rebuilds when any tracked source file
+    # is newer than the binary (freshness guard). Use -Rebuild after a git pull
+    # to guarantee QA evidence reflects the current source.
+    [switch]$Rebuild,
     [switch]$DryRun,
     [switch]$Help,
     [string]$PlayRepoRoot = ''
@@ -61,6 +68,45 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 function Write-Section { param([string]$Title) Write-Host ""; Write-Host "==== $Title ====" -ForegroundColor Cyan }
+
+# Returns the newest LastWriteTimeUtc among all files under $Dirs and in $Files.
+# Used by Test-BinaryFresh to detect stale binaries.
+function Get-NewestSourceTime {
+    param([string[]]$Dirs, [string[]]$Files)
+    $newest = [datetime]::MinValue
+    foreach ($dir in $Dirs) {
+        if (Test-Path $dir) {
+            $top = Get-ChildItem -LiteralPath $dir -Recurse -File -ErrorAction SilentlyContinue |
+                   Sort-Object LastWriteTimeUtc -Descending |
+                   Select-Object -First 1
+            if ($null -ne $top -and $top.LastWriteTimeUtc -gt $newest) { $newest = $top.LastWriteTimeUtc }
+        }
+    }
+    foreach ($f in $Files) {
+        if (Test-Path $f) {
+            $t = (Get-Item -LiteralPath $f).LastWriteTimeUtc
+            if ($t -gt $newest) { $newest = $t }
+        }
+    }
+    return $newest
+}
+
+# Returns a reason string: 'missing', 'source-newer', 'up-to-date', or 'forced'.
+# Callers treat anything other than 'up-to-date' as requiring a build.
+function Get-BinaryBuildReason {
+    param(
+        [string]$BinPath,
+        [string[]]$SourceDirs,
+        [string[]]$SourceFiles,
+        [bool]$ForceRebuild
+    )
+    if ($ForceRebuild)         { return 'forced' }
+    if (-not (Test-Path $BinPath)) { return 'missing' }
+    $binTime = (Get-Item -LiteralPath $BinPath).LastWriteTimeUtc
+    $srcTime = Get-NewestSourceTime -Dirs $SourceDirs -Files $SourceFiles
+    if ($srcTime -gt $binTime) { return 'source-newer' }
+    return 'up-to-date'
+}
 
 function Show-Help {
     @"
@@ -78,7 +124,14 @@ PARAMETERS
                          Sets CCGS_BOT_MAX_ROUNDS=N so the server triggers
                          GameOver (MaxRoundsReached) after N completed rounds.
                          Normal multiplayer sessions are not affected.
+  -Rebuild               Force a cargo build of server and bot-soak-trigger even
+                         if the binaries appear up-to-date. Use after git pull to
+                         guarantee QA evidence reflects the current source.
+                         Without this flag the launcher still auto-rebuilds when
+                         any tracked source file (.rs, Cargo.toml, Cargo.lock) is
+                         newer than the binary (freshness guard).
   -DryRun                Print every step but do not start any process.
+                         Safe to combine with -Rebuild (prints build commands).
   -PlayRepoRoot P        Absolute path to the dedicated play/build checkout.
                          Falls back to `$env:CCGS_PLAY_REPO_ROOT,
                          `$env:CCGS_CANONICAL_MAIN_ROOT, then
@@ -191,22 +244,45 @@ if (-not (Test-PortFree $chosen)) {
 }
 Write-Host "Chosen port: $chosen"
 
-# ---- 4. Build server if missing -----------------------------------------
+# ---- 4. Build server and bot-soak-trigger if missing or stale -----------
+#
+# Freshness guard (PROMPT 1679): compare binary mtime against tracked sources.
+# Tracked sources: server/src/, shared/src/, Cargo.toml, Cargo.lock.
+# -Rebuild overrides and forces a build regardless of mtime.
 Write-Section "Binary check"
 $profileDir = if ($Release) { 'release' } else { 'debug' }
 $serverBin  = Join-Path $env:CARGO_TARGET_DIR "$profileDir\server.exe"
 
-if (-not (Test-Path $serverBin)) {
-    Write-Host "Missing server binary -- running cargo build."
+$serverSourceDirs  = @(
+    (Join-Path $RepoRoot 'server\src'),
+    (Join-Path $RepoRoot 'shared\src')
+)
+$sharedSourceFiles = @(
+    (Join-Path $RepoRoot 'Cargo.toml'),
+    (Join-Path $RepoRoot 'Cargo.lock')
+)
+
+$serverBuildReason = Get-BinaryBuildReason `
+    -BinPath $serverBin `
+    -SourceDirs $serverSourceDirs `
+    -SourceFiles $sharedSourceFiles `
+    -ForceRebuild ([bool]$Rebuild)
+
+Write-Host "Server binary:       $serverBin"
+Write-Host "Server build reason: $serverBuildReason"
+
+if ($serverBuildReason -ne 'up-to-date') {
     $base = @('build', '-p', 'server')
     if ($Release) { $base += '--release' }
-    Write-Host "cargo $($base -join ' ')"
+    Write-Host "Running: cargo $($base -join ' ')"
     if (-not $DryRun) {
         & cargo @base
         if ($LASTEXITCODE -ne 0) { Write-Host -ForegroundColor Red "cargo build server failed."; exit 1 }
     }
+} else {
+    Write-Host "Server binary is up-to-date -- skipping rebuild."
 }
-Write-Host "Server binary: $serverBin (exists=$(Test-Path $serverBin))"
+Write-Host "Server binary exists: $(Test-Path $serverBin)"
 
 # ---- 5. Evidence dir -----------------------------------------------------
 Write-Section "Evidence dir"
@@ -301,11 +377,23 @@ $triggerErr         = Join-Path $evidenceDir 'bot-soak-trigger.err'
 Write-Host "Trigger binary:    $triggerBin"
 Write-Host "Trigger evidence:  $triggerEvidenceDir"
 
-if (-not (Test-Path $triggerBin)) {
-    Write-Host "Missing bot-soak-trigger binary -- building now."
+$triggerSourceDirs = @(
+    (Join-Path $RepoRoot 'tools\two-client-runtime\src'),
+    (Join-Path $RepoRoot 'shared\src')
+)
+
+$triggerBuildReason = Get-BinaryBuildReason `
+    -BinPath $triggerBin `
+    -SourceDirs $triggerSourceDirs `
+    -SourceFiles $sharedSourceFiles `
+    -ForceRebuild ([bool]$Rebuild)
+
+Write-Host "Trigger build reason: $triggerBuildReason"
+
+if ($triggerBuildReason -ne 'up-to-date') {
     $buildArgs = @('build', '-p', 'two-client-runtime', '--bin', 'bot-soak-trigger')
     if ($Release) { $buildArgs += '--release' }
-    Write-Host "cargo $($buildArgs -join ' ')"
+    Write-Host "Running: cargo $($buildArgs -join ' ')"
     if (-not $DryRun) {
         & cargo @buildArgs
         if ($LASTEXITCODE -ne 0) {
@@ -313,15 +401,18 @@ if (-not (Test-Path $triggerBin)) {
             exit 1
         }
     }
+} else {
+    Write-Host "bot-soak-trigger binary is up-to-date -- skipping rebuild."
 }
-Write-Host "Trigger binary: $triggerBin (exists=$(Test-Path $triggerBin))"
+Write-Host "Trigger binary exists: $(Test-Path $triggerBin)"
 
 $soakStartUtc = (Get-Date).ToUniversalTime()
 Write-Host "Soak start (UTC): $($soakStartUtc.ToString('o'))"
 Write-Host "Soak timeout:     ${DurationSeconds}s (trigger overall-timeout)"
 
-$triggerProc = $null
-$triggerExit = $null
+$triggerProc       = $null
+$triggerExit       = $null
+$triggerExitSource = $null
 if (-not $DryRun) {
     New-Item -ItemType Directory -Force -Path $triggerEvidenceDir | Out-Null
     $triggerArgs = @(
@@ -414,7 +505,9 @@ $summary = [ordered]@{
     server_log                  = $serverLog
     server_err                  = $serverErr
     server_bin                  = $serverBin
+    server_build_reason         = $serverBuildReason
     trigger_bin                 = $triggerBin
+    trigger_build_reason        = $triggerBuildReason
     trigger_pid                 = if ($null -ne $triggerProc) { $triggerProc.Id } else { $null }
     trigger_exit_code           = $triggerExit
     trigger_exit_code_source    = $triggerExitSource
@@ -422,12 +515,13 @@ $summary = [ordered]@{
     trigger_err                 = $triggerErr
     trigger_evidence_dir        = $triggerEvidenceDir
     profile                     = $profileDir
+    rebuild_flag                = [bool]$Rebuild
     ccgs_bot_decision_log_path  = $env:CCGS_BOT_DECISION_LOG_PATH
     ccgs_bot_qa_snapshot        = $env:CCGS_BOT_QA_SNAPSHOT
     ccgs_bot_qa_snapshot_dir    = $env:CCGS_BOT_QA_SNAPSHOT_DIR
     ccgs_bot_max_rounds         = if ($MaxRounds -gt 0) { $MaxRounds } else { $null }
     dry_run                     = [bool]$DryRun
-    notes                       = "PROMPT 1603 launcher; PROMPT 1640 CCGS_BOT_MAX_ROUNDS; PROMPT 1671 port-detection; PROMPT 1672 bot-soak-trigger wired; PROMPT 1674 trigger exit-code reconciliation; PROMPT 1676 snapshot dir env-var fixed."
+    notes                       = "PROMPT 1603 launcher; PROMPT 1640 CCGS_BOT_MAX_ROUNDS; PROMPT 1671 port-detection; PROMPT 1672 bot-soak-trigger wired; PROMPT 1674 trigger exit-code reconciliation; PROMPT 1676 snapshot dir env-var fixed; PROMPT 1679 stale-binary freshness guard + -Rebuild switch."
 }
 $summaryPath = Join-Path $evidenceDir 'soak-summary.json'
 if (-not $DryRun) {
