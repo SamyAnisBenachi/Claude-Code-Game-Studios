@@ -1,5 +1,6 @@
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
+use bevy::window::{CursorIcon, SystemCursorIcon};
 use lightyear::prelude::{MessageReceiver, MessageSender};
 use shared::card::{CardCatalog, CardData, CardId, CardType, Rarity};
 use shared::protocol::{
@@ -22,7 +23,13 @@ use crate::ui::design_tokens::card_slot::{
     card_slot_art_image_component, card_slot_art_image_node, card_slot_label_strip_background_color,
     card_slot_label_strip_node, card_slot_node, CardSlotArtImage, CardSlotKind, CardSlotLabelStrip,
 };
-use crate::ui::design_tokens::{overlays, spacing, typography, z_layers};
+use crate::ui::design_tokens::{
+    interaction_states::{HOVER_BG_TINT_ALPHA, HOVER_BORDER_ALPHA, PRESSED_BG_TINT_ALPHA},
+    overlays,
+    spacing,
+    typography,
+    z_layers,
+};
 use crate::ui::hud::{HudGoldBroadcastMessage, HudPlayerIds, PhaseTimerState};
 use crate::ui::settings::AccessibilityPreferences;
 // PROMPT 1347 / S18-AUCTION-WON-CARD-DISPOSITION-001 — disposition state
@@ -55,6 +62,11 @@ pub const AUCTION_SETTLEMENT_TRANSITION_MS: u32 = 350;
 // — `SOURCE-1077-10`. Keeping it as a single const documents the spawn-
 // state contract and lets every per-button update site share the string.
 pub const AUCTION_BID_BUTTON_LOADING_LABEL: &str = "Loading…";
+// Wave-2 interaction-state migration: named base color for AuctionPassButton
+// so the overlay system can compute hover/pressed tints without re-defining
+// the color inline. Must match the spawn-site literal below.
+const AUCTION_PASS_BUTTON_BG: Color = Color::srgba(0.12, 0.14, 0.18, 0.75);
+const AUCTION_PASS_BUTTON_BORDER: Color = Color::srgba(0.92, 0.94, 0.96, 0.55);
 pub const DRAFT_INITIAL_OBJECTIVE_COPY: &str = "Select up to 9 cards to keep. You have 45 seconds.";
 pub const DRAFT_INITIAL_MODAL_WIDTH_PERCENT: f32 = 88.0;
 pub const DRAFT_INITIAL_MODAL_MAX_WIDTH_PX: f32 = 860.0;
@@ -1802,6 +1814,10 @@ impl Plugin for ShopAuctionUiPlugin {
                         sync_draft_initial_countdown_label_system,
                         sync_shop_panel_system,
                         sync_auction_panel_system,
+                        // Wave-2: bid button interaction overlay runs immediately
+                        // after sync_auction_panel_system so the hover/pressed
+                        // tint survives the per-frame BackgroundColor overwrite.
+                        auction_bid_button_interaction_overlay_system,
                         sync_settlement_overlay_system,
                         sync_auction_toast_system,
                         // PROMPT 1347 / AC4 + AC5 + AC9 — disposition state
@@ -1816,6 +1832,9 @@ impl Plugin for ShopAuctionUiPlugin {
                         // resource change, so the steady state is allocation
                         // free.
                         inspect::sync_shop_auction_card_inspect_overlay_system,
+                        // Wave-2: Changed<Interaction> overlay for primary-action
+                        // buttons not driven by a per-frame sync system.
+                        shop_auction_primary_button_interaction_overlay_system,
                     )
                         .chain()
                         .in_set(ShopAuctionUiSystemSet::StateSync),
@@ -5057,6 +5076,7 @@ fn spawn_draft_initial_ready_button(commands: &mut Commands, parent: Entity) -> 
             DraftInitialReadyButton,
             Button,
             Interaction::None,
+            CursorIcon::System(SystemCursorIcon::Pointer),
             Text::new("Ready"),
             shop_auction_text_font(typography::BODY),
             TextColor(Color::srgb(0.98, 0.93, 0.72)),
@@ -5162,6 +5182,7 @@ fn spawn_draft_initial_objective_overlay(
             DraftInitialObjectiveDismissButton,
             Button,
             Interaction::None,
+            CursorIcon::System(SystemCursorIcon::Pointer),
             Text::new("Dismiss"),
             shop_auction_text_font(typography::CAPTION),
             TextColor(Color::srgb(0.98, 0.93, 0.72)),
@@ -5189,6 +5210,7 @@ fn spawn_draft_initial_objective_retrieval_button(
             DraftInitialObjectiveRetrievalButton,
             Button,
             Interaction::None,
+            CursorIcon::System(SystemCursorIcon::Pointer),
             Text::new("Objective"),
             shop_auction_text_font(typography::CAPTION),
             TextColor(Color::srgb(0.74, 0.92, 0.92)),
@@ -5272,6 +5294,7 @@ fn spawn_shop_refresh_button(commands: &mut Commands, parent: Entity) -> Entity 
             ShopRefreshButton,
             Button,
             Interaction::None,
+            CursorIcon::System(SystemCursorIcon::Pointer),
             ShopRefreshButtonState { enabled: false },
             Text::new("Refresh (1g)"),
             shop_auction_text_font(typography::BODY),
@@ -5296,6 +5319,7 @@ fn spawn_shop_ready_button(commands: &mut Commands, parent: Entity) -> Entity {
             ShopReadyButton,
             Button,
             Interaction::None,
+            CursorIcon::System(SystemCursorIcon::Pointer),
             Text::new("Ready"),
             shop_auction_text_font(typography::BODY),
             TextColor(Color::srgb(0.98, 0.93, 0.72)),
@@ -5632,6 +5656,7 @@ fn spawn_auction_contents(
                 Visibility::Hidden,
                 ChildOf(parent),
             ))
+            .insert(CursorIcon::System(SystemCursorIcon::Pointer))
             .insert(ImageNode::new(
                 asset_server.load(bid_button_asset(BidButtonChromeState::Disabled)),
             ))
@@ -5645,11 +5670,12 @@ fn spawn_auction_contents(
             AuctionPassButton,
             Button,
             Interaction::None,
+            CursorIcon::System(SystemCursorIcon::Pointer),
             Text::new("PASS"),
             shop_auction_text_font(typography::H3),
             TextColor(Color::srgb(0.92, 0.94, 0.96)),
-            BackgroundColor(Color::srgba(0.12, 0.14, 0.18, 0.75)),
-            BorderColor::all(Color::srgba(0.92, 0.94, 0.96, 0.55)),
+            BackgroundColor(AUCTION_PASS_BUTTON_BG),
+            BorderColor::all(AUCTION_PASS_BUTTON_BORDER),
             auction_pass_button_node(),
             Visibility::Hidden,
             ChildOf(parent),
@@ -7404,5 +7430,90 @@ pub fn sync_auction_won_hand_marker_system(
                 "auction_won_hand_marker: marker spawned (AC5)"
             );
         }
+    }
+}
+
+fn apply_interaction_tint(
+    base_bg: Color,
+    base_border: Color,
+    interaction: &Interaction,
+) -> (Color, Color) {
+    match interaction {
+        Interaction::Hovered => {
+            let Color::Srgba(bg) = base_bg else {
+                return (base_bg, base_border);
+            };
+            let wh = |b: f32| b * (1.0 - HOVER_BG_TINT_ALPHA) + HOVER_BG_TINT_ALPHA;
+            let new_bg = Color::srgba(wh(bg.red), wh(bg.green), wh(bg.blue), bg.alpha);
+            let Color::Srgba(bd) = base_border else {
+                return (new_bg, base_border);
+            };
+            let new_border =
+                Color::srgba(bd.red, bd.green, bd.blue, bd.alpha.max(HOVER_BORDER_ALPHA));
+            (new_bg, new_border)
+        }
+        Interaction::Pressed => {
+            let Color::Srgba(bg) = base_bg else {
+                return (base_bg, base_border);
+            };
+            let dk = |b: f32| b * (1.0 - PRESSED_BG_TINT_ALPHA);
+            let new_bg = Color::srgba(dk(bg.red), dk(bg.green), dk(bg.blue), bg.alpha);
+            (new_bg, base_border)
+        }
+        Interaction::None => (base_bg, base_border),
+    }
+}
+
+/// Wave-2 interaction-state overlay for primary-action buttons whose
+/// `BackgroundColor` is not driven by a per-frame sync system.  Runs on
+/// `Changed<Interaction>` so it fires only when the cursor state actually
+/// transitions; the base color is the PROMPT 1182 `primary_action_button_*`
+/// helpers (same values as `AUCTION_PASS_BUTTON_BG` / `…_BORDER`).
+pub fn shop_auction_primary_button_interaction_overlay_system(
+    mut buttons: Query<
+        (&Interaction, &mut BackgroundColor, &mut BorderColor),
+        (
+            Changed<Interaction>,
+            Or<(
+                With<ShopReadyButton>,
+                With<ShopRefreshButton>,
+                With<AuctionPassButton>,
+                With<DraftInitialReadyButton>,
+                With<DraftInitialObjectiveDismissButton>,
+                With<DraftInitialObjectiveRetrievalButton>,
+            )>,
+        ),
+    >,
+) {
+    for (interaction, mut bg, mut border) in &mut buttons {
+        let (new_bg, new_border) = apply_interaction_tint(
+            primary_action_button_background_color(),
+            primary_action_button_border_color(),
+            interaction,
+        );
+        *bg = BackgroundColor(new_bg);
+        *border = BorderColor::all(new_border);
+    }
+}
+
+/// Wave-2 per-frame overlay for `AuctionBidButton`.  `sync_auction_panel_system`
+/// writes `BackgroundColor` on every bid button each frame; this system runs
+/// immediately after it in the `StateSync` chain and re-applies the hover /
+/// pressed tint so the interactive feedback survives the sync overwrite.
+/// Only runs for `AuctionBidButtonState::Enabled` — disabled / in-flight
+/// states keep the color chosen by `sync_auction_panel_system`.
+pub fn auction_bid_button_interaction_overlay_system(
+    mut buttons: Query<
+        (&Interaction, &AuctionBidButtonState, &mut BackgroundColor),
+        With<AuctionBidButton>,
+    >,
+) {
+    for (interaction, state, mut bg) in &mut buttons {
+        if *state != AuctionBidButtonState::Enabled {
+            continue;
+        }
+        let base_bg = auction_bid_background_color(AuctionBidButtonState::Enabled);
+        let (new_bg, _) = apply_interaction_tint(base_bg, Color::WHITE, interaction);
+        *bg = BackgroundColor(new_bg);
     }
 }
