@@ -1,13 +1,13 @@
 # Codex Orchestrator State
 
-## Current Resume Snapshot (2026-05-27, post-1664 bot-vs-bot soak partial)
+## Current Resume Snapshot (2026-05-27, post-1670 bot debug overlay AC5 prep)
 
 Source-of-truth at this snapshot:
 
 - Root checkout: `D:\_DEV\Work\Claude-Code-Game-Studios`
 - Root branch: `main`
-- Root/source commit: `origin/main@31550fe7`
-  (`PROMPT 1669 Autoplay Recipe AC1 Story Edit + orchestrator state update`)
+- Root/source commit: `origin/main@2a3afe53`
+  (`PROMPT 1670 Bot Debug Overlay Story Status + AC5 Ruling Prep`)
 - Root caveat: local `.claude/**`, `.gcs-app/`, and `tmpwt-*` runtime/tooling
   files are not part of the game source and must stay out of commits unless
   explicitly requested.
@@ -47,12 +47,20 @@ Recent mainland state:
   `C2SCreateBotRoom` without the GUI "Create 2-Bot Soak Room" path. The
   `bot_soak_config_test` suite also has pre-existing global-env parallel
   flakiness unless run with `--test-threads=1`.
+- `1670` completed, was cleared, refreshed, and mainlanded:
+  `production/epics/bot-and-autoplay/story-005-bot-debug-overlay.md` now
+  records the actual implementation lineage and AC status. AC1/AC3/AC4/AC6/AC7
+  are documented PASS, AC2 is code PASS with live visual advisory, and AC5 is
+  explicitly `NEEDS HUMAN RULING` with three options: accept runtime
+  env-gating, reword AC5 to match runtime env-gating, or require true
+  compile-time exclusion before story-done. The worker branch omitted the
+  promised report file, so the orchestrator reconstructed and landed
+  `reports/PROMPT-1670-bot-debug-overlay-story-status-ac5-ruling-prep.md`.
 
 Active workers / expected relays:
 
 | Prompt | State | Notes |
 |---|---|---|
-| `1670` | RUNNING / waiting | Bot debug overlay story status cleanup + AC5 readiness ruling prep. |
 | `1671` | RUNNING / waiting | Bot-soak launcher port-readiness false-negative repair for `Start-BotVsBotSoak.ps1`. |
 | `1672` | RUNNING / waiting | Bot-soak room trigger path disposition; decide/implement normal-protocol trigger without gameplay-rule bypass. |
 | `1673` | RUNNING / waiting | `bot_soak_config_test` global-env parallel flakiness isolation. |
@@ -67,14 +75,12 @@ Immediate next actions:
    evidence before closing story-002 AC2-AC5.
 3. If `1673` ships a test-isolation fix, integrate it before relying on default
    parallel `bot_soak_config_test` results.
-4. When `1670` relays DONE, clear the worker, read its report, and only then
-   launch a focused follow-up.
-5. Do not launch story-done/shared-status writers for bot/autoplay until Sprint
+4. Do not launch story-done/shared-status writers for bot/autoplay until Sprint
    19 activation is explicitly handled.
-6. The next human-facing validation gate is live GUI evidence:
+5. The next human-facing validation gate is live GUI evidence:
    `tools/dev-launcher/Start-AutoplayVsBot.ps1 -Recipe full-game`, then inspect
    `production/qa/evidence/composite-runs/*-autoplay-vs-bot/`.
-7. Keep broad Cargo suites in dedicated verify lanes; implementation/report
+6. Keep broad Cargo suites in dedicated verify lanes; implementation/report
    workers should not block on broad checks or protected-branch pushes.
 
 ## Current Resume Snapshot (2026-05-27, post-1656 composite evidence docs)
