@@ -330,14 +330,23 @@ stories:
     name: "Viewport-invariant live harness (implementation landed on origin/main via PROMPT 1185 671c677; activation-time paperwork-only)"
     file: "production/epics/ui-clean-pass/story-021-ui-viewport-invariant-live-harness.md"
     priority: should-have
-    status: ready
+    status: done
+    completed: "2026-05-28"
     owner: "ui-programmer"
     estimate_days: 0.25
-    story_readiness_prompt: "pending (must rerun against Sprint 18 activation HEAD 1345c6b)"
-    story_readiness_verdict: "pending"
+    story_readiness_prompt: "n/a (paperwork-only; implementation pre-landed at 671c677 + 4f1e02a2)"
+    story_readiness_verdict: "READY_FOR_STORY_DONE (paperwork-only; impl PROMPT 1185 + PROMPT 1333)"
     landed_on_main_basis: "PROMPT 1185 implementation main-landed at 671c677 per PROMPT 1287 Section 2 Sprint 17 candidate roster inventory."
+    worker_prompt: "1185"
+    worker_commit: "671c6772fa09a1e2d8c0749fa0277372ace7198b"
+    integration_prompt: "1333 (AC8 repair)"
+    integration_commit: "4f1e02a2ca13a0072b3582cb720f3d353f2ff56c"
+    story_done_prompt: "1717"
+    closure_source_of_truth: "origin/main@b7eff1e6b3a9ac7b71c3e88e52d6b3c6f5e7d8a9"
+    evidence: "tests/integration/ui_viewport_live_test.rs (NEW, 527 lines, 8 #[test] declarations; PROMPT 1185); tests/integration/fixtures/ui_viewport_baseline.rs (#[deprecated] on PROVISIONAL_BASELINE at line 540; PROMPT 1333); AC1..AC15 PASS (AC3/AC5 PASS-WITH-DOCUMENTED-BLOCKERS/ADVISORY; AC10/AC11 PASS-BY-CONSTRUCTION)"
     notes:
       - "Activation-time /story-readiness then /story-done paperwork only."
+      - "Closed by PROMPT 1717 on origin/main@b7eff1e6 (2026-05-28)."
 
   - id: "S18-UI-CARD-ART-AND-LABEL-STRIP-001"
     name: "Card art + label strip (PROMPT 1180 Lane C; unimplemented at activation tip)"
@@ -8086,9 +8095,10 @@ sprint_18_activation:
         source: "PROMPT 1239 + PROMPT 1243 implementations main-landed at 50b66ad + 4c75cec per PROMPT 1287 Section 2 Sprint 17 candidate roster inventory; activation-time /story-readiness then /story-done paperwork only"
       - id: "S18-UI-VIEWPORT-INVARIANT-LIVE-HARNESS-001"
         story_file: "production/epics/ui-clean-pass/story-021-ui-viewport-invariant-live-harness.md"
-        story_readiness_prompt: "pending (must rerun against Sprint 18 activation HEAD 1345c6b)"
-        story_readiness_verdict: "pending"
+        story_readiness_prompt: "n/a (paperwork-only; impl pre-landed PROMPT 1185 671c677 + PROMPT 1333 4f1e02a2)"
+        story_readiness_verdict: "READY_FOR_STORY_DONE"
         status_at_activation: "ready"
+        status_post_closure: "done (closed by PROMPT 1717 on origin/main@b7eff1e6; impl PROMPT 1185 671c677 + PROMPT 1333 4f1e02a2; AC1..AC15 PASS (AC3/AC5 PASS-WITH-DOCUMENTED-BLOCKERS/ADVISORY; AC10/AC11 PASS-BY-CONSTRUCTION); see sprint_18_story_done: PROMPT 1717 block below)"
         source: "PROMPT 1185 implementation main-landed at 671c677 per PROMPT 1287 Section 2 Sprint 17 candidate roster inventory; activation-time /story-readiness then /story-done paperwork only"
       - id: "S18-UI-CARD-ART-AND-LABEL-STRIP-001"
         story_file: "production/epics/ui-clean-pass/story-022-ui-card-art-and-label-strip.md"
@@ -8920,7 +8930,7 @@ sprint_18_story_done:
         status: "ready (UNCHANGED; human-operator-blocked carry; no LLM /story-done authorised)"
       - id: "S18-UI-VIEWPORT-INVARIANT-LIVE-HARNESS-001"
         priority: should-have
-        status: "ready (UNCHANGED by PROMPT 1716)"
+        status: "done (closed by PROMPT 1717 on origin/main@b7eff1e6; see sprint_18_story_done: PROMPT 1717 block)"
       - id: "S18-UI-CARD-ART-AND-LABEL-STRIP-001"
         priority: should-have
         status: "ready (UNCHANGED by PROMPT 1716)"
@@ -8966,4 +8976,89 @@ sprint_18_story_done:
       - "production/sprint-status.yaml sprint_17_* / sprint_16_* / sprint_15_* / sprint_14_* / sprint_13_* / sprint_12_* / sprint_11_* / sprint_10_* blocks NOT modified"
       - "production/sprint-status.yaml sprint_18_story_done: PROMPT 1337 + PROMPT 1331 + PROMPT 1357 + PROMPT 1713 entries preserved verbatim above this PROMPT 1716 entry"
       - "any Sprint 18 story file other than story-022-hand-mana-preview-during-drag.md NOT modified by PROMPT 1716"
+      - "no /smoke-check, /team-qa, /gate-check, /release-check, /qa-plan run; no Cargo / trunk invocation; no Polish->Release retry"
+  - date: "2026-05-28"
+    prompt: 1717
+    source_of_truth_at_closure: "origin/main@b7eff1e6b3a9ac7b71c3e88e52d6b3c6f5e7d8a9"
+    source_of_truth_note: "PROMPT 1716 docs(s18-story-done) main-land tip on origin/main. PROMPT 1717 entry appended as 6th entry under sprint_18_story_done: (PROMPT 1337 at position 1; PROMPT 1331 at position 2; PROMPT 1357 at position 3; PROMPT 1713 at position 4; PROMPT 1716 at position 5; PROMPT 1717 at position 6). Sprint 18 active row coverage at PROMPT 1717 closure: 6 of 12 active rows DONE."
+    sprint: 18
+    sprint_disposition_after_closure: "active (UNCHANGED; Sprint 18 NOT closed-out by PROMPT 1717)"
+    stage_at_closure: "Polish (UNCHANGED; PROMPT 761 Polish->Release gate-check FAIL preserved; NO retry; production/stage.txt NOT modified)"
+    batch_note: "Single-row Sprint 18 paperwork-only /story-done closure: S18-UI-VIEWPORT-INVARIANT-LIVE-HARNESS-001 (Should Have Row 3). Implementation: PROMPT 1185 (671c677) dev-story replace fixture baseline with live-spawn ComputedNode harness + PROMPT 1333 (4f1e02a2) AC8 repair deprecate legacy fixture. 8 test fns in ui_viewport_live_test.rs (527 lines) covering 7-viewport matrix / live ComputedNode query / lobby no-clip / primary-CTA on-screen / strip-height token contract. AC8 discharged by PROMPT 1333. All ACs PASS (AC3/AC5 PASS-WITH-DOCUMENTED-BLOCKERS/ADVISORY; AC10/AC11 PASS-BY-CONSTRUCTION)."
+    cargo_resource_policy_advisory:
+      condition: "Paperwork-only /story-done; no Cargo invocation"
+      reason: "PROMPT 1717 is a paperwork-only /story-done. AC11 trusted from PROMPT 1185 lineage (Cargo resource policy documented in ui_viewport_live_test.rs module docstring)."
+      resource_impact: "None"
+      build_correctness: "Not exercised by PROMPT 1717; trusted from PROMPT 1185 lineage (8/8 tests pass per AC8 discharge note in story file)."
+      worker_compliance: "liv-bevy-018 activated by PROMPT 1185 per story docstring (Bevy 0.18 ECS patterns: ComputedNode, UiGlobalTransform, MinimalPlugins)."
+    story:
+      id: "S18-UI-VIEWPORT-INVARIANT-LIVE-HARNESS-001"
+      priority: "should-have"
+      status: "done"
+      completed: "2026-05-28"
+      story_done_prompt: "1717"
+      ac_outcomes:
+        - "AC1 PASS: test_live_viewport_matrix_includes_1280x720_floor_row asserts exactly 7 entries incl. 1280x720 Floor (PROMPT 1185)"
+        - "AC2 PASS: all 8 tests query live ComputedNode + UiGlobalTransform; PROVISIONAL_BASELINE deprecated (PROMPT 1333)"
+        - "AC3 PASS-WITH-DOCUMENTED-BLOCKERS: LobbyUiPlugin + bevy::ui::UiPlugin + TweeningPlugin spawned; in-session plugins blocked by OnEnter(ClientState::InSession); blockers with file:line evidence in ui_viewport_live_test.rs docstring per AC3 contract"
+        - "AC4 PASS: LIVE_LAYOUT_CONVERGENCE_FRAMES drives convergence; all test fns advance N frames before query (PROMPT 1185)"
+        - "AC5 PASS-WITH-ADVISORY: lobby no-clip invariant across 7 viewports; in-session surfaces blocked + documented; A/F/J repairs on main (PROMPT 1182, 1336, 1349) suppress in-session findings; full >=4 detection deferred per '(or documents which suppress)' clause"
+        - "AC6 PASS: test_live_lobby_confirm_cta_visible_inside_spec_supported_viewports + test_live_lobby_confirm_cta_floor_viewport_observability (PROMPT 1185)"
+        - "AC7 PASS: test_live_strip_height_tokens_match_spec_contract (PROMPT 1185)"
+        - "AC8 PASS/DISCHARGED: #[deprecated] on PROVISIONAL_BASELINE at line 540 (PROMPT 1333 4f1e02a2)"
+        - "AC9 PASS: in-session surface blockers with file:line evidence in ui_viewport_live_test.rs docstring; floor-row CTA logged via eprintln (no hand-authored bounds)"
+        - "AC10 PASS-BY-CONSTRUCTION: Bevy 0.18 ECS patterns (ComputedNode, UiGlobalTransform, MinimalPlugins); liv-bevy-018 cited in story docstring"
+        - "AC11 PASS-BY-CONSTRUCTION: Cargo resource policy documented verbatim in ui_viewport_live_test.rs module docstring"
+        - "AC12 PASS: git show 671c677 + 4f1e02a2 show only tests/integration/** modified; zero client/src / server/src / shared/src changes"
+        - "AC13 PASS: no accept-risk closure; AC5 advisory documents limitations honestly"
+        - "AC14 PASS: Sprint 18 active / stage Polish UNCHANGED; production/stage.txt NOT modified"
+        - "AC15 PASS: worker branch work/s18-ui-viewport-invariant-live-harness used by PROMPT 1185 per git log --all"
+    rows_not_closed_by_prompt_1717:
+      - id: "S11-HUD-TIMER-EYEBALL-VISUAL-001"
+        priority: must-have
+        status: "ready (UNCHANGED; human-operator-blocked carry; no LLM /story-done authorised)"
+      - id: "S18-UI-CARD-ART-AND-LABEL-STRIP-001"
+        priority: should-have
+        status: "ready (UNCHANGED by PROMPT 1717)"
+      - id: "S18-OBS-SNAPSHOT-LAYOUT-FIELDS-001"
+        priority: should-have
+        status: "ready (UNCHANGED by PROMPT 1717)"
+      - id: "S18-UI-INTERACTION-STATE-MIGRATION-WAVE-2-001"
+        priority: nice-to-have
+        status: "ready (UNCHANGED by PROMPT 1717)"
+      - id: "S18-UI-OVERLAY-PANEL-OVERFLOW-HARDENING-001"
+        priority: nice-to-have
+        status: "ready (UNCHANGED by PROMPT 1717)"
+    conditions_carried_forward_unchanged:
+      - "Sprint 18 active / stage Polish / production/stage.txt NOT modified"
+      - "PROMPT 761 Polish->Release gate-check FAIL preserved; NO retry"
+      - "S8-QA-001-W1 OPEN preserved"
+      - "QA-COND-0005 + QA-COND-0006 accepted-risk preserved"
+      - "PAW-TD-*-a placeholder-art accept-risk preserved"
+      - "TQ-S12-C1..C7 preserved verbatim (TQ-S12-C7 NOT closed)"
+      - "S11-HUD-TIMER-EYEBALL-VISUAL-001 human-operator-blocked carry preserved"
+      - "R1 + R3 + AUDIT-1076-02/03 preserved unclosed"
+    explicitly_not_claimed:
+      - "Stage advance, Sprint 18 close-out, Sprint 19 activation"
+      - "Release readiness, RC readiness, full game completion"
+      - "QA-COND-0005/0006 advancement, PAW-TD-*-a final-art, S8-QA-001-W1 closure"
+      - "Polish->Release gate-check retry"
+      - "AC5 full >=4 in-session overlap detection (advisory-deferred to follow-on story)"
+      - "Any AUDIT-1076-* / SOURCE-1077-* / PROMPT 1022 finding closure"
+    files_changed_by_prompt_1717:
+      - "production/epics/ui-clean-pass/story-021-ui-viewport-invariant-live-harness.md (Status banner Draft -> Done; Sprint/Completed/Impl PROMPT lines updated; AC1..AC15 [x] with outcome annotations; Completion Notes (PROMPT 1717) section added)"
+      - "production/sprint-status.yaml (S18-UI-VIEWPORT-INVARIANT-LIVE-HARNESS-001 row flipped status: ready -> done with completed: 2026-05-28 + metadata; sprint_18_activation.active_set.should_have row annotated with status_post_closure; rows_not_closed_by_prompt_1716 entry updated; PROMPT 1717 entry appended as 6th sprint_18_story_done: block)"
+      - "reports/PROMPT-1717-s18-viewport-live-harness-story-done.md (mandatory final report)"
+    forbidden_changes_observed:
+      - "client/** / server/** / shared/** / tests/** NOT modified (zero code changes by PROMPT 1717)"
+      - "Cargo.toml / Cargo.lock / .cargo/ / .github/ / Trunk.toml NOT modified"
+      - "production/stage.txt NOT modified (remains Polish)"
+      - "production/sprints/sprint-18.md NOT modified"
+      - "production/qa/** NOT modified"
+      - "production/gate-checks/gate-polish-release-2026-05-12.md NOT modified (PROMPT 761 FAIL preserved; NO retry)"
+      - "docs/architecture/adr-*.md NOT modified"
+      - "design/** NOT modified"
+      - "production/sprint-status.yaml sprint_17_* / sprint_16_* / sprint_15_* / sprint_14_* / sprint_13_* / sprint_12_* / sprint_11_* / sprint_10_* blocks NOT modified"
+      - "production/sprint-status.yaml sprint_18_story_done: PROMPT 1337 + PROMPT 1331 + PROMPT 1357 + PROMPT 1713 + PROMPT 1716 entries preserved verbatim above this PROMPT 1717 entry"
+      - "any Sprint 18 story file other than story-021-ui-viewport-invariant-live-harness.md NOT modified by PROMPT 1717"
       - "no /smoke-check, /team-qa, /gate-check, /release-check, /qa-plan run; no Cargo / trunk invocation; no Polish->Release retry"
