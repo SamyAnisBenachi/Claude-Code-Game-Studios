@@ -1,6 +1,6 @@
 # Codex Orchestrator State
 
-## Current Resume Snapshot (2026-05-27, post-1678 bot placement repair land)
+## Current Resume Snapshot (2026-05-27, post-1678 bot soak verify PASS)
 
 Source-of-truth at this snapshot:
 
@@ -11,6 +11,12 @@ Source-of-truth at this snapshot:
   `PROMPT 1675/1676/1677` bot-soak fixes, orchestrator state commits, and
   `PROMPT 1679` stale-binary launcher guard, followed by `PROMPT 1678` bot
   legal-unit acquisition repair)
+- Local state note: the previous paperwork-only state commit
+  `state: mark PROMPT 1678 mainlanded` is pushed to
+  `origin/state/orchestrator-1678-landed` and queued as
+  `mlq_f0ba72c81db84d11`, but as of this snapshot the mainland tool still
+  reports that queue item as `running` and remote `origin/main` is still
+  `aa9f4ae5`.
 - Root caveat: local `.claude/**`, `.gcs-app/`, `dev-runs/`, and `tmpwt-*`
   runtime/tooling files are not game source and must stay out of commits unless
   explicitly requested.
@@ -69,30 +75,44 @@ Post-landing verification:
   `trigger_exit_code_source=final_state.json`. `server.err` is empty.
   `server-snapshots/` contains 10 files. `bot-decision-log.jsonl` is compact
   at about 1052 bytes.
+- Fresh post-1678 bounded bot-vs-bot soak PASS:
+  `tools/dev-launcher/Start-BotVsBotSoak.ps1 -MaxRounds 3 -DurationSeconds 60
+  -PlayRepoRoot D:\_DEV\Work\Claude-Code-Game-Studios -Rebuild`.
+  Evidence directory:
+  `production/qa/evidence/dev-runs/2026-05-27-125328-bot-vs-bot-soak`.
+- Post-1678 evidence summary:
+  `soak-summary.json` reports `rebuild_flag=true`, forced rebuilds for
+  `server.exe` and `bot-soak-trigger.exe`, `trigger_exit_code=0`, and
+  `trigger_exit_code_source=final_state.json`. `final_state.json` reports
+  `endpoint_reached=game_over`, `received_game_over=true`, `rounds_observed=2`,
+  and `exit_code=0`. `server.err` length is `0`. `server-snapshots/` contains
+  8 JSON snapshots from lobby through gameover. `bot-decision-log.jsonl`
+  contains 5 compact decisions: class confirmed, draft ready, placement
+  submitted with `placements_len=1` in round 1, draft ready, and placement
+  submitted with `placements_len=1` in round 2. Server logs show both bot
+  placement submissions accepted, `spawned_units=1` in both placement commits,
+  max-round gameover, and no `empty_placement_failsafe` spam.
 
 Remaining caveat:
 
-- Bot-vs-bot soak infrastructure passed the bounded max-rounds gate before
-  `1678`, but the evidence still showed bot placement falling back to empty
-  submissions because no legal placement was found. `1678` is the targeted fix
-  for that gameplay-quality gap and needs a fresh post-landed soak verify with
-  the `1679` `-Rebuild` guard before the gap can be closed.
+- The bot-side legal placement gap is verified fixed for the bounded headless
+  bot-vs-bot path. The headless trigger still submits an empty placement for
+  the real/player-1 trigger participant, and server logs still show expected
+  S2C DROPPED warnings for bot player messages without a mapped PeerId. Those
+  are separate from the fixed bot placement issue and should not be treated as
+  a 1678 failure.
 
 Immediate next actions:
 
-1. Run a focused post-1678 bot-vs-bot soak verify on latest main using:
-   `tools/dev-launcher/Start-BotVsBotSoak.ps1 -MaxRounds 3 -DurationSeconds 60
-   -PlayRepoRoot D:\_DEV\Work\Claude-Code-Game-Studios -Rebuild`.
-2. Required evidence for PASS: trigger exit code `0`,
-   `bot-soak-trigger/final_state.json` with `received_game_over=true`, server
-   max-round/game-over endpoint, compact bot decision log, non-empty server
-   snapshots, and no repeated empty-placement fallback spam.
-3. If the rerun fails, launch one focused repair from the new evidence only:
-   bot draft acquisition, bot placement decision, server placement authority,
-   launcher process control, or snapshot/decision-log emission.
-4. Keep live GUI autoplay-vs-bot as a separate human/interactive evidence gate;
+1. Do not launch another bot placement repair from the old fallback symptom;
+   the post-1678 `2026-05-27-125328-bot-vs-bot-soak` evidence closes that
+   bounded headless bot-side placement gap.
+2. Poll `MAINLAND_LIST` for `mlq_f0ba72c81db84d11`. Do not enqueue duplicate
+   state landings while it remains `running`; if it remains stuck, keep the
+   exact queue id and source branch in the handoff.
+3. Keep live GUI autoplay-vs-bot as a separate human/interactive evidence gate;
    do not conflate it with the headless bot-vs-bot soak PASS.
-5. Do not launch story-done/shared-status writers for bot/autoplay until Sprint
+4. Do not launch story-done/shared-status writers for bot/autoplay until Sprint
    19 activation or explicit orchestrator instruction.
 
 ## Current Resume Snapshot (2026-05-27, post-1672 live soak triage)
