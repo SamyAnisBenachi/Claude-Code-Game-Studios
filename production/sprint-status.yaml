@@ -411,16 +411,26 @@ stories:
       - "Unimplemented at activation tip; may trim at activation if Must / Should capacity overruns -- preserved here per Sprint 18 plan Section 2.3."
 
   - id: "S18-UI-OVERLAY-PANEL-OVERFLOW-HARDENING-001"
-    name: "Overlay panel overflow hardening (PROMPT 1190 J-class polish; unimplemented at activation tip)"
+    name: "Overlay panel overflow hardening (PROMPT 1190 J-class polish; unimplemented at activation tip; closed PROMPT 1718)"
     file: "production/epics/ui-clean-pass/story-026-ui-overlay-panel-overflow-hardening.md"
     priority: nice-to-have
-    status: ready
+    status: done
+    completed: "2026-05-28"
     owner: "ui-programmer"
     estimate_days: 0.3
-    story_readiness_prompt: "pending (must rerun against Sprint 18 activation HEAD 1345c6b before /dev-story)"
-    story_readiness_verdict: "pending"
+    story_readiness_prompt: "n/a (paperwork-only; impl pre-landed at f7cfa422)"
+    story_readiness_verdict: "READY_FOR_STORY_DONE (impl PROMPT 1349; integration PROMPT 1371 GREEN; main-land PROMPT 1375 LANDED)"
+    worker_prompt: "1349"
+    worker_commit: "f7cfa422af149bdc65e8facfdaf2792e0ae3b743"
+    integration_prompt: "1371"
+    integration_commit: "c4748158"
+    main_land_prompt: "1375"
+    story_done_prompt: "1718"
+    closure_source_of_truth: "origin/main@6db48a9ad910843a3e17889e5297fb5afc23dfc1"
+    evidence: "tests/integration/ui_clean_pass/overlay_overflow_hardening_test.rs (NEW, 433 lines, 10 tests; AC1..AC8 binding; PROMPT 1349); tests/integration/shop_auction_ui/draft_initial_centered_modal_layout_test.rs (adjacent contract refresh, 10 tests PASS; PROMPT 1349); AC1..AC13 PASS"
     notes:
       - "Unimplemented at activation tip; may trim at activation if Must / Should capacity overruns -- preserved here per Sprint 18 plan Section 2.3."
+      - "Closed by PROMPT 1718 on origin/main@6db48a9a (2026-05-28). PROMPT 1349 worker f7cfa422 on origin/main; PROMPT 1371 integration GREEN; PROMPT 1375 main-land LANDED."
 
 sprint_17_closeout:
   - date: "2026-05-18"
@@ -8128,9 +8138,10 @@ sprint_18_activation:
         source: "PROMPT 1190 J-class polish row; unimplemented at activation tip; may trim if Must / Should capacity overruns -- preserved here per Sprint 18 plan Section 2.3"
       - id: "S18-UI-OVERLAY-PANEL-OVERFLOW-HARDENING-001"
         story_file: "production/epics/ui-clean-pass/story-026-ui-overlay-panel-overflow-hardening.md"
-        story_readiness_prompt: "pending (must rerun against Sprint 18 activation HEAD 1345c6b before /dev-story)"
-        story_readiness_verdict: "pending"
+        story_readiness_prompt: "n/a (paperwork-only; impl pre-landed PROMPT 1349 f7cfa422)"
+        story_readiness_verdict: "READY_FOR_STORY_DONE"
         status_at_activation: "ready"
+        status_post_closure: "done (closed by PROMPT 1718 on origin/main@6db48a9a; impl PROMPT 1349 f7cfa422; integration PROMPT 1371 c4748158; main-land PROMPT 1375; AC1..AC13 PASS; see sprint_18_story_done: PROMPT 1718 block below)"
         source: "PROMPT 1190 J-class polish row; unimplemented at activation tip; may trim if Must / Should capacity overruns -- preserved here per Sprint 18 plan Section 2.3"
   dropped_rows:
     - id: "S18-UI-HAND-RESERVE-STRIP-CLEANUP-001"
@@ -9061,4 +9072,91 @@ sprint_18_story_done:
       - "production/sprint-status.yaml sprint_17_* / sprint_16_* / sprint_15_* / sprint_14_* / sprint_13_* / sprint_12_* / sprint_11_* / sprint_10_* blocks NOT modified"
       - "production/sprint-status.yaml sprint_18_story_done: PROMPT 1337 + PROMPT 1331 + PROMPT 1357 + PROMPT 1713 + PROMPT 1716 entries preserved verbatim above this PROMPT 1717 entry"
       - "any Sprint 18 story file other than story-021-ui-viewport-invariant-live-harness.md NOT modified by PROMPT 1717"
+      - "no /smoke-check, /team-qa, /gate-check, /release-check, /qa-plan run; no Cargo / trunk invocation; no Polish->Release retry"
+
+  - date: "2026-05-28"
+    prompt: "1718"
+    source_of_truth_at_closure: "origin/main@6db48a9ad910843a3e17889e5297fb5afc23dfc1"
+    source_of_truth_note: "PROMPT 1717 S18-UI-VIEWPORT-INVARIANT-LIVE-HARNESS-001 story-done tip. All PROMPT 1349 implementation commits are ancestors of this tip (f7cfa422 main-landed by PROMPT 1375)."
+    sprint: 18
+    sprint_disposition_after_closure: "active (UNCHANGED; Sprint 18 NOT closed-out by PROMPT 1718)"
+    stage_at_closure: "Polish (UNCHANGED; PROMPT 761 Polish->Release gate-check FAIL preserved at production/gate-checks/gate-polish-release-2026-05-12.md; NO retry)"
+    batch_note: "Single-row Sprint 18 paperwork-only /story-done closure: S18-UI-OVERLAY-PANEL-OVERFLOW-HARDENING-001 (Nice to Have, PROMPT 1190 J-class polish, Lane J / RC-2 / O-02 / O-03 / S-08 / S-09) closed on the basis of PROMPT 1349 worker commit f7cfa422 + PROMPT 1371 integration GREEN (c4748158; 10/10 + 10/10 tests PASS) + PROMPT 1375 main-land LANDED (f7cfa42; tests re-verified 10/10 + 10/10 PASS). Sprint 18 active row coverage: 8 of 12 DONE."
+    cargo_resource_policy_advisory:
+      condition: "Paperwork-only /story-done; no Cargo invocation"
+      reason: "PROMPT 1718 is a paperwork-only /story-done. AC5..AC7 + AC9..AC10 trusted from PROMPT 1349 + PROMPT 1371 + PROMPT 1375 commit lineage."
+      resource_impact: "None"
+      build_correctness: "Not exercised by PROMPT 1718; trusted from PROMPT 1349 lineage on origin/main"
+      worker_compliance: "PROMPT 1349 Cargo resource policy confirmed in PROMPT 1371 §4.1: CARGO_TARGET_DIR=D:/_DEV/cargo-target/ccgs-msvc + debuginfo off + incremental off applied to every invocation"
+    stories_closed:
+      - id: "S18-UI-OVERLAY-PANEL-OVERFLOW-HARDENING-001"
+        priority: nice-to-have
+        story_file: "production/epics/ui-clean-pass/story-026-ui-overlay-panel-overflow-hardening.md"
+        roadmap_rank: "Sprint 18 Nice to Have row 2 (2-row Nice to Have set: S18-UI-INTERACTION-STATE-MIGRATION-WAVE-2-001 + S18-UI-OVERLAY-PANEL-OVERFLOW-HARDENING-001)"
+        tier: "Sprint 18 Nice to Have (PROMPT 1190 J-class polish; Lane J / RC-2 / O-02 / O-03 / S-08 / S-09 from PROMPT 1180)"
+        worker_prompt: "1349"
+        worker_commit: "f7cfa422af149bdc65e8facfdaf2792e0ae3b743"
+        integration_prompt: "1371"
+        integration_commit: "c4748158"
+        main_land_prompt: "1375"
+        story_done_prompt: "1718"
+        ac_outcomes:
+          ac1_photosensitivity: "PASS — ac1_photosensitivity_panel_declares_max_height_and_scroll + ac1_photosensitivity_acknowledge_in_footer_slot ok (PROMPT 1349)"
+          ac2_connection_lost: "PASS — ac2_connection_lost_panel_declares_max_height_and_scroll ok (PROMPT 1349)"
+          ac3_draft_initial_modal: "PASS — ac3_draft_initial_modal_drops_height_literal ok (PROMPT 1349)"
+          ac4_draft_initial_grid: "PASS — ac4_draft_initial_grid_uses_display_grid + ac4_draft_initial_slot_drops_absolute_offsets ok (PROMPT 1349)"
+          ac5_sub_floor: "PASS — ac5_sub_floor_viewport_keeps_acknowledge_reachable ok; NEW overlay_overflow_hardening_test.rs (PROMPT 1349)"
+          ac6_primary_viewport: "PASS — ac6_primary_viewport_controls_reachable ok (PROMPT 1349)"
+          ac7_4k_viewport: "PASS — ac7_4k_viewport_modal_scales_to_max_height ok (PROMPT 1349)"
+          ac8_result_screen: "PASS — ac8_result_screen_reference_template_unchanged ok (PROMPT 1349)"
+          ac9_liv_bevy_018: "PASS — cited in commit; Bevy 0.18 patterns used throughout (PROMPT 1349)"
+          ac10_cargo_resource_policy: "PASS — PROMPT 1371 §4.1 confirms CARGO_TARGET_DIR + debuginfo off + incremental off"
+          ac11_no_accept_risk: "PASS — commit message + PROMPT 1371 non-claims confirm"
+          ac12_sprint_disposition: "PASS — Sprint 18 active / stage Polish UNCHANGED (PROMPT 1375 verification)"
+          ac13_worker_branch_scope: "PASS — work/s18-ui-overlay-panel-overflow-hardening-1349; 6 files within allowlist"
+        overall_verdict: "DONE — AC1..AC13 all PASS"
+    rows_not_closed_by_prompt_1718:
+      - id: "S11-HUD-TIMER-EYEBALL-VISUAL-001"
+        priority: must-have
+        status: "ready (UNCHANGED; human-operator-blocked carry; no LLM /story-done authorised)"
+      - id: "S18-UI-CARD-ART-AND-LABEL-STRIP-001"
+        priority: should-have
+        status: "ready (UNCHANGED by PROMPT 1718)"
+      - id: "S18-OBS-SNAPSHOT-LAYOUT-FIELDS-001"
+        priority: should-have
+        status: "ready (UNCHANGED by PROMPT 1718)"
+      - id: "S18-UI-INTERACTION-STATE-MIGRATION-WAVE-2-001"
+        priority: nice-to-have
+        status: "ready (UNCHANGED by PROMPT 1718)"
+    conditions_carried_forward_unchanged:
+      - "Sprint 18 active / stage Polish / production/stage.txt NOT modified"
+      - "PROMPT 761 Polish->Release gate-check FAIL preserved; NO retry"
+      - "S8-QA-001-W1 OPEN preserved"
+      - "QA-COND-0005 + QA-COND-0006 accepted-risk preserved"
+      - "PAW-TD-*-a placeholder-art accept-risk preserved"
+      - "TQ-S12-C1..C7 preserved verbatim"
+      - "S11-HUD-TIMER-EYEBALL-VISUAL-001 human-operator-blocked carry preserved; NOT closed by PROMPT 1718"
+      - "R1 + R3 + AUDIT-1076-02/03 preserved unclosed"
+    explicitly_not_claimed:
+      - "Stage advance, Sprint 18 close-out, Sprint 19 activation"
+      - "Release readiness, RC readiness, full game completion"
+      - "QA-COND-0005/0006 advancement, PAW-TD-*-a final-art, S8-QA-001-W1 closure"
+      - "Polish->Release gate-check retry"
+      - "Any AUDIT-1076-* / SOURCE-1077-* / PROMPT 1022 finding closure"
+    files_changed_by_prompt_1718:
+      - "production/epics/ui-clean-pass/story-026-ui-overlay-panel-overflow-hardening.md (Status banner Draft -> Done; Sprint/Completed/Impl PROMPT lines updated; AC1..AC13 [x] with outcome annotations; Completion Notes (PROMPT 1718) section added)"
+      - "production/sprint-status.yaml (S18-UI-OVERLAY-PANEL-OVERFLOW-HARDENING-001 row flipped status: ready -> done with completed: 2026-05-28 + metadata; sprint_18_activation.active_set.nice_to_have row annotated with status_post_closure; PROMPT 1718 entry appended as 7th sprint_18_story_done: block)"
+      - "reports/PROMPT-1718-s18-overlay-panel-overflow-story-done.md (mandatory final report)"
+    forbidden_changes_observed:
+      - "client/** / server/** / shared/** / tests/** NOT modified (zero code changes by PROMPT 1718)"
+      - "Cargo.toml / Cargo.lock / .cargo/ / .github/ / Trunk.toml NOT modified"
+      - "production/stage.txt NOT modified (remains Polish)"
+      - "production/sprints/sprint-18.md NOT modified"
+      - "production/qa/** NOT modified"
+      - "production/gate-checks/gate-polish-release-2026-05-12.md NOT modified (PROMPT 761 FAIL preserved; NO retry)"
+      - "docs/architecture/adr-*.md NOT modified"
+      - "design/** NOT modified"
+      - "production/sprint-status.yaml sprint_17_* / sprint_16_* / sprint_15_* / sprint_14_* / sprint_13_* / sprint_12_* / sprint_11_* / sprint_10_* blocks NOT modified"
+      - "production/sprint-status.yaml sprint_18_story_done: PROMPT 1337 + PROMPT 1331 + PROMPT 1357 + PROMPT 1713 + PROMPT 1716 + PROMPT 1717 entries preserved verbatim above this PROMPT 1718 entry"
+      - "any Sprint 18 story file other than story-026-ui-overlay-panel-overflow-hardening.md NOT modified by PROMPT 1718"
       - "no /smoke-check, /team-qa, /gate-check, /release-check, /qa-plan run; no Cargo / trunk invocation; no Polish->Release retry"
