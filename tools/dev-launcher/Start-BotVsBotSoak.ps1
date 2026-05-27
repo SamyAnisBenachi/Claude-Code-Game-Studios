@@ -282,19 +282,78 @@ if (-not $DryRun) {
     Write-Host "Server bound port $chosen (PID $($serverProc.Id) alive)."
 }
 
-# ---- 7. Soak wall-clock timer -------------------------------------------
-Write-Section "Soak"
+# ---- 7. Bot soak trigger (PROMPT 1672) ----------------------------------
+#
+# The old design: sleep DurationSeconds with no client, so bots never connect.
+# The new design (PROMPT 1672, Lane 1): launch bot-soak-trigger, a headless
+# Bevy client that sends C2SCreateBotRoom and drives the human-proxy slot.
+# Server's BotLobbyPlugin + BotActionLoopPlugin then run the bots autonomously.
+# bot-soak-trigger exits when S2CGameOver fires (CCGS_BOT_MAX_ROUNDS) or when
+# --overall-timeout-secs elapses. The launcher waits for that exit.
+Write-Section "Bot soak trigger"
+$triggerBin         = Join-Path $env:CARGO_TARGET_DIR "$profileDir\bot-soak-trigger.exe"
+$triggerEvidenceDir = Join-Path $evidenceDir 'bot-soak-trigger'
+$triggerLog         = Join-Path $evidenceDir 'bot-soak-trigger.log'
+$triggerErr         = Join-Path $evidenceDir 'bot-soak-trigger.err'
+Write-Host "Trigger binary:    $triggerBin"
+Write-Host "Trigger evidence:  $triggerEvidenceDir"
+
+if (-not (Test-Path $triggerBin)) {
+    Write-Host "Missing bot-soak-trigger binary -- building now."
+    $buildArgs = @('build', '-p', 'two-client-runtime', '--bin', 'bot-soak-trigger')
+    if ($Release) { $buildArgs += '--release' }
+    Write-Host "cargo $($buildArgs -join ' ')"
+    if (-not $DryRun) {
+        & cargo @buildArgs
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host -ForegroundColor Red "cargo build bot-soak-trigger failed."
+            exit 1
+        }
+    }
+}
+Write-Host "Trigger binary: $triggerBin (exists=$(Test-Path $triggerBin))"
+
 $soakStartUtc = (Get-Date).ToUniversalTime()
 Write-Host "Soak start (UTC): $($soakStartUtc.ToString('o'))"
-Write-Host "Soak duration:    ${DurationSeconds}s"
+Write-Host "Soak timeout:     ${DurationSeconds}s (trigger overall-timeout)"
+
+$triggerProc = $null
+$triggerExit = $null
 if (-not $DryRun) {
-    # NOTE: PROMPT 1602 owns the bot-vs-bot driver wiring. Until it lands, a
-    # soak of "two bots in one server, no client" cannot yet self-bootstrap;
-    # this launcher sleeps the configured window to provide the canonical
-    # wall-clock harness and evidence layout, so future PROMPTs only need
-    # to plug in the server-side driver.
-    Start-Sleep -Seconds $DurationSeconds
+    New-Item -ItemType Directory -Force -Path $triggerEvidenceDir | Out-Null
+    $triggerArgs = @(
+        '--server-url', $serverUrl,
+        '--overall-timeout-secs', $DurationSeconds
+    )
+    if ($MaxRounds -gt 0) { $triggerArgs += @('--max-rounds', $MaxRounds) }
+    $triggerArgs += @('--evidence-dir', $triggerEvidenceDir)
+
+    Write-Host "Trigger args: $($triggerArgs -join ' ')"
+    $triggerProc = Start-Process `
+        -FilePath $triggerBin `
+        -ArgumentList $triggerArgs `
+        -WorkingDirectory $RepoRoot `
+        -RedirectStandardOutput $triggerLog `
+        -RedirectStandardError  $triggerErr `
+        -WindowStyle Hidden `
+        -PassThru
+    Write-Host "Trigger PID: $($triggerProc.Id)"
+
+    # Wait for trigger to finish (DurationSeconds + 30s grace for shutdown).
+    $waitMs = ($DurationSeconds + 30) * 1000
+    $exited = $triggerProc.WaitForExit($waitMs)
+    if (-not $exited) {
+        Write-Warning "Trigger did not exit within grace window; force-stopping."
+        try { Stop-Process -Id $triggerProc.Id -Force -ErrorAction Stop } catch {}
+        $triggerExit = -1
+    } else {
+        $triggerExit = $triggerProc.ExitCode
+    }
+    Write-Host "Trigger exit code: $triggerExit"
+} else {
+    Write-Host "[DRY RUN] would launch: $triggerBin --server-url $serverUrl --overall-timeout-secs $DurationSeconds$(if ($MaxRounds -gt 0) { " --max-rounds $MaxRounds" }) --evidence-dir $triggerEvidenceDir"
 }
+
 $soakEndUtc = (Get-Date).ToUniversalTime()
 
 # ---- 8. Stop server cleanly ---------------------------------------------
@@ -324,16 +383,26 @@ $summary = [ordered]@{
     server_log                  = $serverLog
     server_err                  = $serverErr
     server_bin                  = $serverBin
+    trigger_bin                 = $triggerBin
+    trigger_pid                 = if ($null -ne $triggerProc) { $triggerProc.Id } else { $null }
+    trigger_exit_code           = $triggerExit
+    trigger_log                 = $triggerLog
+    trigger_err                 = $triggerErr
+    trigger_evidence_dir        = $triggerEvidenceDir
     profile                     = $profileDir
     ccgs_bot_decision_log_path  = $env:CCGS_BOT_DECISION_LOG_PATH
     ccgs_qa_snapshot_dir        = $env:CCGS_QA_SNAPSHOT_DIR
     ccgs_bot_max_rounds         = if ($MaxRounds -gt 0) { $MaxRounds } else { $null }
     dry_run                     = [bool]$DryRun
-    notes                       = "PROMPT 1603 launcher; max-rounds bound via PROMPT 1640 (CCGS_BOT_MAX_ROUNDS)."
+    notes                       = "PROMPT 1603 launcher; PROMPT 1640 CCGS_BOT_MAX_ROUNDS; PROMPT 1671 port-detection; PROMPT 1672 bot-soak-trigger wired."
 }
 $summaryPath = Join-Path $evidenceDir 'soak-summary.json'
 if (-not $DryRun) {
     $summary | ConvertTo-Json -Depth 4 | Set-Content -Path $summaryPath -Encoding utf8
 }
 Write-Host "Summary written to: $summaryPath"
-exit 0
+
+# Exit 0 if trigger succeeded (game_over or max_rounds), 1 otherwise.
+if ($null -ne $triggerExit -and $triggerExit -eq 0) { exit 0 }
+elseif ($DryRun) { exit 0 }
+else { exit 1 }

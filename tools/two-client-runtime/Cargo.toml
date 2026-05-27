@@ -31,3 +31,10 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "time", "fmt"]
 [[bin]]
 name = "two-client-runtime"
 path = "src/main.rs"
+
+# PROMPT 1672: headless bot-room trigger client.
+# Connects to an external server and sends C2SCreateBotRoom so the server's
+# BotLobbyPlugin + BotActionLoopPlugin can run a full autonomous soak session.
+[[bin]]
+name = "bot-soak-trigger"
+path = "src/bot_soak.rs"
