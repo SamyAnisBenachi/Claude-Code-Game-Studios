@@ -1,13 +1,13 @@
 # Codex Orchestrator State
 
-## Current Resume Snapshot (2026-05-27, post-1662 autoplay playroot repair)
+## Current Resume Snapshot (2026-05-27, post-1664 bot-vs-bot soak partial)
 
 Source-of-truth at this snapshot:
 
 - Root checkout: `D:\_DEV\Work\Claude-Code-Game-Studios`
 - Root branch: `main`
-- Root/source commit: `origin/main@e4249f07`
-  (`PROMPT 1662 Autoplay vs Bot Playroot Resolution Repair`)
+- Root/source commit: `origin/main@31550fe7`
+  (`PROMPT 1669 Autoplay Recipe AC1 Story Edit + orchestrator state update`)
 - Root caveat: local `.claude/**`, `.gcs-app/`, and `tmpwt-*` runtime/tooling
   files are not part of the game source and must stay out of commits unless
   explicitly requested.
@@ -37,24 +37,46 @@ Recent mainland state:
   AUTOPLAY-RECIPE-LIBRARY-001 AC1 now documents the actual 11-recipe registry,
   maps renamed/merged concepts, and descopes `placement_reject_recovery` from
   v1 as a future standalone recipe/story candidate.
+- `1664` completed and was cleared as PARTIAL:
+  bot-vs-bot bounded soak verified server startup, asset load,
+  `CCGS_BOT_MAX_ROUNDS=3` activation, WebSocket bind, and 20s server stability.
+  Full PASS is blocked by two concrete gaps from
+  `reports/PROMPT-1664-bot-vs-bot-bounded-soak-live-verify.md`:
+  launcher `Test-PortFree` gives a Windows false-negative and kills a running
+  server, and no headless/client-side trigger currently sends
+  `C2SCreateBotRoom` without the GUI "Create 2-Bot Soak Room" path. The
+  `bot_soak_config_test` suite also has pre-existing global-env parallel
+  flakiness unless run with `--test-threads=1`.
 
 Active workers / expected relays:
 
 | Prompt | State | Notes |
 |---|---|---|
-| `1664` | RUNNING / waiting | Bot-vs-bot bounded soak live verify. |
 | `1670` | RUNNING / waiting | Bot debug overlay story status cleanup + AC5 readiness ruling prep. |
 
 Immediate next actions:
 
-1. When `1664` or `1670` relays DONE, clear the worker, read its
-   report, and only then launch a focused follow-up.
-2. Do not launch story-done/shared-status writers for bot/autoplay until Sprint
+1. Launch a focused launcher repair for `Start-BotVsBotSoak.ps1`
+   port-readiness detection. Replace the current `Test-PortFree` gate with a
+   reliable process-alive or WebSocket connect probe so a bound server is not
+   killed as an exit-code-3 false negative.
+2. Decide the bot-room trigger path for full soak verification: either run the
+   existing human/GUI operator flow from PROMPT 1668, or author/implement a
+   dev-only trigger that sends `C2SCreateBotRoom` without mutating gameplay
+   state directly. Do not bypass rules with semantic server mutation.
+3. After the launcher repair and trigger decision, rerun bot-vs-bot bounded
+   soak and require decision log + server snapshots + max-round termination
+   evidence before closing story-002 AC2-AC5.
+4. Optional follow-up: fix or document `bot_soak_config_test` env-var parallel
+   flakiness by serializing that test lane.
+5. When `1670` relays DONE, clear the worker, read its report, and only then
+   launch a focused follow-up.
+6. Do not launch story-done/shared-status writers for bot/autoplay until Sprint
    19 activation is explicitly handled.
-3. The next human-facing validation gate is live GUI evidence:
+7. The next human-facing validation gate is live GUI evidence:
    `tools/dev-launcher/Start-AutoplayVsBot.ps1 -Recipe full-game`, then inspect
    `production/qa/evidence/composite-runs/*-autoplay-vs-bot/`.
-4. Keep broad Cargo suites in dedicated verify lanes; implementation/report
+8. Keep broad Cargo suites in dedicated verify lanes; implementation/report
    workers should not block on broad checks or protected-branch pushes.
 
 ## Current Resume Snapshot (2026-05-27, post-1656 composite evidence docs)
