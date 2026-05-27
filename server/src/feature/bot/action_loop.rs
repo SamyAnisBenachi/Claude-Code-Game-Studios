@@ -749,6 +749,12 @@ pub fn bot_action_loop(
     mut pending_bot_bids: Option<ResMut<PendingBotBids>>,
     mut auction_pass_logged: Local<HashSet<(PlayerId, u32)>>,
     mut auction_round_ctx: Local<HashMap<(PlayerId, u32), AuctionRoundContext>>,
+    // PROMPT 1677: debounce for placement — tracks (bot, round) pairs that
+    // already emitted a placement submission this round. Guards against
+    // per-frame re-emission when submissions_received is not yet updated by
+    // the downstream handler (ordering latency or empty-batch rejection in
+    // headless soak). Mirrors the auction_pass_logged pattern.
+    mut placement_submitted: Local<HashSet<(PlayerId, u32)>>,
 ) {
     let (Some(round_state), Some(session)) = (round_state, session) else {
         return;
@@ -852,6 +858,13 @@ pub fn bot_action_loop(
                 if round_state.submissions_received.contains(player_id) {
                     continue;
                 }
+                // Local debounce: emit at most once per (bot, round) regardless
+                // of whether the downstream handler has updated submissions_received.
+                let debounce_key = (*player_id, round);
+                if placement_submitted.contains(&debounce_key) {
+                    continue;
+                }
+                placement_submitted.insert(debounce_key);
 
                 let placements = heuristic_inputs
                     .as_ref()
@@ -1058,16 +1071,13 @@ mod tests {
         assert!(placements[0].placements.is_empty());
         assert!(placements[0].peer_id.is_none());
 
-        // Mark as received; second tick should not re-emit.
-        app.world_mut()
-            .resource_mut::<RoundState>()
-            .submissions_received
-            .insert(BOT_ID);
+        // Local debounce: second tick must not re-emit even without
+        // submissions_received being updated by the RSM.
         app.update();
         let again = drain_placement(&mut app);
         assert!(
             again.is_empty(),
-            "placement fail-safe must not re-emit once RSM records the submission"
+            "placement fail-safe must not re-emit on second tick (local debounce)"
         );
 
         let log = app.world().resource::<BotDecisionLog>();
@@ -1075,6 +1085,35 @@ mod tests {
             .entries
             .iter()
             .any(|e| matches!(e.decision, BotDecisionKind::EmptyPlacementFailsafe)));
+    }
+
+    #[test]
+    fn placement_debounce_survives_many_ticks_without_rsm_update() {
+        // Regression: in headless soak the server runs uncapped (~500fps).
+        // The bot must emit exactly one placement per round regardless of how
+        // many frames elapse before submissions_received is updated.
+        let mut app = make_app(RoundPhase::Placement, 3);
+        for _ in 0..20 {
+            app.update();
+            drain_placement(&mut app); // drain so messages don't accumulate
+        }
+        let log = app.world().resource::<BotDecisionLog>();
+        let placement_entries: Vec<_> = log
+            .entries
+            .iter()
+            .filter(|e| {
+                matches!(
+                    e.decision,
+                    BotDecisionKind::EmptyPlacementFailsafe
+                        | BotDecisionKind::PlacementSubmitted { .. }
+                )
+            })
+            .collect();
+        assert_eq!(
+            placement_entries.len(),
+            1,
+            "placement must be logged exactly once per round regardless of tick count"
+        );
     }
 
     #[test]
