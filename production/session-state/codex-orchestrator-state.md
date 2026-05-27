@@ -1,14 +1,15 @@
 # Codex Orchestrator State
 
-## Current Resume Snapshot (2026-05-27, post-1677 bot soak PASS)
+## Current Resume Snapshot (2026-05-27, post-1679 launcher guard land)
 
 Source-of-truth at this snapshot:
 
 - Root checkout: `D:\_DEV\Work\Claude-Code-Game-Studios`
 - Root branch: `main`
-- Root/source commit: `origin/main@c20eb100`
+- Root/source commit: `origin/main@8af941bd`
   (`PROMPT 1674` launcher trigger exit-code reconciliation plus combined
-  `PROMPT 1675/1676/1677` bot-soak fixes)
+  `PROMPT 1675/1676/1677` bot-soak fixes, orchestrator state commits, and
+  `PROMPT 1679` stale-binary launcher guard)
 - Root caveat: local `.claude/**`, `.gcs-app/`, `dev-runs/`, and `tmpwt-*`
   runtime/tooling files are not game source and must stay out of commits unless
   explicitly requested.
@@ -27,13 +28,18 @@ Recent bot-soak repair landings:
   `ClassSelections` panic guard in `bot_lobby_auto_confirm`, server snapshot
   output wiring for `CCGS_BOT_QA_SNAPSHOT_DIR`, and bot placement fail-safe
   debounce.
-- Worker windows `1674`, `1675`, `1676`, and `1677` have been cleared or are
-  no longer live.
-- Follow-up workers launched after the PASS:
+- `1679` landed through `MAINLAND_ENQUEUE`:
+  `origin/integrate/bot-soak-launcher-stale-binary-1679 -> main`
+  advanced `origin/main` `c9b174d2..8af941bd`. It adds `-Rebuild`, stale-binary
+  freshness checks for `server.exe` and `bot-soak-trigger.exe`, and
+  `server_build_reason` / `trigger_build_reason` / `rebuild_flag` fields in
+  `soak-summary.json`. Validation used `-Help` and `-DryRun -Rebuild`; no broad
+  Cargo suite was run.
+- Worker windows `1674`, `1675`, `1676`, `1677`, and `1679` have been cleared
+  or are no longer live.
+- Active follow-up worker:
   `1678 BOT-PLACEMENT-LEGAL-UNIT-ACQUISITION-REPAIR` owns the remaining bot
-  gameplay-quality gap, and
-  `1679 BOT-SOAK-LAUNCHER-STALE-BINARY-REBUILD-GUARD` owns the tooling guard
-  against false failures from stale `server.exe` / `bot-soak-trigger.exe`.
+  gameplay-quality gap.
 
 Post-landing verification:
 
@@ -68,9 +74,9 @@ Immediate next actions:
 
 1. Treat BOT-SOAK-ENTRYPOINT-001 runtime gate as PASS for the bounded headless
    path, using the `2026-05-27-121832-bot-vs-bot-soak` evidence.
-2. Wait for `1678` and `1679` relays, integrate their branches if shipped, then
-   run a focused post-integration verify. `1678` should not run the live soak;
-   `1679` should avoid broad Cargo and preferably use static/DryRun validation.
+2. Wait for `1678` relay, integrate its branch if shipped, then run a focused
+   post-integration bot-vs-bot soak verify using the landed `1679` `-Rebuild`
+   guard at least once.
 3. Keep live GUI autoplay-vs-bot as a separate human/interactive evidence gate;
    do not conflate it with the headless bot-vs-bot soak PASS.
 4. Do not launch story-done/shared-status writers for bot/autoplay until Sprint
