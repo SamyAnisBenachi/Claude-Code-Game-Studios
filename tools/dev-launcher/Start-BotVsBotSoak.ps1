@@ -15,9 +15,10 @@
 #      `reports/PROMPT-1594-bot-flow-inventory-followup.md` (server.log,
 #      server.err, bot-decision-log.jsonl, server-snapshots/).
 #   6. Starts `server.exe` with SERVER_PORT set and the bot-flow QA env vars
-#      (`CCGS_BOT_DECISION_LOG_PATH`, `CCGS_QA_SNAPSHOT_DIR`) pointed at the
-#      evidence subdirectories so any future server-side dump code can drop
-#      its artefacts in the canonical place.
+#      (`CCGS_BOT_QA_SNAPSHOT=1`, `CCGS_BOT_QA_SNAPSHOT_DIR`,
+#      `CCGS_BOT_DECISION_LOG_PATH`) pointed at the evidence subdirectories so
+#      the server-side BotQaSnapshotPlugin writes snapshots to the canonical
+#      evidence layout (server-snapshots/) rather than the default dev-runs/.
 #   7. Sleeps for -DurationSeconds (default 300 = 5 min), then stops the
 #      server cleanly with Stop-Process and saves a soak-summary.json.
 #
@@ -234,7 +235,8 @@ $env:SERVER_URL  = $serverUrl
 # tomorrow it will write into bot-decision-log.jsonl / server-snapshots/ on
 # its own.
 $env:CCGS_BOT_DECISION_LOG_PATH = $botDecisionLogPath
-$env:CCGS_QA_SNAPSHOT_DIR       = $snapshotsDir
+$env:CCGS_BOT_QA_SNAPSHOT       = "1"
+$env:CCGS_BOT_QA_SNAPSHOT_DIR   = $snapshotsDir
 if ($MaxRounds -gt 0) {
     $env:CCGS_BOT_MAX_ROUNDS = "$MaxRounds"
 } else {
@@ -243,7 +245,8 @@ if ($MaxRounds -gt 0) {
 Write-Host "SERVER_PORT                  = $env:SERVER_PORT"
 Write-Host "SERVER_URL                   = $serverUrl"
 Write-Host "CCGS_BOT_DECISION_LOG_PATH   = $env:CCGS_BOT_DECISION_LOG_PATH"
-Write-Host "CCGS_QA_SNAPSHOT_DIR         = $env:CCGS_QA_SNAPSHOT_DIR"
+Write-Host "CCGS_BOT_QA_SNAPSHOT         = $env:CCGS_BOT_QA_SNAPSHOT"
+Write-Host "CCGS_BOT_QA_SNAPSHOT_DIR     = $env:CCGS_BOT_QA_SNAPSHOT_DIR"
 Write-Host "CCGS_BOT_MAX_ROUNDS          = $(if ($MaxRounds -gt 0) { $MaxRounds } else { '(disabled)' })"
 
 $serverProc = $null
@@ -420,10 +423,11 @@ $summary = [ordered]@{
     trigger_evidence_dir        = $triggerEvidenceDir
     profile                     = $profileDir
     ccgs_bot_decision_log_path  = $env:CCGS_BOT_DECISION_LOG_PATH
-    ccgs_qa_snapshot_dir        = $env:CCGS_QA_SNAPSHOT_DIR
+    ccgs_bot_qa_snapshot        = $env:CCGS_BOT_QA_SNAPSHOT
+    ccgs_bot_qa_snapshot_dir    = $env:CCGS_BOT_QA_SNAPSHOT_DIR
     ccgs_bot_max_rounds         = if ($MaxRounds -gt 0) { $MaxRounds } else { $null }
     dry_run                     = [bool]$DryRun
-    notes                       = "PROMPT 1603 launcher; PROMPT 1640 CCGS_BOT_MAX_ROUNDS; PROMPT 1671 port-detection; PROMPT 1672 bot-soak-trigger wired; PROMPT 1674 trigger exit-code reconciliation."
+    notes                       = "PROMPT 1603 launcher; PROMPT 1640 CCGS_BOT_MAX_ROUNDS; PROMPT 1671 port-detection; PROMPT 1672 bot-soak-trigger wired; PROMPT 1674 trigger exit-code reconciliation; PROMPT 1676 snapshot dir env-var fixed."
 }
 $summaryPath = Join-Path $evidenceDir 'soak-summary.json'
 if (-not $DryRun) {
