@@ -200,8 +200,15 @@ pub fn decision_detail(kind: &BotDecisionKind) -> Option<String> {
             card_id.0
         )),
         BotDecisionKind::AuctionPass { reason } => Some(format!("reason={reason}")),
-        BotDecisionKind::PlacementSubmitted { placements_len } => {
-            Some(format!("placements_len={placements_len}"))
+        BotDecisionKind::PlacementSubmitted { placements_len, coords } => {
+            let coord_strs: Vec<String> = coords
+                .iter()
+                .map(|c| format!("{}@{}/{}", c.card_id.0, c.lane, c.cell))
+                .collect();
+            Some(format!(
+                "placements_len={placements_len} coords=[{}]",
+                coord_strs.join(",")
+            ))
         }
         BotDecisionKind::PlacementSkipped { reason } => Some(format!("reason={reason}")),
     }
@@ -509,7 +516,7 @@ mod tests {
         for i in 0..20u32 {
             log.push(make_decision(
                 bot_a,
-                BotDecisionKind::PlacementSubmitted { placements_len: i as u8 },
+                BotDecisionKind::PlacementSubmitted { placements_len: i as u8, coords: vec![] },
                 u64::from(i),
             ));
         }

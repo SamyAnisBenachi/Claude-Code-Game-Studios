@@ -26,6 +26,21 @@ use shared::card::{CardId, ClassId};
 use shared::protocol::{CardSource, RoundPhase};
 use shared::session::PlayerId;
 
+/// Compact per-card coordinate captured at bot placement time.
+///
+/// Recorded inside `BotDecisionKind::PlacementSubmitted` so soak evidence and
+/// QA replay have lane/cell/card/mana without re-parsing the wire submission.
+/// Only `BoardCell` targets are recorded; non-BoardCell variants (unused by the
+/// Wave-3 heuristic today) are silently skipped to keep the log compact.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+pub struct PlacementCoord {
+    pub card_id: CardId,
+    pub lane: u8,
+    pub cell: u8,
+    /// Total mana spent (current_mana_spend + reserve_mana_spend).
+    pub mana: u32,
+}
+
 /// Lower jitter bound for any bot per-decision think delay.
 pub const BOT_THINK_DELAY_MIN_MS: u32 = 300;
 /// Upper jitter bound for any bot per-decision think delay.
@@ -198,7 +213,13 @@ pub enum BotDecisionKind {
         valuation: u32,
     },
     AuctionPass { reason: &'static str },
-    PlacementSubmitted { placements_len: u8 },
+    PlacementSubmitted {
+        placements_len: u8,
+        /// Per-card coordinates for every `BoardCell` placement in the batch.
+        /// Capped at 16 entries; the Wave-3 heuristic never exceeds hand-size
+        /// (typically ≤ 6) so this is purely a defensive ceiling.
+        coords: Vec<PlacementCoord>,
+    },
     PlacementSkipped { reason: &'static str },
     EmptyPlacementFailsafe,
     ResultAcknowledged,

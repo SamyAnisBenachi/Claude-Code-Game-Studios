@@ -191,7 +191,7 @@ fn test_decision_kind_label_all_variants() {
             "auction_bid",
         ),
         (BotDecisionKind::AuctionPass { reason: "low_val" }, "auction_pass"),
-        (BotDecisionKind::PlacementSubmitted { placements_len: 3 }, "placement_submitted"),
+        (BotDecisionKind::PlacementSubmitted { placements_len: 3, coords: vec![] }, "placement_submitted"),
         (BotDecisionKind::PlacementSkipped { reason: "no_units" }, "placement_skipped"),
         (BotDecisionKind::EmptyPlacementFailsafe, "empty_placement_failsafe"),
         (BotDecisionKind::ResultAcknowledged, "result_acknowledged"),
@@ -281,8 +281,8 @@ fn test_decision_detail_auction_pass_format() {
 
 #[test]
 fn test_decision_detail_placement_submitted_format() {
-    let d = decision_detail(&BotDecisionKind::PlacementSubmitted { placements_len: 5 });
-    assert_eq!(d, Some("placements_len=5".to_string()));
+    let d = decision_detail(&BotDecisionKind::PlacementSubmitted { placements_len: 5, coords: vec![] });
+    assert_eq!(d, Some("placements_len=5 coords=[]".to_string()));
 }
 
 #[test]
@@ -330,7 +330,7 @@ fn test_tail_cap_exact_boundary_does_not_trim() {
     for i in 0..DEBUG_BOT_DECISION_TAIL_CAP as u8 {
         log.push(make_entry(
             bot_id,
-            BotDecisionKind::PlacementSubmitted { placements_len: i },
+            BotDecisionKind::PlacementSubmitted { placements_len: i, coords: vec![] },
         ));
     }
     let submitted = HashSet::new();
