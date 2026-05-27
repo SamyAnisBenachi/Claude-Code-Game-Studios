@@ -939,9 +939,15 @@ fn validate_submission_batch(
     let Some(economy) = economies.0.get(&player) else {
         return Some(PlacementSubmissionResult::MissingEconomy);
     };
-    let Some(hand) = hands.and_then(|hands| hands.hands.get(&player)) else {
-        return Some(PlacementSubmissionResult::CardNotInHand);
-    };
+    // PROMPT 1678: treat an absent PlayerHands entry as an empty hand so that
+    // empty-batch submissions (peer_id=None bots with no cards yet) are accepted
+    // rather than rejected with CardNotInHand. Non-empty batches that reference
+    // cards not in the (absent = empty) hand still fail below via the per-card
+    // `hand.contains` check.
+    let empty_hand: Vec<CardId> = Vec::new();
+    let hand: &Vec<CardId> = hands
+        .and_then(|h| h.hands.get(&player))
+        .unwrap_or(&empty_hand);
     let mut submitted_cards = HashSet::new();
     let mut total_cost = 0_u32;
     let mut total_current_mana_spend = 0_u32;

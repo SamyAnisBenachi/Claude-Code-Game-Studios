@@ -60,12 +60,15 @@ use lightyear::prelude::PeerId;
 use rand::RngCore;
 
 use crate::core::economy::PlayerEconomies;
+use crate::core::pool::PlayerPools;
 use crate::core::rsm::{
     state::{RoundPhase, RoundState},
     DraftReadySignal,
 };
 use crate::core::session::config::SessionConfig;
-use crate::feature::acquisition::{PlayerHands, MAX_HAND_SIZE};
+use crate::feature::acquisition::{
+    process_purchase_card_with_pool, CardAcquisitionSet, PlayerHands, ShopStates, MAX_HAND_SIZE,
+};
 use crate::feature::auction::{AuctionBid, AuctionPhase, AuctionState, PendingBotBids};
 use crate::feature::board::{
     is_field_slot_available, is_minion_slot_available, is_structure_slot_available,
@@ -924,6 +927,215 @@ pub fn bot_action_loop(
     }
 }
 
+// =============================================================================
+// PROMPT 1678 — Bot draft auto-pick (Wave 3.5)
+// =============================================================================
+//
+// Goal: give the bot at least one legal unit card before Placement so that
+// `build_bot_placements` can assemble a non-empty batch.
+//
+// Mechanism: after `CardAcquisitionSet::Tick` populates the bot's offering in
+// `ShopStates`, pick the cheapest affordable Minion from the displayed cards
+// (or any card if no Minion is available), then call `process_purchase_card_with_pool`
+// which handles hand-push + pool distribution + gold deduction via the
+// authoritative acquisition path — same code the human C2SPurchaseCard handler
+// uses, no special-case shortcuts.
+//
+// Constraints:
+// - Runs only in `DraftInitial` and `DraftShop` phases.
+// - Debounced per (bot, round) so each bot picks at most once per draft.
+// - Falls back silently when any required resource is absent (test scaffolds,
+//   pre-acquisition worlds) — the Wave-1/3 empty-batch fail-safe covers that.
+// - No network dispatch: bots have no PeerId; the call to
+//   `process_purchase_card_with_pool` already returns the slots-update which
+//   we discard (no peer to send to).
+
+/// Deterministically pick the best card for the bot from `displayed_cards`:
+/// prefer the cheapest Minion; fall back to cheapest overall if no Minion.
+/// Returns `None` when `displayed_cards` is empty or all cards are missing
+/// from the catalog.
+fn pick_best_bot_card(
+    displayed_cards: &std::collections::HashSet<CardId>,
+    catalog: &CardCatalog,
+    affordable_max: u32,
+) -> Option<CardId> {
+    let mut best_minion: Option<(u32, CardId)> = None;
+    let mut best_any: Option<(u32, CardId)> = None;
+    let mut sorted_ids: Vec<CardId> = displayed_cards.iter().copied().collect();
+    // Stable sort by id so the pick is deterministic across HashSet iteration order.
+    sorted_ids.sort_by_key(|id| id.0);
+
+    for card_id in sorted_ids {
+        let Some(card) = catalog.cards.get(&card_id) else {
+            continue;
+        };
+        if card.cost > affordable_max {
+            continue;
+        }
+        if card.card_type == CardType::Minion {
+            if best_minion.is_none_or(|(prev_cost, _)| card.cost < prev_cost) {
+                best_minion = Some((card.cost, card_id));
+            }
+        }
+        if best_any.is_none_or(|(prev_cost, _)| card.cost < prev_cost) {
+            best_any = Some((card.cost, card_id));
+        }
+    }
+
+    best_minion
+        .or(best_any)
+        .map(|(_, card_id)| card_id)
+}
+
+/// Bot draft auto-pick system (PROMPT 1678, Wave 3.5).
+///
+/// Runs after `CardAcquisitionSet::Tick` has populated the bot's offering in
+/// `ShopStates` and before `bot_action_loop` emits the `DraftReadySignal`. Each
+/// bot picks at most one card per draft phase per round. Debounced by a
+/// `Local<HashSet<(PlayerId, u32)>>` keyed by `(bot_id, round_number)`.
+#[allow(clippy::too_many_arguments)]
+pub fn bot_draft_auto_pick(
+    round_state: Option<Res<RoundState>>,
+    session: Option<Res<SessionConfig>>,
+    bots: Option<Res<BotPlayers>>,
+    mut shop_states: Option<ResMut<ShopStates>>,
+    mut hands: Option<ResMut<PlayerHands>>,
+    mut economies: Option<ResMut<PlayerEconomies>>,
+    mut pools: Option<ResMut<PlayerPools>>,
+    catalog: Option<Res<CardCatalog>>,
+    mut auto_pick_done: Local<HashSet<(PlayerId, u32)>>,
+) {
+    let (Some(round_state), Some(session), Some(bots)) = (round_state, session, bots) else {
+        return;
+    };
+    if bots.is_empty() {
+        return;
+    }
+
+    let phase = round_state.phase;
+    if !matches!(phase, RoundPhase::DraftInitial | RoundPhase::DraftShop) {
+        return;
+    }
+
+    let round = round_state.round_number;
+    let bot_players = session_bot_players(&bots, &session);
+
+    let (Some(shop_states), Some(hands), Some(economies), Some(pools), Some(catalog)) = (
+        shop_states.as_deref_mut(),
+        hands.as_deref_mut(),
+        economies.as_deref_mut(),
+        pools.as_deref_mut(),
+        catalog.as_deref(),
+    ) else {
+        return;
+    };
+
+    for bot_id in &bot_players {
+        let key = (*bot_id, round);
+        if auto_pick_done.contains(&key) {
+            continue;
+        }
+        // Record debounce up-front so repeated ticks in the same round skip
+        // even when the purchase fails (avoiding retry-spam on a bad offering).
+        auto_pick_done.insert(key);
+
+        let Some(shop_state) = shop_states.players.get(bot_id) else {
+            tracing::debug!(
+                target: "server::bot",
+                bot_player_id = ?bot_id,
+                round,
+                "bot_draft_auto_pick: no ShopState for bot — skipping"
+            );
+            continue;
+        };
+
+        // Collect cards available to purchase: DraftInitial uses
+        // displayed_this_draft; DraftShop uses current_slots.
+        let displayed: std::collections::HashSet<CardId> = match phase {
+            RoundPhase::DraftInitial => shop_state.displayed_this_draft.clone(),
+            RoundPhase::DraftShop => shop_state
+                .current_slots
+                .iter()
+                .flatten()
+                .copied()
+                .collect(),
+            _ => continue,
+        };
+
+        if displayed.is_empty() {
+            tracing::debug!(
+                target: "server::bot",
+                bot_player_id = ?bot_id,
+                round,
+                ?phase,
+                "bot_draft_auto_pick: offering is empty — skipping"
+            );
+            continue;
+        }
+
+        let affordable_max = economies
+            .0
+            .get(bot_id)
+            .map(|e| e.gold)
+            .unwrap_or(0);
+
+        let Some(card_id) = pick_best_bot_card(&displayed, catalog, affordable_max) else {
+            tracing::info!(
+                target: "server::bot",
+                bot_player_id = ?bot_id,
+                round,
+                ?phase,
+                affordable_max,
+                displayed_count = displayed.len(),
+                "bot_draft_auto_pick: no affordable card in offering — skipping"
+            );
+            continue;
+        };
+
+        let Some(pool) = pools.pools.get_mut(bot_id) else {
+            tracing::warn!(
+                target: "server::bot",
+                bot_player_id = ?bot_id,
+                round,
+                "bot_draft_auto_pick: PlayerPool missing for bot"
+            );
+            continue;
+        };
+
+        let (result, _slots_update) = process_purchase_card_with_pool(
+            shop_states,
+            hands,
+            economies,
+            pool,
+            catalog,
+            *bot_id,
+            card_id,
+        );
+
+        use crate::feature::acquisition::PurchaseAttemptResult;
+        if result == PurchaseAttemptResult::Purchased {
+            tracing::info!(
+                target: "server::bot",
+                bot_player_id = ?bot_id,
+                round,
+                ?phase,
+                card_id = card_id.0,
+                "bot_draft_auto_pick: card acquired for bot"
+            );
+        } else {
+            tracing::warn!(
+                target: "server::bot",
+                bot_player_id = ?bot_id,
+                round,
+                ?phase,
+                card_id = card_id.0,
+                result = ?result,
+                "bot_draft_auto_pick: purchase attempt failed"
+            );
+        }
+    }
+}
+
 /// Plugin: register the bot action loop on the standard `Update` schedule.
 ///
 /// Ordering: this system writes `DraftReadySignal` and
@@ -934,6 +1146,10 @@ pub fn bot_action_loop(
 /// of latency is fine), so we do not declare hard ordering against those
 /// systems — the signal lands on the next tick which is sufficient for flow
 /// progress.
+///
+/// `bot_draft_auto_pick` (PROMPT 1678) runs after `CardAcquisitionSet::Tick`
+/// (so the offering is populated) and before `bot_action_loop` (so the hand
+/// has the new card when the ready signal fires).
 pub struct BotActionLoopPlugin;
 
 impl Plugin for BotActionLoopPlugin {
@@ -943,7 +1159,15 @@ impl Plugin for BotActionLoopPlugin {
         // plugin is safe to add in either order.
         app.init_resource::<BotPlayers>()
             .init_resource::<BotDecisionLog>()
-            .add_systems(Update, bot_action_loop);
+            .add_systems(
+                Update,
+                (
+                    bot_draft_auto_pick
+                        .after(CardAcquisitionSet::Tick),
+                    bot_action_loop
+                        .after(bot_draft_auto_pick),
+                ),
+            );
     }
 }
 
@@ -1194,5 +1418,91 @@ mod tests {
         assert!(drain_placement(&mut app).is_empty());
         let log = app.world().resource::<BotDecisionLog>();
         assert_eq!(log.len(), 0);
+    }
+
+    // =========================================================================
+    // PROMPT 1678 — pick_best_bot_card unit tests
+    // =========================================================================
+
+    fn make_catalog_with_cards(cards: &[(u32, CardType, u32)]) -> CardCatalog {
+        use shared::card::{CardData, ClassId, Rarity, UnitType};
+        let mut map = std::collections::HashMap::new();
+        for &(id, card_type, cost) in cards {
+            map.insert(
+                CardId(id),
+                CardData {
+                    id: CardId(id),
+                    name_fr: format!("Carte {id}"),
+                    name_en: format!("Card {id}"),
+                    class: ClassId::Iop,
+                    family: None,
+                    card_type,
+                    unit_type: UnitType::Blade,
+                    cost,
+                    hp: 1,
+                    atk: 1,
+                    mp: 0,
+                    ar: 0,
+                    rarity: Rarity::Common,
+                    keywords: vec![],
+                    effect_text: String::new(),
+                    art_id: format!("test_{id}"),
+                    pool_copies_override: Some(1),
+                },
+            );
+        }
+        CardCatalog { cards: map }
+    }
+
+    #[test]
+    fn pick_best_bot_card_prefers_cheapest_minion() {
+        let catalog = make_catalog_with_cards(&[
+            (1, CardType::Trap, 2),
+            (2, CardType::Minion, 3),
+            (3, CardType::Minion, 2),
+        ]);
+        let displayed: std::collections::HashSet<CardId> =
+            [CardId(1), CardId(2), CardId(3)].into_iter().collect();
+
+        let picked = pick_best_bot_card(&displayed, &catalog, 10).unwrap();
+        assert_eq!(picked, CardId(3), "should pick cheapest Minion (cost=2)");
+    }
+
+    #[test]
+    fn pick_best_bot_card_falls_back_to_any_when_no_minion() {
+        let catalog = make_catalog_with_cards(&[
+            (1, CardType::Trap, 2),
+            (2, CardType::Structure, 3),
+        ]);
+        let displayed: std::collections::HashSet<CardId> =
+            [CardId(1), CardId(2)].into_iter().collect();
+
+        let picked = pick_best_bot_card(&displayed, &catalog, 10).unwrap();
+        assert_eq!(picked, CardId(1), "should fall back to cheapest card (Trap cost=2)");
+    }
+
+    #[test]
+    fn pick_best_bot_card_respects_affordable_max() {
+        let catalog =
+            make_catalog_with_cards(&[(1, CardType::Minion, 5), (2, CardType::Minion, 2)]);
+        let displayed: std::collections::HashSet<CardId> =
+            [CardId(1), CardId(2)].into_iter().collect();
+
+        // Only card 2 (cost=2) is affordable when max=3.
+        let picked = pick_best_bot_card(&displayed, &catalog, 3).unwrap();
+        assert_eq!(picked, CardId(2));
+
+        // No card is affordable when max=1.
+        assert!(
+            pick_best_bot_card(&displayed, &catalog, 1).is_none(),
+            "should return None when no card is affordable"
+        );
+    }
+
+    #[test]
+    fn pick_best_bot_card_empty_set_returns_none() {
+        let catalog = make_catalog_with_cards(&[(1, CardType::Minion, 2)]);
+        let displayed: std::collections::HashSet<CardId> = std::collections::HashSet::new();
+        assert!(pick_best_bot_card(&displayed, &catalog, 10).is_none());
     }
 }
