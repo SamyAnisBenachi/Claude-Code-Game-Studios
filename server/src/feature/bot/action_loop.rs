@@ -280,6 +280,9 @@ fn run_auction_branch(
                 seed,
                 seed_word_counter: counter,
             });
+            if let Some(state) = bots.get_mut(*player_id) {
+                state.last_decision_at_ms = Some(ts);
+            }
             tracing::info!(
                 target: "server::bot",
                 bot_player_id = ?player_id,
@@ -314,6 +317,9 @@ fn run_auction_branch(
                 seed,
                 seed_word_counter: counter,
             });
+            if let Some(state) = bots.get_mut(*player_id) {
+                state.last_decision_at_ms = Some(ts);
+            }
         }
         return;
     };
@@ -381,6 +387,9 @@ fn run_auction_branch(
                     seed,
                     seed_word_counter: counter,
                 });
+                if let Some(state) = bots.get_mut(*player_id) {
+                    state.last_decision_at_ms = Some(ts);
+                }
                 // PROMPT 1598 (Wave 2.5): funnel the chosen bid into the
                 // server-internal queue drained by `auction_tick_system`.
                 // `peer_id: None` — bots have no client peer; the auction
@@ -419,6 +428,9 @@ fn run_auction_branch(
                     seed,
                     seed_word_counter: counter,
                 });
+                if let Some(state) = bots.get_mut(*player_id) {
+                    state.last_decision_at_ms = Some(ts);
+                }
                 tracing::info!(
                     target: "server::bot",
                     bot_player_id = ?player_id,
@@ -797,6 +809,9 @@ pub fn bot_action_loop(
                     seed,
                     seed_word_counter: counter,
                 });
+                if let Some(state) = bots.get_mut(*player_id) {
+                    state.last_decision_at_ms = Some(ts);
+                }
 
                 tracing::info!(
                     target: "server::bot",
@@ -919,6 +934,9 @@ pub fn bot_action_loop(
                     seed,
                     seed_word_counter: counter,
                 });
+                if let Some(state) = bots.get_mut(*player_id) {
+                    state.last_decision_at_ms = Some(ts);
+                }
 
                 if placements_len == 0 {
                     tracing::info!(
@@ -1388,6 +1406,42 @@ mod tests {
             .filter(|e| matches!(e.decision, BotDecisionKind::AuctionPass { .. }))
             .count();
         assert_eq!(pass_count, 2, "next auction round logs a fresh pass");
+    }
+
+    #[test]
+    fn draft_decision_updates_last_decision_at_ms() {
+        let mut app = make_app(RoundPhase::DraftInitial, 1);
+        app.update();
+        let bots = app.world().resource::<BotPlayers>();
+        let state = bots.get(BOT_ID).expect("bot must exist");
+        assert!(
+            state.last_decision_at_ms.is_some(),
+            "last_decision_at_ms must be set after DraftReady decision"
+        );
+    }
+
+    #[test]
+    fn placement_decision_updates_last_decision_at_ms() {
+        let mut app = make_app(RoundPhase::Placement, 1);
+        app.update();
+        let bots = app.world().resource::<BotPlayers>();
+        let state = bots.get(BOT_ID).expect("bot must exist");
+        assert!(
+            state.last_decision_at_ms.is_some(),
+            "last_decision_at_ms must be set after placement decision"
+        );
+    }
+
+    #[test]
+    fn auction_pass_updates_last_decision_at_ms() {
+        let mut app = make_app(RoundPhase::DraftAuction, 1);
+        app.update();
+        let bots = app.world().resource::<BotPlayers>();
+        let state = bots.get(BOT_ID).expect("bot must exist");
+        assert!(
+            state.last_decision_at_ms.is_some(),
+            "last_decision_at_ms must be set after auction pass decision"
+        );
     }
 
     #[test]
