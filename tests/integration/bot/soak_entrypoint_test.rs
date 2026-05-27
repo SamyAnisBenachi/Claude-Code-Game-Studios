@@ -1,8 +1,17 @@
-//! Bot-vs-bot soak entrypoint integration test scaffold (PROMPT 1629).
+//! Bot-vs-bot soak entrypoint integration test scaffold (PROMPT 1629 / PROMPT 1645).
 //!
-//! Verifies the soak launcher contract — env-var activation, two-bot resource
-//! setup, and `BotQaSnapshotPlugin` initialization — without launching any
-//! long-running GUI or server process.
+//! PROMPT 1629 — 19 ECS-side tests: BotQaSnapshotConfig env-var activation,
+//! path defaults/overrides, two-bot BotPlayers precondition, BotQaSnapshotPlugin
+//! App init, and env-var constant regression guard.
+//!
+//! PROMPT 1645 — 17 PS1-launcher static-contract tests: script presence at
+//! tools/dev-launcher/Start-BotVsBotSoak.ps1, PowerShell parameter contract
+//! (-MaxRounds, -DurationSeconds, -DryRun, -StrictPort, -Help), bounded-soak
+//! env-var contract (CCGS_BOT_MAX_ROUNDS conditional), and evidence/log path
+//! contract (CCGS_BOT_DECISION_LOG_PATH, CCGS_QA_SNAPSHOT_DIR,
+//! production/qa/evidence/, soak-summary.json, bot-decision-log.jsonl).
+//!
+//! Total: 36 tests. No live GUI, no long soak. Closes GAP-05.
 //!
 //! ## Soak launcher contract (story-002 AC2 / AC6 subset)
 //!
