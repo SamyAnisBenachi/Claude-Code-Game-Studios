@@ -207,10 +207,16 @@ fn test_bot_placement_wave3_submits_legal_minion_when_resources_present() {
         "bot pays from current first when current has the funds"
     );
 
-    // Decision log entry
+    // Decision log entry — verify placements_len and coord content.
     match last_decision(&app) {
-        BotDecisionKind::PlacementSubmitted { placements_len } => {
+        BotDecisionKind::PlacementSubmitted { placements_len, coords } => {
             assert_eq!(placements_len, 1);
+            assert_eq!(coords.len(), 1, "one coord entry expected");
+            let c = &coords[0];
+            assert_eq!(c.card_id, card.id, "coord card_id matches placed card");
+            assert_eq!(c.lane, 1, "coord lane matches placement target");
+            assert_eq!(c.cell, 8, "coord cell matches placement target");
+            assert_eq!(c.mana, card.cost, "coord mana matches card cost");
         }
         other => panic!("expected PlacementSubmitted, got {:?}", other),
     }
@@ -262,8 +268,10 @@ fn test_bot_placement_wave3_two_minions_pick_distinct_lanes_no_overlap() {
     assert_eq!(lanes[1], 2, "second minion advances to lane 2");
 
     match last_decision(&app) {
-        BotDecisionKind::PlacementSubmitted { placements_len } => {
+        BotDecisionKind::PlacementSubmitted { placements_len, coords } => {
             assert_eq!(placements_len, 2);
+            assert_eq!(coords.len(), 2, "two coord entries for two placements");
+            assert_ne!(coords[0].lane, coords[1].lane, "coords reflect distinct lanes");
         }
         other => panic!("expected PlacementSubmitted, got {:?}", other),
     }

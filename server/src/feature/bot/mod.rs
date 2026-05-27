@@ -30,6 +30,6 @@ pub use qa_snapshot::{
 pub use soak_config::{BotSoakConfig, BotSoakPlugin, BOT_MAX_ROUNDS_ENV_VAR};
 pub use state::{
     BotDecisionEntry, BotDecisionKind, BotDecisionLog, BotDifficulty, BotPhaseTiming, BotPlayers,
-    BotState, BotThinkDelayWindow, BOT_AUCTION_PASS_THRESHOLD_MS, BOT_SAFETY_MARGIN_MS,
-    BOT_THINK_DELAY_MAX_MS, BOT_THINK_DELAY_MIN_MS,
+    BotState, BotThinkDelayWindow, PlacementCoord, BOT_AUCTION_PASS_THRESHOLD_MS,
+    BOT_SAFETY_MARGIN_MS, BOT_THINK_DELAY_MAX_MS, BOT_THINK_DELAY_MIN_MS,
 };
