@@ -1,5 +1,58 @@
 # Codex Orchestrator State
 
+## Current Resume Snapshot (2026-05-27, post-1656 composite evidence docs)
+
+Source-of-truth at this snapshot:
+
+- Root checkout: `D:\_DEV\Work\Claude-Code-Game-Studios`
+- Root branch: `main`
+- Root/source commit: `origin/main@31271b79`
+  (`PROMPT 1656 Composite Evidence Validator Docs Wiring`)
+- Root caveat: local `.claude/**`, `.gcs-app/`, and `tmpwt-*` runtime/tooling
+  files are not part of the game source and must stay out of commits unless
+  explicitly requested.
+
+Recent mainland state:
+
+- `1651` composite evidence validator is already included in the combined
+  mainland stack `1648+1650+1651`; the late DONE relay was cleared as duplicate.
+- `1655` autoplay smoke `-Recipe` passthrough repair landed on main.
+- `1656` composite evidence validator docs wiring was amended for
+  `git diff --check`, refreshed onto current `origin/main`, queued through
+  `MAINLAND_ENQUEUE`, and landed as `1c8a83ed..31271b79`.
+
+Bot/autoplay state:
+
+- Bot room/join, bot Wave 1/2/3, two-bot bounded soak, debug overlay, autoplay
+  recipe library, composite harness, evidence validator, and static recipe/docs
+  coverage are on main through the latest mainland stack.
+- Autoplay remains a UI-input automation layer. It drives keyboard/mouse/status
+  and recipe checkpoints; it must not bypass gameplay rules or mutate semantic
+  game state directly.
+- Live GUI autoplay-vs-bot evidence is still not a full PASS. Prior runtime
+  verify work reached PARTIAL because live client execution/tooling constraints
+  remain separate from static/parser/fake-RPC validation.
+
+Known active / waiting:
+
+| Prompt | State | Notes |
+|---|---|---|
+| `1658` | UNKNOWN / waiting for relay | Bot/autoplay story-done readiness after recent landings. No DONE relay seen in this context. |
+| `1649` | UNKNOWN / stale | Older bot/autoplay readiness refresh; no report/branch found in the latest handoff. Treat as superseded unless a worker relays output. |
+
+Immediate next actions:
+
+1. Launch or run a focused verify for the `1655` recipe passthrough path:
+   confirm `Start-AutoplayVsBot.ps1` can pass non-`smoke` recipes through
+   `Run-AutoplaySmoke.ps1` without parameter binding failure.
+2. Wait for or relaunch `1658` only if no relay arrives; it should be
+   readiness/paperwork-focused, not a broad Cargo lane.
+3. If live GUI automation is requested next, run a bounded
+   autoplay-vs-bot smoke and record whether the blocker is app behavior,
+   launcher/build setup, or interactive desktop availability.
+4. Keep broad Cargo suites in dedicated verify lanes. Implementation workers
+   should continue to use dedicated worktrees and avoid blocking on push/rebase.
+
 ## Current Resume Snapshot (2026-05-21, post-1613 autoplay recipe mainland)
 
 Source-of-truth at this snapshot:
