@@ -120,6 +120,25 @@ The autoplay artifacts (screenshots, driver log, checkpoints) land under
 composite run references that path in `autoplay-run-path.txt` rather than
 duplicating the artifacts.
 
+### Validating the evidence directory
+
+After the launcher exits, run the composite evidence validator to confirm the
+directory is structurally sound:
+
+```powershell
+python tools/autoplay/validate_composite_run.py `
+  production/qa/evidence/composite-runs/<YYYY-MM-DD-HHMMSS-autoplay-vs-bot>
+```
+
+Exit 0 = all checks passed. Exit 1 = structural failure (details on stdout).
+Exit 2 = evidence directory or summary not found.
+
+Add `--strict` to fail hard when the autoplay artifact directory is missing
+(useful on the machine that ran the composite; omit when sharing evidence across
+machines).
+
+→ Full validator reference: **[evidence-operator-guide.md § 10](evidence-operator-guide.md#10-validating-a-composite-run)**
+
 ### `composite-summary.json` fields
 
 | Field | Meaning |
@@ -175,4 +194,4 @@ remain open and the story remains in `Draft`.
 
 ---
 
-_Last updated: PROMPT 1644 — 2026-05-27_
+_Last updated: PROMPT 1656 — 2026-05-27_

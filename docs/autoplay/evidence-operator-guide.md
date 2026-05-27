@@ -311,4 +311,82 @@ complete every `<!-- fill -->` field.
 
 ---
 
-_Last updated: PROMPT 1646 — 2026-05-27_
+---
+
+## 10. Validating a Composite Run
+
+After `Start-AutoplayVsBot.ps1` completes, use
+`tools/autoplay/validate_composite_run.py` to confirm the composite evidence
+directory is structurally sound before attaching it to a story or PR report.
+
+### What the validator checks
+
+1. Evidence directory exists and is a directory.
+2. `composite-summary.json` is present and valid JSON.
+3. `schema` field equals `"autoplay_vs_bot_composite_summary_v1"`.
+4. `outcome` field is present and non-empty.
+5. `live_pass_status` contains `"NOT-CLAIMED"` (guards against false PASS claims).
+6. `autoplay-run-path.txt` is present.
+7. Path in `autoplay-run-path.txt` matches `autoplay_artifact_dir` from the summary.
+8. If the autoplay artifact directory exists on disk:
+   - `launcher-status.json` is present inside it.
+   - If `checkpoints.jsonl` is present, recipe-required checkpoint labels are a
+     subset of observed labels (see §4 for the full checkpoint table).
+
+### Quickstart
+
+```powershell
+# From D:\_DEV\Work\Claude-Code-Game-Studios
+python tools/autoplay/validate_composite_run.py `
+  production/qa/evidence/composite-runs/2026-05-27-120000-autoplay-vs-bot
+```
+
+### Options
+
+| Flag | Default | Description |
+|---|---|---|
+| `EVIDENCE_DIR` | _(required)_ | Path to the composite evidence directory written by `Start-AutoplayVsBot.ps1` |
+| `--recipe NAME` | _(read from summary)_ | Override the recipe name used for checkpoint validation |
+| `--strict` | off | Treat a missing autoplay artifact directory as a FAIL instead of a WARN |
+
+### Exit codes
+
+| Code | Meaning |
+|---|---|
+| `0` | All checks passed — PASS |
+| `1` | One or more checks failed — details printed to stdout |
+| `2` | Evidence directory missing, or `composite-summary.json` absent / unparseable |
+
+### Reading the output
+
+```
+[validate_composite_run] WARNINGS (1):
+  WARN: ARTIFACT DIR NOT FOUND: …/autoplay-runs/20260527-120005-Z does not exist.
+[validate_composite_run] PASS: production/qa/evidence/composite-runs/2026-05-27-120000-autoplay-vs-bot
+```
+
+- **PASS with warnings** — structural evidence is intact but artifact dir is
+  unreachable (e.g. run on a different machine). Acceptable for cross-machine
+  report sharing; use `--strict` to fail hard if the artifact dir is required.
+- **FAIL** — at least one check failed; the failure lines show exactly which
+  field or file is wrong.
+
+> **Note:** A PASS from this validator confirms structural integrity only.  
+> It does not constitute the human-operator sign-off required for a live
+> `AUTOPLAY-VS-BOT-QA-001` PASS (see §[Live PASS Gate](autoplay-vs-bot-flow.md#live-pass-gate)).
+
+### Relation to `Start-AutoplayVsBot.ps1`
+
+```
+Start-AutoplayVsBot.ps1
+  └── writes composite-summary.json + autoplay-run-path.txt
+        │
+        └── validate_composite_run.py <evidence-dir>   ← post-run integrity check
+```
+
+The validator is **read-only** and does not modify any evidence file.  Run it any
+number of times; results are stable for a given directory.
+
+---
+
+_Last updated: PROMPT 1656 — 2026-05-27_
