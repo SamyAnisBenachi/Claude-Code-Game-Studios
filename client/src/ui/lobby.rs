@@ -1,5 +1,6 @@
 use bevy::input::keyboard::KeyboardInput;
 use bevy::prelude::*;
+use bevy::window::{CursorIcon, SystemCursorIcon};
 use lightyear::prelude::{MessageReceiver, MessageSender};
 use shared::card::ClassId;
 use shared::protocol::{
@@ -54,6 +55,14 @@ pub const LOBBY_CREATE_BUTTON_WIDTH_PX: f32 = 128.0;
 pub const LOBBY_CREATE_BUTTON_HEIGHT_PX: f32 = LOBBY_BUTTON_HEIGHT_PX;
 pub const LOBBY_JOIN_BUTTON_WIDTH_PX: f32 = 128.0;
 pub const LOBBY_JOIN_BUTTON_HEIGHT_PX: f32 = LOBBY_BUTTON_HEIGHT_PX;
+
+// Wave-2 interaction-state migration (S18-UI-INTERACTION-STATE-MIGRATION-WAVE-2-001):
+// Named base-color constants for Create / Join so the spawn sites reference
+// tokens and the change-detection overlay system can compute tints from them.
+const LOBBY_CREATE_BUTTON_BG: Color = Color::srgba(0.17, 0.18, 0.14, 0.95);
+const LOBBY_CREATE_BUTTON_BORDER: Color = Color::srgb(0.65, 0.53, 0.24);
+const LOBBY_JOIN_BUTTON_BG: Color = Color::srgba(0.11, 0.15, 0.20, 0.95);
+const LOBBY_JOIN_BUTTON_BORDER: Color = Color::srgb(0.28, 0.56, 0.72);
 pub const LOBBY_REQUESTED_SLOT_BUTTON_WIDTH_PX: f32 = 80.0;
 pub const LOBBY_REQUESTED_SLOT_BUTTON_HEIGHT_PX: f32 = LOBBY_BUTTON_HEIGHT_PX;
 pub const LOBBY_CLASS_PICKER_GRID_COLUMNS: usize = 7;
@@ -108,6 +117,10 @@ impl Plugin for LobbyUiPlugin {
                     lobby_initial_room_list_refresh_system,
                     lobby_keyboard_input_system,
                     lobby_button_interaction_system,
+                    // Wave-2 overlay tints on Create / Join buttons (AC2).
+                    // Runs after the action-handler so action dispatch and
+                    // visual update land in the same tick.
+                    lobby_create_join_interaction_overlay_system,
                     send_lobby_commands_system,
                     refresh_lobby_ui_system,
                     refresh_confirm_button_visual_system,
@@ -1618,6 +1631,7 @@ fn spawn_lobby_ui_system(
                                 LobbyDynamicText::Create,
                                 Button,
                                 Interaction::None,
+                                CursorIcon::System(SystemCursorIcon::Pointer),
                                 Text::new(lobby_dynamic_copy(
                                     LobbyDynamicText::Create,
                                     &lobby,
@@ -1629,14 +1643,15 @@ fn spawn_lobby_ui_system(
                                     Val::Px(LOBBY_CREATE_BUTTON_WIDTH_PX),
                                     LOBBY_CREATE_BUTTON_HEIGHT_PX,
                                 ),
-                                BackgroundColor(Color::srgba(0.17, 0.18, 0.14, 0.95)),
-                                BorderColor::all(Color::srgb(0.65, 0.53, 0.24)),
+                                BackgroundColor(LOBBY_CREATE_BUTTON_BG),
+                                BorderColor::all(LOBBY_CREATE_BUTTON_BORDER),
                             ));
                             row.spawn((
                                 LobbyJoinRoomButton,
                                 LobbyDynamicText::Join,
                                 Button,
                                 Interaction::None,
+                                CursorIcon::System(SystemCursorIcon::Pointer),
                                 Text::new(lobby_dynamic_copy(
                                     LobbyDynamicText::Join,
                                     &lobby,
@@ -1648,8 +1663,8 @@ fn spawn_lobby_ui_system(
                                     Val::Px(LOBBY_JOIN_BUTTON_WIDTH_PX),
                                     LOBBY_JOIN_BUTTON_HEIGHT_PX,
                                 ),
-                                BackgroundColor(Color::srgba(0.11, 0.15, 0.20, 0.95)),
-                                BorderColor::all(Color::srgb(0.28, 0.56, 0.72)),
+                                BackgroundColor(LOBBY_JOIN_BUTTON_BG),
+                                BorderColor::all(LOBBY_JOIN_BUTTON_BORDER),
                             ));
                         });
 
@@ -2188,6 +2203,7 @@ fn spawn_lobby_ui_system(
                     LobbyDynamicText::Confirm,
                     Button,
                     Interaction::None,
+                    CursorIcon::System(SystemCursorIcon::Pointer),
                     Text::new(lobby_dynamic_copy(
                         LobbyDynamicText::Confirm,
                         &lobby,
@@ -2928,21 +2944,25 @@ pub fn lobby_confirm_button_colors(
             BorderColor::all(Color::srgb(1.00, 0.90, 0.50)),
             TextColor(Color::srgb(0.06, 0.05, 0.02)),
         ),
-        S::Hovered => (
-            BackgroundColor(Color::srgb(0.984, 0.860, 0.420)),
-            BorderColor::all(Color::srgba(
-                1.00,
-                0.94,
-                0.62,
-                1.0 - HOVER_BORDER_ALPHA * 0.20,
-            )),
-            TextColor(Color::srgb(0.06, 0.05, 0.02)),
-        ),
-        S::Pressed => (
-            BackgroundColor(Color::srgb(0.700, 0.560, 0.200)),
-            BorderColor::all(Color::srgb(1.00, 0.90, 0.50)),
-            TextColor(Color::srgb(0.04, 0.03, 0.01)),
-        ),
+        S::Hovered => {
+            // White overlay at HOVER_BG_TINT_ALPHA on the Enabled base
+            // (0.949, 0.788, 0.298). Border alpha = HOVER_BORDER_ALPHA.
+            let wh = |b: f32| b * (1.0 - HOVER_BG_TINT_ALPHA) + HOVER_BG_TINT_ALPHA;
+            (
+                BackgroundColor(Color::srgb(wh(0.949), wh(0.788), wh(0.298))),
+                BorderColor::all(Color::srgba(1.00, 0.94, 0.62, HOVER_BORDER_ALPHA)),
+                TextColor(Color::srgb(0.06, 0.05, 0.02)),
+            )
+        }
+        S::Pressed => {
+            // Black overlay at PRESSED_BG_TINT_ALPHA on the Enabled base.
+            let dk = |b: f32| b * (1.0 - PRESSED_BG_TINT_ALPHA);
+            (
+                BackgroundColor(Color::srgb(dk(0.949), dk(0.788), dk(0.298))),
+                BorderColor::all(Color::srgb(1.00, 0.90, 0.50)),
+                TextColor(Color::srgb(0.04, 0.03, 0.01)),
+            )
+        }
         S::InFlight => (
             BackgroundColor(Color::srgba(0.52, 0.43, 0.16, 0.95)),
             BorderColor::all(Color::srgb(0.74, 0.62, 0.24)),
@@ -2961,19 +2981,81 @@ pub fn lobby_confirm_button_colors(
     }
 }
 
-/// Used-token guard: keeps the `HOVER_BG_TINT_ALPHA` import live (it
-/// inputs the Hovered band documentation even when the literal mix is
-/// pre-computed). Without this guard the `cargo --deny unused_imports`
-/// gate would flag the import after the inline-literal simplification.
-#[doc(hidden)]
-const __HOVER_BG_TINT_ALPHA_USED_IN_CONFIRM_BUTTON: f32 = HOVER_BG_TINT_ALPHA;
+// ---------------------------------------------------------------------------
+// Wave-2 interaction-state migration helpers (S18-UI-INTERACTION-STATE-MIGRATION-WAVE-2-001)
+// ---------------------------------------------------------------------------
 
-/// Compile-time guard: `PRESSED_BG_TINT_ALPHA` is part of the documented
-/// Pressed-state contract even when the precomputed literal lives in
-/// `lobby_confirm_button_colors`. Reading the const here keeps the import
-/// live.
-#[doc(hidden)]
-const __PRESSED_BG_TINT_ALPHA_USED_IN_CONFIRM_BUTTON: f32 = PRESSED_BG_TINT_ALPHA;
+/// Compute overlay-tinted `BackgroundColor` / `BorderColor` from a base
+/// color pair and the current `Interaction` state, using the canonical
+/// `interaction_states::*` alpha tokens as the tint magnitudes.
+///
+/// - `None` → base colors unchanged (Default band).
+/// - `Hovered` → white overlay at `HOVER_BG_TINT_ALPHA`; border alpha set
+///   to `HOVER_BORDER_ALPHA`.
+/// - `Pressed` → black overlay at `PRESSED_BG_TINT_ALPHA`; border unchanged.
+fn apply_interaction_tint(
+    base_bg: Color,
+    base_border: Color,
+    interaction: Interaction,
+) -> (BackgroundColor, BorderColor) {
+    let bg = base_bg.to_srgba();
+    let border = base_border.to_srgba();
+    match interaction {
+        Interaction::None => (BackgroundColor(base_bg), BorderColor::all(base_border)),
+        Interaction::Hovered => (
+            BackgroundColor(Color::srgba(
+                bg.red * (1.0 - HOVER_BG_TINT_ALPHA) + HOVER_BG_TINT_ALPHA,
+                bg.green * (1.0 - HOVER_BG_TINT_ALPHA) + HOVER_BG_TINT_ALPHA,
+                bg.blue * (1.0 - HOVER_BG_TINT_ALPHA) + HOVER_BG_TINT_ALPHA,
+                bg.alpha,
+            )),
+            BorderColor::all(Color::srgba(
+                border.red,
+                border.green,
+                border.blue,
+                HOVER_BORDER_ALPHA,
+            )),
+        ),
+        Interaction::Pressed => (
+            BackgroundColor(Color::srgba(
+                bg.red * (1.0 - PRESSED_BG_TINT_ALPHA),
+                bg.green * (1.0 - PRESSED_BG_TINT_ALPHA),
+                bg.blue * (1.0 - PRESSED_BG_TINT_ALPHA),
+                bg.alpha,
+            )),
+            BorderColor::all(base_border),
+        ),
+    }
+}
+
+/// Apply canonical 4-state overlay tints to `LobbyCreateRoomButton` and
+/// `LobbyJoinRoomButton` on `Interaction` change. Fires only when the
+/// pointer interaction changes; no per-frame cost at steady state.
+pub fn lobby_create_join_interaction_overlay_system(
+    mut query: Query<
+        (
+            &Interaction,
+            &mut BackgroundColor,
+            &mut BorderColor,
+            Option<&LobbyCreateRoomButton>,
+        ),
+        (
+            Changed<Interaction>,
+            Or<(With<LobbyCreateRoomButton>, With<LobbyJoinRoomButton>)>,
+        ),
+    >,
+) {
+    for (interaction, mut bg, mut border, create) in &mut query {
+        let (base_bg, base_border) = if create.is_some() {
+            (LOBBY_CREATE_BUTTON_BG, LOBBY_CREATE_BUTTON_BORDER)
+        } else {
+            (LOBBY_JOIN_BUTTON_BG, LOBBY_JOIN_BUTTON_BORDER)
+        };
+        let (new_bg, new_border) = apply_interaction_tint(base_bg, base_border, *interaction);
+        *bg = new_bg;
+        *border = new_border;
+    }
+}
 
 /// Update the confirm CTA's `BackgroundColor` / `BorderColor` / `TextColor`
 /// every frame based on the current `(Interaction, LobbyViewState,

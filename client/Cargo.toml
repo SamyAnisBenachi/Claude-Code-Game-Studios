@@ -673,6 +673,16 @@ path = "../tests/integration/ui_clean_pass/overlay_alpha_test.rs"
 name = "ui_clean_pass_interaction_state_primitives_test"
 path = "../tests/integration/ui_clean_pass/interaction_state_primitives_test.rs"
 
+# S18-UI-INTERACTION-STATE-MIGRATION-WAVE-2-001 (Sprint 18 story-025 / PROMPT
+# 1729): consumer-coverage structural guard. Asserts that all Wave-2 P1 button
+# spawn sites carry `Interaction::None`, `CursorIcon::System`, and consume the
+# canonical interaction_states token imports; that the per-surface overlay
+# systems are registered in their host plugins; and that no new RGB literals
+# appeared at the consumer spawn sites (AC10 regression guard).
+[[test]]
+name = "ui_clean_pass_interaction_state_consumer_coverage_test"
+path = "../tests/integration/ui_clean_pass/interaction_state_consumer_coverage_test.rs"
+
 # S12-TD-UI-CARD-SLOT-PRIMITIVE-001 (Sprint 16 story 009): card-slot
 # primitive module shape integration test — exports for the five
 # CardSlotKind variants, aspect-ratio band containment per kind,
