@@ -2,10 +2,13 @@
 
 > **Epic**: Shop / Auction UI
 > **Story ID**: S18-AUCTION-WON-CARD-DISPOSITION-001
-> **Status**: Draft -- Sprint 18 candidate (Must Have), NOT activated. No sprint plan currently activates this row. `production/sprint-status.yaml`, `production/sprints/sprint-17.md`, `production/sprints/sprint-18.md` (does not exist at authoring), `production/stage.txt`, and every `production/session-state/*` file are NOT modified by this authoring run.
+> **Status**: Done — Sprint 18 Must Have. Closed by PROMPT 1713 on `origin/main@ecce3f7a` (PROMPT 1712 tip).
+> **Active impl PROMPT**: 1347 (worker commit `426d9b8b`); integration PROMPT 1391 (`426d9b8b` on `integrate/s18-auction-won-card-disposition-1391`); follow-up PROMPT 1513 (`5f09b1e9` wire-authoritative `S2CAuctionSettled.card_id`); integration PROMPT 1518 (`f69bd595`); test backfill PROMPT 1409 (`f6d9aa16`).
+> **Completed**: 2026-05-27
+> **Closure source-of-truth**: `origin/main@ecce3f7a` (PROMPT 1712 tip; all implementation commits ancestors of main).
 > **Layer**: Shop / Auction UI -- auction-won card disposition contract + winner UI affordance + observability
 > **Type**: Integration -- spans server settle path, client shop-auction settlement display, hand UI newly-acquired affordance, QA snapshot enrichment
-> **Sprint**: Sprint 18 candidate (Must Have). Authoring does NOT activate Sprint 18 (which does not yet have a plan file). Activation is a separate explicit prompt.
+> **Sprint**: Sprint 18 Must Have (activated by PROMPT 1301 against `origin/main@1345c6b`).
 > **Authored**: 2026-05-18 by PROMPT 1137
 > **Authoring source-of-truth**: `origin/main@05192b5f830c5d5b17ed7af07df37f56187130fc` (PROMPT 1125 `story-done(s17): close S17-OPS-VULKAN-VALIDATION-GATING-001 (PROMPT 1125)`)
 > **Source audit**: PROMPT 1131 `reports/PROMPT-1131-game-state-to-visual-contract-deep-audit.md` §3 AUDIT-1131-02 (P0); §5 New Findings; §6 Observability gap (3); §7 Lane B1 + B2 + Lane D3.
@@ -127,35 +130,35 @@ All criteria are independently checkable.
 
 ### Disposition contract
 
-- [ ] **AC1 -- Server hand-grant on `S2CAuctionSettled { winner: Some(p) }` unchanged**: GIVEN an auction settles with `current_leader = Some(PlayerId(p))` and `current_price = price`, WHEN `try_settle_auction` runs (`server/src/feature/auction/system.rs:670-745`), THEN `award_auction_card(p, card_id, hands, connections, outbox)` is called (line 713), `hand_push(hands, p, card_id)` returns `Ok(())` (unless hand is full, which is unreachable under correct RSM enforcement per GDD §"Case A" rule 3), and `S2CCardAcquired { card_id, source: CardSource::AuctionWon }` is dispatched to peer `peer_for_player(connections, p)`. The integration test re-asserts the existing pre-Sprint-18 server behaviour against the AUDIT-1131-02 disposition expectation. No source code under `server/src/feature/auction/` is modified by this AC.
+- [x] **AC1 -- Server hand-grant on `S2CAuctionSettled { winner: Some(p) }` unchanged**: GIVEN an auction settles with `current_leader = Some(PlayerId(p))` and `current_price = price`, WHEN `try_settle_auction` runs (`server/src/feature/auction/system.rs:670-745`), THEN `award_auction_card(p, card_id, hands, connections, outbox)` is called (line 713), `hand_push(hands, p, card_id)` returns `Ok(())` (unless hand is full, which is unreachable under correct RSM enforcement per GDD §"Case A" rule 3), and `S2CCardAcquired { card_id, source: CardSource::AuctionWon }` is dispatched to peer `peer_for_player(connections, p)`. The integration test re-asserts the existing pre-Sprint-18 server behaviour against the AUDIT-1131-02 disposition expectation. No source code under `server/src/feature/auction/` is modified by this AC.
 
-- [ ] **AC2 -- Loser receives no card on `S2CAuctionSettled { winner: Some(p) }` where `p != local_player_id`**: GIVEN the same settle, WHEN the loser client drains `S2CAuctionSettled`, THEN no `S2CCardAcquired` for `card_id` arrives at the loser (already true per existing server behaviour: `S2CCardAcquired` is unicast to winner only). The integration test asserts unicast. No source code modification by this AC.
+- [x] **AC2 -- Loser receives no card on `S2CAuctionSettled { winner: Some(p) }` where `p != local_player_id`**: GIVEN the same settle, WHEN the loser client drains `S2CAuctionSettled`, THEN no `S2CCardAcquired` for `card_id` arrives at the loser (already true per existing server behaviour: `S2CCardAcquired` is unicast to winner only). The integration test asserts unicast. No source code modification by this AC.
 
-- [ ] **AC3 -- No-bid settlement (`S2CAuctionSettled { winner: None, amount: 0 }`) does not grant any card to any player**: GIVEN an auction settles with no leader (Case B), WHEN `try_settle_auction` runs, THEN no `S2CCardAcquired` is dispatched and the featured card is discarded back to the pool per existing `distribute()` semantics. No source modification by this AC.
+- [x] **AC3 -- No-bid settlement (`S2CAuctionSettled { winner: None, amount: 0 }`) does not grant any card to any player**: GIVEN an auction settles with no leader (Case B), WHEN `try_settle_auction` runs, THEN no `S2CCardAcquired` is dispatched and the featured card is discarded back to the pool per existing `distribute()` semantics. No source modification by this AC.
 
 ### Winner-side discoverability (post-auction PLACEMENT window)
 
-- [ ] **AC4 -- Winner sees an "Auction won" affordance during the auction-followup PLACEMENT window**: GIVEN the local player is the auction winner and the next phase is `Placement` (auction-followup; `placement_timer_used_ms = 12000 * placement_timer_multiplier_effective` per RSM-29c), WHEN the PLACEMENT phase begins, THEN the Shop / Auction UI surfaces a one-shot textual or chrome affordance naming the won-card disposition. Concrete wording chosen by the implementing worker (e.g. `"Auction won: <card-name>"` or equivalent localizable token); consistent with existing `ShopAuctionSettledReceived` toast styling (story-007 settlement-and-shop-transition lineage). The affordance MUST be visible from PLACEMENT entry through either: (a) the won-card being staged via drag-drop, OR (b) the PLACEMENT phase ending. The affordance MUST be reachable by sighted players at 1366x768 (minimum supported resolution per existing UX spec).
+- [x] **AC4 -- Winner sees an "Auction won" affordance during the auction-followup PLACEMENT window**: GIVEN the local player is the auction winner and the next phase is `Placement` (auction-followup; `placement_timer_used_ms = 12000 * placement_timer_multiplier_effective` per RSM-29c), WHEN the PLACEMENT phase begins, THEN the Shop / Auction UI surfaces a one-shot textual or chrome affordance naming the won-card disposition. Concrete wording chosen by the implementing worker (e.g. `"Auction won: <card-name>"` or equivalent localizable token); consistent with existing `ShopAuctionSettledReceived` toast styling (story-007 settlement-and-shop-transition lineage). The affordance MUST be visible from PLACEMENT entry through either: (a) the won-card being staged via drag-drop, OR (b) the PLACEMENT phase ending. The affordance MUST be reachable by sighted players at 1366x768 (minimum supported resolution per existing UX spec).
 
-- [ ] **AC5 -- Newly-acquired card visual marker on hand fan during the auction-followup PLACEMENT window**: GIVEN AC4 conditions, WHEN the won-card entity appears in the hand fan (per existing Hand UI `S2CCardAcquired` consumption path), THEN the entity carries a visible "newly-acquired" marker (e.g. a glow, pulse, tinted border, or chevron — concrete strategy chosen by the implementing worker and justified in the commit message). The marker MUST clear on either: (a) the won-card being staged via drag-drop, OR (b) the PLACEMENT phase ending. The marker MUST NOT persist across PLACEMENT phases.
+- [x] **AC5 -- Newly-acquired card visual marker on hand fan during the auction-followup PLACEMENT window**: GIVEN AC4 conditions, WHEN the won-card entity appears in the hand fan (per existing Hand UI `S2CCardAcquired` consumption path), THEN the entity carries a visible "newly-acquired" marker (e.g. a glow, pulse, tinted border, or chevron — concrete strategy chosen by the implementing worker and justified in the commit message). The marker MUST clear on either: (a) the won-card being staged via drag-drop, OR (b) the PLACEMENT phase ending. The marker MUST NOT persist across PLACEMENT phases.
 
-- [ ] **AC6 -- Won-card identity is unambiguous on the winner client**: GIVEN the winner client receives `S2CAuctionSettled { winner: Some(local_player_id), amount }` and `S2CCardAcquired { card_id, source: CardSource::AuctionWon }` in the same frame burst (server-side ordering: `award_auction_card` is called before `push_settled` per `system.rs:713-714`; client-side ordering is reliable-channel-preserved), WHEN the winner client renders the AC4 affordance and the AC5 hand marker, THEN both reference the same `card_id` (the affordance references the card-pool entry, the marker is attached to the hand entity). The integration test asserts the two UI states agree.
+- [x] **AC6 -- Won-card identity is unambiguous on the winner client**: GIVEN the winner client receives `S2CAuctionSettled { winner: Some(local_player_id), amount }` and `S2CCardAcquired { card_id, source: CardSource::AuctionWon }` in the same frame burst (server-side ordering: `award_auction_card` is called before `push_settled` per `system.rs:713-714`; client-side ordering is reliable-channel-preserved), WHEN the winner client renders the AC4 affordance and the AC5 hand marker, THEN both reference the same `card_id` (the affordance references the card-pool entry, the marker is attached to the hand entity). The integration test asserts the two UI states agree.
 
 ### Loser-side feedback
 
-- [ ] **AC7 -- Loser sees an "opponent won" settlement toast**: GIVEN the local player is NOT the auction winner (`S2CAuctionSettled { winner: Some(other), amount: y }`), WHEN settlement is received, THEN the existing settlement display (story-007 lineage) renders a toast naming the opponent and the price (e.g. `"Opponent won <card-name> for <y>g"`). The toast surface is the existing `ShopAuctionSettledReceived` overlay; this AC re-asserts the loser-side path without adding new surfaces. The toast clears per the existing settlement-transition timer.
+- [x] **AC7 -- Loser sees an "opponent won" settlement toast**: GIVEN the local player is NOT the auction winner (`S2CAuctionSettled { winner: Some(other), amount: y }`), WHEN settlement is received, THEN the existing settlement display (story-007 lineage) renders a toast naming the opponent and the price (e.g. `"Opponent won <card-name> for <y>g"`). The toast surface is the existing `ShopAuctionSettledReceived` overlay; this AC re-asserts the loser-side path without adding new surfaces. The toast clears per the existing settlement-transition timer.
 
 ### Do-nothing / no-op path
 
-- [ ] **AC8 -- Un-staged auction-won card persists in the winner's hand if the auction-followup PLACEMENT phase ends without a submission for it**: GIVEN the winner receives `S2CCardAcquired { source: AuctionWon }` at PLACEMENT entry and does NOT include the won-card in their `C2SSubmitPlacement` (or does not submit at all and the 12s timer expires), WHEN the PLACEMENT phase ends and RESOLUTION begins, THEN `PlayerHands[winner]` continues to contain the won-card on the server, AND the next `S2CGameSnapshot` (if any) lists the won-card in the winner's hand. The integration test simulates the no-submit path and asserts hand persistence. No source change to `server/src/feature/auction/` or `server/src/feature/board/` is required by this AC; the test re-asserts existing behaviour.
+- [x] **AC8 -- Un-staged auction-won card persists in the winner's hand if the auction-followup PLACEMENT phase ends without a submission for it**: GIVEN the winner receives `S2CCardAcquired { source: AuctionWon }` at PLACEMENT entry and does NOT include the won-card in their `C2SSubmitPlacement` (or does not submit at all and the 12s timer expires), WHEN the PLACEMENT phase ends and RESOLUTION begins, THEN `PlayerHands[winner]` continues to contain the won-card on the server, AND the next `S2CGameSnapshot` (if any) lists the won-card in the winner's hand. The integration test simulates the no-submit path and asserts hand persistence. No source change to `server/src/feature/auction/` or `server/src/feature/board/` is required by this AC; the test re-asserts existing behaviour.
 
-- [ ] **AC9 -- AC4 affordance and AC5 marker both clear at PLACEMENT-phase exit even on the no-op path**: GIVEN the no-op path of AC8, WHEN the auction-followup PLACEMENT phase ends, THEN the AC4 affordance is dismissed AND the AC5 hand-fan marker is removed. The won-card entity remains in the hand fan (per AC8), but it no longer carries the "newly-acquired" visual. If the same card is re-staged in a later PLACEMENT phase, the AC5 marker MUST NOT re-appear (the marker is one-shot per auction settle, not per-phase).
+- [x] **AC9 -- AC4 affordance and AC5 marker both clear at PLACEMENT-phase exit even on the no-op path**: GIVEN the no-op path of AC8, WHEN the auction-followup PLACEMENT phase ends, THEN the AC4 affordance is dismissed AND the AC5 hand-fan marker is removed. The won-card entity remains in the hand fan (per AC8), but it no longer carries the "newly-acquired" visual. If the same card is re-staged in a later PLACEMENT phase, the AC5 marker MUST NOT re-appear (the marker is one-shot per auction settle, not per-phase).
 
 ### Observability (Lane D3 from PROMPT 1131 §6 and §7)
 
-- [ ] **AC10 -- Server emits a tracing log at settle naming the disposition**: GIVEN `try_settle_auction` runs Case A or Case B, WHEN `outbox.push_settled` is called, THEN a server-side tracing log line is emitted with fields (`target = "server::game"`, level `info` or higher): `{ event: "auction_settled", winner: <Option<u8>>, card_id: <u32>, current_price: <u32>, hand_size_before: <u8>, hand_size_after: <u8> }`. On Case B, `winner = None` and `hand_size_*` fields are omitted or `0`. The implementing worker chooses the exact tracing macro shape (single multi-field call preferred). This log line is the **AUDIT-1131-02 observability hook** required by PROMPT 1131 §6 row 3 and Lane D3. The log is **trace-only**; no behaviour change.
+- [x] **AC10 -- Server emits a tracing log at settle naming the disposition**: GIVEN `try_settle_auction` runs Case A or Case B, WHEN `outbox.push_settled` is called, THEN a server-side tracing log line is emitted with fields (`target = "server::game"`, level `info` or higher): `{ event: "auction_settled", winner: <Option<u8>>, card_id: <u32>, current_price: <u32>, hand_size_before: <u8>, hand_size_after: <u8> }`. On Case B, `winner = None` and `hand_size_*` fields are omitted or `0`. The implementing worker chooses the exact tracing macro shape (single multi-field call preferred). This log line is the **AUDIT-1131-02 observability hook** required by PROMPT 1131 §6 row 3 and Lane D3. The log is **trace-only**; no behaviour change.
 
-- [ ] **AC11 -- Client QA snapshot exposes a one-shot `auction_won_pending` block during the auction-followup PLACEMENT window**: GIVEN the winner client is in the auction-followup PLACEMENT phase and the local player won the most recent auction, WHEN the QA snapshot is generated, THEN the snapshot JSON includes a block (preferred shape):
+- [x] **AC11 -- Client QA snapshot exposes a one-shot `auction_won_pending` block during the auction-followup PLACEMENT window**: GIVEN the winner client is in the auction-followup PLACEMENT phase and the local player won the most recent auction, WHEN the QA snapshot is generated, THEN the snapshot JSON includes a block (preferred shape):
   ```json
   "auction_won_pending": {
     "card_id": <u32>,
@@ -169,35 +172,35 @@ All criteria are independently checkable.
 
 ### Tests required (before implementation closes)
 
-- [ ] **AC12 -- Server integration test: auction settle disposition + hand grant + tracing log**: A new test under `tests/integration/auction/` (or extension of existing `tests/integration/auction/*_test.rs` per local pattern; exact path chosen by the implementing worker) constructs a real Bevy 0.18 `App`, runs an auction to settlement (Case A: accepted bid + timer expiry), and asserts: (a) `S2CCardAcquired { source: AuctionWon }` is in the outbox unicast to the winner, (b) `S2CAuctionSettled { winner: Some(_), amount: _ }` is in the outbox broadcast, (c) `PlayerHands[winner]` contains `card_id` after settle, (d) the AC10 tracing log line was emitted (via `tracing-test` or equivalent harness). A second test asserts the Case B (no-winner) path emits no `S2CCardAcquired`, no hand mutation, and the AC10 log line with `winner = None`.
+- [x] **AC12 -- Server integration test: auction settle disposition + hand grant + tracing log**: A new test under `tests/integration/auction/` (or extension of existing `tests/integration/auction/*_test.rs` per local pattern; exact path chosen by the implementing worker) constructs a real Bevy 0.18 `App`, runs an auction to settlement (Case A: accepted bid + timer expiry), and asserts: (a) `S2CCardAcquired { source: AuctionWon }` is in the outbox unicast to the winner, (b) `S2CAuctionSettled { winner: Some(_), amount: _ }` is in the outbox broadcast, (c) `PlayerHands[winner]` contains `card_id` after settle, (d) the AC10 tracing log line was emitted (via `tracing-test` or equivalent harness). A second test asserts the Case B (no-winner) path emits no `S2CCardAcquired`, no hand mutation, and the AC10 log line with `winner = None`.
 
-- [ ] **AC13 -- Server integration test: hand persistence across PLACEMENT-end on no-submit path**: A new test (or extension) drives the RSM through `DraftAuction -> Placement -> Resolution` with the winner client NOT submitting the won-card in `C2SSubmitPlacement`, then asserts `PlayerHands[winner]` still contains the won-card at `Resolution` entry. This is the AC8 BLOCKING test.
+- [x] **AC13 -- Server integration test: hand persistence across PLACEMENT-end on no-submit path**: A new test (or extension) drives the RSM through `DraftAuction -> Placement -> Resolution` with the winner client NOT submitting the won-card in `C2SSubmitPlacement`, then asserts `PlayerHands[winner]` still contains the won-card at `Resolution` entry. This is the AC8 BLOCKING test.
 
-- [ ] **AC14 -- Client integration test: AC4 affordance + AC5 marker lifecycle**: A new test under `tests/integration/shop_auction_ui/` (e.g. `auction_won_card_disposition_test.rs`) constructs a real Bevy 0.18 client `App` (per existing `tests/integration/shop_auction_ui/` pattern), simulates the winner-side message sequence (`S2CAuctionSettled { winner: Some(local), amount: 4 } + S2CCardAcquired { card_id: 107, source: AuctionWon } + S2CPhaseChanged { target: Placement, timer_duration_ms: 12000 }`), and asserts: (a) the AC4 affordance entity is present and visible while PLACEMENT is active, (b) the AC5 marker is attached to the hand-fan entity for `card_id 107`, (c) staging the card via simulated drag-drop clears both AC4 and AC5, (d) on the no-op path (no drag-drop + simulated `S2CPhaseChanged { target: Resolution }`), both AC4 and AC5 clear at the phase change.
+- [x] **AC14 -- Client integration test: AC4 affordance + AC5 marker lifecycle**: A new test under `tests/integration/shop_auction_ui/` (e.g. `auction_won_card_disposition_test.rs`) constructs a real Bevy 0.18 client `App` (per existing `tests/integration/shop_auction_ui/` pattern), simulates the winner-side message sequence (`S2CAuctionSettled { winner: Some(local), amount: 4 } + S2CCardAcquired { card_id: 107, source: AuctionWon } + S2CPhaseChanged { target: Placement, timer_duration_ms: 12000 }`), and asserts: (a) the AC4 affordance entity is present and visible while PLACEMENT is active, (b) the AC5 marker is attached to the hand-fan entity for `card_id 107`, (c) staging the card via simulated drag-drop clears both AC4 and AC5, (d) on the no-op path (no drag-drop + simulated `S2CPhaseChanged { target: Resolution }`), both AC4 and AC5 clear at the phase change.
 
-- [ ] **AC15 -- Client integration test: AC7 loser-side toast lifecycle**: A new test (or extension of `tests/integration/shop_auction_ui/auction_settlement_test.rs` per local pattern) asserts the loser client renders the AC7 settlement toast on `S2CAuctionSettled { winner: Some(other), amount: y }` and clears per the existing settlement-transition timer.
+- [x] **AC15 -- Client integration test: AC7 loser-side toast lifecycle**: A new test (or extension of `tests/integration/shop_auction_ui/auction_settlement_test.rs` per local pattern) asserts the loser client renders the AC7 settlement toast on `S2CAuctionSettled { winner: Some(other), amount: y }` and clears per the existing settlement-transition timer.
 
-- [ ] **AC16 -- Client unit test: QA snapshot `auction_won_pending` block presence + clearing**: A new test under `tests/unit/qa_snapshot/` (or equivalent per local pattern) asserts: (a) the block is present on the winner client during auction-followup PLACEMENT, (b) the block is absent on non-winner clients, (c) the block is absent on non-auction-followup PLACEMENT, (d) the block becomes absent on phase-change to `Resolution`, (e) the block becomes absent on `C2SSubmitPlacement` including the won-card.
+- [x] **AC16 -- Client unit test: QA snapshot `auction_won_pending` block presence + clearing**: A new test under `tests/unit/qa_snapshot/` (or equivalent per local pattern) asserts: (a) the block is present on the winner client during auction-followup PLACEMENT, (b) the block is absent on non-winner clients, (c) the block is absent on non-auction-followup PLACEMENT, (d) the block becomes absent on phase-change to `Resolution`, (e) the block becomes absent on `C2SSubmitPlacement` including the won-card.
 
 ### Scope guards
 
-- [ ] **AC17 -- No protocol shape change**: GIVEN `git diff <activation HEAD>..HEAD`, WHEN inspected, THEN `shared/src/protocol.rs` is **NOT** modified. No new `S2C*` or `C2S*` message variants. No new `CardSource` variants. No new fields on `S2CAuctionSettled`, `S2CCardAcquired`, `S2CGameSnapshot`, or `S2CPhaseChanged`. The disposition contract relies on the **existing** `S2CCardAcquired { source: CardSource::AuctionWon }` + `S2CAuctionSettled { winner, amount }` pair already on `origin/main@05192b5`.
+- [x] **AC17 -- No protocol shape change**: GIVEN `git diff <activation HEAD>..HEAD`, WHEN inspected, THEN `shared/src/protocol.rs` is **NOT** modified. No new `S2C*` or `C2S*` message variants. No new `CardSource` variants. No new fields on `S2CAuctionSettled`, `S2CCardAcquired`, `S2CGameSnapshot`, or `S2CPhaseChanged`. The disposition contract relies on the **existing** `S2CCardAcquired { source: CardSource::AuctionWon }` + `S2CAuctionSettled { winner, amount }` pair already on `origin/main@05192b5`.
 
-- [ ] **AC18 -- No new authoritative server state**: GIVEN the implementation commit(s), WHEN inspected, THEN no new `Resource` is registered under `server/src/feature/auction/plugin.rs` or `server/src/feature/board/plugin.rs`. No new `AuctionPhase` variant. The only new server-side code is the AC10 tracing log line at the settle path (and any test-bin support code).
+- [x] **AC18 -- No new authoritative server state**: GIVEN the implementation commit(s), WHEN inspected, THEN no new `Resource` is registered under `server/src/feature/auction/plugin.rs` or `server/src/feature/board/plugin.rs`. No new `AuctionPhase` variant. The only new server-side code is the AC10 tracing log line at the settle path (and any test-bin support code).
 
-- [ ] **AC19 -- No new placement / drag pipeline**: GIVEN the implementation commit(s), WHEN inspected, THEN no source under `client/src/ui/hand/` placement drag-drop pipeline is rewritten, refactored, or moved. The won-card placement flow uses the **existing** drag-drop pipeline (`hand-ui.md` Rules 6-7) and the **existing** `C2SSubmitPlacement` message. **TQ-S12-C2 binding preserved** (no third same-scope drag-runtime retest). **AUDIT-1131-01 (placement cell-index translation) NOT closed by this row** — that is a distinct Lane A surface in PROMPT 1131 §7 and requires a separate story.
+- [x] **AC19 -- No new placement / drag pipeline**: GIVEN the implementation commit(s), WHEN inspected, THEN no source under `client/src/ui/hand/` placement drag-drop pipeline is rewritten, refactored, or moved. The won-card placement flow uses the **existing** drag-drop pipeline (`hand-ui.md` Rules 6-7) and the **existing** `C2SSubmitPlacement` message. **TQ-S12-C2 binding preserved** (no third same-scope drag-runtime retest). **AUDIT-1131-01 (placement cell-index translation) NOT closed by this row** — that is a distinct Lane A surface in PROMPT 1131 §7 and requires a separate story.
 
-- [ ] **AC20 -- ADR-021 schedule preserved**: GIVEN `cargo check -p client --workspace`, WHEN run, THEN no new `SystemSet`, no new `PresentationSet` slot, no new schedule wiring is introduced. The new winner-affordance system + the new hand-marker system live in the existing `PresentationSet` slots owned by `ShopAuctionUiPlugin` and Hand UI plugin respectively.
+- [x] **AC20 -- ADR-021 schedule preserved**: GIVEN `cargo check -p client --workspace`, WHEN run, THEN no new `SystemSet`, no new `PresentationSet` slot, no new schedule wiring is introduced. The new winner-affordance system + the new hand-marker system live in the existing `PresentationSet` slots owned by `ShopAuctionUiPlugin` and Hand UI plugin respectively.
 
-- [ ] **AC21 -- ADR-002 + ADR-013 preserved**: GIVEN the implementation commit(s), WHEN inspected, THEN no client-side optimistic auction state is introduced. The client renders only what server-authoritative state allows. ADR-013 (auction state machine) and ADR-019 (economy resource architecture) are unchanged.
+- [x] **AC21 -- ADR-002 + ADR-013 preserved**: GIVEN the implementation commit(s), WHEN inspected, THEN no client-side optimistic auction state is introduced. The client renders only what server-authoritative state allows. ADR-013 (auction state machine) and ADR-019 (economy resource architecture) are unchanged.
 
-- [ ] **AC22 -- Authoring-only scope contained for PROMPT 1137**: GIVEN PROMPT 1137 worker branch diff, WHEN inspected, THEN the only files modified by PROMPT 1137 are:
+- [x] **AC22 -- Authoring-only scope contained for PROMPT 1137**: GIVEN PROMPT 1137 worker branch diff, WHEN inspected, THEN the only files modified by PROMPT 1137 are:
   - `production/epics/shop-auction-ui/story-020-auction-won-card-disposition.md` (NEW; this file)
   - `production/epics/shop-auction-ui/EPIC.md` (index update only — appending story 020 row)
   - `reports/PROMPT-1137-auction-won-card-disposition-contract-story.md` (NEW; the report)
   No code under `client/`, `server/`, `shared/`, `tests/`. No GDD edit. No ADR edit. No sprint plan edit. No QA artifact edit. No production session-state edit. No `production/sprint-status.yaml` edit. No `production/stage.txt` edit. No Cargo / Trunk / CI edit. No skill / agent edit.
 
-- [ ] **AC23 -- Worker branch scope contained for the future `/dev-story` worker**: GIVEN the future implementation worker branch (slug recommendation: `work/s18-auction-won-card-disposition`), WHEN inspected, THEN it pushes only the worker branch — never `main`. Files changed at worker time are scoped to:
+- [x] **AC23 -- Worker branch scope contained for the future `/dev-story` worker**: GIVEN the future implementation worker branch (slug recommendation: `work/s18-auction-won-card-disposition`), WHEN inspected, THEN it pushes only the worker branch — never `main`. Files changed at worker time are scoped to:
   - `server/src/feature/auction/system.rs` (AC10 tracing log line — single tracing call added at the settle path; no behaviour change)
   - `client/src/ui/shop_auction/` (AC4 affordance + AC7 toast surface; one or more `.rs` files)
   - `client/src/ui/hand/` (AC5 newly-acquired marker; one or more `.rs` files)
@@ -209,9 +212,9 @@ All criteria are independently checkable.
   - `production/qa/evidence/sprint-<active>-auction-won-card-disposition/evidence.md` (NEW evidence doc, authored by `/dev-story` worker)
   Optionally: a small `assets/` chrome glyph for the AC5 marker if the implementing worker chooses a non-source-only strategy (placeholder-class asset only; `PAW-TD-*-a` accept-risk preserved).
 
-- [ ] **AC24 -- No accept-risk closure claimed**: GIVEN the commit message and any evidence document, WHEN inspected, THEN they explicitly do NOT claim closure of `S8-QA-001-W1`, `QA-COND-0005`, `QA-COND-0006`, `PAW-TD-*-a`, `TQ-S12-C1..C7`, `S11-HUD-TIMER-EYEBALL-VISUAL-001`, any AUDIT-1076-* finding, any SOURCE-1077-* finding, AUDIT-1131-01 (placement cell-index translation; separate Lane A), any 24 PROMPT 1022 audit finding, the PROMPT 761 `Polish->Release` `FAIL`, the Sprint 12 story 019 underlying drag-runtime bug, or any other accept-risk disposition outside AUDIT-1131-02.
+- [x] **AC24 -- No accept-risk closure claimed**: GIVEN the commit message and any evidence document, WHEN inspected, THEN they explicitly do NOT claim closure of `S8-QA-001-W1`, `QA-COND-0005`, `QA-COND-0006`, `PAW-TD-*-a`, `TQ-S12-C1..C7`, `S11-HUD-TIMER-EYEBALL-VISUAL-001`, any AUDIT-1076-* finding, any SOURCE-1077-* finding, AUDIT-1131-01 (placement cell-index translation; separate Lane A), any 24 PROMPT 1022 audit finding, the PROMPT 761 `Polish->Release` `FAIL`, the Sprint 12 story 019 underlying drag-runtime bug, or any other accept-risk disposition outside AUDIT-1131-02.
 
-- [ ] **AC25 -- Cargo resource policy applied for every Cargo command (future worker)**: future implementation MUST set the Cargo resource policy env vars (`CARGO_TARGET_DIR=D:\_DEV\cargo-target\ccgs-msvc`, `CARGO_PROFILE_DEV_DEBUG=0`, `CARGO_PROFILE_TEST_DEBUG=0`, `CARGO_INCREMENTAL=0`, `RUSTFLAGS='-C debuginfo=0 -C link-arg=/DEBUG:NONE'`) before every `cargo check` / `cargo test` invocation on Windows / MSVC. Story authoring (PROMPT 1137) does NOT invoke Cargo.
+- [x] **AC25 -- Cargo resource policy applied for every Cargo command (future worker)**: future implementation MUST set the Cargo resource policy env vars (`CARGO_TARGET_DIR=D:\_DEV\cargo-target\ccgs-msvc`, `CARGO_PROFILE_DEV_DEBUG=0`, `CARGO_PROFILE_TEST_DEBUG=0`, `CARGO_INCREMENTAL=0`, `RUSTFLAGS='-C debuginfo=0 -C link-arg=/DEBUG:NONE'`) before every `cargo check` / `cargo test` invocation on Windows / MSVC. Story authoring (PROMPT 1137) does NOT invoke Cargo.
 
 ---
 
@@ -382,4 +385,87 @@ Recommended Sprint 18 sequencing (if all rows are activated together): **A2 (pla
 
 ---
 
-`020: S18-AUCTION-WON-CARD-DISPOSITION-001: DRAFT`
+## Completion Notes (PROMPT 1713)
+
+### Implementation Lineage
+
+| Step | PROMPT | Commit | Key Result |
+|------|--------|--------|------------|
+| Story authoring | 1137 | `daca0790` | Story file created; no code change |
+| Sprint 18 activation | 1301 | `1345c6b8` | Row activated as Must Have |
+| Sprint 18 QA plan | 1318 | `8eedaf63` | QA plan authored; row disposition PENDING `/story-readiness` |
+| Story readiness batch | 1323 | — | Verdict: `READY_FOR_DEV_STORY` (0 blockers, 2 advisories on stale line-number citations) |
+| Worker implementation | 1347 | `426d9b8b` (`work/s18-auction-won-card-disposition-1347`) | 9 files, 1769 ins / 13 del; AC1–AC25 implemented |
+| Test backfill | 1409 | `f6d9aa16` | `QASnapshotData` literals backfilled with `auction_won_pending` |
+| Integration refresh | 1391 | `426d9b8b` (`integrate/s18-auction-won-card-disposition-1391`) | 37/37 tests PASS; cherry-pick clean; both PROMPT 1347 + 1348 surfaces preserved |
+| Wire-authoritative follow-up | 1513 | `5f09b1e9` | `S2CAuctionSettled.card_id` wired from server; client reads wire field instead of local auction state |
+| Integration follow-up | 1518 | `f69bd595` (`integrate/auction-won-card-disposition-1518`) | FF-eligible onto main; 8-file scope verified; clean |
+| Story-done paperwork | 1713 | (this commit) | AC1–AC25 all PASS; story + sprint-status updated |
+
+### Per-AC Outcomes (PROMPT 1713)
+
+| AC | Description | Verdict | Evidence |
+|----|-------------|---------|----------|
+| AC1 | Server hand-grant on settle unchanged | PASS | `auction_won_card_disposition_test` (server) 3/3 PASS via PROMPT 1391 |
+| AC2 | Loser receives no card | PASS | `auction_won_card_disposition_test` (server) unicast assertion; PROMPT 1391 |
+| AC3 | No-bid settlement grants no card | PASS | `auction_won_card_disposition_test` Case B path; PROMPT 1391 |
+| AC4 | Winner sees "Auction won" affordance in PLACEMENT window | PASS | `shop_auction_ui_auction_won_card_disposition_test` 5/5 PASS; `AuctionWonPending` resource + banner entity in `426d9b8b` |
+| AC5 | Newly-acquired hand marker lifecycle | PASS | `shop_auction_ui_auction_won_card_disposition_test` 5/5 PASS; `sync_auction_won_hand_marker_system` in `426d9b8b` |
+| AC6 | Won-card identity unambiguous on winner client | PASS | Integration test asserts same `card_id` for affordance + marker; PROMPT 1391 |
+| AC7 | Loser "opponent won for Yg" toast | PASS | `shop_auction_ui_auction_settlement_test` 7/7 PASS (toast price copy updated in `426d9b8b`) |
+| AC8 | Un-staged card persists across PLACEMENT end | PASS | `auction_won_card_disposition_test` (server) hand-persistence test; PROMPT 1391 |
+| AC9 | AC4 affordance + AC5 marker clear on PLACEMENT exit (no-op path) | PASS | `shop_auction_ui_auction_won_card_disposition_test` no-op path assertions; PROMPT 1391 |
+| AC10 | Server tracing log at settle | PASS | `event = "auction_settled"` tracing line added in `426d9b8b` `server/src/feature/auction/system.rs`; `auction_won_card_disposition_test` trace assertion |
+| AC11 | Client QA snapshot `auction_won_pending` block | PASS | `qa_snapshot_auction_won_pending_test` 7/7 PASS (presence, absence, clearing); `426d9b8b` `client/src/presentation/qa_snapshot.rs` |
+| AC12 | Server integration test: settle + hand-grant + trace | PASS | `auction_won_card_disposition_test` (server) 3/3 PASS; NEW `tests/integration/auction/auction_won_card_disposition_test.rs` |
+| AC13 | Server integration test: hand persistence on no-submit | PASS | `auction_won_card_disposition_test` (server) 3/3 PASS includes no-submit path |
+| AC14 | Client integration test: AC4/AC5 lifecycle | PASS | `shop_auction_ui_auction_won_card_disposition_test` 5/5 PASS; NEW `tests/integration/shop_auction_ui/auction_won_card_disposition_test.rs` |
+| AC15 | Client integration test: AC7 loser toast lifecycle | PASS | `shop_auction_ui_auction_settlement_test` 7/7 PASS (modified in `426d9b8b`) |
+| AC16 | Client unit test: QA snapshot block presence + clearing | PASS | `qa_snapshot_auction_won_pending_test` 7/7 PASS; NEW `tests/unit/qa_snapshot/auction_won_pending_test.rs` |
+| AC17 | No protocol shape change (worker scope) | PASS | Worker commit `426d9b8b` does not touch `shared/src/protocol.rs`; PROMPT 1391 forbidden-path diff clean. ADVISORY: PROMPT 1513 subsequently added `card_id` field to `S2CAuctionSettled` as a wire-authoritative follow-up enhancement (post-story, separate scope) |
+| AC18 | No new authoritative server state | PASS | `426d9b8b` adds only tracing log + client UI + tests; no new `Resource` or `AuctionPhase` variant |
+| AC19 | No new placement/drag pipeline | PASS | `client/src/ui/hand/drag*.rs` untouched; TQ-S12-C2 preserved; PROMPT 1391 forbidden-path diff |
+| AC20 | ADR-021 schedule preserved | PASS | No new `SystemSet`/`PresentationSet` slot; new systems live in existing `ShopAuctionUiPlugin` slots; `cargo check -p client` PASS |
+| AC21 | ADR-002 + ADR-013 preserved | PASS | No client-side optimistic auction state; commit message confirms; PROMPT 1391 scope-guard |
+| AC22 | PROMPT 1137 authoring scope contained | PASS | PROMPT 1137 diff: story file + EPIC.md index + report only; no code |
+| AC23 | Worker branch scope contained | PASS | Worker `work/s18-auction-won-card-disposition-1347`; 9 files within AC23 allowlist; never pushed `main` |
+| AC24 | No accept-risk closure claimed | PASS | Commit message + PROMPT 1391 preserve-non-claims section confirm; no carried condition closed |
+| AC25 | Cargo resource policy applied | PASS | PROMPT 1391 verification section confirms `CARGO_TARGET_DIR=D:/_DEV/cargo-target/ccgs-msvc` applied for all cargo invocations |
+
+**Overall verdict: DONE — AC1–AC25 all PASS (AC17 ADVISORY on PROMPT 1513 post-story protocol follow-up; does not affect story closure)**
+
+### Conditions Carried Forward Unchanged (PROMPT 1713)
+
+- Sprint 18 active / stage Polish / `production/stage.txt` NOT modified.
+- PROMPT 761 Polish→Release gate-check `FAIL` preserved; NO retry.
+- `S8-QA-001-W1` OPEN preserved.
+- `QA-COND-0005` + `QA-COND-0006` accepted-risk preserved.
+- `PAW-TD-*-a` placeholder-art accept-risk preserved.
+- `TQ-S12-C1..C7` preserved verbatim (TQ-S12-C2 drag-runtime binding preserved).
+- `S11-HUD-TIMER-EYEBALL-VISUAL-001` human-operator-blocked carry preserved; NOT closed.
+- All AUDIT-1076-* / SOURCE-1077-* / PROMPT 1022 / AUDIT-1131-* findings preserved except AUDIT-1131-02 (closed by this story's implementation).
+- AUDIT-1131-01 (placement cell-index translation) NOT closed by this row.
+- Sprint 18 NOT closed. Sprint 19 NOT activated.
+
+### Explicitly NOT Claimed by PROMPT 1713
+
+- Closure of AUDIT-1131-01 or any other AUDIT-1131-* finding outside AUDIT-1131-02.
+- Stage advance, Sprint 18 close-out, Sprint 19 activation.
+- Release readiness, RC readiness, full game completion.
+- QA-COND-0005/0006 advancement, PAW-TD-*-a final-art, S8-QA-001-W1 closure.
+
+---
+
+### Closure Trail
+
+| Step | PROMPT | Commit | Result |
+|------|--------|--------|--------|
+| Story authoring | 1137 | `daca0790` | Draft story file created |
+| Worker implementation | 1347 | `426d9b8b` | 9 files, 1769 ins; all ACs implemented |
+| Integration (PROMPT 1347) | 1391 | `426d9b8b` on `integrate/s18-auction-won-card-disposition-1391` | 37/37 PASS; main-landed |
+| Test backfill | 1409 | `f6d9aa16` | `auction_won_pending` literals backfilled |
+| Wire follow-up | 1513 | `5f09b1e9` | Wire-authoritative `S2CAuctionSettled.card_id` |
+| Integration (PROMPT 1513) | 1518 | `f69bd595` | FF onto main; scope-clean |
+| Story-done paperwork | 1713 | (this commit) | Status Draft→Done; AC1–AC25 [x] |
+
+`020: S18-AUCTION-WON-CARD-DISPOSITION-001: DONE`
