@@ -15,6 +15,7 @@ use crate::core::session::{
 };
 use crate::feature::acquisition::{hand_push, PlayerHands, MAX_HAND_SIZE};
 use crate::feature::board::{FakeObjectiveDestroyed, LaneId};
+use crate::feature::bot::state::BotPlayers;
 use crate::feature::objective::{
     HiddenObjectives, ObjectiveCounters, ObjectiveDestroyed, ObjectiveHp, ObjectiveSlot,
     PendingObjectiveEvents, OBJECTIVE_LANE_COUNT,
@@ -177,6 +178,7 @@ pub fn deliver_objective_identities_on_ready(
     mut identities_ready: MessageReader<ObjectiveIdentitiesReady>,
     hidden_objectives: Res<HiddenObjectives>,
     connections: Option<Res<PlayerConnectionMap>>,
+    bot_players: Option<Res<BotPlayers>>,
     mut reconnect_tracker: Option<ResMut<ReconnectTracker>>,
     mut network_outbox: Option<ResMut<ObjectiveNetworkOutbox>>,
     server: Query<&Server>,
@@ -201,7 +203,11 @@ pub fn deliver_objective_identities_on_ready(
             }
 
             if let (Some(server), Some(sender)) = (server, sender.as_mut()) {
-                send_objective_identities(sender, server, &dispatch);
+                let is_bot = bot_players
+                    .as_deref()
+                    .map(|b| b.contains(player_id))
+                    .unwrap_or(false);
+                send_objective_identities(sender, server, &dispatch, is_bot);
             }
         }
     }
@@ -614,6 +620,7 @@ fn send_objective_identities(
     sender: &mut ServerMultiMessageSender,
     server: &Server,
     dispatch: &ObjectiveIdentityDispatch,
+    is_bot: bool,
 ) {
     tracing::info!(
         target: "server::game",
@@ -624,11 +631,19 @@ fn send_objective_identities(
     );
 
     let Some(peer_id) = dispatch.peer_id else {
-        tracing::warn!(
-            target: "server::game",
-            player_id = dispatch.player_id.0,
-            "send_objective_identities DROPPED — peer_id unresolved; player not in PlayerConnectionMap or stale entry"
-        );
+        if is_bot {
+            tracing::trace!(
+                target: "server::game",
+                player_id = dispatch.player_id.0,
+                "send_objective_identities skipped — bot participant (server-internal, no peer)"
+            );
+        } else {
+            tracing::warn!(
+                target: "server::game",
+                player_id = dispatch.player_id.0,
+                "send_objective_identities DROPPED — peer_id unresolved; player not in PlayerConnectionMap or stale entry"
+            );
+        }
         return;
     };
 
