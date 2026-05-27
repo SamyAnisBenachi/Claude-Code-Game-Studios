@@ -65,11 +65,38 @@ GAME_OVER") chains the smaller ones.
 
 ## Acceptance Criteria (ledger; not gated by PROMPT 1608)
 
-- AC1: Recipe library exposes named recipes for: `lobby_create`,
-  `lobby_join`, `class_confirm`, `draft_initial`, `shop_buy`,
-  `auction_bid`, `auction_accept`, `placement_drag_drop`,
-  `placement_reject_recovery`, `resolution_view`, `result_ack`,
-  `next_loop_entry` (names may vary; the inventory is the gate).
+- AC1: Recipe library exposes named recipes covering the full game flow.
+  Inventory reconciled by PROMPT 1667 (2026-05-27) against
+  `tools/autoplay/recipes/__init__.py` as of PROMPT 1655:
+
+  | Registry name          | Conceptual AC1 origin                               | Landed   |
+  |------------------------|-----------------------------------------------------|----------|
+  | `smoke`                | utility / QA substrate (not a game-flow recipe)     | PROMPT 1609 |
+  | `idle`                 | utility / status-soak (not a game-flow recipe)      | PROMPT 1609 |
+  | `add-bot-lobby`        | `lobby_join` (superseded — see note below)          | PROMPT 1634 |
+  | `lobby-create`         | `lobby_create` (renamed)                            | PROMPT 1636 |
+  | `class-select`         | `class_confirm` (renamed)                           | PROMPT 1636 |
+  | `draft-auction-probe`  | `draft_initial` + `shop_buy` + `auction_bid` + `auction_accept` (merged — see note below) | PROMPT 1639 |
+  | `placement-drag-probe` | `placement_drag_drop` (renamed)                     | PROMPT 1639 |
+  | `resolution-observe`   | `resolution_view` (renamed)                         | PROMPT 1636 |
+  | `game-over-observe`    | `result_ack` (renamed)                              | PROMPT 1636 |
+  | `round-loop`           | `next_loop_entry` (renamed / expanded to multi-round composite) | PROMPT 1655 |
+  | `full-game`            | full-loop composite                                 | PROMPT 1655 |
+
+  **Mapping notes:**
+  - `lobby_join` is **superseded by `add-bot-lobby`** in bot-game mode.
+    The original AC1 assumed a second human client joining; the
+    implementation uses a bot opponent instead. `add-bot-lobby` is the
+    functional equivalent for automated play.
+  - `draft_initial`, `shop_buy`, `auction_bid`, and `auction_accept` are
+    **merged into `draft-auction-probe`**. These steps are always
+    sequential; no standalone use-case exists for any sub-step in v1.
+  - `placement_reject_recovery` is **descoped from v1**: no standalone
+    recipe exists in the registry. The rejection-recovery UX (unit bounces
+    back to hand after a server rejection) is partially exercised inside
+    `full-game` but is not addressable by name. This is **not an AC1
+    blocker for v1**; it is a candidate for `placement-reject-probe` in a
+    future v1.1 story or separate story ticket.
 - AC2: A `full_friend_game` recipe chains the above into a complete
   loop and reaches at least one full RESOLUTION cycle.
 - AC3: Recipes drive the real Bevy UI through pointer / keyboard /
@@ -95,9 +122,14 @@ GAME_OVER") chains the smaller ones.
 | 1601 | Main-landed | `client/src/autoplay.rs`, `tools/autoplay/**`, `docs/autoplay/**`, `skills/ccgs-autoplay` |
 | 1605 | Shipped | Focused verify (docs field-name concerns) |
 | 1606 | Shipped | Autoplay RPC/schema docs alignment |
+| 1609 | Main-landed | `smoke` + `idle` utility recipes; autoplay live-GUI smoke template |
+| 1634 | Main-landed | `add-bot-lobby` recipe; bot-game lobby setup |
+| 1636 | Main-landed | `lobby-create`, `class-select`, `resolution-observe`, `game-over-observe` recipes |
+| 1639 | Main-landed | `draft-auction-probe`, `placement-drag-probe` recipes |
+| 1655 | Main-landed | `round-loop`, `full-game` recipes; README recipe table refresh |
 
-Recipe library v1 is **not yet on `origin/main`** at the PROMPT 1608
-authoring tip.
+Recipe library v1 is **substantially landed** on `origin/main` as of
+PROMPT 1655. AC1 reconciliation completed by PROMPT 1667.
 
 ---
 
