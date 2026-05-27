@@ -81,7 +81,7 @@ use crate::feature::bot::state::{
 };
 use crate::foundation::config::CardCatalog;
 use shared::card::{CardId, CardType};
-use shared::protocol::{PlacedCardSubmit, PlayTarget};
+use shared::protocol::{CardSource, PlacedCardSubmit, PlayTarget};
 use shared::session::PlayerId;
 
 /// Convert the server-internal `RoundPhase` into the wire `shared::protocol`
@@ -995,6 +995,7 @@ fn pick_best_bot_card(
 /// `Local<HashSet<(PlayerId, u32)>>` keyed by `(bot_id, round_number)`.
 #[allow(clippy::too_many_arguments)]
 pub fn bot_draft_auto_pick(
+    time: Res<Time>,
     round_state: Option<Res<RoundState>>,
     session: Option<Res<SessionConfig>>,
     bots: Option<Res<BotPlayers>>,
@@ -1003,6 +1004,7 @@ pub fn bot_draft_auto_pick(
     mut economies: Option<ResMut<PlayerEconomies>>,
     mut pools: Option<ResMut<PlayerPools>>,
     catalog: Option<Res<CardCatalog>>,
+    mut decision_log: ResMut<BotDecisionLog>,
     mut auto_pick_done: Local<HashSet<(PlayerId, u32)>>,
 ) {
     let (Some(round_state), Some(session), Some(bots)) = (round_state, session, bots) else {
@@ -1046,6 +1048,21 @@ pub fn bot_draft_auto_pick(
                 round,
                 "bot_draft_auto_pick: no ShopState for bot — skipping"
             );
+            // No offering data at all — legal_action_count is unknown.
+            let ts = now_ms(&time);
+            let (seed, counter) = seed_snapshot(&bots, *bot_id);
+            decision_log.push(BotDecisionEntry {
+                round_number: round,
+                phase: protocol_phase(phase),
+                bot_player_id: *bot_id,
+                decision: BotDecisionKind::PurchaseSkipped {
+                    reason: "no_shop_state_for_bot",
+                },
+                timestamp_ms: ts,
+                legal_action_count: None,
+                seed,
+                seed_word_counter: counter,
+            });
             continue;
         };
 
@@ -1061,6 +1078,8 @@ pub fn bot_draft_auto_pick(
                 .collect(),
             _ => continue,
         };
+        // Cache once; used for legal_action_count in every branch below.
+        let displayed_count = displayed.len() as u32;
 
         if displayed.is_empty() {
             tracing::debug!(
@@ -1070,6 +1089,18 @@ pub fn bot_draft_auto_pick(
                 ?phase,
                 "bot_draft_auto_pick: offering is empty — skipping"
             );
+            let ts = now_ms(&time);
+            let (seed, counter) = seed_snapshot(&bots, *bot_id);
+            decision_log.push(BotDecisionEntry {
+                round_number: round,
+                phase: protocol_phase(phase),
+                bot_player_id: *bot_id,
+                decision: BotDecisionKind::PurchaseSkipped { reason: "offering_empty" },
+                timestamp_ms: ts,
+                legal_action_count: Some(0),
+                seed,
+                seed_word_counter: counter,
+            });
             continue;
         }
 
@@ -1086,9 +1117,23 @@ pub fn bot_draft_auto_pick(
                 round,
                 ?phase,
                 affordable_max,
-                displayed_count = displayed.len(),
+                displayed_count,
                 "bot_draft_auto_pick: no affordable card in offering — skipping"
             );
+            let ts = now_ms(&time);
+            let (seed, counter) = seed_snapshot(&bots, *bot_id);
+            decision_log.push(BotDecisionEntry {
+                round_number: round,
+                phase: protocol_phase(phase),
+                bot_player_id: *bot_id,
+                decision: BotDecisionKind::PurchaseSkipped {
+                    reason: "no_affordable_card",
+                },
+                timestamp_ms: ts,
+                legal_action_count: Some(displayed_count),
+                seed,
+                seed_word_counter: counter,
+            });
             continue;
         };
 
@@ -1099,6 +1144,18 @@ pub fn bot_draft_auto_pick(
                 round,
                 "bot_draft_auto_pick: PlayerPool missing for bot"
             );
+            let ts = now_ms(&time);
+            let (seed, counter) = seed_snapshot(&bots, *bot_id);
+            decision_log.push(BotDecisionEntry {
+                round_number: round,
+                phase: protocol_phase(phase),
+                bot_player_id: *bot_id,
+                decision: BotDecisionKind::PurchaseSkipped { reason: "pool_missing" },
+                timestamp_ms: ts,
+                legal_action_count: Some(displayed_count),
+                seed,
+                seed_word_counter: counter,
+            });
             continue;
         };
 
@@ -1122,6 +1179,23 @@ pub fn bot_draft_auto_pick(
                 card_id = card_id.0,
                 "bot_draft_auto_pick: card acquired for bot"
             );
+            let gold_after = economies.0.get(bot_id).map(|e| e.gold).unwrap_or(0);
+            let source = match phase {
+                RoundPhase::DraftInitial => CardSource::DraftInitial,
+                _ => CardSource::ShopPurchase,
+            };
+            let ts = now_ms(&time);
+            let (seed, counter) = seed_snapshot(&bots, *bot_id);
+            decision_log.push(BotDecisionEntry {
+                round_number: round,
+                phase: protocol_phase(phase),
+                bot_player_id: *bot_id,
+                decision: BotDecisionKind::Purchased { card_id, source, gold_after },
+                timestamp_ms: ts,
+                legal_action_count: Some(displayed_count),
+                seed,
+                seed_word_counter: counter,
+            });
         } else {
             tracing::warn!(
                 target: "server::bot",
@@ -1132,6 +1206,20 @@ pub fn bot_draft_auto_pick(
                 result = ?result,
                 "bot_draft_auto_pick: purchase attempt failed"
             );
+            let ts = now_ms(&time);
+            let (seed, counter) = seed_snapshot(&bots, *bot_id);
+            decision_log.push(BotDecisionEntry {
+                round_number: round,
+                phase: protocol_phase(phase),
+                bot_player_id: *bot_id,
+                decision: BotDecisionKind::PurchaseSkipped {
+                    reason: "purchase_attempt_failed",
+                },
+                timestamp_ms: ts,
+                legal_action_count: Some(displayed_count),
+                seed,
+                seed_word_counter: counter,
+            });
         }
     }
 }
