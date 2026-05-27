@@ -174,6 +174,28 @@ if ($LauncherRootNorm -ieq $PlayRootNorm) {
 # refuses to check out the same branch in two worktrees, so the dedicated
 # play/build checkout uses a separate local branch that tracks `origin/main`.
 $PlayBranchFallback = 'play-main'
+
+# Detect stub: path exists but has no .git (e.g. leftover from a pruned worktree).
+# git worktree add refuses to populate a non-empty directory, so we must abort early
+# with actionable instructions rather than proceeding to an opaque .git check failure.
+if ((Test-Path $PlayRoot) -and -not (Test-Path (Join-Path $PlayRoot '.git'))) {
+    Write-Host -ForegroundColor Red ""
+    Write-Host -ForegroundColor Red "ERROR: '$PlayRoot' exists but is not a git checkout (no .git directory)."
+    Write-Host -ForegroundColor Yellow "This is a leftover stub directory. Choose one of:"
+    Write-Host ""
+    Write-Host "  Option A — use the launcher checkout directly (fastest):"
+    Write-Host "    powershell -ExecutionPolicy Bypass -File tools\dev-launcher\Update-LatestMain.ps1 ``"
+    Write-Host "        -PlayRepoRoot '$LauncherRoot'"
+    Write-Host ""
+    Write-Host "  Option B — delete the stub so this script auto-creates a linked worktree:"
+    Write-Host "    Remove-Item -Recurse -Force '$PlayRoot'"
+    Write-Host "    (then re-run Update-LatestMain.ps1 without -PlayRepoRoot)"
+    Write-Host ""
+    Write-Host "  Option C — set the env var permanently:"
+    Write-Host "    `$env:CCGS_PLAY_REPO_ROOT = '$LauncherRoot'"
+    exit 1
+}
+
 if (-not (Test-Path $PlayRoot)) {
     Write-Section "Create play/build worktree"
     Write-Host "Path $PlayRoot does not exist -- creating as a linked git worktree."
