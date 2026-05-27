@@ -342,14 +342,42 @@ if (-not $DryRun) {
     # Wait for trigger to finish (DurationSeconds + 30s grace for shutdown).
     $waitMs = ($DurationSeconds + 30) * 1000
     $exited = $triggerProc.WaitForExit($waitMs)
+    $triggerExitSource = $null
     if (-not $exited) {
         Write-Warning "Trigger did not exit within grace window; force-stopping."
         try { Stop-Process -Id $triggerProc.Id -Force -ErrorAction Stop } catch {}
         $triggerExit = -1
+        $triggerExitSource = 'timeout-forced'
     } else {
         $triggerExit = $triggerProc.ExitCode
+        $triggerExitSource = 'process'
+        # Start-Process -PassThru on Windows can yield $null for ExitCode even
+        # after WaitForExit succeeds (handle-release race). Reconcile from
+        # final_state.json written by the trigger binary when available.
+        if ($null -eq $triggerExit) {
+            $finalStatePath = Join-Path $triggerEvidenceDir 'final_state.json'
+            if (Test-Path $finalStatePath) {
+                try {
+                    $fs = Get-Content $finalStatePath -Raw | ConvertFrom-Json
+                    if ($null -ne $fs.exit_code) {
+                        $triggerExit = [int]$fs.exit_code
+                        $triggerExitSource = 'final_state.json'
+                        Write-Warning "Trigger ExitCode was null; reconciled from final_state.json (exit_code=$triggerExit, endpoint_reached=$($fs.endpoint_reached))"
+                    } else {
+                        Write-Warning "Trigger ExitCode was null; final_state.json exists but exit_code field is absent."
+                        $triggerExitSource = 'final_state.json(no-field)'
+                    }
+                } catch {
+                    Write-Warning "Trigger ExitCode was null; final_state.json parse failed: $($_.Exception.Message)"
+                    $triggerExitSource = 'final_state.json(parse-error)'
+                }
+            } else {
+                Write-Warning "Trigger ExitCode was null and final_state.json not found at $finalStatePath"
+                $triggerExitSource = 'none'
+            }
+        }
     }
-    Write-Host "Trigger exit code: $triggerExit"
+    Write-Host "Trigger exit code: $triggerExit (source: $triggerExitSource)"
 } else {
     Write-Host "[DRY RUN] would launch: $triggerBin --server-url $serverUrl --overall-timeout-secs $DurationSeconds$(if ($MaxRounds -gt 0) { " --max-rounds $MaxRounds" }) --evidence-dir $triggerEvidenceDir"
 }
@@ -386,6 +414,7 @@ $summary = [ordered]@{
     trigger_bin                 = $triggerBin
     trigger_pid                 = if ($null -ne $triggerProc) { $triggerProc.Id } else { $null }
     trigger_exit_code           = $triggerExit
+    trigger_exit_code_source    = $triggerExitSource
     trigger_log                 = $triggerLog
     trigger_err                 = $triggerErr
     trigger_evidence_dir        = $triggerEvidenceDir
@@ -394,7 +423,7 @@ $summary = [ordered]@{
     ccgs_qa_snapshot_dir        = $env:CCGS_QA_SNAPSHOT_DIR
     ccgs_bot_max_rounds         = if ($MaxRounds -gt 0) { $MaxRounds } else { $null }
     dry_run                     = [bool]$DryRun
-    notes                       = "PROMPT 1603 launcher; PROMPT 1640 CCGS_BOT_MAX_ROUNDS; PROMPT 1671 port-detection; PROMPT 1672 bot-soak-trigger wired."
+    notes                       = "PROMPT 1603 launcher; PROMPT 1640 CCGS_BOT_MAX_ROUNDS; PROMPT 1671 port-detection; PROMPT 1672 bot-soak-trigger wired; PROMPT 1674 trigger exit-code reconciliation."
 }
 $summaryPath = Join-Path $evidenceDir 'soak-summary.json'
 if (-not $DryRun) {
