@@ -28,7 +28,12 @@ Recent bot-soak repair landings:
   output wiring for `CCGS_BOT_QA_SNAPSHOT_DIR`, and bot placement fail-safe
   debounce.
 - Worker windows `1674`, `1675`, `1676`, and `1677` have been cleared or are
-  no longer live; no active worker is known for this repair set.
+  no longer live.
+- Follow-up workers launched after the PASS:
+  `1678 BOT-PLACEMENT-LEGAL-UNIT-ACQUISITION-REPAIR` owns the remaining bot
+  gameplay-quality gap, and
+  `1679 BOT-SOAK-LAUNCHER-STALE-BINARY-REBUILD-GUARD` owns the tooling guard
+  against false failures from stale `server.exe` / `bot-soak-trigger.exe`.
 
 Post-landing verification:
 
@@ -63,9 +68,9 @@ Immediate next actions:
 
 1. Treat BOT-SOAK-ENTRYPOINT-001 runtime gate as PASS for the bounded headless
    path, using the `2026-05-27-121832-bot-vs-bot-soak` evidence.
-2. Launch the next implementation lane only if desired: improve bot placement
-   quality so the bot can acquire/play legal units instead of repeatedly using
-   the empty-placement fallback.
+2. Wait for `1678` and `1679` relays, integrate their branches if shipped, then
+   run a focused post-integration verify. `1678` should not run the live soak;
+   `1679` should avoid broad Cargo and preferably use static/DryRun validation.
 3. Keep live GUI autoplay-vs-bot as a separate human/interactive evidence gate;
    do not conflate it with the headless bot-vs-bot soak PASS.
 4. Do not launch story-done/shared-status writers for bot/autoplay until Sprint
