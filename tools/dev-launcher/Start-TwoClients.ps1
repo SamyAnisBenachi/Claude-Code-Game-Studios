@@ -110,9 +110,15 @@ if ($PSBoundParameters.ContainsKey('PlayRepoRoot') -and $PlayRepoRoot.Trim().Len
 } elseif ($env:CCGS_CANONICAL_MAIN_ROOT) {
     $PlayRoot       = $env:CCGS_CANONICAL_MAIN_ROOT.Trim()
     $PlayRootSource = '$env:CCGS_CANONICAL_MAIN_ROOT (alias)'
-} elseif (Test-Path $DefaultPlayRoot) {
+} elseif ((Test-Path $DefaultPlayRoot) -and (Test-Path (Join-Path $DefaultPlayRoot 'Cargo.toml'))) {
     $PlayRoot       = $DefaultPlayRoot
     $PlayRootSource = 'documented dedicated default'
+} elseif ((Test-Path $DefaultPlayRoot) -and -not (Test-Path (Join-Path $DefaultPlayRoot 'Cargo.toml'))) {
+    # Stub directory exists (e.g. leftover from a pruned worktree) but has no
+    # Cargo.toml -- treat it as unconfigured and fall through to launcher-root fallback.
+    Write-Warning "'$DefaultPlayRoot' exists but has no Cargo.toml (leftover stub). Falling back to launcher root. Run Update-LatestMain.ps1 or set CCGS_PLAY_REPO_ROOT to fix."
+    $PlayRoot       = $LauncherRoot
+    $PlayRootSource = 'launcher root (default stub is invalid — no Cargo.toml)'
 } else {
     # Last-resort fallback to the launcher root so a tester who never ran
     # Update-LatestMain.ps1 still gets a usable Start session. This is the
