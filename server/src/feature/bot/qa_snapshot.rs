@@ -91,7 +91,14 @@ pub const DEFAULT_PERIODIC_SNAPSHOT_INTERVAL_MS: u64 = 10_000;
 
 /// Snapshot schema version. Bump when the JSON shape changes in a way that
 /// breaks downstream evidence parsers.
-pub const BOT_QA_SNAPSHOT_SCHEMA_VERSION: u32 = 1;
+/// v2 (PROMPT 2048): renamed `DisconnectTrackerEntry.seconds_since_disconnect`
+/// to `grace_ms_remaining` to match what is actually stored
+/// (`RoundState.disconnect_trackers` is `HashMap<PlayerId, u32>` of
+/// milliseconds remaining before GAME_OVER, NOT seconds since disconnect).
+/// Healthy/fresh players legitimately read the full grace window
+/// (`disconnect_grace_seconds × 1000`, default 30000ms); only disconnected
+/// players tick down below that.
+pub const BOT_QA_SNAPSHOT_SCHEMA_VERSION: u32 = 2;
 
 /// Hard cap on the decision-log tail embedded in each snapshot. The full log
 /// already streams to `bot-decision-log.jsonl`; the tail is a convenience for
@@ -291,7 +298,14 @@ pub struct RoundSnapshot {
 #[derive(Serialize, Debug)]
 pub struct DisconnectTrackerEntry {
     pub player: PlayerId,
-    pub seconds_since_disconnect: u32,
+    /// Milliseconds remaining before GAME_OVER for this player. Mirrors
+    /// `RoundState.disconnect_trackers[player]`. Initialized to the full
+    /// grace window (`disconnect_grace_seconds × 1000`, default 30000ms) on
+    /// session start and on every reconnect/heartbeat receipt; only ticks
+    /// down while the player is disconnected. A value equal to the full
+    /// grace window indicates a healthy (connected) player, NOT a stale
+    /// tracker.
+    pub grace_ms_remaining: u32,
 }
 
 /// Per-timer remaining time, in milliseconds. `None` means the timer is not
@@ -523,7 +537,7 @@ pub fn assemble_snapshot(
                 .iter()
                 .map(|(p, s)| DisconnectTrackerEntry {
                     player: *p,
-                    seconds_since_disconnect: *s,
+                    grace_ms_remaining: *s,
                 })
                 .collect();
             v.sort_by_key(|e| e.player.0);
@@ -1314,7 +1328,7 @@ mod tests {
         let path = write_snapshot_to_disk(&snapshot, &out).expect("write");
         assert!(path.exists());
         let body = std::fs::read_to_string(&path).unwrap();
-        assert!(body.contains("\"schema_version\": 1"));
+        assert!(body.contains("\"schema_version\": 2"));
         assert!(body.contains("\"trigger\": \"initial\""));
     }
 
@@ -1365,6 +1379,128 @@ mod tests {
         assert_eq!(snap.hands[0].size, 3);
         assert_eq!(snap.decision_log_total, 2);
         assert_eq!(snap.decision_log_tail.len(), 2);
+    }
+
+    /// PROMPT 2048 / P1-001 regression coverage.
+    ///
+    /// After a session starts, every active player must appear in the
+    /// snapshot's `disconnect_trackers` with `grace_ms_remaining` equal to the
+    /// full grace window (`disconnect_grace_seconds × 1000`). A snapshot reader
+    /// must NOT be able to misread this as a stale/aged tracker — the field
+    /// reports milliseconds remaining before GAME_OVER, and the full grace
+    /// window IS the healthy initial state.
+    #[test]
+    fn fresh_session_disconnect_trackers_report_full_grace_window() {
+        use crate::core::rsm::state::{RoundPhase as RsmPhase, RoundState};
+
+        const GRACE_MS: u32 = 30_000;
+        let mut rs = RoundState::new();
+        rs.phase = RsmPhase::DraftInitial;
+        rs.round_number = 1;
+        rs.disconnect_trackers.insert(PlayerId(1), GRACE_MS);
+        rs.disconnect_trackers.insert(PlayerId(2), GRACE_MS);
+
+        let inputs = SnapshotInputs {
+            timestamp_ms: 100,
+            round_state: Some(&rs),
+            session: None,
+            bots: None,
+            decision_log: None,
+            auction: None,
+            economies: None,
+            hands: None,
+            board: None,
+            objectives: vec![],
+        };
+        let snap = assemble_snapshot(SnapshotTrigger::Initial, 1, &inputs);
+        let trackers = snap.round.expect("round").disconnect_trackers;
+        assert_eq!(trackers.len(), 2);
+        for entry in &trackers {
+            assert_eq!(
+                entry.grace_ms_remaining, GRACE_MS,
+                "fresh player {:?} must report full grace window, not stale",
+                entry.player,
+            );
+        }
+        // Players sorted by id so forensic readers see deterministic ordering.
+        assert_eq!(trackers[0].player, PlayerId(1));
+        assert_eq!(trackers[1].player, PlayerId(2));
+    }
+
+    /// PROMPT 2048 / P1-001 regression coverage.
+    ///
+    /// Only players whose tracker has been ticked down (i.e. actually
+    /// disconnected and counting toward GAME_OVER) report a `grace_ms_remaining`
+    /// strictly below the full grace window. A still-connected player must
+    /// continue to read full grace.
+    #[test]
+    fn only_disconnected_players_accrue_below_full_grace() {
+        use crate::core::rsm::state::{RoundPhase as RsmPhase, RoundState};
+
+        const GRACE_MS: u32 = 30_000;
+        let connected = PlayerId(1);
+        let disconnected = PlayerId(2);
+
+        let mut rs = RoundState::new();
+        rs.phase = RsmPhase::Placement;
+        rs.round_number = 3;
+        // Connected player: full grace.
+        rs.disconnect_trackers.insert(connected, GRACE_MS);
+        // Disconnected player: 5s have elapsed since the disconnect event,
+        // so remaining = 25_000 ms.
+        rs.disconnect_trackers.insert(disconnected, GRACE_MS - 5_000);
+
+        let inputs = SnapshotInputs {
+            timestamp_ms: 5_000,
+            round_state: Some(&rs),
+            session: None,
+            bots: None,
+            decision_log: None,
+            auction: None,
+            economies: None,
+            hands: None,
+            board: None,
+            objectives: vec![],
+        };
+        let snap = assemble_snapshot(SnapshotTrigger::Periodic, 7, &inputs);
+        let trackers = snap.round.expect("round").disconnect_trackers;
+        let connected_entry = trackers
+            .iter()
+            .find(|e| e.player == connected)
+            .expect("connected tracker");
+        let disconnected_entry = trackers
+            .iter()
+            .find(|e| e.player == disconnected)
+            .expect("disconnected tracker");
+        assert_eq!(
+            connected_entry.grace_ms_remaining, GRACE_MS,
+            "connected player must stay at full grace"
+        );
+        assert!(
+            disconnected_entry.grace_ms_remaining < GRACE_MS,
+            "disconnected player must read below full grace, got {}",
+            disconnected_entry.grace_ms_remaining,
+        );
+        assert_eq!(disconnected_entry.grace_ms_remaining, 25_000);
+    }
+
+    /// PROMPT 2048: lock the on-wire field name so a future rename cannot
+    /// silently break forensic tooling without a schema bump.
+    #[test]
+    fn disconnect_tracker_entry_serializes_as_grace_ms_remaining() {
+        let entry = DisconnectTrackerEntry {
+            player: PlayerId(7),
+            grace_ms_remaining: 30_000,
+        };
+        let json = serde_json::to_string(&entry).expect("serialize");
+        assert!(
+            json.contains("\"grace_ms_remaining\":30000"),
+            "expected grace_ms_remaining in JSON, got {json}"
+        );
+        assert!(
+            !json.contains("seconds_since_disconnect"),
+            "legacy mislabeled field must not appear: {json}"
+        );
     }
 
     #[test]
