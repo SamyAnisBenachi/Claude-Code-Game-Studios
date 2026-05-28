@@ -427,4 +427,21 @@ if ($smokeExit -eq 0) {
     Write-Host -ForegroundColor Red "Composite run FAILED (smoke exit=$smokeExit). Review $autoplayArtifactDir\launcher-status.json."
 }
 
+# ---- 10. Fast-lane evidence paths (PROMPT 1837) -----------------------------
+# Always print evidence paths at the very end so the operator does not need to
+# scroll back through build/soak output to find them.
+Write-Host ""
+Write-Host "---- Evidence paths ----" -ForegroundColor Cyan
+Write-Host "Composite dir:  $evidenceDir"
+Write-Host "Autoplay run:   $autoplayArtifactDir"
+Write-Host "Summary JSON:   $compositeSummaryPath"
+if (-not $DryRun -and $smokeExit -eq 0) {
+    $validateScript = Join-Path $LauncherRoot 'tools\autoplay\validate_composite_run.py'
+    if (Test-Path $validateScript) {
+        Write-Host ""
+        Write-Host "  Validate: python `"$validateScript`" `"$evidenceDir`"" -ForegroundColor DarkCyan
+    }
+}
+Write-Host "------------------------" -ForegroundColor Cyan
+
 exit $smokeExit
