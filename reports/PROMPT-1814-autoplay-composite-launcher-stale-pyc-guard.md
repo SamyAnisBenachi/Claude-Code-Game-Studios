@@ -1,7 +1,7 @@
 # PROMPT 1814 — AUTOPLAY-COMPOSITE-LAUNCHER-STALE-PYC-GUARD
 
-**Date:** 2026-05-28  
-**Branch:** `fix/1814-stale-pyc-guard`  
+**Date:** 2026-05-28
+**Branch:** `fix/1814-stale-pyc-guard`
 **Commit:** `4bf70c94`
 
 ---
