@@ -1074,8 +1074,19 @@ pub fn bot_draft_auto_pick(
         if auto_pick_done.contains(&key) {
             continue;
         }
-        // Record debounce up-front so repeated ticks in the same round skip
-        // even when the purchase fails (avoiding retry-spam on a bad offering).
+
+        if economies.0.get(bot_id).is_none() {
+            tracing::debug!(
+                target: "server::bot",
+                bot_player_id = ?bot_id,
+                round,
+                "bot_draft_auto_pick: no PlayerEconomy for bot yet - retrying next tick"
+            );
+            continue;
+        }
+
+        // Record debounce only after required bot state exists. If economy
+        // initialization races a frame behind draft start, the bot must retry.
         auto_pick_done.insert(key);
 
         let Some(shop_state) = shop_states.players.get(bot_id) else {
@@ -1299,11 +1310,15 @@ impl Plugin for BotActionLoopPlugin {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::core::economy::PlayerEconomy;
+    use crate::core::pool::PlayerPool;
     use crate::core::rsm::DraftReadySignal;
     use crate::core::session::config::SessionConfig;
+    use crate::feature::acquisition::{PlayerShopState, ShopPhase};
     use crate::feature::board::PlacementSubmissionReceived;
     use crate::feature::bot::state::BotState;
     use bevy::app::App;
+    use bevy::prelude::Update;
     use bevy::time::TimePlugin;
     use shared::card::ClassId;
     use shared::protocol::{GameMode, PlacementTimerMultiplier};
@@ -1361,6 +1376,111 @@ mod tests {
             .resource_mut::<bevy::ecs::message::Messages<PlacementSubmissionReceived>>()
             .drain()
             .collect()
+    }
+
+    fn make_draft_auto_pick_app(with_economy: bool) -> App {
+        let mut app = App::new();
+        app.add_plugins(TimePlugin);
+        app.add_systems(Update, bot_draft_auto_pick);
+
+        let mut round_state = RoundState::new();
+        round_state.phase = RoundPhase::DraftInitial;
+        round_state.round_number = 1;
+        app.insert_resource(round_state);
+        app.insert_resource(test_session_with_bot());
+
+        let mut bots = BotPlayers::default();
+        bots.insert(BotState::new(BOT_ID, BOT_ID.0));
+        app.insert_resource(bots);
+
+        app.insert_resource(make_catalog_with_cards(&[(10, CardType::Minion, 2)]));
+
+        let mut shop_state = PlayerShopState::default();
+        shop_state.phase = ShopPhase::DraftInitial;
+        shop_state.displayed_this_draft.insert(CardId(10));
+        let mut shop_states = ShopStates::default();
+        shop_states.players.insert(BOT_ID, shop_state);
+        app.insert_resource(shop_states);
+
+        app.insert_resource(PlayerHands::default());
+
+        let mut pools = PlayerPools::default();
+        pools.pools.insert(
+            BOT_ID,
+            PlayerPool {
+                copies_remaining: HashMap::from([(CardId(10), 1)]),
+                initial_count: HashMap::from([(CardId(10), 1)]),
+                shop_slots: Vec::new(),
+            },
+        );
+        app.insert_resource(pools);
+
+        let mut economies = PlayerEconomies::default();
+        if with_economy {
+            economies.0.insert(BOT_ID, bot_draft_economy());
+        }
+        app.insert_resource(economies);
+        app.init_resource::<BotDecisionLog>();
+
+        app
+    }
+
+    fn bot_draft_economy() -> PlayerEconomy {
+        PlayerEconomy {
+            gold: 5,
+            current_mana: 0,
+            reserve_mana: 0,
+            mana_cap: 0,
+            reserved_gold: 0,
+        }
+    }
+
+    #[test]
+    fn bot_draft_auto_pick_defers_without_debounce_when_economy_absent() {
+        let mut app = make_draft_auto_pick_app(false);
+
+        app.update();
+
+        assert_eq!(
+            app.world().resource::<PlayerHands>().hand_len(BOT_ID),
+            0,
+            "bot must not acquire a card while economy entry is absent"
+        );
+        assert_eq!(
+            app.world().resource::<BotDecisionLog>().len(),
+            0,
+            "missing economy should defer silently instead of recording a terminal decision"
+        );
+
+        app.world_mut()
+            .resource_mut::<PlayerEconomies>()
+            .0
+            .insert(BOT_ID, bot_draft_economy());
+
+        app.update();
+
+        let hands = app.world().resource::<PlayerHands>();
+        assert_eq!(
+            hands.hand_len(BOT_ID),
+            1,
+            "bot should retry and acquire once economy initializes"
+        );
+        assert_eq!(hands.hands.get(&BOT_ID).map(Vec::as_slice), Some(&[CardId(10)][..]));
+    }
+
+    #[test]
+    fn bot_draft_auto_pick_acquires_card_when_economy_initialized_on_first_frame() {
+        let mut app = make_draft_auto_pick_app(true);
+
+        app.update();
+
+        let hands = app.world().resource::<PlayerHands>();
+        assert_eq!(
+            hands.hand_len(BOT_ID),
+            1,
+            "bot should acquire immediately when draft state is complete"
+        );
+        assert_eq!(hands.hands.get(&BOT_ID).map(Vec::as_slice), Some(&[CardId(10)][..]));
     }
 
     #[test]
