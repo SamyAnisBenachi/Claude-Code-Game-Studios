@@ -527,6 +527,67 @@ pub fn result_screen_ledger_line(snapshot: Option<&S2CGameSnapshot>) -> String {
     )
 }
 
+/// Project a deterministic win/loss/draw headline + cause from the cached
+/// `S2CGameOver` when available, otherwise fall back to the cached GameOver
+/// snapshot's objective-destruction counts. PROMPT-2049 / P1-006: the
+/// authoritative `S2CGameOver` message can lag (or, per P1-013, the final
+/// snapshot can drop `session`) so the result screen must still be able to
+/// surface the outcome from the available game-state snapshot rather than
+/// stalling on "RESULT PENDING".
+pub fn result_screen_outcome_copy_with_snapshot(
+    result: Option<&S2CGameOver>,
+    snapshot: Option<&S2CGameSnapshot>,
+    local_player_id: Option<PlayerId>,
+) -> ResultScreenOutcomeCopy {
+    if result.is_some() {
+        return result_screen_outcome_copy(result, local_player_id);
+    }
+    let Some(snapshot) = snapshot else {
+        return result_screen_outcome_copy(None, local_player_id);
+    };
+    if snapshot.phase != RoundPhase::GameOver {
+        return result_screen_outcome_copy(None, local_player_id);
+    }
+
+    let local = local_player_id.unwrap_or(snapshot.recipient_player_id);
+    let Some(local_player) = snapshot.players.iter().find(|p| p.player_id == local) else {
+        return result_screen_outcome_copy(None, local_player_id);
+    };
+
+    let own_real_destroyed = local_player
+        .objectives
+        .iter()
+        .filter(|o| o.is_real && o.is_destroyed)
+        .count();
+    let opp_real_destroyed = local_player
+        .opponent_objectives
+        .iter()
+        .filter(|o| o.is_destroyed && o.was_fake == Some(false))
+        .count();
+
+    let local_lost = own_real_destroyed >= 2;
+    let opp_lost = opp_real_destroyed >= 2;
+
+    match (local_lost, opp_lost) {
+        (true, true) => ResultScreenOutcomeCopy {
+            headline: "DRAW".to_string(),
+            cause: "Both players lost real objectives in the same resolution.".to_string(),
+            has_result: true,
+        },
+        (true, false) => ResultScreenOutcomeCopy {
+            headline: "DEFEAT".to_string(),
+            cause: "Two of your real objectives were destroyed.".to_string(),
+            has_result: true,
+        },
+        (false, true) => ResultScreenOutcomeCopy {
+            headline: "VICTORY".to_string(),
+            cause: "Opponent lost two real objectives.".to_string(),
+            has_result: true,
+        },
+        (false, false) => result_screen_outcome_copy(None, local_player_id),
+    }
+}
+
 pub fn result_screen_outcome_copy(
     result: Option<&S2CGameOver>,
     local_player_id: Option<PlayerId>,
@@ -1506,7 +1567,11 @@ fn sync_result_screen_ui_system(
             .as_ref()
             .map(|snapshot| snapshot.recipient_player_id)
     });
-    let copy = result_screen_outcome_copy(view_state.cached_result.as_ref(), local_player_id);
+    let copy = result_screen_outcome_copy_with_snapshot(
+        view_state.cached_result.as_ref(),
+        view_state.cached_snapshot.as_ref(),
+        local_player_id,
+    );
     let summary = build_result_objective_summary(view_state.cached_snapshot.as_ref());
     let summary_text = result_screen_summary_text(
         view_state.cached_result.as_ref(),

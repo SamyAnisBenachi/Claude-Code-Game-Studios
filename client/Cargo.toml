@@ -456,6 +456,12 @@ path = "../tests/integration/presentation/result_screen_hero_accounting_polish_t
 name = "result_screen_chrome_polish_test"
 path = "../tests/integration/presentation/result_screen_chrome_polish_test.rs"
 
+# PROMPT 2049 -- P1-006 result outcome projection fallback (snapshot-derived
+# win/loss/draw when S2CGameOver is unavailable or lagging).
+[[test]]
+name = "result_screen_snapshot_projection_test"
+path = "../tests/integration/presentation/result_screen_snapshot_projection_test.rs"
+
 # S13-PROTO-ORPHAN-DRAIN-001 (Story 008 AC5): drain wiring + single-drainer
 # assertions for the S2C orphan Path A cluster (opponent connection +
 # session lifecycle + prism lifecycle).
