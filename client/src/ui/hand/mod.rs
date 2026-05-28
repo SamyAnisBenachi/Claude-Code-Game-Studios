@@ -90,12 +90,19 @@ pub const RESERVE_STRIP_ENTITY_COUNT: usize = 4;
 // playable-affordance overlay children (Playable + Unaffordable, mutually
 // exclusive visibility). Both are children of pre-pooled `FanSlotIndex`
 // entities — no new top-level pre-pool entries (ADR-021 Impl Guideline 5).
+// PROMPT 2046 — trailing `+ 1` accounts for the new `HandDraftGridRoot`
+// container that wraps the 9 draft-grid slots. It is tagged with
+// `HandUiEntity` so it is despawned with the hand-UI tree on session exit.
+// ADR-021 Impl Guideline 5: a single, fixed pre-pool entry — no per-card
+// spawn cost — added to centralise the previously hand-coded per-slot
+// `left/top` offsets behind a flex-centred container.
 pub const HAND_UI_ENTITY_COUNT: usize = HAND_FAN_SLOT_COUNT
     + DRAFT_INITIAL_GRID_SLOT_COUNT
     + 8
     + HAND_FAN_SLOT_COUNT * RESERVE_STRIP_ENTITY_COUNT
     + 1
     + HAND_FAN_SLOT_COUNT * 2
+    + 1
     + 1
     + 4
     + HAND_FAN_SLOT_COUNT * 2
@@ -108,7 +115,40 @@ const HAND_CARD_DISPLAY_WIDTH_PX: f32 = 108.0;
 const HAND_CARD_DISPLAY_HEIGHT_PX: f32 = 150.0;
 const HAND_DRAFT_GRID_CARD_WIDTH_PX: f32 = 120.0;
 const HAND_DRAFT_GRID_CARD_HEIGHT_PX: f32 = 56.0;
+
+// PROMPT 2046 — draft grid layout constants. Replaces the previous
+// hardcoded per-slot pixel offsets (`left: 96 + col * 132`, `top: 28 + row *
+// 66`) that anchored the 3x3 draft grid to the left edge of the full-width
+// `HandFanRoot` strip. The grid is now a dedicated container child of
+// `HandFanRoot`, centred horizontally with stable dimensions derived from
+// the card box + gaps. Per PROMPT 2040 audit §draft-grid: this removes the
+// hand-coded offsets and lets bevy_ui resolve slot positions through the
+// container's flex layout.
+const HAND_DRAFT_GRID_COLUMNS: usize = 3;
+const HAND_DRAFT_GRID_ROWS: usize = 3;
+const HAND_DRAFT_GRID_COL_GAP_PX: f32 = 12.0;
+const HAND_DRAFT_GRID_ROW_GAP_PX: f32 = 10.0;
+const HAND_DRAFT_GRID_PADDING_PX: f32 = 16.0;
+const HAND_DRAFT_GRID_BOTTOM_PX: f32 = 12.0;
+const HAND_DRAFT_GRID_WIDTH_PX: f32 = HAND_DRAFT_GRID_COLUMNS as f32
+    * HAND_DRAFT_GRID_CARD_WIDTH_PX
+    + (HAND_DRAFT_GRID_COLUMNS - 1) as f32 * HAND_DRAFT_GRID_COL_GAP_PX
+    + HAND_DRAFT_GRID_PADDING_PX * 2.0;
+const HAND_DRAFT_GRID_HEIGHT_PX: f32 = HAND_DRAFT_GRID_ROWS as f32
+    * HAND_DRAFT_GRID_CARD_HEIGHT_PX
+    + (HAND_DRAFT_GRID_ROWS - 1) as f32 * HAND_DRAFT_GRID_ROW_GAP_PX
+    + HAND_DRAFT_GRID_PADDING_PX * 2.0;
+
+// PROMPT 2046 — drag ghost dimensions. The 1.10x scale was previously
+// applied via a world-space `Transform::from_scale(...)` component on a UI
+// Node. Transform scale does not affect Node layout, so the rendered ghost
+// was 10% larger than its hit box and the visible center drifted from the
+// cursor by ~5px on each axis (and the audit flagged it as a UI/world
+// boundary crossing per ADR-021 R2). Bake the scale directly into the
+// Node's px width/height so the visible bounds match the layout bounds.
 const HAND_DRAG_SPRITE_SCALE: f32 = 1.10;
+const HAND_DRAG_GHOST_WIDTH_PX: f32 = HAND_CARD_DISPLAY_WIDTH_PX * HAND_DRAG_SPRITE_SCALE;
+const HAND_DRAG_GHOST_HEIGHT_PX: f32 = HAND_CARD_DISPLAY_HEIGHT_PX * HAND_DRAG_SPRITE_SCALE;
 
 #[derive(Resource, Debug, Clone, Copy, PartialEq)]
 pub struct HandFanLayoutConfig {
@@ -967,6 +1007,12 @@ pub struct HandUiEntities {
     pub hand_bar: Entity,
     pub fan_root: Entity,
     pub fan_slots: [Entity; HAND_FAN_SLOT_COUNT],
+    /// PROMPT 2046 — container entity that wraps the 9 draft-grid slots.
+    /// Visibility tracks `HandUiMode::Grid`; children use
+    /// `Visibility::Inherited` so the container's flex layout (centred
+    /// inside `fan_root`, see `hand_draft_grid_root_node`) owns slot
+    /// positioning instead of per-slot hand-coded pixel offsets.
+    pub draft_grid_root: Entity,
     pub grid_slots: [Entity; DRAFT_INITIAL_GRID_SLOT_COUNT],
     pub reserve_strips: [Entity; HAND_FAN_SLOT_COUNT],
     pub drag_sprite: Entity,
@@ -1018,6 +1064,15 @@ pub struct HandDraftGridSlotRoot;
 /// `hand_ui_phase_transition_system`.
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PlacementActionPanelRoot;
+
+/// PROMPT 2046 — container that holds the 9 draft-grid slots. Hosts the
+/// container-relative flex layout (3-column wrap, centred horizontally in
+/// `HandFanRoot`) so the slots themselves no longer need hand-coded
+/// `left`/`top` offsets. Visibility tracks `HandUiMode::Grid` via
+/// `hand_ui_phase_transition_system`; a Hidden grid root inherits Hidden
+/// onto every grid slot child.
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct HandDraftGridRoot;
 
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FanSlotIndex(pub u8);
@@ -1813,6 +1868,18 @@ pub fn hand_ui_phase_transition_system(
     set_visibility(
         entities.placement_action_panel,
         visibility_for(next_mode == HandUiMode::Staging),
+        &mut visibility_query,
+    );
+
+    // PROMPT 2046 — draft-grid container visibility tracks `HandUiMode::Grid`.
+    // The 9 grid slots themselves still carry per-slot Visibility because the
+    // existing offering-receive path explicitly toggles slots Visible (when
+    // they have a card) and Hidden (when they do not). Toggling the
+    // container too means an empty offering does not paint a stray border
+    // rectangle when leaving Grid mode.
+    set_visibility(
+        entities.draft_grid_root,
+        visibility_for(next_mode == HandUiMode::Grid),
         &mut visibility_query,
     );
 
@@ -3494,12 +3561,17 @@ pub fn sync_hand_drag_sprite_position_system(
         return;
     };
     for mut node in &mut drag_sprite {
-        // PROMPT 1696 — center the ghost under the cursor rather than
-        // anchoring its top-left corner there. The Node is sized
-        // HAND_CARD_DISPLAY_WIDTH_PX × HAND_CARD_DISPLAY_HEIGHT_PX, so
-        // half-width / half-height gives the centering offset.
-        node.left = Val::Px(position.x - HAND_CARD_DISPLAY_WIDTH_PX / 2.0);
-        node.top = Val::Px(position.y - HAND_CARD_DISPLAY_HEIGHT_PX / 2.0);
+        // PROMPT 2046 — centre the ghost under the cursor using the BAKED
+        // ghost dimensions (`HAND_DRAG_GHOST_*_PX = HAND_CARD_DISPLAY_*_PX
+        // * HAND_DRAG_SPRITE_SCALE`). Previously the centering used the
+        // UNSCALED card display dimensions while a `Transform::from_scale`
+        // on the Node rendered the ghost ~10% larger, so the visible centre
+        // drifted from the cursor by ~5 px on each axis. The Transform
+        // scale path was removed at the spawn site and the scale lives in
+        // the Node's width/height instead, so the same px values centre the
+        // rendered ghost exactly under the cursor.
+        node.left = Val::Px(position.x - HAND_DRAG_GHOST_WIDTH_PX / 2.0);
+        node.top = Val::Px(position.y - HAND_DRAG_GHOST_HEIGHT_PX / 2.0);
     }
 }
 
@@ -4351,6 +4423,24 @@ pub fn spawn_hand_ui(
         slot
     });
 
+    // PROMPT 2046 — dedicated draft-grid container, parented to fan_root,
+    // centred horizontally with stable dimensions. Replaces the previous
+    // per-slot hand-coded `left: 96 + col*132` / `top: 28 + row*66` pixel
+    // offsets (PROMPT 2040 audit finding) with container-relative flex
+    // layout. Visibility tracks `HandUiMode::Grid` via
+    // `hand_ui_phase_transition_system`; children inherit Hidden when the
+    // container is Hidden.
+    let draft_grid_root = commands
+        .spawn((
+            Name::new("Hand UI Draft Grid Root"),
+            HandUiEntity,
+            HandDraftGridRoot,
+            hand_draft_grid_root_node(),
+            Visibility::Hidden,
+            ChildOf(fan_root),
+        ))
+        .id();
+
     let grid_slots = std::array::from_fn(|index| {
         commands
             .spawn((
@@ -4362,8 +4452,13 @@ pub fn spawn_hand_ui(
                 Interaction::None,
                 hand_draft_grid_slot_node(index),
                 BackgroundColor(HAND_CARD_SLOT_BACKGROUND),
+                // PROMPT 2046 — preserve the existing per-slot Hidden
+                // default; offering-receive paths flip individual slots
+                // Visible. The new `HandDraftGridRoot` parent is also Hidden
+                // until `HandUiMode::Grid` so the container's flex layout
+                // does not paint while no offering is in flight.
                 Visibility::Hidden,
-                ChildOf(fan_root),
+                ChildOf(draft_grid_root),
             ))
             .id()
     });
@@ -4380,7 +4475,13 @@ pub fn spawn_hand_ui(
             // PROMPT 1696 — accent border so the ghost reads as a distinct
             // floating card and not a duplicate of the source slot.
             BorderColor::all(drag_state_visuals::accent_color()),
-            Transform::from_scale(Vec3::splat(HAND_DRAG_SPRITE_SCALE)),
+            // PROMPT 2046 — `Transform::from_scale(splat(HAND_DRAG_SPRITE_SCALE))`
+            // removed. The 1.10x scale is now baked into the Node's px
+            // width/height (`HAND_DRAG_GHOST_WIDTH_PX/HEIGHT_PX`) so the
+            // ghost no longer relies on a world-space Transform-scale path
+            // applied to a UI Node (ADR-021 R2 violation flagged by PROMPT
+            // 2040). The default identity Transform required-component is
+            // inserted automatically by bevy_ui in 0.18.
             Visibility::Hidden,
             ChildOf(fan_root),
             z_layers::UI_OVERLAY,
@@ -4572,6 +4673,7 @@ pub fn spawn_hand_ui(
         hand_bar,
         fan_root,
         fan_slots,
+        draft_grid_root,
         grid_slots,
         reserve_strips,
         drag_sprite,
@@ -4986,13 +5088,48 @@ fn fan_slot_icon_node(anchor: SlotIconAnchor) -> Node {
     }
 }
 
-fn hand_draft_grid_slot_node(index: usize) -> Node {
-    let column = index % 3;
-    let row = index / 3;
+/// PROMPT 2046 — container node for the 9 draft-grid slots. Centred
+/// horizontally inside `HandFanRoot` (which spans the full viewport width)
+/// via `left: 50%` + a negative `margin_left` of half the container width.
+/// Children use `position_type: Relative` and the container's row-flex +
+/// wrap layout auto-positions them in row-major order so no per-slot
+/// hand-coded pixel offsets remain in `hand_draft_grid_slot_node`. The
+/// `column_gap` / `row_gap` / `padding` values match the previous
+/// `132 - 120 = 12 px` column gap and `66 - 56 = 10 px` row gap visually.
+fn hand_draft_grid_root_node() -> Node {
     Node {
         position_type: PositionType::Absolute,
-        left: Val::Px(96.0 + column as f32 * 132.0),
-        top: Val::Px(28.0 + row as f32 * 66.0),
+        left: Val::Percent(50.0),
+        bottom: Val::Px(HAND_DRAFT_GRID_BOTTOM_PX),
+        width: Val::Px(HAND_DRAFT_GRID_WIDTH_PX),
+        height: Val::Px(HAND_DRAFT_GRID_HEIGHT_PX),
+        margin: UiRect {
+            left: Val::Px(-HAND_DRAFT_GRID_WIDTH_PX / 2.0),
+            right: Val::Auto,
+            top: Val::Auto,
+            bottom: Val::Auto,
+        },
+        display: Display::Flex,
+        flex_direction: FlexDirection::Row,
+        flex_wrap: FlexWrap::Wrap,
+        align_content: AlignContent::FlexStart,
+        align_items: AlignItems::FlexStart,
+        justify_content: JustifyContent::FlexStart,
+        column_gap: Val::Px(HAND_DRAFT_GRID_COL_GAP_PX),
+        row_gap: Val::Px(HAND_DRAFT_GRID_ROW_GAP_PX),
+        padding: UiRect::all(Val::Px(HAND_DRAFT_GRID_PADDING_PX)),
+        ..default()
+    }
+}
+
+/// PROMPT 2046 — per-slot node. Now position-Relative inside the
+/// `HandDraftGridRoot` container so flex-wrap row layout auto-places each
+/// slot in row-major order at a stable centre-anchored origin. The previous
+/// `left: 96 + col*132` / `top: 28 + row*66` magic numbers (PROMPT 2040
+/// audit finding) are gone; container `padding` + `column_gap`/`row_gap`
+/// own the offsets.
+fn hand_draft_grid_slot_node(_index: usize) -> Node {
+    Node {
         width: Val::Px(HAND_DRAFT_GRID_CARD_WIDTH_PX),
         height: Val::Px(HAND_DRAFT_GRID_CARD_HEIGHT_PX),
         border: UiRect::all(Val::Px(1.0)),
@@ -5000,11 +5137,20 @@ fn hand_draft_grid_slot_node(index: usize) -> Node {
     }
 }
 
+/// PROMPT 2046 — drag ghost overlay node. The previous spawn applied a
+/// `Transform::from_scale(Vec3::splat(1.10))` to a UI Node so the ghost
+/// rendered 10 % larger than its layout box (the audit's "drag ghost
+/// world-space Sprite path crossing ADR-021 R2"). Transform scale on a UI
+/// Node renders larger but does not shift the Node's `left`/`top` anchor,
+/// so the visible ghost drifted from the cursor by half the scale delta.
+/// We now bake the 1.10× scale into the Node's px width/height directly
+/// (UI-coordinate space, no Transform crossing), and the per-frame sync
+/// system centres the ghost using these baked dimensions.
 fn hand_drag_sprite_node() -> Node {
     Node {
         position_type: PositionType::Absolute,
-        width: Val::Px(HAND_CARD_DISPLAY_WIDTH_PX),
-        height: Val::Px(HAND_CARD_DISPLAY_HEIGHT_PX),
+        width: Val::Px(HAND_DRAG_GHOST_WIDTH_PX),
+        height: Val::Px(HAND_DRAG_GHOST_HEIGHT_PX),
         // PROMPT 1696 — 2 px accent border makes the ghost visually
         // distinct from the source slot while dragging.
         border: UiRect::all(Val::Px(2.0)),
