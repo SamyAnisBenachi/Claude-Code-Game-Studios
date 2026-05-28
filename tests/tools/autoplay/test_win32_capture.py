@@ -39,9 +39,11 @@ if str(_TOOLS_AUTOPLAY) not in sys.path:
 
 import win_capture  # noqa: E402
 from win_capture import (  # noqa: E402
+    _capture_hwnd_bitblt_to_png,
     _capture_hwnd_to_png,
     _write_png,
     capture_game_window,
+    capture_game_window_desktop_bitblt,
     is_available,
 )
 
@@ -844,9 +846,10 @@ class TestDriverWin32CaptureOrchestration:
         )
 
     def test_driver_logs_win32_capture_result(self):
-        # Assert: driver.py logs win32_capture=OK/FAILED after the call
-        assert "win32_capture=" in self._DRIVER_SOURCE, (
-            "driver.py must log win32_capture=OK/FAILED after the _win32_capture call"
+        # PROMPT 1813 renamed the label to win32_printwindow= to distinguish it
+        # from the new desktop_bitblt= label.
+        assert "win32_printwindow=" in self._DRIVER_SOURCE, (
+            "driver.py must log win32_printwindow=OK/FAILED after the _win32_capture call"
         )
 
     def test_driver_has_dwm_settle_sleep_after_ensure_foreground(self):
@@ -857,4 +860,443 @@ class TestDriverWin32CaptureOrchestration:
         sleep_idx = src.index("time.sleep(0.12)", fg_idx)
         assert fg_idx < sleep_idx < capture_idx, (
             "time.sleep(0.12) must appear after ensure_foreground and before _win32_capture"
+        )
+
+
+# ---------------------------------------------------------------------------
+# 9. TestCaptureHwndBitblt (PROMPT 1813) — desktop BitBlt backend unit tests
+# ---------------------------------------------------------------------------
+
+class TestCaptureHwndBitblt:
+    """Unit tests for _capture_hwnd_bitblt_to_png (desktop_bitblt backend)."""
+
+    def _make_happy_user32(self, width: int = 4, height: int = 2) -> MagicMock:
+        user32 = MagicMock()
+
+        def _fill_rect(hwnd, byref_rect):
+            r = byref_rect._obj
+            r.left, r.top, r.right, r.bottom = 10, 20, 10 + width, 20 + height
+            return 1
+
+        user32.GetWindowRect.side_effect = _fill_rect
+        user32.GetDC.return_value = 0x100   # desktop_dc
+        user32.ReleaseDC.return_value = 1
+        return user32
+
+    def _make_happy_gdi32(self, width: int = 4, height: int = 2) -> MagicMock:
+        gdi32 = MagicMock()
+        gdi32.CreateCompatibleDC.return_value = 0x200
+        gdi32.CreateCompatibleBitmap.return_value = 0x300
+        gdi32.SelectObject.return_value = 0x400
+        gdi32.BitBlt.return_value = 1  # SRCCOPY success
+        gdi32.DeleteObject.return_value = 1
+        gdi32.DeleteDC.return_value = 1
+
+        def _getdibits(_mem_dc, _bmp, _start, _nlines, pixel_buf, _bi, _mode):
+            for i in range(width * height):
+                pixel_buf[i * 4] = 80      # B
+                pixel_buf[i * 4 + 1] = 120  # G
+                pixel_buf[i * 4 + 2] = 200  # R
+                pixel_buf[i * 4 + 3] = 255  # A
+            return height
+
+        gdi32.GetDIBits.side_effect = _getdibits
+        return gdi32
+
+    def test_desktop_bitblt_returns_false_when_getrect_fails(self, tmp_path):
+        # Arrange
+        user32 = MagicMock()
+        user32.GetWindowRect.return_value = 0
+        user32.GetDC.return_value = 0
+        user32.ReleaseDC.return_value = 1
+        gdi32 = MagicMock()
+        gdi32.DeleteDC.return_value = 1
+
+        lines, log = _log()
+
+        # Act
+        result = _capture_hwnd_bitblt_to_png(0x1001, tmp_path / "out.png", log, user32=user32, gdi32=gdi32)
+
+        # Assert
+        assert result is False
+        assert any("GetWindowRect failed" in l for l in lines)
+
+    def test_desktop_bitblt_returns_false_when_window_is_minimised(self, tmp_path):
+        # Arrange: zero-size rect (minimised window)
+        user32 = MagicMock()
+
+        def _fill_zero(hwnd, byref_rect):
+            r = byref_rect._obj
+            r.left, r.top, r.right, r.bottom = 0, 0, 0, 0
+            return 1
+
+        user32.GetWindowRect.side_effect = _fill_zero
+        user32.GetDC.return_value = 0x100
+        user32.ReleaseDC.return_value = 1
+        gdi32 = MagicMock()
+        gdi32.DeleteDC.return_value = 1
+
+        lines, log = _log()
+
+        # Act
+        result = _capture_hwnd_bitblt_to_png(0x1001, tmp_path / "out.png", log, user32=user32, gdi32=gdi32)
+
+        # Assert
+        assert result is False
+        assert any("zero-size window" in l for l in lines)
+
+    def test_desktop_bitblt_returns_false_when_getdc_null_fails(self, tmp_path):
+        # Arrange
+        user32 = MagicMock()
+
+        def _fill_rect(hwnd, byref_rect):
+            r = byref_rect._obj
+            r.left, r.top, r.right, r.bottom = 0, 0, 100, 100
+            return 1
+
+        user32.GetWindowRect.side_effect = _fill_rect
+        user32.GetDC.return_value = 0   # GetDC(NULL) fails
+        user32.ReleaseDC.return_value = 1
+        gdi32 = MagicMock()
+        gdi32.DeleteDC.return_value = 1
+
+        lines, log = _log()
+
+        # Act
+        result = _capture_hwnd_bitblt_to_png(0x1001, tmp_path / "out.png", log, user32=user32, gdi32=gdi32)
+
+        # Assert
+        assert result is False
+        assert any("GetDC(NULL) failed" in l for l in lines)
+
+    def test_desktop_bitblt_returns_false_when_create_compatible_dc_fails(self, tmp_path):
+        # Arrange
+        user32 = self._make_happy_user32()
+        gdi32 = MagicMock()
+        gdi32.CreateCompatibleDC.return_value = 0   # failure
+        gdi32.DeleteDC.return_value = 1
+
+        lines, log = _log()
+
+        # Act
+        result = _capture_hwnd_bitblt_to_png(0x1001, tmp_path / "out.png", log, user32=user32, gdi32=gdi32)
+
+        # Assert
+        assert result is False
+        assert any("CreateCompatibleDC failed" in l for l in lines)
+
+    def test_desktop_bitblt_returns_false_when_create_bitmap_fails(self, tmp_path):
+        # Arrange
+        user32 = self._make_happy_user32()
+        gdi32 = MagicMock()
+        gdi32.CreateCompatibleDC.return_value = 0x200
+        gdi32.CreateCompatibleBitmap.return_value = 0  # failure
+        gdi32.DeleteDC.return_value = 1
+        gdi32.DeleteObject.return_value = 1
+
+        lines, log = _log()
+
+        # Act
+        result = _capture_hwnd_bitblt_to_png(0x1001, tmp_path / "out.png", log, user32=user32, gdi32=gdi32)
+
+        # Assert
+        assert result is False
+        assert any("CreateCompatibleBitmap failed" in l for l in lines)
+
+    def test_desktop_bitblt_returns_false_when_bitblt_fails(self, tmp_path):
+        # Arrange
+        user32 = self._make_happy_user32()
+        gdi32 = self._make_happy_gdi32()
+        gdi32.BitBlt.return_value = 0  # BitBlt failure
+
+        lines, log = _log()
+
+        # Act
+        result = _capture_hwnd_bitblt_to_png(0x1001, tmp_path / "out.png", log, user32=user32, gdi32=gdi32)
+
+        # Assert
+        assert result is False
+        assert any("BitBlt failed" in l for l in lines)
+
+    def test_desktop_bitblt_returns_false_when_getdibits_returns_zero(self, tmp_path):
+        # Arrange
+        user32 = self._make_happy_user32()
+        gdi32 = self._make_happy_gdi32()
+        gdi32.GetDIBits.side_effect = None
+        gdi32.GetDIBits.return_value = 0  # failure
+
+        lines, log = _log()
+
+        # Act
+        result = _capture_hwnd_bitblt_to_png(0x1001, tmp_path / "out.png", log, user32=user32, gdi32=gdi32)
+
+        # Assert
+        assert result is False
+        assert any("GetDIBits returned" in l for l in lines)
+
+    def test_desktop_bitblt_returns_false_for_all_zero_pixels(self, tmp_path):
+        # Arrange: blank image (all pixels zero) even though BitBlt succeeded
+        user32 = self._make_happy_user32(width=4, height=2)
+        gdi32 = self._make_happy_gdi32(width=4, height=2)
+
+        def _getdibits_blank(_mem_dc, _bmp, _start, _nlines, pixel_buf, _bi, _mode):
+            # Leave pixel_buf all-zero
+            return 2
+
+        gdi32.GetDIBits.side_effect = _getdibits_blank
+
+        lines, log = _log()
+
+        # Act
+        result = _capture_hwnd_bitblt_to_png(0x1001, tmp_path / "out.png", log, user32=user32, gdi32=gdi32)
+
+        # Assert
+        assert result is False
+        assert any("blank image detected" in l for l in lines)
+
+    def test_desktop_bitblt_happy_path_writes_valid_png(self, tmp_path):
+        # Arrange
+        width, height = 4, 2
+        user32 = self._make_happy_user32(width, height)
+        gdi32 = self._make_happy_gdi32(width, height)
+        out = tmp_path / "bitblt_cap.png"
+        lines, log = _log()
+
+        # Act
+        result = _capture_hwnd_bitblt_to_png(0x1001, out, log, user32=user32, gdi32=gdi32)
+
+        # Assert
+        assert result is True
+        assert out.exists(), "PNG file must be written"
+        assert out.stat().st_size > 0
+        assert out.read_bytes()[:8] == b"\x89PNG\r\n\x1a\n"
+
+    def test_desktop_bitblt_happy_path_logs_pixel_hash(self, tmp_path):
+        # Arrange
+        width, height = 4, 2
+        user32 = self._make_happy_user32(width, height)
+        gdi32 = self._make_happy_gdi32(width, height)
+        lines, log = _log()
+
+        # Act
+        result = _capture_hwnd_bitblt_to_png(0x1001, tmp_path / "out.png", log, user32=user32, gdi32=gdi32)
+
+        # Assert
+        assert result is True
+        assert any("pixel_hash=" in l for l in lines)
+
+    def test_desktop_bitblt_happy_path_logs_png_written(self, tmp_path):
+        # Arrange
+        width, height = 4, 2
+        user32 = self._make_happy_user32(width, height)
+        gdi32 = self._make_happy_gdi32(width, height)
+        lines, log = _log()
+
+        # Act
+        _capture_hwnd_bitblt_to_png(0x1001, tmp_path / "out.png", log, user32=user32, gdi32=gdi32)
+
+        # Assert
+        assert any("PNG written" in l for l in lines)
+
+    def test_desktop_bitblt_uses_screen_origin_for_bitblt(self, tmp_path):
+        """BitBlt source X/Y must be the window's screen-space left/top."""
+        # Arrange: window positioned at screen (50, 80)
+        width, height = 4, 2
+        user32 = MagicMock()
+
+        def _fill_rect(hwnd, byref_rect):
+            r = byref_rect._obj
+            r.left, r.top, r.right, r.bottom = 50, 80, 50 + width, 80 + height
+            return 1
+
+        user32.GetWindowRect.side_effect = _fill_rect
+        user32.GetDC.return_value = 0x100
+        user32.ReleaseDC.return_value = 1
+
+        gdi32 = self._make_happy_gdi32(width, height)
+        bitblt_calls: list[tuple] = []
+
+        original_bitblt = gdi32.BitBlt
+
+        def _track_bitblt(dst_dc, dst_x, dst_y, w, h, src_dc, src_x, src_y, rop):
+            bitblt_calls.append((src_x, src_y))
+            return 1
+
+        gdi32.BitBlt.side_effect = _track_bitblt
+
+        lines, log = _log()
+
+        # Act
+        _capture_hwnd_bitblt_to_png(0x1001, tmp_path / "out.png", log, user32=user32, gdi32=gdi32)
+
+        # Assert: BitBlt source must use window screen-space origin
+        assert len(bitblt_calls) == 1, "BitBlt must be called exactly once"
+        src_x, src_y = bitblt_calls[0]
+        assert src_x == 50, f"BitBlt source X must be rect.left=50, got {src_x}"
+        assert src_y == 80, f"BitBlt source Y must be rect.top=80, got {src_y}"
+
+    def test_desktop_bitblt_releases_desktop_dc_on_failure(self, tmp_path):
+        """ReleaseDC(None, desktop_dc) must be called even when BitBlt fails."""
+        # Arrange
+        width, height = 4, 2
+        user32 = self._make_happy_user32(width, height)
+        gdi32 = self._make_happy_gdi32(width, height)
+        gdi32.BitBlt.return_value = 0  # force failure
+
+        lines, log = _log()
+
+        # Act
+        result = _capture_hwnd_bitblt_to_png(0x1001, tmp_path / "out.png", log, user32=user32, gdi32=gdi32)
+
+        # Assert: ReleaseDC called (finally block executed)
+        assert result is False
+        user32.ReleaseDC.assert_called()
+
+
+# ---------------------------------------------------------------------------
+# 10. TestCaptureGameWindowDesktopBitblt (PROMPT 1813) — public API tests
+# ---------------------------------------------------------------------------
+
+class TestCaptureGameWindowDesktopBitblt:
+    """Unit tests for capture_game_window_desktop_bitblt (public entry point)."""
+
+    def test_desktop_bitblt_public_noop_on_non_windows(self, monkeypatch, tmp_path):
+        # Arrange
+        monkeypatch.setattr(win_capture, "_IS_WINDOWS", False)
+        lines, log = _log()
+
+        # Act
+        result = capture_game_window_desktop_bitblt(tmp_path / "out.png", log)
+
+        # Assert
+        assert result is False
+        assert any("non-Windows" in l for l in lines)
+
+    def test_desktop_bitblt_public_returns_false_when_no_window_found(self, monkeypatch, tmp_path):
+        # Arrange
+        monkeypatch.setattr(win_capture, "_IS_WINDOWS", True)
+        with patch("ctypes.windll") as mock_windll:
+            mock_windll.user32 = MagicMock()
+            monkeypatch.setattr("win_foreground._list_visible_windows", lambda _u: [])
+            lines, log = _log()
+
+            # Act
+            result = capture_game_window_desktop_bitblt(tmp_path / "out.png", log)
+
+        # Assert
+        assert result is False
+        assert any("no CCGS/Bevy window found" in l for l in lines)
+
+    def test_desktop_bitblt_public_swallows_unexpected_exception(self, monkeypatch, tmp_path):
+        # Arrange
+        monkeypatch.setattr(win_capture, "_IS_WINDOWS", True)
+        with patch("ctypes.windll") as mock_windll:
+            mock_windll.user32 = MagicMock()
+            monkeypatch.setattr(
+                "win_foreground._list_visible_windows",
+                lambda _u: (_ for _ in ()).throw(RuntimeError("boom")),
+            )
+            lines, log = _log()
+
+            # Act
+            result = capture_game_window_desktop_bitblt(tmp_path / "out.png", log)
+
+        # Assert
+        assert result is False
+        assert any("unexpected error" in l for l in lines)
+
+    def test_desktop_bitblt_public_calls_bitblt_hwnd_on_match(self, monkeypatch, tmp_path):
+        # Arrange
+        monkeypatch.setattr(win_capture, "_IS_WINDOWS", True)
+        fake_windows = [(0xBB01, "Lanes and Lies")]
+        monkeypatch.setattr("win_foreground._list_visible_windows", lambda _u: fake_windows)
+
+        captured_hwnds: list[int] = []
+
+        def _fake_bitblt(hwnd, path, log, *, user32=None, gdi32=None):
+            captured_hwnds.append(hwnd)
+            return True
+
+        monkeypatch.setattr(win_capture, "_capture_hwnd_bitblt_to_png", _fake_bitblt)
+
+        with patch("ctypes.windll") as mock_windll:
+            mock_windll.user32 = MagicMock()
+            lines, log = _log()
+
+            # Act
+            result = capture_game_window_desktop_bitblt(tmp_path / "out.png", log)
+
+        # Assert
+        assert result is True
+        assert captured_hwnds == [0xBB01]
+
+    def test_desktop_bitblt_public_logs_backend_prefix(self, monkeypatch, tmp_path):
+        # Arrange
+        monkeypatch.setattr(win_capture, "_IS_WINDOWS", True)
+        fake_windows = [(0xBB01, "Lanes and Lies")]
+        monkeypatch.setattr("win_foreground._list_visible_windows", lambda _u: fake_windows)
+        monkeypatch.setattr(win_capture, "_capture_hwnd_bitblt_to_png", lambda *a, **k: True)
+
+        with patch("ctypes.windll") as mock_windll:
+            mock_windll.user32 = MagicMock()
+            lines, log = _log()
+            capture_game_window_desktop_bitblt(tmp_path / "out.png", log)
+
+        # Assert: all log lines must be prefixed with desktop_bitblt:
+        assert any("desktop_bitblt:" in l for l in lines)
+
+
+# ---------------------------------------------------------------------------
+# 11. TestDriverDesktopBitbltFallback (PROMPT 1813) — driver.py wiring tests
+# ---------------------------------------------------------------------------
+
+class TestDriverDesktopBitbltFallback:
+    """Structural tests: driver.py imports and wires desktop_bitblt fallback."""
+
+    _DRIVER_SOURCE = (_TOOLS_AUTOPLAY / "driver.py").read_text(encoding="utf-8")
+
+    def test_driver_imports_desktop_bitblt_capture(self):
+        assert "capture_game_window_desktop_bitblt" in self._DRIVER_SOURCE, (
+            "driver.py must import capture_game_window_desktop_bitblt from win_capture"
+        )
+
+    def test_driver_aliases_desktop_bitblt_capture(self):
+        assert "_desktop_bitblt_capture" in self._DRIVER_SOURCE, (
+            "driver.py must alias capture_game_window_desktop_bitblt as _desktop_bitblt_capture"
+        )
+
+    def test_driver_calls_desktop_bitblt_after_win32_failure(self):
+        src = self._DRIVER_SOURCE
+        # The fallback must be inside the "if not _win32_ok" guard
+        assert "if not _win32_ok:" in src, (
+            "driver.py must have 'if not _win32_ok:' guard before the BitBlt fallback"
+        )
+        win32_fail_idx = src.index("if not _win32_ok:")
+        bitblt_call_idx = src.index("_desktop_bitblt_capture(")
+        assert bitblt_call_idx > win32_fail_idx, (
+            "_desktop_bitblt_capture must be called inside the 'if not _win32_ok:' block"
+        )
+
+    def test_driver_logs_desktop_bitblt_result(self):
+        assert "desktop_bitblt=" in self._DRIVER_SOURCE, (
+            "driver.py must log desktop_bitblt=OK/FAILED after the fallback call"
+        )
+
+    def test_driver_bitblt_shot_path_uses_tick(self):
+        assert "bitblt_tick_" in self._DRIVER_SOURCE, (
+            "BitBlt fallback filename must embed the tick number (bitblt_tick_...)"
+        )
+
+    def test_driver_win32_printwindow_log_uses_new_label(self):
+        # PROMPT 1813 renamed the log label from "win32_capture" to "win32_printwindow"
+        assert "win32_printwindow=" in self._DRIVER_SOURCE, (
+            "driver.py must log win32_printwindow=OK/FAILED to distinguish from the bitblt backend"
+        )
+
+    def test_driver_bitblt_fallback_placed_after_win32_capture(self):
+        src = self._DRIVER_SOURCE
+        win32_idx = src.index("_win32_ok = _win32_capture(")
+        bitblt_idx = src.index("_desktop_bitblt_capture(")
+        assert bitblt_idx > win32_idx, (
+            "desktop_bitblt fallback must appear after win32_printwindow attempt"
         )
