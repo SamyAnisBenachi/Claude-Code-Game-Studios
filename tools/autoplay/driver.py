@@ -106,6 +106,42 @@ def _frozen_win32_check(
     return False, "", current_hash
 
 
+def _validate_cursor_coords(
+    x: float,
+    y: float,
+    window_size: tuple[float, float],
+    tick: int,
+    log_fn: Any,
+) -> tuple[bool, str]:
+    """Check that (x, y) lies within [0, w) x [0, h) of the logical window.
+
+    Logs a WARNING CLICK-OOB line when out of bounds so the issue is visible
+    in driver.log without scanning timeline.jsonl.  Returns (in_bounds, diag).
+    """
+    w, h = window_size
+    if w <= 0 or h <= 0:
+        msg = (
+            f"tick={tick} WARNING CLICK-OOB invalid window_size=({w:.0f}x{h:.0f}); "
+            f"cannot validate cursor ({x:.1f},{y:.1f})"
+        )
+        log_fn(msg)
+        return False, msg
+    in_x = 0.0 <= x < w
+    in_y = 0.0 <= y < h
+    if in_x and in_y:
+        return True, ""
+    frac_x = x / w
+    frac_y = y / h
+    clips = ("x_clip " if not in_x else "") + ("y_clip" if not in_y else "")
+    msg = (
+        f"tick={tick} WARNING CLICK-OOB cursor=({x:.1f},{y:.1f}) "
+        f"window=({w:.0f}x{h:.0f}) "
+        f"frac=({frac_x:.3f},{frac_y:.3f}) {clips.strip()}"
+    )
+    log_fn(msg)
+    return False, msg
+
+
 def rpc(url: str, method: str, params: dict[str, Any] | None = None, timeout: float = 5.0) -> Any:
     payload = {
         "jsonrpc": "2.0",
@@ -221,6 +257,15 @@ def main() -> int:
                 log(f"status RPC failed on tick {tick}: {err}")
                 rc = EXIT_RPC_ERROR
                 break
+
+            # Click-target viewport guard (PROMPT 1843): extract the live window
+            # size each tick so cursor-coord validation uses current dimensions.
+            _win_raw = status.get("window_logical_size") if isinstance(status, dict) else None
+            _tick_win_size: tuple[float, float] = (
+                (float(_win_raw[0]), float(_win_raw[1]))
+                if isinstance(_win_raw, list) and len(_win_raw) == 2
+                else (0.0, 0.0)
+            )
 
             if recipe_actions is None:
                 size = status.get("window_logical_size") or [1280.0, 720.0]
@@ -348,6 +393,22 @@ def main() -> int:
                                 f"tick={tick} desktop_bitblt={'OK' if _bitblt_ok else 'FAILED'} "
                                 f"reason={_bitblt_reason} path={_bitblt_shot.name}"
                             )
+                    # Click-target viewport guard (PROMPT 1843): validate cursor
+                    # coords before dispatching so off-screen clicks are logged
+                    # clearly rather than silently landing on blank space.
+                    if method == "autoplay/input":
+                        _cursor_field = params.get("cursor")
+                        if isinstance(_cursor_field, dict):
+                            _screen_xy = _cursor_field.get("screen")
+                            if isinstance(_screen_xy, list) and len(_screen_xy) == 2:
+                                _validate_cursor_coords(
+                                    float(_screen_xy[0]),
+                                    float(_screen_xy[1]),
+                                    _tick_win_size,
+                                    tick,
+                                    log,
+                                )
+
                     try:
                         result = rpc(url, method, params)
                         action_results.append(result)
