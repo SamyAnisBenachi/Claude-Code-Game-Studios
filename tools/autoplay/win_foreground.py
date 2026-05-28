@@ -5,6 +5,9 @@ window is the active composited surface when Screenshot::primary_window() fires.
 No-op on non-Windows. No third-party dependencies — stdlib ctypes only.
 
 PROMPT 1776: foreground repair for screenshot distinctness.
+PROMPT 1786: window title diagnostic — added "lanes and lies" hint (actual client title
+             from client/src/main.rs WindowPlugin), extended hints list, and bounded
+             diagnostic logging of visible titles when no match is found.
 """
 from __future__ import annotations
 
@@ -14,9 +17,28 @@ from typing import Callable
 _IS_WINDOWS = sys.platform == "win32"
 
 # Case-insensitive substrings matched against visible top-level window titles.
-# Bevy's WindowPlugin defaults to "Bevy App"; CCGS overrides it to its own title.
-# "ccgs" and "bevy" cover both the custom title and the Bevy fallback.
-_WINDOW_TITLE_HINTS: tuple[str, ...] = ("ccgs", "claude code game", "bevy app", "bevy")
+#
+# Priority order: most-specific titles first to avoid accidentally matching an
+# unrelated window that happens to contain a generic substring.
+#
+# "lanes and lies" — actual title set in client/src/main.rs WindowPlugin
+# "lanes"          — substring fallback (title may be truncated by OS)
+# "ccgs"           — legacy/test builds that used the CCGS working title
+# "claude code game" — verbose version of the CCGS placeholder title
+# "bevy app"       — Bevy default when no custom title is set (debug builds)
+# "bevy"           — last-resort fallback for any unlabelled Bevy window
+_WINDOW_TITLE_HINTS: tuple[str, ...] = (
+    "lanes and lies",
+    "lanes",
+    "ccgs",
+    "claude code game",
+    "bevy app",
+    "bevy",
+)
+
+# Max visible window titles to dump in diagnostics when no match is found.
+# Bounded to avoid flooding logs with the full Windows desktop inventory.
+_DIAG_TITLE_LIMIT = 30
 
 _SW_RESTORE = 9  # ShowWindow: restore a minimised window to its normal size
 
@@ -38,6 +60,19 @@ def _find_candidate(
         if any(hint in title_lower for hint in _WINDOW_TITLE_HINTS):
             return hwnd, title
     return None
+
+
+def _format_diag_titles(windows: list[tuple[int, str]], limit: int = _DIAG_TITLE_LIMIT) -> str:
+    """Return a compact, bounded diagnostic string of visible window titles.
+
+    Titles are truncated at 60 chars each to prevent log spam. The list is
+    capped at *limit* entries. Readable in a single log line for easy
+    comparison against _WINDOW_TITLE_HINTS.
+    """
+    truncated = windows[:limit]
+    parts = [repr(t[:60]) for _, t in truncated]
+    suffix = f" … (+{len(windows) - limit} more)" if len(windows) > limit else ""
+    return "[" + ", ".join(parts) + "]" + suffix
 
 
 # ---------------------------------------------------------------------------
@@ -119,6 +154,10 @@ def ensure_foreground(log: Callable[[str], None]) -> None:
 
     No-op on non-Windows platforms or when no matching window can be identified.
     Every branch emits at least one log line so driver.log captures the outcome.
+
+    When no matching window is found, emits a bounded diagnostic listing of all
+    visible top-level window titles so the mismatch can be diagnosed without a
+    live debug session.
     """
     if not _IS_WINDOWS:
         log("foreground: non-Windows platform — no-op")
@@ -129,10 +168,12 @@ def ensure_foreground(log: Callable[[str], None]) -> None:
         windows = _list_visible_windows(user32)
         candidate = _find_candidate(windows)
         if candidate is None:
+            diag = _format_diag_titles(windows)
             log(
                 f"foreground: no CCGS/Bevy window found among "
                 f"{len(windows)} visible top-level windows — "
-                "screenshot will capture current foreground"
+                f"hints={list(_WINDOW_TITLE_HINTS)!r} — "
+                f"visible titles: {diag}"
             )
             return
         hwnd, title = candidate
