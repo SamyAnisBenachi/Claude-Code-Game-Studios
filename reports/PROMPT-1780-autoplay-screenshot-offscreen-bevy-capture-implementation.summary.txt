@@ -1,0 +1,1 @@
+DONE PROMPT-1780: 1780: AUTOPLAY-SCREENSHOT-OFFSCREEN-BEVY-CAPTURE-IMPLEMENTATION: SHIPPED_NEEDS_LIVE_VERIFY // full report at reports/PROMPT-1780-autoplay-screenshot-offscreen-bevy-capture-implementation.md
