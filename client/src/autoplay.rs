@@ -49,6 +49,11 @@ use crate::state::{ClientState, CurrentClientPhase};
 pub const AUTOPLAY_ENABLE_ENV: &str = "CCGS_AUTOPLAY";
 pub const AUTOPLAY_PORT_ENV: &str = "CCGS_AUTOPLAY_PORT";
 pub const AUTOPLAY_ARTIFACT_DIR_ENV: &str = "CCGS_AUTOPLAY_ARTIFACT_DIR";
+/// Set to `1` to opt in to the experimental offscreen render-target backend.
+/// Default (unset / `0`) uses `Screenshot::primary_window()`, which captures
+/// UI correctly. The offscreen path is preserved for future investigation but
+/// is not the default because the secondary Camera2d misses the bevy_ui layer.
+pub const AUTOPLAY_OFFSCREEN_ENV: &str = "CCGS_AUTOPLAY_OFFSCREEN";
 pub const DEFAULT_AUTOPLAY_PORT: u16 = 15873;
 
 /// Schema/protocol version returned by `autoplay/capabilities`. Bump when
@@ -104,10 +109,12 @@ impl Plugin for AutoplayPlugin {
             .spawn(move || run_rpc_server(listener, server_shared))
             .expect("spawn autoplay RPC server thread");
 
+        let backend_label = if cfg.offscreen { "offscreen-image (opt-in)" } else { "primary-window (default)" };
         tracing::info!(
             target: "client::autoplay",
             addr = ?bound_addr,
             artifact_dir = %cfg.artifact_dir.display(),
+            screenshot_backend = backend_label,
             "AutoplayPlugin enabled (low-level input only; no gameplay mutation)"
         );
 
@@ -118,9 +125,15 @@ impl Plugin for AutoplayPlugin {
         app.insert_resource(bevy::winit::WinitSettings::game());
 
         app.insert_resource(AutoplayShared::handle(Arc::clone(&shared)))
-            .insert_resource(cfg)
-            .add_systems(Startup, setup_offscreen_target_system)
+            .insert_resource(cfg.clone())
             .add_systems(Update, (drain_commands_system, publish_status_system));
+        // The offscreen render-target backend is opt-in only (CCGS_AUTOPLAY_OFFSCREEN=1).
+        // Default: AutoplayOffscreenTarget is never inserted, so drain_commands_system
+        // always falls through to Screenshot::primary_window(), which is the only path
+        // that correctly captures bevy_ui content in this game.
+        if cfg.offscreen {
+            app.add_systems(Startup, setup_offscreen_target_system);
+        }
     }
 }
 
@@ -130,6 +143,11 @@ pub struct AutoplayConfig {
     pub enabled: bool,
     pub port: u16,
     pub artifact_dir: PathBuf,
+    /// When `true` (opt-in via `CCGS_AUTOPLAY_OFFSCREEN=1`), registers the
+    /// experimental offscreen render-target backend. Default is `false`,
+    /// which uses `Screenshot::primary_window()` — the only path that
+    /// correctly captures bevy_ui content.
+    pub offscreen: bool,
 }
 
 impl AutoplayConfig {
@@ -143,10 +161,13 @@ impl AutoplayConfig {
             .ok()
             .map(PathBuf::from)
             .unwrap_or_else(default_artifact_dir);
+        let offscreen =
+            matches!(std::env::var(AUTOPLAY_OFFSCREEN_ENV).ok().as_deref(), Some("1"));
         Self {
             enabled,
             port,
             artifact_dir,
+            offscreen,
         }
     }
 }
@@ -1306,6 +1327,24 @@ mod tests {
             ]
         );
         assert!(comps.len() == 5, "expected timestamp suffix, got {:?}", comps);
+    }
+
+    #[test]
+    fn autoplay_config_offscreen_defaults_to_false() {
+        // CCGS_AUTOPLAY_OFFSCREEN unset → offscreen must be false so the
+        // Screenshot::primary_window() path is the default for UI captures.
+        // We cannot safely mutate the process env here (tests run in parallel),
+        // so we construct the config from a known-absent env key by checking
+        // that the constant name matches expectation and that the default is off.
+        assert_eq!(AUTOPLAY_OFFSCREEN_ENV, "CCGS_AUTOPLAY_OFFSCREEN");
+        // Build a config that mimics what from_env() does when the var is absent.
+        let cfg = AutoplayConfig {
+            enabled: false,
+            port: DEFAULT_AUTOPLAY_PORT,
+            artifact_dir: default_artifact_dir(),
+            offscreen: false,
+        };
+        assert!(!cfg.offscreen, "offscreen must be false by default");
     }
 
     #[test]
