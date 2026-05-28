@@ -53,6 +53,7 @@ if str(_HERE) not in sys.path:
 
 from recipes import RecipeContext, REGISTRY, get as get_recipe, names as recipe_names  # noqa: E402
 from screenshot_poll import wait_for_screenshot_file  # noqa: E402
+from viewport_shrink_guard import check_before_input as _viewport_check  # noqa: E402
 from win_capture import capture_game_window as _win32_capture  # noqa: E402
 from win_capture import capture_game_window_desktop_bitblt as _desktop_bitblt_capture  # noqa: E402
 from win_foreground import ensure_foreground  # noqa: E402
@@ -348,6 +349,35 @@ def main() -> int:
                                 f"tick={tick} desktop_bitblt={'OK' if _bitblt_ok else 'FAILED'} "
                                 f"reason={_bitblt_reason} path={_bitblt_shot.name}"
                             )
+                    # Mid-run viewport shrink guard (PROMPT 1922): before
+                    # dispatching any autoplay/input action that carries
+                    # cursor screen coordinates, verify the window is still
+                    # large enough and the target is still in-bounds.  A
+                    # shrunk or moved window produces offscreen clicks that
+                    # miss UI elements; fail the run loudly rather than
+                    # silently clicking empty space.
+                    if method == "autoplay/input":
+                        _vp_ok, _vp_reason = _viewport_check(params, status)
+                        if not _vp_ok:
+                            emit_checkpoint({
+                                "tick": tick,
+                                "kind": "viewport_shrink_block",
+                                "reason": _vp_reason,
+                                "elapsed_secs": round(now - started, 3),
+                                "params": params,
+                            })
+                            log(
+                                f"tick={tick} VIEWPORT-SHRINK-BLOCK "
+                                f"reason={_vp_reason}"
+                            )
+                            blocked_reason = _vp_reason
+                            rc = EXIT_BLOCKED
+                            action_results.append({
+                                "viewport_shrink_block": True,
+                                "reason": _vp_reason,
+                            })
+                            break
+
                     try:
                         result = rpc(url, method, params)
                         action_results.append(result)
