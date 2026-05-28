@@ -146,6 +146,10 @@ name = "hand_ui_placement_drag_highlights_test"
 path = "../tests/unit/hand-ui/placement_drag_highlights_test.rs"
 
 [[test]]
+name = "hand_ui_placement_live_ghost_target_test"
+path = "../tests/unit/hand-ui/placement_live_ghost_target_test.rs"
+
+[[test]]
 name = "hand_ui_placement_instant_staging_test"
 path = "../tests/unit/hand-ui/placement_instant_staging_test.rs"
 

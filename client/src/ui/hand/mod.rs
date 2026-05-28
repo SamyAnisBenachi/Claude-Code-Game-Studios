@@ -1316,6 +1316,12 @@ impl Plugin for HandUiPlugin {
                         produce_drag_ended_from_pointer_release_system,
                         handle_placement_drag_started_system,
                         handle_placement_cursor_moved_system,
+                        // PROMPT 2036 — Emit live `GhostPlacementChanged`
+                        // each tick the resolved cell-under-cursor changes
+                        // so the targeting overlay + ghost-unit preview +
+                        // BoardCellHighlighted paint legality affordance
+                        // BEFORE the drop, not only after server confirm.
+                        produce_live_ghost_placement_during_drag_system,
                         handle_placement_drag_ended_system,
                         handle_ghost_drag_ended_system,
                         handle_grid_card_click_system,
@@ -3170,6 +3176,90 @@ pub fn handle_placement_cursor_moved_system(
             active_ghost_drag.cursor_screen_position = cursor_move.screen_position;
         }
     }
+}
+
+/// PROMPT 2036 — Emit `GhostPlacementChanged` live during the drag so the
+/// targeting overlay (cyan valid rings + red invalid marker, see
+/// `presentation::board_rendering::targeting_overlay`), the ghost-unit
+/// preview (`apply_ghost_placement_changed_system`), and the per-cell
+/// `BoardCellHighlighted` paint legality affordance under the cursor BEFORE
+/// the user releases — not only after the drop resolves.
+///
+/// Without this producer the targeting overlay only fires once per drop
+/// (line ~3588) so the player gets no in-flight feedback: valid cells stay
+/// dark, invalid cells look as accepting as legal ones, and the only signal
+/// that the cursor missed is a server-side rejection arriving hundreds of
+/// milliseconds later. UX-001..UX-005 + P0-014 unplayable bug-register
+/// (2026-05-28) point at this gap.
+///
+/// Read-only over `ActivePlacementDrag`, `HandUiMode`, `BoardLayout`. The
+/// system tracks the last-emitted target via `Local` so it only writes when
+/// the target actually changes, keeping downstream ghost-unit churn cheap.
+/// On drag end (active_drag goes inactive) the Local is reset and a
+/// `target=None` is flushed once for the card so the overlay despawns.
+pub fn produce_live_ghost_placement_during_drag_system(
+    mode: Res<HandUiMode>,
+    active_drag: Res<ActivePlacementDrag>,
+    board_layout: Option<Res<BoardLayout>>,
+    mut writer: MessageWriter<GhostPlacementChanged>,
+    mut last_emitted: Local<Option<(CardId, Option<PlayTarget>)>>,
+) {
+    let drag_active = active_drag.is_active() && *mode == HandUiMode::Staging;
+    if !drag_active {
+        // Flush a None transition only if we previously emitted Some — never
+        // synthesise spurious None writes when no prior Some existed.
+        if let Some((card_id, prior_target)) = last_emitted.take() {
+            if prior_target.is_some() {
+                writer.write(GhostPlacementChanged {
+                    target: None,
+                    card_id: Some(card_id),
+                });
+            }
+        }
+        return;
+    }
+
+    let Some(card_id) = active_drag.card_id else {
+        return;
+    };
+
+    let target = match active_drag.target_kind {
+        Some(PlacementTargetKind::Minion) => board_layout
+            .as_deref()
+            .zip(active_drag.cursor_world_position)
+            .and_then(|(layout, cursor)| cursor_to_lane_cell(cursor, layout))
+            .map(|(lane, cell)| PlayTarget::BoardCell { lane, cell }),
+        Some(PlacementTargetKind::LaneWide) => board_layout
+            .as_deref()
+            .zip(active_drag.cursor_world_position)
+            .and_then(|(layout, cursor)| cursor_to_lane_cell(cursor, layout))
+            .map(|(lane, _cell)| PlayTarget::LaneWide { lane }),
+        // TargetObj / TargetUnit / Instant: existing dedicated systems
+        // (`apply_placement_drag_highlights_system`, target-unit hover, etc.)
+        // already surface adequate hover state for these target kinds, and
+        // emitting partial PlayTarget previews here would require extra
+        // queries that the live-cursor producer deliberately avoids.
+        _ => None,
+    };
+
+    let next = (card_id, target.clone());
+    let prev_was_some = matches!(last_emitted.as_ref(), Some((_, Some(_))));
+    if last_emitted.as_ref() == Some(&next) {
+        return;
+    }
+    if target.is_none() && !prev_was_some {
+        // Stay silent until at least one Some target has been emitted —
+        // avoids polluting message buffers for drag kinds that this producer
+        // does not handle (TargetUnit / TargetObj / Instant), and avoids a
+        // spurious leading None for board drags that begin off-board.
+        *last_emitted = Some(next);
+        return;
+    }
+    *last_emitted = Some(next);
+    writer.write(GhostPlacementChanged {
+        target,
+        card_id: Some(card_id),
+    });
 }
 
 pub fn handle_placement_drag_ended_system(
