@@ -29,6 +29,8 @@ Exit codes:
     1  -- RPC error during the run
     2  -- unable to reach the RPC server at startup
     4  -- recipe emitted ``local.block`` (upstream prerequisite missing)
+    5  -- viewport guard triggered: invalid window size, mid-run resize
+         beyond tolerance, None cursor_logical, or OOB click target
 """
 
 from __future__ import annotations
@@ -76,6 +78,11 @@ EXIT_OK = 0
 EXIT_RPC_ERROR = 1
 EXIT_NO_SERVER = 2
 EXIT_BLOCKED = 4
+EXIT_VIEWPORT_GUARD = 5  # PROMPT 1857: invalid window/cursor condition aborted the run
+
+_MIN_WIN_W = 1280.0
+_MIN_WIN_H = 720.0
+_WIN_DRIFT_PX = 10.0
 
 
 def _frozen_win32_check(
@@ -104,6 +111,113 @@ def _frozen_win32_check(
     if last_hash is not None and current_hash == last_hash:
         return True, "frozen_printwindow", current_hash
     return False, "", current_hash
+
+
+def _validate_cursor_coords(
+    x: float,
+    y: float,
+    window_size: tuple[float, float],
+    tick: int,
+    log_fn: Any,
+) -> tuple[bool, str]:
+    """Check that (x, y) lies within [0, w) x [0, h) of the logical window.
+
+    Logs a WARNING CLICK-OOB line when out of bounds.  Returns (in_bounds, diag).
+    """
+    w, h = window_size
+    if w <= 0 or h <= 0:
+        msg = (
+            f"tick={tick} WARNING CLICK-OOB invalid window_size=({w:.0f}x{h:.0f}); "
+            f"cannot validate cursor ({x:.1f},{y:.1f})"
+        )
+        log_fn(msg)
+        return False, msg
+    in_x = 0.0 <= x < w
+    in_y = 0.0 <= y < h
+    if in_x and in_y:
+        return True, ""
+    frac_x = x / w
+    frac_y = y / h
+    clips = ("x_clip " if not in_x else "") + ("y_clip" if not in_y else "")
+    msg = (
+        f"tick={tick} WARNING CLICK-OOB cursor=({x:.1f},{y:.1f}) "
+        f"window=({w:.0f}x{h:.0f}) "
+        f"frac=({frac_x:.3f},{frac_y:.3f}) {clips.strip()}"
+    )
+    log_fn(msg)
+    return False, msg
+
+
+def _parse_window_size(raw: Any) -> tuple[float, float] | None:
+    """Parse ``window_logical_size`` from a status dict.
+
+    Returns ``(w, h)`` for valid two-element numeric list with positive values,
+    or ``None`` if absent, malformed, or non-positive.
+    """
+    if not isinstance(raw, list) or len(raw) != 2:
+        return None
+    try:
+        w, h = float(raw[0]), float(raw[1])
+    except (TypeError, ValueError):
+        return None
+    if w <= 0 or h <= 0:
+        return None
+    return w, h
+
+
+def _check_window_minimum(
+    win_size: tuple[float, float] | None,
+    tick: int,
+    log_fn: Any,
+) -> tuple[bool, str]:
+    """Verify window meets >= 1280x720 minimum.  Returns (ok, diag)."""
+    if win_size is None:
+        msg = (
+            f"tick={tick} VIEWPORT-GUARD window_logical_size missing or invalid; "
+            f"require >= {_MIN_WIN_W:.0f}x{_MIN_WIN_H:.0f}"
+        )
+        log_fn(msg)
+        return False, msg
+    w, h = win_size
+    if w < _MIN_WIN_W or h < _MIN_WIN_H:
+        msg = (
+            f"tick={tick} VIEWPORT-GUARD window too small: "
+            f"actual=({w:.0f}x{h:.0f}) minimum=({_MIN_WIN_W:.0f}x{_MIN_WIN_H:.0f})"
+        )
+        log_fn(msg)
+        return False, msg
+    return True, ""
+
+
+def _check_window_drift(
+    build_size: tuple[float, float],
+    current_size: tuple[float, float] | None,
+    tick: int,
+    log_fn: Any,
+) -> tuple[bool, str]:
+    """Verify live window has not drifted beyond +/-10 px from recipe-build size.
+
+    Returns (ok, diag).
+    """
+    if current_size is None:
+        msg = (
+            f"tick={tick} VIEWPORT-GUARD window_logical_size lost mid-run; "
+            f"build_size=({build_size[0]:.0f}x{build_size[1]:.0f})"
+        )
+        log_fn(msg)
+        return False, msg
+    bw, bh = build_size
+    cw, ch = current_size
+    dx, dy = abs(cw - bw), abs(ch - bh)
+    if dx > _WIN_DRIFT_PX or dy > _WIN_DRIFT_PX:
+        msg = (
+            f"tick={tick} VIEWPORT-GUARD mid-run resize detected: "
+            f"build=({bw:.0f}x{bh:.0f}) current=({cw:.0f}x{ch:.0f}) "
+            f"drift=({dx:.1f}px,{dy:.1f}px) tolerance={_WIN_DRIFT_PX:.0f}px"
+        )
+        log_fn(msg)
+        return False, msg
+    return True, ""
 
 
 def rpc(url: str, method: str, params: dict[str, Any] | None = None, timeout: float = 5.0) -> Any:
@@ -204,6 +318,9 @@ def main() -> int:
     # win32_printwindow PNG.  None until the first successful capture so
     # the first tick never false-triggers the BitBlt fallback.
     last_win32_hash: str | None = None
+    # Viewport guard (PROMPT 1857): window size captured at recipe-build time;
+    # used every tick to detect mid-run resizes beyond _WIN_DRIFT_PX tolerance.
+    recipe_build_win_size: tuple[float, float] | None = None
 
     _desc, build_fn = get_recipe(args.recipe)
 
@@ -222,11 +339,24 @@ def main() -> int:
                 rc = EXIT_RPC_ERROR
                 break
 
+            # Viewport guard (PROMPT 1857): parse the live window size every tick
+            # for use in minimum-size, drift, and coord-bounds checks below.
+            _raw_win = status.get("window_logical_size") if isinstance(status, dict) else None
+            _tick_win_size: tuple[float, float] | None = _parse_window_size(_raw_win)
+
             if recipe_actions is None:
-                size = status.get("window_logical_size") or [1280.0, 720.0]
-                if not isinstance(size, list) or len(size) != 2:
-                    size = [1280.0, 720.0]
-                ctx = RecipeContext(window_size=(float(size[0]), float(size[1])), env=dict(os.environ))
+                # Pre-build viewport guard: window must exist and meet minimum size.
+                _win_ok, _win_diag = _check_window_minimum(_tick_win_size, tick, log)
+                if not _win_ok:
+                    log(
+                        f"VIEWPORT-GUARD ABORT: window too small or missing at recipe build; "
+                        f"diag={_win_diag!r}"
+                    )
+                    return EXIT_VIEWPORT_GUARD
+
+                assert _tick_win_size is not None
+                recipe_build_win_size = _tick_win_size
+                ctx = RecipeContext(window_size=recipe_build_win_size, env=dict(os.environ))
                 recipe_actions = build_fn(ctx)
                 # Validate methods up-front so a malformed recipe fails before any RPC.
                 for action in recipe_actions:
@@ -240,8 +370,22 @@ def main() -> int:
                 last_recipe_tick = max(recipe_actions_by_tick) if recipe_actions_by_tick else 0
                 log(
                     f"recipe={args.recipe} actions={len(recipe_actions)} "
-                    f"last_recipe_tick={last_recipe_tick}"
+                    f"last_recipe_tick={last_recipe_tick} "
+                    f"build_win=({recipe_build_win_size[0]:.0f}x{recipe_build_win_size[1]:.0f})"
                 )
+            else:
+                # Mid-run drift check: abort if window was resized beyond tolerance.
+                assert recipe_build_win_size is not None
+                _drift_ok, _drift_diag = _check_window_drift(
+                    recipe_build_win_size, _tick_win_size, tick, log
+                )
+                if not _drift_ok:
+                    log(
+                        f"VIEWPORT-GUARD ABORT: mid-run window resize invalidated recipe coords; "
+                        f"diag={_drift_diag!r}"
+                    )
+                    rc = EXIT_VIEWPORT_GUARD
+                    break
 
             action_results: list[Any] = []
             for action in recipe_actions_by_tick.get(tick, []):
@@ -348,6 +492,42 @@ def main() -> int:
                                 f"tick={tick} desktop_bitblt={'OK' if _bitblt_ok else 'FAILED'} "
                                 f"reason={_bitblt_reason} path={_bitblt_shot.name}"
                             )
+                    # Viewport guard (PROMPT 1857): before any autoplay/input
+                    # dispatch, verify cursor_logical from status is not None and
+                    # the click target coords are inside the current window bounds.
+                    if method == "autoplay/input":
+                        _cursor_logical = (
+                            status.get("cursor_logical") if isinstance(status, dict) else None
+                        )
+                        if _cursor_logical is None:
+                            _guard_msg = (
+                                f"tick={tick} VIEWPORT-GUARD cursor_logical=None "
+                                f"(cursor outside window); aborting before input dispatch"
+                            )
+                            log(_guard_msg)
+                            rc = EXIT_VIEWPORT_GUARD
+                            break
+
+                        _cursor_field = params.get("cursor")
+                        if isinstance(_cursor_field, dict):
+                            _screen_xy = _cursor_field.get("screen")
+                            if isinstance(_screen_xy, list) and len(_screen_xy) == 2:
+                                _win_for_guard = _tick_win_size or (0.0, 0.0)
+                                _coords_ok, _coords_diag = _validate_cursor_coords(
+                                    float(_screen_xy[0]),
+                                    float(_screen_xy[1]),
+                                    _win_for_guard,
+                                    tick,
+                                    log,
+                                )
+                                if not _coords_ok:
+                                    log(
+                                        f"VIEWPORT-GUARD ABORT: click target OOB; "
+                                        f"diag={_coords_diag!r}"
+                                    )
+                                    rc = EXIT_VIEWPORT_GUARD
+                                    break
+
                     try:
                         result = rpc(url, method, params)
                         action_results.append(result)
@@ -384,6 +564,10 @@ def main() -> int:
 
             if rc == EXIT_BLOCKED:
                 log(f"recipe BLOCKED on tick {tick}; reason={blocked_reason}")
+                break
+
+            if rc == EXIT_VIEWPORT_GUARD:
+                log(f"recipe aborted by viewport guard on tick {tick}")
                 break
 
             ticks_cap = args.ticks if args.ticks > 0 else (last_recipe_tick + 2 if last_recipe_tick else 10)
