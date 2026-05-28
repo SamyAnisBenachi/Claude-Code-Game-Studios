@@ -1,0 +1,1 @@
+DONE PROMPT-1820: 1820: AUTOPLAY-VSBOT-LIVE-SCREENSHOT-VERIFY-AFTER-1818-1819: NEEDS_HUMAN_GUI // full report at reports/PROMPT-1820-autoplay-vsbot-live-screenshot-verify-after-1818-1819.md
