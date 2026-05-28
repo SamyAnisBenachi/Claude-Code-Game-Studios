@@ -170,10 +170,10 @@ fn test_drag_ghost_node_uses_baked_scaled_dimensions_and_identity_transform() {
     // Arrange — boot hand UI.
     let mut app = app_with_hand_ui_in_session();
 
-    // Act — read the drag sprite's Node + Transform.
+    // Act — read the drag sprite's Node and optional Transform.
     let mut query = app
         .world_mut()
-        .query_filtered::<(&Node, &Transform), With<HandDragSprite>>();
+        .query_filtered::<(&Node, Option<&Transform>), With<HandDragSprite>>();
     let (node, transform) = query
         .iter(app.world())
         .next()
@@ -195,17 +195,20 @@ fn test_drag_ghost_node_uses_baked_scaled_dimensions_and_identity_transform() {
         node.height
     );
 
-    // Assert — Transform.scale is identity (the world-space scale path is
-    // gone). Any `Vec3::splat(1.10)` here brings back ADR-021 R2 drift.
-    assert!(
-        (transform.scale.x - 1.0).abs() < EPSILON
-            && (transform.scale.y - 1.0).abs() < EPSILON
-            && (transform.scale.z - 1.0).abs() < EPSILON,
-        "drag ghost Transform.scale must be identity — got {:?}. \
-         Scale belongs on Node.width/Node.height (UI coords), not on \
-         Transform (world coords).",
-        transform.scale
-    );
+    // Assert — if Bevy attaches a Transform required component, its scale is
+    // identity. If no Transform is present, the old world-space scale path is
+    // absent entirely, which also satisfies the UI-coordinate contract.
+    if let Some(transform) = transform {
+        assert!(
+            (transform.scale.x - 1.0).abs() < EPSILON
+                && (transform.scale.y - 1.0).abs() < EPSILON
+                && (transform.scale.z - 1.0).abs() < EPSILON,
+            "drag ghost Transform.scale must be identity — got {:?}. \
+             Scale belongs on Node.width/Node.height (UI coords), not on \
+             Transform (world coords).",
+            transform.scale
+        );
+    }
 }
 
 fn app_with_hand_ui_in_session() -> App {
