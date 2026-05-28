@@ -338,3 +338,86 @@ fn rsm_transitions_wrong_expected_source_silently_noops() {
     assert_eq!(rsm.phase, RoundPhase::Placement);
     assert!(read_messages::<BroadcastPhaseChanged>(&app).is_empty());
 }
+
+// ── Regression tests for PROMPT-2033 vacuous-flow P0 bugs ────────────────────
+
+/// BUG-17 regression: submissions_received must be cleared when Resolution
+/// advances to DraftShop so round-N+1 placement cannot falsely detect
+/// all-players-submitted from stale round-N data.
+#[test]
+fn test_rsm_resolution_to_draftshop_clears_submissions_received() {
+    // Arrange: round 1 Resolution with player 1's submission still present.
+    let mut app = test_app(RoundPhase::Resolution, 1);
+    {
+        let mut rsm = app.world_mut().resource_mut::<RoundState>();
+        rsm.submissions_received.insert(PlayerId(1));
+    }
+    app.insert_resource(PhaseAdvanceRequest::new(RoundPhase::Resolution));
+
+    // Act: advance Resolution → DraftShop (round 2 is not an auction round).
+    app.update();
+
+    // Assert: submissions_received is empty; phase advanced; round incremented.
+    let rsm = app.world().resource::<RoundState>();
+    assert_eq!(rsm.phase, RoundPhase::DraftShop);
+    assert_eq!(rsm.round_number, 2);
+    assert!(
+        rsm.submissions_received.is_empty(),
+        "BUG-17: submissions_received from round 1 must be cleared on Resolution->DraftShop"
+    );
+}
+
+/// BUG-17 regression (auction path): same invariant must hold when Resolution
+/// advances to DraftAuction (round 2 → round 3 would be auction).
+#[test]
+fn test_rsm_resolution_to_draftauction_clears_submissions_received() {
+    // Arrange: round 2 Resolution (next round = 3, which is an auction round).
+    let mut app = test_app(RoundPhase::Resolution, 2);
+    {
+        let mut rsm = app.world_mut().resource_mut::<RoundState>();
+        rsm.submissions_received.insert(PlayerId(1));
+        rsm.submissions_received.insert(PlayerId(2));
+    }
+    app.insert_resource(PhaseAdvanceRequest::new(RoundPhase::Resolution));
+
+    // Act: advance Resolution → DraftAuction (round 3).
+    app.update();
+
+    // Assert: submissions_received cleared; phase is DraftAuction.
+    let rsm = app.world().resource::<RoundState>();
+    assert_eq!(rsm.phase, RoundPhase::DraftAuction);
+    assert_eq!(rsm.round_number, 3);
+    assert!(
+        rsm.submissions_received.is_empty(),
+        "BUG-17: submissions_received must be cleared on Resolution->DraftAuction"
+    );
+}
+
+/// BUG-05 regression: a normal (non-game-over) advance from Resolution must
+/// not emit GameOverEmitted — it should advance to the next DraftShop round.
+/// This represents the path taken by rsm_input_reader when
+/// evaluate_objective_win_condition returns None (all objectives intact).
+#[test]
+fn test_rsm_resolution_normal_advance_does_not_emit_game_over() {
+    // Arrange: Resolution phase, round 1; PhaseAdvanceRequest carries no game-over.
+    let mut app = test_app(RoundPhase::Resolution, 1);
+    app.insert_resource(PhaseAdvanceRequest::new(RoundPhase::Resolution));
+
+    // Act: advance_phase processes the non-game-over Resolution request.
+    app.update();
+
+    // Assert: game proceeds to DraftShop — NOT GameOver — and GameOverEmitted
+    // is absent, proving the vacuous-GameOver path requires an explicit
+    // game_over field in PhaseAdvanceRequest.
+    let rsm = app.world().resource::<RoundState>();
+    assert_eq!(
+        rsm.phase,
+        RoundPhase::DraftShop,
+        "BUG-05: Resolution with no game-over request must advance to DraftShop"
+    );
+    let game_over = read_messages::<GameOverEmitted>(&app);
+    assert!(
+        game_over.is_empty(),
+        "BUG-05: GameOverEmitted must not fire on normal Resolution advance"
+    );
+}
