@@ -1,5 +1,65 @@
 # Codex Orchestrator State
 
+## Current Resume Snapshot (2026-05-28, post-1758 autoplay-vs-bot live GUI PASS)
+
+Source-of-truth at this snapshot:
+
+- Root checkout: `D:\_DEV\Work\Claude-Code-Game-Studios`
+- Root branch: `main`
+- Root/source commit: `origin/main@0bcf80a6`
+  (`PROMPT 1757` mainland refresh over `PROMPT 1753/1756`: autoplay smoke now
+  builds and launches the client with `--bin client`).
+- Root caveat: local `.claude/**`, `.gcs-app/`, `dev-runs/`, `tmpwt-*`, and
+  local runtime settings are not game source and must stay out of commits unless
+  explicitly requested.
+
+Autoplay-vs-bot live GUI status:
+
+- `PROMPT 1758` completed, was cleared, and is the current verify result:
+  `1758: AUTOPLAY-VSBOT-LIVE-GUI-SMOKE-AFTER-1757: PASS`.
+- Evidence report:
+  `reports/PROMPT-1758-autoplay-vsbot-live-gui-smoke-after-1757.md`.
+- Run basis: dedicated worktree
+  `D:/_DEV/claude-code-game-studios-worktrees/autoplay-vsbot-smoke-1758` on
+  `origin/main@0bcf80a6`.
+- Command outcome: `Start-AutoplayVsBot.ps1 -Recipe vs-bot` exited `0`.
+- Composite summary outcome: `ok`.
+- Required checkpoint: `vs-bot-post-resolution` present at tick 213.
+- Build/run evidence: both commands include `--bin client`:
+  `cargo build -p client --bin client --features autoplay-remote` and
+  `cargo run -p client --bin client --features autoplay-remote`.
+- Server panic check: no server panic observed; resolution completed.
+- Caveat preserved: the composite summary marks `live_pass_status` as
+  `NOT-CLAIMED` because `AUTOPLAY-VS-BOT-QA-001` still requires human operator
+  sign-off for final live PASS evidence. Treat 1758 as tooling/live-smoke PASS,
+  not as final human QA closure.
+
+Recent blocker resolution:
+
+- `PROMPT 1754` was blocked by D: disk full. Orchestrator deleted only generated
+  build caches under verified build/cache roots and restored D: free space.
+- `PROMPT 1755` found the remaining client launch blocker:
+  `cargo run -p client --features autoplay-remote` missing `--bin client`.
+- `PROMPT 1756` repaired that launch command but the first branch had report
+  trailing whitespace.
+- `PROMPT 1757` refreshed the repair, passed `git diff --check`, and was
+  mainlanded through `MAINLAND_ENQUEUE` as `mlq_199ad479d36a41ef`, advancing
+  `origin/main` `d3d883e7..0bcf80a6`.
+
+Immediate next actions:
+
+1. Do not relaunch the old 1754/1755 blocker prompts; both are superseded by
+   1758 PASS.
+2. Prepare human-operator signoff from the 1758 evidence before claiming full
+   `AUTOPLAY-VS-BOT-QA-001` closure.
+3. Run a report-only evidence completeness audit against the 1758 composite run:
+   screenshots, checkpoint JSON, driver log, process logs, and summary fields.
+4. Run a read-only bot/autoplay story-done readiness refresh after 1758. Do not
+   write sprint status or story-done rows until the human signoff decision is
+   explicit.
+5. Keep implementation workers in dedicated worktrees and keep broad Cargo
+   verification in separate verify lanes.
+
 ## Current Resume Snapshot (2026-05-27, post-1678 bot soak verify PASS)
 
 Source-of-truth at this snapshot:
