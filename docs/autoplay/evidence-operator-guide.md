@@ -69,6 +69,10 @@ Malformed values emit a `local.note` and fall back to defaults — they do not c
 
 ### Bot-vs-Bot full-game recipe
 
+> **Standalone soak runbook**: for full parameter reference, exit-code semantics,
+> evidence layout, and operator checklist for `Start-BotVsBotSoak.ps1` on its own,
+> see [bot-vs-bot-soak.md](bot-vs-bot-soak.md).
+
 ```powershell
 # Terminal 1
 pwsh -File tools/dev-launcher/Start-BotVsBotSoak.ps1
