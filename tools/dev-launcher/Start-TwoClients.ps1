@@ -38,7 +38,9 @@ param(
     [int]$ServerWaitSeconds = 8,
     [switch]$DryRun,
     [switch]$Help,
-    [string]$PlayRepoRoot = ''
+    [string]$PlayRepoRoot = '',
+    [switch]$ForceRebuild,
+    [switch]$SkipStalenessCheck
 )
 
 Set-StrictMode -Version Latest
@@ -63,6 +65,12 @@ PARAMETERS
                          `$env:CCGS_PLAY_REPO_ROOT, `$env:CCGS_CANONICAL_MAIN_ROOT,
                          then 'D:\_DEV\ccgs-play-main', then the script's own
                          parent-of-parent if the dedicated path does not exist.
+  -ForceRebuild          Always rebuild server and client before launching,
+                         regardless of whether existing binaries are current.
+  -SkipStalenessCheck    Skip the source-vs-binary staleness check and launch
+                         with whatever binaries exist (missing binaries still
+                         trigger a build). Use only when you know the binaries
+                         are intentionally pinned to an older build.
   -Help                  Show this help and exit.
 
 OUTPUT (per run)
@@ -181,16 +189,85 @@ if (-not (Test-PortFree $chosen)) {
 }
 Write-Host "Chosen port: $chosen"
 
-# ---- 4. Build if missing -------------------------------------------------
+# ---- 4. Build if missing or stale ----------------------------------------
 Write-Section "Binary check"
 $profileDir = if ($Release) { 'release' } else { 'debug' }
 $serverBin  = Join-Path $env:CARGO_TARGET_DIR "$profileDir\server.exe"
 $clientBin  = Join-Path $env:CARGO_TARGET_DIR "$profileDir\client.exe"
 
+# Helper: return the newest LastWriteTimeUtc among *.rs, Cargo.toml,
+# and Cargo.lock files under $Root. Returns [DateTime]::MinValue if none found.
+function Get-NewestSourceTime {
+    param([string]$Root)
+    $patterns = @('*.rs', 'Cargo.toml', 'Cargo.lock')
+    $newest   = [DateTime]::MinValue
+    foreach ($pat in $patterns) {
+        Get-ChildItem -Path $Root -Filter $pat -Recurse -ErrorAction SilentlyContinue |
+            Where-Object { -not $_.PSIsContainer } |
+            ForEach-Object {
+                if ($_.LastWriteTimeUtc -gt $newest) { $newest = $_.LastWriteTimeUtc }
+            }
+    }
+    $newest
+}
+
+# Helper: check whether $BinPath is older than the newest source file.
+# Returns $true when the binary should be rebuilt.
+function Test-BinaryStale {
+    param([string]$BinPath, [DateTime]$NewestSource)
+    if (-not (Test-Path $BinPath))      { return $true }   # missing → stale
+    if ($NewestSource -eq [DateTime]::MinValue) { return $false } # no source found → assume current
+    $binTime = (Get-Item $BinPath).LastWriteTimeUtc
+    return ($NewestSource -gt $binTime)
+}
+
 $needServer = -not (Test-Path $serverBin)
 $needClient = -not (Test-Path $clientBin)
+
+if ($ForceRebuild) {
+    Write-Host -ForegroundColor Yellow "-ForceRebuild specified -- marking server and client for rebuild."
+    $needServer = $true
+    $needClient = $true
+} elseif (-not $SkipStalenessCheck) {
+    # Compare binary mtimes against the newest source file in the play root.
+    Write-Host "Staleness check: scanning source files under $RepoRoot ..."
+    $newestSrc = Get-NewestSourceTime -Root $RepoRoot
+    if ($newestSrc -eq [DateTime]::MinValue) {
+        Write-Warning "No *.rs / Cargo.toml / Cargo.lock files found under $RepoRoot -- staleness check skipped."
+    } else {
+        Write-Host "Newest source file mtime (UTC): $($newestSrc.ToString('yyyy-MM-dd HH:mm:ss'))"
+
+        if (Test-BinaryStale -BinPath $serverBin -NewestSource $newestSrc) {
+            if (-not $needServer) {
+                $binTime = (Get-Item $serverBin).LastWriteTimeUtc
+                $lagSec  = [int]($newestSrc - $binTime).TotalSeconds
+                Write-Host -ForegroundColor Yellow "server.exe is STALE (binary ${lagSec}s behind newest source) -- will rebuild."
+                $needServer = $true
+            }
+        } else {
+            if (-not $needServer) { Write-Host "server.exe is current." }
+        }
+
+        if (Test-BinaryStale -BinPath $clientBin -NewestSource $newestSrc) {
+            if (-not $needClient) {
+                $binTime = (Get-Item $clientBin).LastWriteTimeUtc
+                $lagSec  = [int]($newestSrc - $binTime).TotalSeconds
+                Write-Host -ForegroundColor Yellow "client.exe is STALE (binary ${lagSec}s behind newest source) -- will rebuild."
+                $needClient = $true
+            }
+        } else {
+            if (-not $needClient) { Write-Host "client.exe is current." }
+        }
+    }
+} else {
+    Write-Host -ForegroundColor Yellow "-SkipStalenessCheck specified -- skipping source-vs-binary staleness check."
+}
+
 if ($needServer -or $needClient) {
-    Write-Host "Missing binaries detected -- running cargo build."
+    $rebuildReason = if ($needServer -and $needClient) { 'server and client' }
+                     elseif ($needServer)              { 'server' }
+                     else                              { 'client' }
+    Write-Host "Rebuilding $rebuildReason..."
     $base = @('build')
     if ($Release) { $base += '--release' }
     if ($needServer) {
@@ -198,7 +275,10 @@ if ($needServer -or $needClient) {
         Write-Host "cargo $($cargoArgs -join ' ')"
         if (-not $DryRun) {
             & cargo @cargoArgs
-            if ($LASTEXITCODE -ne 0) { Write-Host -ForegroundColor Red "cargo build server failed."; exit 1 }
+            if ($LASTEXITCODE -ne 0) {
+                Write-Host -ForegroundColor Red "cargo build server FAILED (exit $LASTEXITCODE). Aborting launch to prevent running a stale binary."
+                exit 1
+            }
         }
     }
     if ($needClient) {
@@ -206,7 +286,25 @@ if ($needServer -or $needClient) {
         Write-Host "cargo $($cargoArgs -join ' ')"
         if (-not $DryRun) {
             & cargo @cargoArgs
-            if ($LASTEXITCODE -ne 0) { Write-Host -ForegroundColor Red "cargo build client failed."; exit 1 }
+            if ($LASTEXITCODE -ne 0) {
+                Write-Host -ForegroundColor Red "cargo build client FAILED (exit $LASTEXITCODE). Aborting launch to prevent running a stale binary."
+                exit 1
+            }
+        }
+    }
+
+    # Post-build existence guard: if cargo succeeded but the binary is still
+    # absent (e.g. wrong CARGO_TARGET_DIR), fail rather than launching nothing.
+    if (-not $DryRun) {
+        if ($needServer -and -not (Test-Path $serverBin)) {
+            Write-Host -ForegroundColor Red "Build reported success but server.exe is still absent at: $serverBin"
+            Write-Host -ForegroundColor Red "Check CARGO_TARGET_DIR and the package name. Aborting launch."
+            exit 1
+        }
+        if ($needClient -and -not (Test-Path $clientBin)) {
+            Write-Host -ForegroundColor Red "Build reported success but client.exe is still absent at: $clientBin"
+            Write-Host -ForegroundColor Red "Check CARGO_TARGET_DIR and the package name. Aborting launch."
+            exit 1
         }
     }
 }
