@@ -14,10 +14,11 @@ Primary sources:
 - `reports/PROMPT-2027-autoplay-input-click-target-forensic-audit.md`
 - `reports/PROMPT-2028-player-flow-unplayable-bug-classification.md`
 - `reports/PROMPT-2029-qa-evidence-tools-truthfulness-audit.md`
+- `reports/PROMPT-2033-server-board-gameover-vacuous-flow-p0-repair.md`
 
 Pending sources to merge later:
 
-- Repair outcomes from `PROMPT 2030-2033`
+- Repair outcomes from `PROMPT 2030-2032`
 
 ## Executive State
 
@@ -40,10 +41,10 @@ still full HP.
 | P0-004 | Bot player has no hand | PROMPT 2025 snapshots from first Placement onward contain hand for player 1 only; bot hand missing | Confirmed |
 | P0-005 | Draft/card awarding broken | Player 1 keeps one card `[5]`; bot has no hand; DraftInitial and DraftShop do not award usable cards | Confirmed |
 | P0-006 | Bot placement failsafe spin-loop | `empty_placement_failsafe` logged about 16,229 times in a two-round game, roughly 1/ms | Confirmed |
-| P0-007 | No units ever reach board | Board counts stay zero across minions/traps/structures/fields; `per_player_minions` empty | Confirmed |
-| P0-008 | No combat occurs | Resolution phases run with empty board and all objectives unchanged | Confirmed |
-| P0-009 | GameOver fires vacuously | GameOver after two empty rounds with all 10 objectives at 5/5 HP, none destroyed | Confirmed |
-| P0-010 | Phase timers are bypassed | DraftInitial, DraftShop, and Resolution transition in milliseconds despite 30-60s configured timers | Confirmed |
+| P0-007 | No units ever reach board | Board counts stay zero across minions/traps/structures/fields; `per_player_minions` empty | Root-caused by PROMPT 2033 as upstream client phase sync + bot hand/placement cascade; pending 2030/2031/2032 |
+| P0-008 | No combat occurs | Resolution phases run with empty board and all objectives unchanged | Root-caused by PROMPT 2033 as cascade of P0-007; pending post-repair verification |
+| P0-009 | GameOver fires vacuously | GameOver after two empty rounds with all 10 objectives at 5/5 HP, none destroyed | Reclassified by PROMPT 2033: normal win-condition path is guarded; observed GameOver is soak max-round cap plus no-board cascade |
+| P0-010 | Phase timers are bypassed | DraftInitial, DraftShop, and Resolution transition in milliseconds despite 30-60s configured timers | Resolution portion root-caused by PROMPT 2033 as no-units cascade; broader draft/shop timer behavior still open for post-repair verification |
 | P0-011 | No successful human GUI end-to-end flow on record | PROMPT 2028/1883: no verified human flow through room, session, draft/shop, placement, resolution, GameOver | Confirmed coverage blocker |
 | P0-012 | Human two-client stale binary protocol panic | PROMPT 1883: stale `client.exe` vs fresh `server.exe` caused Lightyear protocol mismatch before UI | Confirmed operational blocker; rebuild mitigates stale-binary case |
 
@@ -60,10 +61,10 @@ still full HP.
 | P1-007 | Player gold drops without recorded purchase | PROMPT 2025: player 1 gold 5 -> 3 at DraftInitial -> Placement without charge evidence | Confirmed |
 | P1-008 | `draft_ready` logs `legal_action_count: null` | PROMPT 2025: DraftInitial and DraftShop bot decisions use null legal count | Confirmed |
 | P1-009 | `draft_ready_players` never records ready players | PROMPT 2025 snapshots show empty list despite `draft_ready` decisions | Confirmed |
-| P1-010 | `submissions_received` leaks into next round | PROMPT 2025: `[1]` persists into round 2 DraftShop | Confirmed |
+| P1-010 | `submissions_received` leaks into next round | PROMPT 2025: `[1]` persists into round 2 DraftShop | Fixed by PROMPT 2033; `Resolution -> DraftShop/DraftAuction` now clears stale submissions |
 | P1-011 | Bot RNG path not consumed | PROMPT 2025: `rng_word_counter` remains 0 despite thousands of bot decisions | Confirmed |
 | P1-012 | Bot decision timestamps/deadlines stale or null | PROMPT 2025: `last_decision_at_ms` stuck; `next_decision_at_ms` and `failsafe_deadline_ms` null during spin-loop | Confirmed |
-| P1-013 | Final GameOver snapshot loses session | PROMPT 2025: final GameOver snapshot has `session: null` | Confirmed |
+| P1-013 | Final GameOver snapshot loses session | PROMPT 2025: final GameOver snapshot has `session: null` | Root-caused by PROMPT 2033 as GameOver teardown/snapshot ordering; follow-up observability repair needed |
 | P1-014 | `client_exit_code` never observed | PROMPT 2025: all launcher statuses have `client_exit_code: null` while outcome is `ok` | Confirmed |
 | P1-015 | Autoplay `outcome: ok` is misleading | Checkpoints can pass while client stays Lobby and no real visible game occurs | Confirmed |
 | P1-016 | Placement recipe coordinates are fragile near bottom edge | PROMPT 2028 references FRAG-01: hand/submit coords at `fy=0.92`, about 58px from 720p bottom | Confirmed fragility |
@@ -195,6 +196,38 @@ Required evidence taxonomy before accepting future Done/PASS claims:
   region/pixel assertions for HUD/hand/board, phase-to-phase screenshot
   distinctness, and click/placement acceptance checks.
 
+## Server Board/GameOver Findings From PROMPT 2033
+
+PROMPT 2033 fixed one concrete server RSM bug and narrowed the remaining
+board/GameOver failures to upstream causes.
+
+Fixed:
+
+- `submissions_received` now clears when Resolution advances into the next
+  round's DraftShop or DraftAuction phase. This prevents stale round-N
+  placement submissions from making round N+1 Placement close immediately.
+
+Root-caused but not fixed in 2033:
+
+- The observed GameOver with all objectives intact is not a broken objective
+  win-condition. In the audited bot-soak run it came from the intentional
+  `CCGS_BOT_MAX_ROUNDS=3` cap after an empty/no-combat match.
+- No units reach the board because both submitting paths are empty: the client
+  remains stuck in Lobby and the bot path lacks a usable hand/placement.
+- Instant Resolution is a cascade of the empty board: no units means no combat
+  sequence to simulate.
+- `session: null` in the final GameOver snapshot is a teardown/snapshot ordering
+  issue, not proof that the GameOver broadcast itself failed.
+
+Required follow-up:
+
+- Verify the 2033 RSM fix on current main after 2030-2032 land.
+- Keep P0-007/P0-008 open until the client phase sync, bot hand awarding, and
+  bot placement repairs produce units on the board and a non-empty combat
+  resolution in fresh evidence.
+- Launch a focused snapshot ordering repair for P1-013 if GameOver evidence
+  still needs `session` populated after core gameplay repairs.
+
 ## Flow Matrix
 
 | Stage | Human flow | Autoplay flow | State |
@@ -206,19 +239,23 @@ Required evidence taxonomy before accepting future Done/PASS claims:
 | DraftInitial | Server path exists but card awarding broken in snapshots | Client remains Lobby forever | Blocked |
 | DraftShop | Server advances too fast and no useful awarding observed | Client remains Lobby forever | Blocked |
 | Auction | Server path exists; visible UI not reached in current run | Client remains Lobby forever | Blocked |
-| Placement | Server accepts/submits without board units; bot failsafe spin-loop | Client remains Lobby forever | Blocked |
-| Resolution | Empty board, no combat | Client remains Lobby forever | Blocked |
-| GameOver | Fires with objectives full HP; outcome projection untrusted | Client remains Lobby forever | Blocked |
+| Placement | Server accepts/submits without board units; bot failsafe spin-loop | Client remains Lobby forever | Blocked; stale submission leak fixed by 2033 |
+| Resolution | Empty board, no combat | Client remains Lobby forever | Blocked; root-caused by 2033 as no-units cascade |
+| GameOver | Soak max-round cap can end an empty match; normal win-condition path is guarded | Client remains Lobby forever | Blocked until non-empty board/combat evidence exists |
 | Return to Lobby | No reliable evidence | Unknown | Unknown |
 
 ## Repair Wave Mapping
 
-Active repair workers at the time this register was written:
+Remaining active repair workers after PROMPT 2033:
 
 - `PROMPT 2030`: client phase sync P0 repair. Targets P0-001, P0-002, P0-003.
 - `PROMPT 2031`: server draft/hand awarding P0 repair. Targets P0-004, P0-005, P1-007, P1-008, P1-009.
 - `PROMPT 2032`: bot placement failsafe spin-loop P0 repair. Targets P0-006, P1-011, P1-012, T-014.
-- `PROMPT 2033`: server board/GameOver vacuous-flow P0 repair. Targets P0-007, P0-008, P0-009, P0-010, P1-010, P1-013.
+
+Completed repair outcomes:
+
+- `PROMPT 2033`: server board/GameOver vacuous-flow P0 repair. Fixed P1-010,
+  root-caused P0-007, P0-008, P0-009, P0-010, and P1-013.
 
 Repair workers not yet launched from this register:
 
@@ -232,6 +269,8 @@ Repair workers not yet launched from this register:
 - QA evidence truthfulness hardening for T-020 through T-033, especially
   semantic screenshot validation, phase-gated checkpoints, real-client evidence
   taxonomy, and blocking treatment for `NEEDS_HUMAN_GUI`.
+- GameOver snapshot ordering repair for P1-013 if fresh post-repair evidence
+  still requires non-null session data in final snapshots.
 
 ## Rules For Future Updates
 

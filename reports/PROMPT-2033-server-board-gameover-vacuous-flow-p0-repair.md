@@ -1,23 +1,23 @@
 # PROMPT-2033 — Server Board/GameOver Vacuous Flow P0 Repair
 
-**Date:** 2026-05-28  
-**Branch:** `work/PROMPT-2033`  
-**Commit:** `9bd56ea3`  
-**Source-of-truth:** origin/main@8863e26c  
+**Date:** 2026-05-28
+**Branch:** `work/PROMPT-2033`
+**Commit:** `9bd56ea3`
+**Source-of-truth:** origin/main@8863e26c
 **Related reports:** PROMPT-2024, PROMPT-2025
 
 ---
 
 ## Scope
 
-Bugs from PROMPT-2025 audit assigned to this prompt: BUG-05, BUG-06, BUG-16, BUG-17, BUG-24.  
+Bugs from PROMPT-2025 audit assigned to this prompt: BUG-05, BUG-06, BUG-16, BUG-17, BUG-24.
 Owned path: placement → board application → resolution → GameOver.
 
 ---
 
 ## 1. BUG-17 — `submissions_received` leaks into round N+1 (FIXED)
 
-**Severity:** MEDIUM  
+**Severity:** MEDIUM
 **Location:** `server/src/core/rsm/transitions.rs` — `advance_phase`, `Resolution` arm
 
 ### Root cause
@@ -27,7 +27,7 @@ Owned path: placement → board application → resolution → GameOver.
 - `DraftInitial → Placement` transition
 - `DraftShop → Placement` transition
 
-The `Resolution → DraftShop` (and `Resolution → DraftAuction`) path **never cleared it**.  
+The `Resolution → DraftShop` (and `Resolution → DraftAuction`) path **never cleared it**.
 Round N's placement submission set persisted through the entire DraftShop phase into
 round N+1 Placement. As soon as round N+1 placement opened, the stale entry satisfied
 `all_players_seen` for a 1-of-2 player threshold — triggering an immediate
@@ -62,24 +62,24 @@ All 17 tests in `rsm_transitions_test` pass.
 
 ## 2. BUG-05 — GameOver fires after 2 vacuous rounds (ROOT-CAUSED, NOT FIXED)
 
-**Severity:** CRITICAL (in combination with BUG-06)  
+**Severity:** CRITICAL (in combination with BUG-06)
 **Location:** `server/src/core/rsm/transitions.rs` — `advance_phase`, `Resolution` arm (soak-bound check)
 
 ### Root cause
 
-The `CCGS_BOT_MAX_ROUNDS=3` environment variable is set in the bot-soak test run.  
-After round 2 resolution, `rsm.round_number` increments from 2 → 3.  
-The check `rsm.round_number >= max` where `max = 3` evaluates to `3 >= 3 = true`,  
+The `CCGS_BOT_MAX_ROUNDS=3` environment variable is set in the bot-soak test run.
+After round 2 resolution, `rsm.round_number` increments from 2 → 3.
+The check `rsm.round_number >= max` where `max = 3` evaluates to `3 >= 3 = true`,
 triggering `GameOverEmitted { reason: MaxRoundsReached }`.
 
-This is **intentional soak behavior** — `BotSoakConfig` is designed to cap runs at N rounds.  
+This is **intentional soak behavior** — `BotSoakConfig` is designed to cap runs at N rounds.
 The "vacuous" appearance (all objectives at 5/5 HP) is a consequence of BUG-06, not a separate bug in the win-condition logic.
 
 ### Why the win-condition itself is not broken
 
 `evaluate_objective_win_condition` (called by `rsm_input_reader` on `ResolutionComplete`) requires
 `real_objectives_destroyed(player) >= 2` before returning a game-over. With all objectives at HP 5,
-this always returns `None` → `PhaseAdvanceRequest::new(RoundPhase::Resolution)` (continue).  
+this always returns `None` → `PhaseAdvanceRequest::new(RoundPhase::Resolution)` (continue).
 The soak-bound GameOver fires in `advance_phase` after that request is processed.
 
 In **normal play** (no `CCGS_BOT_MAX_ROUNDS`), a match with no combat damage can never
@@ -96,12 +96,12 @@ The soak max-rounds cap itself is correct and should not be modified.
 
 ## 3. BUG-06 — No units ever reach the board (ROOT-CAUSED, NOT FIXED)
 
-**Severity:** CRITICAL  
+**Severity:** CRITICAL
 **Location:** Upstream of placement.rs — client and bot layers
 
 ### Root cause chain
 
-The server-side placement code in `server/src/feature/board/placement.rs` is **correct**.  
+The server-side placement code in `server/src/feature/board/placement.rs` is **correct**.
 `process_placement_submission` properly accepts empty batches (PROMPT 1678 comment documents
 this intentionally), and `close_placement_phase` correctly commits zero units for empty submissions.
 
@@ -133,7 +133,7 @@ These are upstream of the placement→board path and out of this prompt's scope.
 
 ## 4. BUG-16 — Resolution lasts ~2ms (ROOT-CAUSED, NOT FIXED)
 
-**Severity:** MEDIUM  
+**Severity:** MEDIUM
 **Location:** Resolution simulation system (out of scope: `server/src/feature/combat/`)
 
 ### Root cause
@@ -154,7 +154,7 @@ to process combat sequences.
 
 ## 5. BUG-24 — `session: null` in final GameOver snapshot (ROOT-CAUSED, NOT FIXED)
 
-**Severity:** LOW  
+**Severity:** LOW
 **Location:** `server/src/core/session/system.rs` — `handle_game_over_teardown` + bot QA snapshot ordering
 
 ### Root cause
