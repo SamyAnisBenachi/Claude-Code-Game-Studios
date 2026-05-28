@@ -46,6 +46,7 @@ pub const CARD_INSPECT_TITLE_FONT_PX: f32 = 20.0;
 pub const CARD_INSPECT_RULES_FONT_PX: f32 = 14.0;
 pub const CARD_INSPECT_BADGE_FONT_PX: f32 = 18.0;
 pub const CARD_INSPECT_KEYWORD_FONT_PX: f32 = 12.0;
+pub const CARD_INSPECT_GLOSSARY_FONT_PX: f32 = 11.0;
 
 const CARD_INSPECT_BACKGROUND: Color = Color::srgba(0.075, 0.090, 0.125, 0.98);
 const CARD_INSPECT_ART_FALLBACK: Color = Color::srgb(0.145, 0.180, 0.225);
@@ -64,6 +65,10 @@ pub struct CardInspectView {
     pub attack: Option<String>,
     pub health: Option<String>,
     pub keyword: Option<String>,
+    /// One `(label, definition)` entry per keyword on the card.
+    /// Rendered below the keyword label as a compact glossary panel.
+    /// Empty means no glossary panel is spawned.
+    pub keyword_glossary: Vec<(String, String)>,
     pub rules_text: String,
 }
 
@@ -75,6 +80,7 @@ impl Default for CardInspectView {
             attack: None,
             health: None,
             keyword: None,
+            keyword_glossary: Vec::new(),
             rules_text: "No card text available.".to_string(),
         }
     }
@@ -90,6 +96,8 @@ pub struct CardInspectEntities {
     pub attack: Entity,
     pub health: Entity,
     pub keyword: Entity,
+    /// `Entity::PLACEHOLDER` when the card has no keywords (no panel spawned).
+    pub glossary_panel: Entity,
     pub rules_text: Entity,
 }
 
@@ -110,6 +118,12 @@ pub struct CardInspectRulesText;
 
 #[derive(Component, Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct CardInspectKeywordText;
+
+#[derive(Component, Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub struct CardInspectGlossaryPanel;
+
+#[derive(Component, Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub struct CardInspectGlossaryRow;
 
 #[derive(Component, Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct CardInspectCostBadge;
@@ -208,6 +222,27 @@ pub fn card_inspect_stats_row_node() -> Node {
     }
 }
 
+pub fn card_inspect_glossary_panel_node() -> Node {
+    Node {
+        width: Val::Percent(100.0),
+        row_gap: Val::Px(spacing::SPACING_XS),
+        display: Display::Flex,
+        flex_direction: FlexDirection::Column,
+        overflow: Overflow::clip(),
+        border: UiRect::top(Val::Px(1.0)),
+        padding: UiRect::top(Val::Px(spacing::SPACING_XS)),
+        ..default()
+    }
+}
+
+pub fn card_inspect_glossary_row_node() -> Node {
+    Node {
+        width: Val::Percent(100.0),
+        overflow: Overflow::clip(),
+        ..default()
+    }
+}
+
 pub fn card_inspect_art_image_node() -> ImageNode {
     ImageNode {
         image_mode: CARD_SLOT_ART_IMAGE_MODE,
@@ -227,6 +262,7 @@ pub fn spawn_card_inspect(
         attack: Entity::PLACEHOLDER,
         health: Entity::PLACEHOLDER,
         keyword: Entity::PLACEHOLDER,
+        glossary_panel: Entity::PLACEHOLDER,
         rules_text: Entity::PLACEHOLDER,
     };
 
@@ -309,6 +345,34 @@ pub fn spawn_card_inspect(
                         text_fit::text_layout(text_fit::TextFitPolicy::SingleLineNoWrap),
                     ))
                     .id();
+
+                if !view.keyword_glossary.is_empty() {
+                    let glossary = view.keyword_glossary.clone();
+                    entities.glossary_panel = strip
+                        .spawn((
+                            CardInspectGlossaryPanel,
+                            Name::new("Card Inspect Glossary Panel"),
+                            card_inspect_glossary_panel_node(),
+                            BorderColor::all(Color::srgba(0.76, 0.82, 0.88, 0.25)),
+                        ))
+                        .with_children(|panel| {
+                            for (label, definition) in &glossary {
+                                panel.spawn((
+                                    CardInspectGlossaryRow,
+                                    Name::new("Card Inspect Glossary Row"),
+                                    card_inspect_glossary_row_node(),
+                                    Text::new(format!("{label}: {definition}")),
+                                    TextFont {
+                                        font_size: CARD_INSPECT_GLOSSARY_FONT_PX,
+                                        ..default()
+                                    },
+                                    TextColor(CARD_INSPECT_MUTED_TEXT),
+                                    text_fit::wrap_body_left(),
+                                ));
+                            }
+                        })
+                        .id();
+                }
 
                 entities.rules_text = strip
                     .spawn((
