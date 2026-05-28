@@ -27,7 +27,10 @@ pub use qa_snapshot::{
     DEFAULT_BOT_DECISION_LOG_PATH, DEFAULT_BOT_QA_SNAPSHOT_DIR,
     DEFAULT_PERIODIC_SNAPSHOT_INTERVAL_MS,
 };
-pub use soak_config::{BotSoakConfig, BotSoakPlugin, BOT_MAX_ROUNDS_ENV_VAR};
+pub use soak_config::{
+    is_bot_soak_enabled, BotSoakConfig, BotSoakPlugin, BOT_MAX_ROUNDS_ENV_VAR,
+    BOT_SOAK_ENABLED_ENV_VAR,
+};
 pub use state::{
     BotDecisionEntry, BotDecisionKind, BotDecisionLog, BotDifficulty, BotPhaseTiming, BotPlayers,
     BotState, BotThinkDelayWindow, PlacementCoord, BOT_AUCTION_PASS_THRESHOLD_MS,
