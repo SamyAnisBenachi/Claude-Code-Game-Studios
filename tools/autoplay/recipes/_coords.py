@@ -43,6 +43,10 @@ DEFAULTS: dict[str, FracPoint] = {
     "AUCTION_READY_BTN": FracPoint(0.5, 0.85),
     "HAND_FIRST_CARD": FracPoint(0.35, 0.92),
     "BOARD_FIRST_CELL": FracPoint(0.5, 0.55),
+    # Upper-board cell heuristically outside the player's spawn range.
+    # Override via CCGS_AUTOPLAY_BOARD_DEEP_CELL=fx,fy to target a known-invalid
+    # cell for the live board layout (see placement-reject-probe recipe).
+    "BOARD_DEEP_CELL": FracPoint(0.5, 0.30),
     "SUBMIT_BTN": FracPoint(0.85, 0.92),
 }
 
