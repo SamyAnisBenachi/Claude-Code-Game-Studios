@@ -52,6 +52,7 @@ if str(_HERE) not in sys.path:
 
 from recipes import RecipeContext, REGISTRY, get as get_recipe, names as recipe_names  # noqa: E402
 from screenshot_poll import wait_for_screenshot_file  # noqa: E402
+from win_capture import capture_game_window as _win32_capture  # noqa: E402
 from win_foreground import ensure_foreground  # noqa: E402
 
 
@@ -288,6 +289,15 @@ def main() -> int:
                         # Bevy window to the foreground so its GPU backbuffer
                         # is actively composited when the screenshot fires.
                         ensure_foreground(log)
+                        # Win32 driver-side capture (PROMPT 1794): capture the
+                        # DWM-composited window BEFORE the Bevy RPC fires so
+                        # evidence reflects what is actually visible on screen.
+                        # Near-black / byte-identical RPC screenshots (seen in
+                        # PROMPT 1792) occur because Bevy's GPU backbuffer is
+                        # stale when the window is not actively composited.
+                        # capture_game_window is a no-op on non-Windows.
+                        _win32_shot = artifact_dir / f"win32_tick_{tick:06d}.png"
+                        _win32_capture(_win32_shot, log)
                     try:
                         result = rpc(url, method, params)
                         action_results.append(result)
