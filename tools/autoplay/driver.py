@@ -226,6 +226,19 @@ def main() -> int:
                 size = status.get("window_logical_size") or [1280.0, 720.0]
                 if not isinstance(size, list) or len(size) != 2:
                     size = [1280.0, 720.0]
+                # PROMPT 1842 -- viewport size gate: warn early if the window is
+                # smaller than the dev-floor minimum so operators see the problem
+                # before fractional-coordinate recipes start missing click targets.
+                _MIN_W, _MIN_H = 1280.0, 720.0
+                if float(size[0]) < _MIN_W or float(size[1]) < _MIN_H:
+                    log(
+                        f"WARNING window_logical_size={size[0]}x{size[1]} is below "
+                        f"{int(_MIN_W)}x{int(_MIN_H)} minimum — recipe click targets may miss. "
+                        "Check CCGS_WINDOW_WIDTH/CCGS_WINDOW_HEIGHT env vars and "
+                        "client autoplay log for enforce_autoplay_window_size_system."
+                    )
+                else:
+                    log(f"window_logical_size={size[0]}x{size[1]} OK (>= {int(_MIN_W)}x{int(_MIN_H)})")
                 ctx = RecipeContext(window_size=(float(size[0]), float(size[1])), env=dict(os.environ))
                 recipe_actions = build_fn(ctx)
                 # Validate methods up-front so a malformed recipe fails before any RPC.

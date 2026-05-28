@@ -77,6 +77,15 @@ if ($Recipe -eq 'vs-bot') {
     }
 }
 
+# PROMPT 1842 -- window size guard: ensure the Bevy client opens at a viewport
+# large enough for all recipe click targets. The AutoplayPlugin's Startup system
+# reads these env vars and enforces the minimum (1280x720) via
+# window.resolution.set(). Unset here means the Rust fallback applies (same
+# 1280x720 floor), so this block is defensive and also provides a log trail.
+if (-not $env:CCGS_WINDOW_WIDTH)  { $env:CCGS_WINDOW_WIDTH  = '1280' }
+if (-not $env:CCGS_WINDOW_HEIGHT) { $env:CCGS_WINDOW_HEIGHT = '720'  }
+Write-Host "[autoplay-smoke] viewport target: $($env:CCGS_WINDOW_WIDTH)x$($env:CCGS_WINDOW_HEIGHT) (CCGS_WINDOW_WIDTH/CCGS_WINDOW_HEIGHT)"
+
 # Build first so the client launch does not have to wait inside the timeout window.
 Write-Host "[autoplay-smoke] cargo build -p client --bin client --features autoplay-remote"
 $build = Start-Process -FilePath "cargo" -ArgumentList @(
