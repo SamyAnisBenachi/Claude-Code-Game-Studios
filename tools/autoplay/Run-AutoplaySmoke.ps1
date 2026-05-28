@@ -50,6 +50,33 @@ $launcherStatusPath = Join-Path $ArtifactDir "launcher-status.json"
 
 Write-Host "[autoplay-smoke] repo=$repoRoot port=$Port artifact_dir=$ArtifactDir"
 
+# PROMPT 1824 -- vs-bot env gate: check required env vars before the expensive
+# cargo build + client launch cycle. Without CCGS_DEBUG_UI=1 the Bevy client
+# hides the Add Bot button; without CCGS_AUTOPLAY_BOT_ROOM_READY=1 the recipe
+# emits local.block (driver exit 4) after the full build completes.
+if ($Recipe -eq 'vs-bot') {
+    if ($env:CCGS_DEBUG_UI -ne '1') {
+        $env:CCGS_DEBUG_UI = '1'
+        Write-Host "[autoplay-smoke] vs-bot: CCGS_DEBUG_UI not set -- auto-set to 1"
+    }
+    if ($env:CCGS_AUTOPLAY_BOT_ROOM_READY -ne '1') {
+        Write-Host ""
+        Write-Host "[autoplay-smoke] BLOCKED: CCGS_AUTOPLAY_BOT_ROOM_READY is not set." -ForegroundColor Red
+        Write-Host "  The vs-bot recipe requires a running bot soak room before the driver starts." -ForegroundColor Red
+        Write-Host "  To fix:" -ForegroundColor Yellow
+        Write-Host "    1. In a separate terminal, start the bot soak room:" -ForegroundColor Yellow
+        Write-Host "         pwsh -File tools/dev-launcher/Start-BotVsBotSoak.ps1" -ForegroundColor Yellow
+        Write-Host "    2. Wait for it to print 'Server listening on port ...'" -ForegroundColor Yellow
+        Write-Host "    3. In this terminal, set the env var and re-run:" -ForegroundColor Yellow
+        Write-Host "         `$env:CCGS_AUTOPLAY_BOT_ROOM_READY = '1'" -ForegroundColor Yellow
+        Write-Host "         pwsh -File tools/autoplay/Run-AutoplaySmoke.ps1 -Recipe vs-bot" -ForegroundColor Yellow
+        Write-Host "  Alternatively Start-AutoplayVsBot.ps1 handles both automatically:" -ForegroundColor Yellow
+        Write-Host "         pwsh -File tools/dev-launcher/Start-AutoplayVsBot.ps1 -Recipe vs-bot" -ForegroundColor Yellow
+        Write-Host ""
+        exit 4
+    }
+}
+
 # Build first so the client launch does not have to wait inside the timeout window.
 Write-Host "[autoplay-smoke] cargo build -p client --bin client --features autoplay-remote"
 $build = Start-Process -FilePath "cargo" -ArgumentList @(
