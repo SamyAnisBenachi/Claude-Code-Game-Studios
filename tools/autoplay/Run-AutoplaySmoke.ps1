@@ -107,7 +107,24 @@ if (-not $ready) {
 
 Write-Host "[autoplay-smoke] RPC port bound; running driver (recipe=$Recipe ticks=$DriverTicks hz=$DriverHz)"
 $driverPath = Join-Path $PSScriptRoot "driver.py"
+
+# PROMPT 1802 -- stale-pyc guard: clear __pycache__ under tools/autoplay so that
+# Python never executes bytecode predating a recent source edit (root cause of
+# PROMPT 1801 live-verify failure where driver.cpython-312.pyc lacked win_capture).
+$autoplyCacheDir = Join-Path $PSScriptRoot "__pycache__"
+$recipeCacheDir  = Join-Path $PSScriptRoot "recipes\__pycache__"
+foreach ($cacheDir in @($autoplyCacheDir, $recipeCacheDir)) {
+    if (Test-Path $cacheDir) {
+        Write-Host "[autoplay-smoke] clearing stale pyc: $cacheDir"
+        Remove-Item -Recurse -Force $cacheDir -ErrorAction SilentlyContinue
+    }
+}
+# -B: do not write (or read) bytecode cache files for this run.
+$env:PYTHONDONTWRITEBYTECODE = '1'
+Write-Host "[autoplay-smoke] PYTHONDONTWRITEBYTECODE=1 (stale-pyc guard active)"
+
 $driver = Start-Process -FilePath $Python -ArgumentList @(
+    '-B',
     $driverPath,
     "--port", $Port,
     "--artifact-dir", $ArtifactDir,
