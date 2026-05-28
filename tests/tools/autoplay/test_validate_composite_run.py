@@ -432,6 +432,7 @@ class TestCheckpointRegistry:
         "smoke", "idle", "lobby-create", "add-bot-lobby",
         "class-select", "draft-auction-probe", "placement-drag-probe",
         "resolution-observe", "game-over-observe", "full-game", "round-loop",
+        "vs-bot",
     }
 
     def test_validate_composite_run_all_known_recipes_in_registry(self):
@@ -449,3 +450,81 @@ class TestCheckpointRegistry:
                 assert isinstance(lbl, str) and lbl, (
                     f"Recipe '{recipe}': label {lbl!r} is not a non-empty string"
                 )
+
+    def test_validate_composite_run_vs_bot_has_bot_added_checkpoint(self):
+        """vs-bot required checkpoints must include bot-added (add-bot-lobby marker)."""
+        labels = RECIPE_REQUIRED_CHECKPOINTS["vs-bot"]
+        assert "bot-added" in labels, (
+            "vs-bot RECIPE_REQUIRED_CHECKPOINTS must include 'bot-added' "
+            "(distinguishes add-bot-lobby path from lobby-create)"
+        )
+
+
+# ---------------------------------------------------------------------------
+# vs-bot checkpoint validation (end-to-end via validate())
+# ---------------------------------------------------------------------------
+
+class TestVsBotCheckpointValidation:
+    _VS_BOT_CHECKPOINTS = [
+        "lobby-loaded", "bot-added", "lobby-confirmed",
+        "class-select-loaded",
+        "placement-loaded", "placement-submitted",
+        "vs-bot-post-resolution",
+    ]
+
+    def test_validate_vs_bot_required_checkpoints_present_passes(self, tmp_path):
+        checkpoints = _checkpoint_rows(*self._VS_BOT_CHECKPOINTS)
+        evidence_dir, _ = _make_evidence_dir(
+            tmp_path,
+            summary_override={"recipe": "vs-bot"},
+            artifact_checkpoints=checkpoints,
+        )
+        result = validate(evidence_dir)
+        assert result.ok, f"Expected PASS: {result.failures}"
+
+    def test_validate_vs_bot_missing_bot_added_checkpoint_fails(self, tmp_path):
+        rows_without_bot_added = [
+            "lobby-loaded", "lobby-confirmed",
+            "class-select-loaded",
+            "placement-loaded", "placement-submitted",
+        ]
+        checkpoints = _checkpoint_rows(*rows_without_bot_added)
+        evidence_dir, _ = _make_evidence_dir(
+            tmp_path,
+            summary_override={"recipe": "vs-bot"},
+            artifact_checkpoints=checkpoints,
+        )
+        result = validate(evidence_dir)
+        assert not result.ok
+        assert any("MISSING CHECKPOINTS" in f for f in result.failures)
+        assert any("bot-added" in f for f in result.failures)
+
+    def test_validate_vs_bot_missing_placement_submitted_fails(self, tmp_path):
+        rows_without_placement = [
+            "lobby-loaded", "bot-added", "lobby-confirmed",
+            "class-select-loaded",
+            "placement-loaded",
+            # "placement-submitted" intentionally omitted
+        ]
+        checkpoints = _checkpoint_rows(*rows_without_placement)
+        evidence_dir, _ = _make_evidence_dir(
+            tmp_path,
+            summary_override={"recipe": "vs-bot"},
+            artifact_checkpoints=checkpoints,
+        )
+        result = validate(evidence_dir)
+        assert not result.ok
+        assert any("placement-submitted" in f for f in result.failures)
+
+    def test_validate_vs_bot_blocked_outcome_skips_checkpoints(self, tmp_path):
+        evidence_dir, _ = _make_evidence_dir(
+            tmp_path,
+            summary_override={
+                "recipe": "vs-bot",
+                "outcome": "blocked-recipe-guard",
+                "smoke_exit_code": 4,
+            },
+            artifact_checkpoints=[],
+        )
+        result = validate(evidence_dir)
+        assert result.ok, f"Blocked vs-bot run should pass checkpoint check: {result.failures}"
