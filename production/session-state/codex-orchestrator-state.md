@@ -5,8 +5,9 @@
 Source-of-truth at this snapshot:
 
 - Root checkout: `D:\_DEV\Work\Claude-Code-Game-Studios`
-- Current main source: `origin/main@158d0efe`
-  (`PROMPT 2040` Bevy UI layout reference architecture audit report).
+- Current main source: `origin/main@6fa4bc0b`
+  (`PROMPT 2040` Bevy UI architecture audit plus post-2040 orchestrator
+  state snapshot).
 - Root checkout caveat: the root local checkout may be dirty/stale and must not
   be treated as the source of truth for integration. Use clean worktrees based
   on `origin/main` for repair, refresh, and report work.
@@ -62,13 +63,17 @@ Worker disposition:
   `PROMPT 2044` board combat presentation/HP mutation repair, `PROMPT 2045`
   card/shop placeholder asset binding repair, and `PROMPT 2046` draft-grid
   responsive layout plus UI-owned drag ghost repair.
+- Additional active repair lanes launched after this state landed:
+  `PROMPT 2048` disconnect tracker initialization repair and `PROMPT 2049`
+  result outcome projection repair.
+- `PROMPT 2047` failed/tombstoned during launch and is not counted active.
 - Tentative lane: `PROMPT 2034` bug-ledger backfill was pinged earlier but has
   not reported in this snapshot.
 
 Immediate next actions:
 
-1. Monitor `2042/2043/2044/2045/2046` and clear/integrate exact worker ids as
-   they report.
+1. Monitor `2042/2043/2044/2045/2046/2048/2049` and clear/integrate exact
+   worker ids as they report.
 2. Launch additional repair lanes only when their write scopes are disjoint:
    disconnect tracker init (`P1-001`), placement ACK protocol (`P1-005`), result
    outcome projection (`P1-006`), and lobby visible state (`P1-002..P1-004`).
