@@ -48,6 +48,34 @@ pub const BID_BUTTON_NORMAL_ASSET: &str = "art/ui/auction/ui_bid_button_active.p
 pub const BID_BUTTON_HOVER_ASSET: &str = "art/characters/ui_unit_placeholder_default_board.png";
 pub const BID_BUTTON_DISABLED_ASSET: &str = "art/ui/auction/ui_bid_button_disabled.png";
 
+// ── Auction tier-border chrome (SLICE-B) ──────────────────────────────────────
+// Disk: art/ui/shop_auction/ui_auction_border_tier{1-4}_hud.png
+// Maps 1-to-1 with AuctionBorderColorTier in shop_auction/mod.rs:
+//   tier 1 ↔ PaleInkBlue (current_price 0–3)
+//   tier 2 ↔ AuctionAmber (current_price 4–6)
+//   tier 3 ↔ DeepAmber    (current_price 7–9)
+//   tier 4 ↔ CrimsonAmber (current_price 10+)
+pub const AUCTION_TIER_BORDER_1_ASSET: &str =
+    "art/ui/shop_auction/ui_auction_border_tier1_hud.png";
+pub const AUCTION_TIER_BORDER_2_ASSET: &str =
+    "art/ui/shop_auction/ui_auction_border_tier2_hud.png";
+pub const AUCTION_TIER_BORDER_3_ASSET: &str =
+    "art/ui/shop_auction/ui_auction_border_tier3_hud.png";
+pub const AUCTION_TIER_BORDER_4_ASSET: &str =
+    "art/ui/shop_auction/ui_auction_border_tier4_hud.png";
+
+// ── Auction rarity gem icons (SLICE-B) ───────────────────────────────────────
+// Disk: art/ui/shop_auction/ui_gem_{rarity}_default_{size}.png
+// Two sizes: 24px for compact bid-button slots, 32px for featured-card use.
+pub const AUCTION_GEM_RARE_24_ASSET: &str = "art/ui/shop_auction/ui_gem_rare_default_24.png";
+pub const AUCTION_GEM_RARE_32_ASSET: &str = "art/ui/shop_auction/ui_gem_rare_default_32.png";
+pub const AUCTION_GEM_EPIC_24_ASSET: &str = "art/ui/shop_auction/ui_gem_epic_default_24.png";
+pub const AUCTION_GEM_EPIC_32_ASSET: &str = "art/ui/shop_auction/ui_gem_epic_default_32.png";
+pub const AUCTION_GEM_LEGENDARY_24_ASSET: &str =
+    "art/ui/shop_auction/ui_gem_legendary_default_24.png";
+pub const AUCTION_GEM_LEGENDARY_32_ASSET: &str =
+    "art/ui/shop_auction/ui_gem_legendary_default_32.png";
+
 // ── HUD ───────────────────────────────────────────────────────────────────────
 // Disk has no art/ui/hud/ directory. Map figurines to the class-keyed hand frames.
 pub const HUD_FIGURINE_IOP_ASSET: &str = "art/ui/hand/card_frame_iop_default_display.png";
@@ -214,6 +242,20 @@ pub fn bid_button_asset(state: BidButtonChromeState) -> &'static str {
     }
 }
 
+/// Returns the path constant for an auction tier-border overlay.
+///
+/// `tier` is 1-indexed (1 = cheapest / PaleInkBlue, 4 = most expensive /
+/// CrimsonAmber). Out-of-range values clamp to tier 1.
+pub fn auction_tier_border_asset(tier: u8) -> &'static str {
+    match tier {
+        1 => AUCTION_TIER_BORDER_1_ASSET,
+        2 => AUCTION_TIER_BORDER_2_ASSET,
+        3 => AUCTION_TIER_BORDER_3_ASSET,
+        4 => AUCTION_TIER_BORDER_4_ASSET,
+        _ => AUCTION_TIER_BORDER_1_ASSET,
+    }
+}
+
 // ── PlaceholderAssets resource ────────────────────────────────────────────────
 
 /// Session-scoped resource holding pre-loaded `Handle<Image>` for every
@@ -251,6 +293,18 @@ pub struct PlaceholderAssets {
     pub bid_button_normal: Handle<Image>,
     pub bid_button_hover: Handle<Image>,
     pub bid_button_disabled: Handle<Image>,
+    // auction tier-border chrome (SLICE-B)
+    pub auction_tier_border_1: Handle<Image>,
+    pub auction_tier_border_2: Handle<Image>,
+    pub auction_tier_border_3: Handle<Image>,
+    pub auction_tier_border_4: Handle<Image>,
+    // auction rarity gem icons (SLICE-B)
+    pub auction_gem_rare_24: Handle<Image>,
+    pub auction_gem_rare_32: Handle<Image>,
+    pub auction_gem_epic_24: Handle<Image>,
+    pub auction_gem_epic_32: Handle<Image>,
+    pub auction_gem_legendary_24: Handle<Image>,
+    pub auction_gem_legendary_32: Handle<Image>,
     // HUD
     pub hud_figurine_iop: Handle<Image>,
     pub hud_figurine_cra: Handle<Image>,
@@ -323,6 +377,16 @@ pub fn insert_placeholder_assets(
         bid_button_normal: asset_server.load(BID_BUTTON_NORMAL_ASSET),
         bid_button_hover: asset_server.load(BID_BUTTON_HOVER_ASSET),
         bid_button_disabled: asset_server.load(BID_BUTTON_DISABLED_ASSET),
+        auction_tier_border_1: asset_server.load(AUCTION_TIER_BORDER_1_ASSET),
+        auction_tier_border_2: asset_server.load(AUCTION_TIER_BORDER_2_ASSET),
+        auction_tier_border_3: asset_server.load(AUCTION_TIER_BORDER_3_ASSET),
+        auction_tier_border_4: asset_server.load(AUCTION_TIER_BORDER_4_ASSET),
+        auction_gem_rare_24: asset_server.load(AUCTION_GEM_RARE_24_ASSET),
+        auction_gem_rare_32: asset_server.load(AUCTION_GEM_RARE_32_ASSET),
+        auction_gem_epic_24: asset_server.load(AUCTION_GEM_EPIC_24_ASSET),
+        auction_gem_epic_32: asset_server.load(AUCTION_GEM_EPIC_32_ASSET),
+        auction_gem_legendary_24: asset_server.load(AUCTION_GEM_LEGENDARY_24_ASSET),
+        auction_gem_legendary_32: asset_server.load(AUCTION_GEM_LEGENDARY_32_ASSET),
         hud_figurine_iop: asset_server.load(HUD_FIGURINE_IOP_ASSET),
         hud_figurine_cra: asset_server.load(HUD_FIGURINE_CRA_ASSET),
         hud_figurine_sacrier: asset_server.load(HUD_FIGURINE_SACRIER_ASSET),
@@ -399,6 +463,16 @@ pub fn placeholder_assets_for_tests() -> PlaceholderAssets {
         bid_button_normal: Handle::default(),
         bid_button_hover: Handle::default(),
         bid_button_disabled: Handle::default(),
+        auction_tier_border_1: Handle::default(),
+        auction_tier_border_2: Handle::default(),
+        auction_tier_border_3: Handle::default(),
+        auction_tier_border_4: Handle::default(),
+        auction_gem_rare_24: Handle::default(),
+        auction_gem_rare_32: Handle::default(),
+        auction_gem_epic_24: Handle::default(),
+        auction_gem_epic_32: Handle::default(),
+        auction_gem_legendary_24: Handle::default(),
+        auction_gem_legendary_32: Handle::default(),
         hud_figurine_iop: Handle::default(),
         hud_figurine_cra: Handle::default(),
         hud_figurine_sacrier: Handle::default(),
