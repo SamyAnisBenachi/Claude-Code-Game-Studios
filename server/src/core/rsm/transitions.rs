@@ -723,6 +723,9 @@ pub fn advance_phase(
         RoundPhase::Resolution => {
             rsm.resolution_safety_timer = None;
             rsm.round_number += 1;
+            // BUG-17 fix: clear stale submissions from the just-completed placement
+            // phase so they cannot satisfy the all-players-seen check in round N+1.
+            rsm.submissions_received.clear();
             debug_assert!(
                 rsm.round_number >= 1,
                 "round_number was not initialized before resolution exit"
