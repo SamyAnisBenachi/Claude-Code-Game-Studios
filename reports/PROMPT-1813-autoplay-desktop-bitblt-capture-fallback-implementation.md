@@ -1,8 +1,8 @@
 # PROMPT 1813 — Autoplay Desktop BitBlt Capture Fallback Implementation
 
-**Date**: 2026-05-28  
-**Branch**: `feat/1813-desktop-bitblt-capture`  
-**Commit**: `969ca093`  
+**Date**: 2026-05-28
+**Branch**: `feat/1813-desktop-bitblt-capture`
+**Commit**: `969ca093`
 **Worktree**: `tmpwt-1813-desktop-bitblt-capture`
 
 ---
