@@ -431,6 +431,10 @@ name = "presentation_plugin_scaffold_test"
 path = "../tests/integration/presentation/presentation_plugin_scaffold_test.rs"
 
 [[test]]
+name = "phase_sync_regression_test"
+path = "../tests/integration/presentation/phase_sync_regression_test.rs"
+
+[[test]]
 name = "accessibility_settings_photosensitivity_warning_test"
 path = "../tests/unit/accessibility_settings/photosensitivity_warning_test.rs"
 

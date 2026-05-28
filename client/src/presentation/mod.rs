@@ -208,6 +208,20 @@ pub fn phase_sink_system(
     state: Res<State<ClientState>>,
     mut next_state: ResMut<NextState<ClientState>>,
 ) {
+    // BUG-01/BUG-13 diagnostic: warn when connected (player_id assigned) but no
+    // MessageReceiver<S2CPhaseChanged> entity exists.  In that state S2CPhaseChanged
+    // can never reach CurrentClientPhase — the cause is either a missing
+    // Lightyear register_message / add_direction call or a connection entity that
+    // lost the component.  Before handshake the absence is normal and is silent.
+    if receivers.is_empty() && identity.player_id.is_some() {
+        tracing::warn!(
+            target: "client::presentation",
+            player_id = ?identity.player_id,
+            "phase_sink: connected but no MessageReceiver<S2CPhaseChanged> entity — \
+             phase changes cannot reach CurrentClientPhase (BUG-01/BUG-13 site)"
+        );
+    }
+
     let mut messages = Vec::new();
     for mut receiver in &mut receivers {
         for message in receiver.receive() {
