@@ -121,9 +121,9 @@ pub struct HandFanLayoutConfig {
 impl Default for HandFanLayoutConfig {
     fn default() -> Self {
         Self {
-            fan_base_margin_px: 100.0,
-            fan_half_spread_px: 280.0,
-            arc_height_px: 20.0,
+            fan_base_margin_px: 150.0,
+            fan_half_spread_px: 380.0,
+            arc_height_px: 30.0,
             max_rotation_deg: 8.0,
         }
     }
