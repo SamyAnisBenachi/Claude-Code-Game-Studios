@@ -17,7 +17,7 @@ use client::card_animations::{
 };
 use client::presentation::board_rendering::{
     BoardRenderState, BoardRenderingPlugin, BoardUnit, BoardUnitCard, BoardUnitOwner,
-    PendingResolutionScript, ResolutionKillMarker, ResolutionRevealWait,
+    BoardUnitStats, PendingResolutionScript, ResolutionKillMarker, ResolutionRevealWait,
     RESOLUTION_KILL_MARKER_TTL_MS,
 };
 use client::presentation::LaneCell;
@@ -80,6 +80,158 @@ fn test_combat_damage_event_emits_damage_number_spawn_request() {
     assert_eq!(count_kill_markers(&mut app), 0);
     // Placement-reveal lane must not be perturbed.
     assert!(messages_since(&app, &mut placement_cursor).is_empty());
+}
+
+#[test]
+fn test_combat_damage_mutates_defender_board_unit_stats_hp() {
+    // PROMPT 2044 — regression: CombatDamage replay must apply
+    // `defender_hp_after` to the on-board defender's BoardUnitStats so
+    // HP-derived presentation updates during resolution instead of waiting
+    // for the next snapshot rebuild.
+    test_helpers::init_test_tracing();
+    let mut app = app_in_session();
+    let defender = spawn_board_unit_with_stats(
+        &mut app,
+        DEFENDER_UNIT_ID,
+        player(2),
+        CardId(11),
+        3,
+        4,
+        UNIT_X,
+        UNIT_Y,
+        BoardUnitStats {
+            hp_current: 8,
+            hp_max: 8,
+            atk: 3,
+            mp: 0,
+            ar: 0,
+        },
+    );
+
+    let pre = unit_stats(&mut app, defender);
+    assert_eq!(pre.hp_current, 8, "precondition: defender starts at 8 HP");
+
+    enter_resolution_with_script(
+        &mut app,
+        script(vec![tagged(
+            1,
+            TRIGGER_INDEX,
+            ResolutionEvent::CombatDamage {
+                attacker_id: ATTACKER_UNIT_ID,
+                defender_id: DEFENDER_UNIT_ID,
+                damage_amount: 3,
+                defender_hp_after: 5,
+                was_blocked_by_shield: false,
+            },
+        )]),
+    );
+    app.update();
+
+    let post = unit_stats(&mut app, defender);
+    assert_eq!(
+        post.hp_current, 5,
+        "CombatDamage replay must mutate defender hp_current to defender_hp_after"
+    );
+    assert_eq!(
+        post.hp_max, 8,
+        "CombatDamage replay must not change hp_max"
+    );
+}
+
+#[test]
+fn test_combat_damage_zero_damage_does_not_mutate_defender_hp() {
+    // PROMPT 2044 — guard the 0-damage early-return path: shield-blocked
+    // / no-op combat must leave defender stats untouched (no damage number,
+    // no HP write).
+    test_helpers::init_test_tracing();
+    let mut app = app_in_session();
+    let defender = spawn_board_unit_with_stats(
+        &mut app,
+        DEFENDER_UNIT_ID,
+        player(2),
+        CardId(11),
+        2,
+        3,
+        UNIT_X,
+        UNIT_Y,
+        BoardUnitStats {
+            hp_current: 4,
+            hp_max: 4,
+            atk: 1,
+            mp: 0,
+            ar: 0,
+        },
+    );
+
+    enter_resolution_with_script(
+        &mut app,
+        script(vec![tagged(
+            1,
+            TRIGGER_INDEX,
+            ResolutionEvent::CombatDamage {
+                attacker_id: ATTACKER_UNIT_ID,
+                defender_id: DEFENDER_UNIT_ID,
+                damage_amount: 0,
+                defender_hp_after: 4,
+                was_blocked_by_shield: true,
+            },
+        )]),
+    );
+    app.update();
+
+    let post = unit_stats(&mut app, defender);
+    assert_eq!(
+        post.hp_current, 4,
+        "0-damage CombatDamage must not mutate defender HP"
+    );
+}
+
+#[test]
+fn test_combat_damage_clamps_hp_after_to_hp_max() {
+    // PROMPT 2044 — defensively clamp the server-supplied
+    // `defender_hp_after` against hp_max so a stale / malformed payload
+    // can't render an HP bar > 100%.
+    test_helpers::init_test_tracing();
+    let mut app = app_in_session();
+    let defender = spawn_board_unit_with_stats(
+        &mut app,
+        DEFENDER_UNIT_ID,
+        player(2),
+        CardId(11),
+        1,
+        2,
+        UNIT_X,
+        UNIT_Y,
+        BoardUnitStats {
+            hp_current: 5,
+            hp_max: 5,
+            atk: 1,
+            mp: 0,
+            ar: 0,
+        },
+    );
+
+    enter_resolution_with_script(
+        &mut app,
+        script(vec![tagged(
+            1,
+            TRIGGER_INDEX,
+            ResolutionEvent::CombatDamage {
+                attacker_id: ATTACKER_UNIT_ID,
+                defender_id: DEFENDER_UNIT_ID,
+                damage_amount: 1,
+                defender_hp_after: 99,
+                was_blocked_by_shield: false,
+            },
+        )]),
+    );
+    app.update();
+
+    let post = unit_stats(&mut app, defender);
+    assert_eq!(
+        post.hp_current, 5,
+        "defender_hp_after above hp_max must clamp to hp_max"
+    );
 }
 
 #[test]
@@ -355,6 +507,37 @@ fn spawn_board_unit_with_transform(
     x: f32,
     y: f32,
 ) -> Entity {
+    spawn_board_unit_with_stats(
+        app,
+        unit_id,
+        owner_id,
+        card_id,
+        lane,
+        cell,
+        x,
+        y,
+        BoardUnitStats {
+            hp_current: 5,
+            hp_max: 5,
+            atk: 2,
+            mp: 0,
+            ar: 0,
+        },
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn spawn_board_unit_with_stats(
+    app: &mut App,
+    unit_id: EntityId,
+    owner_id: PlayerId,
+    card_id: CardId,
+    lane: u8,
+    cell: u8,
+    x: f32,
+    y: f32,
+    stats: BoardUnitStats,
+) -> Entity {
     app.world_mut()
         .spawn((
             BoardUnit { unit_id },
@@ -364,10 +547,18 @@ fn spawn_board_unit_with_transform(
                 frame_index: 0,
                 used_missing_art_fallback: false,
             },
+            stats,
             LaneCell { lane, cell },
             Transform::from_xyz(x, y, 0.0),
         ))
         .id()
+}
+
+fn unit_stats(app: &mut App, entity: Entity) -> BoardUnitStats {
+    *app.world_mut()
+        .entity(entity)
+        .get::<BoardUnitStats>()
+        .expect("BoardUnitStats present on board unit")
 }
 
 fn script(events: Vec<TaggedEvent>) -> S2CResolutionEvent {
