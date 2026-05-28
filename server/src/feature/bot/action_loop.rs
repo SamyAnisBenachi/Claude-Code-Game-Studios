@@ -1074,6 +1074,24 @@ pub fn bot_draft_auto_pick(
         if auto_pick_done.contains(&key) {
             continue;
         }
+
+        // Economy guard: on the session-start frame, on_draft_started (economy
+        // init) and bot_draft_auto_pick both run "after advance_phase" with no
+        // explicit mutual ordering. If on_draft_started hasn't yet populated the
+        // bot's economy entry, skip WITHOUT debouncing so the next tick retries
+        // once the economy is available. BUG-02 root cause: without this guard
+        // the debounce fires with affordable_max=0 and the bot never picks.
+        if economies.0.get(bot_id).is_none() {
+            tracing::debug!(
+                target: "server::bot",
+                bot_player_id = ?bot_id,
+                round,
+                ?phase,
+                "bot_draft_auto_pick: economy entry absent — deferring pick to next tick"
+            );
+            continue;
+        }
+
         // Record debounce up-front so repeated ticks in the same round skip
         // even when the purchase fails (avoiding retry-spam on a bad offering).
         auto_pick_done.insert(key);
@@ -1299,8 +1317,11 @@ impl Plugin for BotActionLoopPlugin {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::core::economy::{PlayerEconomies, PlayerEconomy};
+    use crate::core::pool::{PlayerPool, PlayerPools};
     use crate::core::rsm::DraftReadySignal;
     use crate::core::session::config::SessionConfig;
+    use crate::feature::acquisition::{PlayerHands, ShopPhase, ShopStates};
     use crate::feature::board::PlacementSubmissionReceived;
     use crate::feature::bot::state::BotState;
     use bevy::app::App;
@@ -1665,5 +1686,196 @@ mod tests {
         let catalog = make_catalog_with_cards(&[(1, CardType::Minion, 2)]);
         let displayed: std::collections::HashSet<CardId> = std::collections::HashSet::new();
         assert!(pick_best_bot_card(&displayed, &catalog, 10).is_none());
+    }
+
+    // =========================================================================
+    // PROMPT 2031 — BUG-02 economy-guard regression tests
+    // =========================================================================
+    //
+    // Root cause: on the session-start frame, on_draft_started (economy init)
+    // and bot_draft_auto_pick both run "after advance_phase" with no explicit
+    // mutual ordering. When on_draft_started hasn't yet populated the bot's
+    // economy entry, affordable_max=0 and no card is picked. The old code
+    // debounced the pick attempt so the bot could never retry — leading to an
+    // empty hand for the entire game (BUG-02).
+    //
+    // Fix: skip WITHOUT debouncing when economy entry is absent, allowing retry
+    // on the next frame once on_draft_started has run.
+
+    /// Build a minimal PlayerPool that has `card_id` available.
+    fn pool_with_card(card_id: CardId) -> PlayerPool {
+        PlayerPool {
+            copies_remaining: [(card_id, 1)].into_iter().collect(),
+            initial_count: [(card_id, 1)].into_iter().collect(),
+            shop_slots: vec![],
+        }
+    }
+
+    /// Build an app with all resources needed for bot_draft_auto_pick.
+    ///
+    /// Economy is inserted WITHOUT the bot's entry to simulate the race where
+    /// on_draft_started hasn't run yet. Call `add_bot_economy` to add it later.
+    fn make_auto_pick_app_no_economy(phase: RoundPhase, round: u32) -> App {
+        let mut app = App::new();
+        app.add_plugins(TimePlugin);
+        app.add_plugins(BotActionLoopPlugin);
+        app.add_message::<DraftReadySignal>();
+        app.add_message::<PlacementSubmissionReceived>();
+
+        let mut round_state = RoundState::new();
+        round_state.phase = phase;
+        round_state.round_number = round;
+        app.insert_resource(round_state);
+        app.insert_resource(test_session_with_bot());
+
+        let mut bots = BotPlayers::default();
+        bots.insert(BotState::new(BOT_ID, BOT_ID.0));
+        app.insert_resource(bots);
+
+        // Catalog: single Minion costing 2.
+        let catalog = make_catalog_with_cards(&[(1, CardType::Minion, 2)]);
+        app.insert_resource(catalog);
+
+        // Shop state: offering with card 1 displayed.
+        let mut shop_states = ShopStates::default();
+        {
+            let state = shop_states.player_state_mut(BOT_ID);
+            state.phase = ShopPhase::DraftInitial;
+            state.displayed_this_draft.insert(CardId(1));
+        }
+        app.insert_resource(shop_states);
+
+        // Hands: empty.
+        app.insert_resource(PlayerHands::default());
+
+        // Pools: bot pool has card 1 available.
+        let mut pools = PlayerPools::default();
+        pools.pools.insert(BOT_ID, pool_with_card(CardId(1)));
+        app.insert_resource(pools);
+
+        // Economies: resource present but bot entry ABSENT (simulates on_draft_started not yet run).
+        app.insert_resource(PlayerEconomies::default());
+
+        app
+    }
+
+    fn add_bot_economy(app: &mut App) {
+        app.world_mut()
+            .resource_mut::<PlayerEconomies>()
+            .0
+            .insert(
+                BOT_ID,
+                PlayerEconomy {
+                    gold: 5,
+                    current_mana: 1,
+                    reserve_mana: 0,
+                    mana_cap: 10,
+                    reserved_gold: 0,
+                },
+            );
+    }
+
+    fn bot_hand_len(app: &App) -> usize {
+        app.world()
+            .resource::<PlayerHands>()
+            .hand_len(BOT_ID)
+    }
+
+    fn count_purchase_log_entries(app: &App) -> usize {
+        app.world()
+            .resource::<BotDecisionLog>()
+            .entries
+            .iter()
+            .filter(|e| matches!(e.decision, BotDecisionKind::Purchased { .. }))
+            .count()
+    }
+
+    fn count_purchase_skipped_entries(app: &App) -> usize {
+        app.world()
+            .resource::<BotDecisionLog>()
+            .entries
+            .iter()
+            .filter(|e| matches!(e.decision, BotDecisionKind::PurchaseSkipped { .. }))
+            .count()
+    }
+
+    /// BUG-02 regression: when economy absent on frame 1, bot must NOT debounce.
+    /// On frame 2 (economy added), bot must pick and log Purchased.
+    #[test]
+    fn bot_draft_auto_pick_defers_without_debounce_when_economy_absent() {
+        let mut app = make_auto_pick_app_no_economy(RoundPhase::DraftInitial, 1);
+
+        // Frame 1: economy absent — bot should defer (no debounce, no log entry).
+        app.update();
+        assert_eq!(
+            bot_hand_len(&app),
+            0,
+            "frame 1: bot hand must be empty when economy is absent"
+        );
+        assert_eq!(
+            count_purchase_log_entries(&app),
+            0,
+            "frame 1: no Purchased entry expected when economy is absent"
+        );
+        assert_eq!(
+            count_purchase_skipped_entries(&app),
+            0,
+            "frame 1: no PurchaseSkipped entry expected when deferring due to absent economy"
+        );
+
+        // Frame 2: add economy — bot should now pick.
+        add_bot_economy(&mut app);
+        app.update();
+        assert_eq!(
+            bot_hand_len(&app),
+            1,
+            "frame 2: bot must have acquired exactly one card after economy initialized"
+        );
+        assert_eq!(
+            count_purchase_log_entries(&app),
+            1,
+            "frame 2: exactly one Purchased log entry expected"
+        );
+
+        // Frame 3: debounce now set — bot must NOT pick again.
+        app.update();
+        assert_eq!(
+            bot_hand_len(&app),
+            1,
+            "frame 3: bot hand must stay at 1 (debounce prevents re-pick)"
+        );
+        assert_eq!(
+            count_purchase_log_entries(&app),
+            1,
+            "frame 3: no additional Purchased entries after debounce set"
+        );
+    }
+
+    /// Positive path: when economy is present on frame 1, bot picks immediately.
+    #[test]
+    fn bot_draft_auto_pick_acquires_card_when_economy_initialized_on_first_frame() {
+        let mut app = make_auto_pick_app_no_economy(RoundPhase::DraftInitial, 1);
+        // Add economy before first frame — simulates on_draft_started running first.
+        add_bot_economy(&mut app);
+
+        app.update();
+        assert_eq!(
+            bot_hand_len(&app),
+            1,
+            "bot must acquire a card on the first frame when economy is ready"
+        );
+        assert_eq!(
+            count_purchase_log_entries(&app),
+            1,
+            "exactly one Purchased entry expected"
+        );
+
+        // Confirm debounce: second frame must not pick again.
+        app.update();
+        assert_eq!(
+            bot_hand_len(&app),
+            1,
+            "second frame: hand stays at 1 (debounce active)"
+        );
     }
 }
