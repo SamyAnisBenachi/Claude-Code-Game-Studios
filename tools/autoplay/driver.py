@@ -51,6 +51,7 @@ if str(_HERE) not in sys.path:
     sys.path.insert(0, str(_HERE))
 
 from recipes import RecipeContext, REGISTRY, get as get_recipe, names as recipe_names  # noqa: E402
+from win_foreground import ensure_foreground  # noqa: E402
 
 
 ALLOWED_RPC_METHODS = {
@@ -282,6 +283,10 @@ def main() -> int:
                                     "renderer may not be producing new frames"
                                 )
                         last_screenshot_frame = current_frame
+                        # Window foreground barrier (PROMPT 1776): bring the
+                        # Bevy window to the foreground so its GPU backbuffer
+                        # is actively composited when the screenshot fires.
+                        ensure_foreground(log)
                     try:
                         result = rpc(url, method, params)
                         action_results.append(result)
