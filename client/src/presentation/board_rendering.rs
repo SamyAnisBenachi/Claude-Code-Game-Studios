@@ -1358,6 +1358,16 @@ fn spawn_revealed_placement_unit(
     unit: &UnitBoardState,
 ) {
     let Some((lane, cell)) = visible_unit_cell(unit, unit.owner_id) else {
+        // PROMPT 2044 — surface OOB / unmappable visible-cell drops so the
+        // PROMPT 2039 silent-failure mode (revealed unit never reaches the
+        // board) is diagnosable from a single client log line.
+        warn!(
+            target: "client::placement_reveal",
+            unit_id = ?unit.unit_id,
+            owner_id = ?unit.owner_id,
+            location = ?unit.location,
+            "PlacementReveal: dropped unit with unmappable visible cell (out of board bounds)"
+        );
         return;
     };
     let stats = board_unit_stats(unit, card_atlas);
@@ -1636,6 +1646,14 @@ pub fn apply_resolution_replay_group_system(
         (Entity, &BoardUnit, &mut LaneCell, &mut Transform),
         (Without<BoardCellNode>, Without<StandingObjective>),
     >,
+    mut unit_stats: Query<
+        &mut BoardUnitStats,
+        (
+            With<BoardUnit>,
+            Without<BoardCellNode>,
+            Without<StandingObjective>,
+        ),
+    >,
     mut objectives: Query<
         (
             Entity,
@@ -1690,6 +1708,7 @@ pub fn apply_resolution_replay_group_system(
                 board_layout.as_deref(),
                 *config,
                 &mut board_units,
+                &mut unit_stats,
                 &mut objectives,
                 &mut hp_fills,
                 &mut commands,
@@ -1711,6 +1730,14 @@ fn apply_replay_event_visual_feedback(
         (Entity, &BoardUnit, &mut LaneCell, &mut Transform),
         (Without<BoardCellNode>, Without<StandingObjective>),
     >,
+    unit_stats: &mut Query<
+        &mut BoardUnitStats,
+        (
+            With<BoardUnit>,
+            Without<BoardCellNode>,
+            Without<StandingObjective>,
+        ),
+    >,
     objectives: &mut Query<
         (
             Entity,
@@ -1728,6 +1755,7 @@ fn apply_replay_event_visual_feedback(
         ResolutionEvent::CombatDamage {
             defender_id,
             damage_amount,
+            defender_hp_after,
             ..
         } => {
             if *damage_amount == 0 {
@@ -1746,6 +1774,29 @@ fn apply_replay_event_visual_feedback(
                 );
                 return;
             };
+            // PROMPT 2044 — mutate the defender's BoardUnitStats so HP-derived
+            // visuals (HP labels, future bar updates) reflect resolution
+            // damage. Without this, the damage-number toast was the only
+            // surfaced effect and stat readouts stayed frozen until the next
+            // snapshot rebuild.
+            if let Ok(mut stats) = unit_stats.get_mut(target_entity) {
+                let prev_hp = stats.hp_current;
+                stats.hp_current = (*defender_hp_after).min(stats.hp_max);
+                debug!(
+                    target: "client::resolution_replay",
+                    group_index, sub_step = tagged.sub_step, trigger_index = tagged.trigger_index,
+                    defender_id = ?defender_id,
+                    prev_hp, new_hp = stats.hp_current, hp_max = stats.hp_max,
+                    "CombatDamage: applied defender HP mutation"
+                );
+            } else {
+                debug!(
+                    target: "client::resolution_replay",
+                    group_index, sub_step = tagged.sub_step, trigger_index = tagged.trigger_index,
+                    defender_id = ?defender_id,
+                    "CombatDamage: defender lacks BoardUnitStats; HP mutation skipped"
+                );
+            }
             damage_writer.write(DamageNumberSpawnRequested {
                 target: target_entity,
                 damage_value: u32::from(*damage_amount),
