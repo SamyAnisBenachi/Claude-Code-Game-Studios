@@ -54,6 +54,7 @@ Recipes use fractional viewport coords (0.0–1.0). Override per-session via env
 ```powershell
 $env:CCGS_AUTOPLAY_LOBBY_CREATE_BTN  = "0.5,0.55"
 $env:CCGS_AUTOPLAY_LOBBY_CONFIRM_BTN = "0.5,0.85"
+$env:CCGS_AUTOPLAY_ADD_BOT_BTN       = "0.5,0.65"   # Add Bot button in add-bot-lobby
 $env:CCGS_AUTOPLAY_CLASS_FIRST_CARD  = "0.25,0.45"
 $env:CCGS_AUTOPLAY_CLASS_CONFIRM_BTN = "0.5,0.85"
 $env:CCGS_AUTOPLAY_SHOP_FIRST_SLOT   = "0.2,0.4"
@@ -66,6 +67,15 @@ $env:CCGS_AUTOPLAY_SUBMIT_BTN        = "0.5,0.85"
 ```
 
 Malformed values emit a `local.note` and fall back to defaults — they do not crash.
+
+> **Add Bot window-size preflight:** Before running `add-bot-lobby`, confirm the
+> client window is at least **1280 × 720 px physical**. If the window is smaller,
+> the Add Bot button may be clipped below the visible viewport and clicks will
+> silently miss — the recipe will not emit `local.block`. Read the window size from
+> `status.json` (`window_width` / `window_height`) in the run artifact folder, or
+> maximise the client window before launch. See
+> [§Add Bot Coordinate Measurement Protocol](../autoplay.md#add-bot-coordinate-measurement-protocol)
+> for the full re-measure procedure.
 
 ### Bot-vs-Bot full-game recipe
 
@@ -294,6 +304,9 @@ Use both for comprehensive checkpoint evidence.
 | Launcher exits 3 (RPC timeout) | Client opened but RPC port never bound | Check `process.log` for `Listening on 127.0.0.1:15873`; confirm `CCGS_AUTOPLAY=1` |
 | Driver exits 2 (startup grace) | Client built but RPC not started | Same as above; verify `autoplay-remote` feature in `Cargo.toml` |
 | Driver exits 4 with `full-game` | `CCGS_AUTOPLAY_BOT_ROOM_READY` unset | Set the var or launch `Start-BotVsBotSoak.ps1` first |
+| Driver exits 4 with `add-bot-lobby` | `CCGS_DEBUG_UI=1` not set | Expected behaviour — set `CCGS_DEBUG_UI=1` before client launch |
+| `bot-added` checkpoint absent; lobby screenshot unchanged | Window too small — Add Bot button clipped below visible area | Confirm `window_height` ≥ 720 px (read from `status.json`); maximise client and re-run; re-measure coords with `CCGS_AUTOPLAY_ADD_BOT_BTN` |
+| `bot-added` checkpoint absent; click on wrong element | Default Add Bot fractional coords misaligned for current window/DPI | Re-measure — see [§Add Bot Coordinate Measurement Protocol](../autoplay.md#add-bot-coordinate-measurement-protocol) |
 | Checkpoint missing (e.g., no `lobby-confirmed`) | Wrong button coordinates | Set `CCGS_AUTOPLAY_LOBBY_CONFIRM_BTN` to correct fractional position |
 | `local.note` about parse failure in checkpoints | Malformed `CCGS_AUTOPLAY_*` env var | Fix format: `"fx,fy"` with floats in [0.0, 1.0] |
 | Artifact directory has garbled timestamp | PS < 5.1 or stale launcher | Confirm `$PSVersionTable.PSVersion.Major` ≥ 5 and latest `origin/main` |
@@ -393,4 +406,4 @@ number of times; results are stable for a given directory.
 
 ---
 
-_Last updated: PROMPT 1656 — 2026-05-27_
+_Last updated: PROMPT 2021 — 2026-05-28_

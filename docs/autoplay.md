@@ -261,6 +261,111 @@ not expose gameplay state. Upgrading detection beyond
 checkpoint-screenshot review is the job of the QA snapshot harness
 (`F9` / `CCGS_QA_SNAPSHOT=1`), not autoplay.
 
+## Add Bot Coordinate Measurement Protocol
+
+The `add-bot-lobby` recipe drives a mouse click at the **Add Bot** button in the
+lobby screen. If the client window opens too small, the button may be partially or
+entirely outside the visible viewport. When that happens the click lands outside
+any interactive UI element — the recipe does not emit `local.block` (the button
+exists; it just cannot be reached), so the `bot-added` checkpoint is silently
+absent from `checkpoints.jsonl`.
+
+This section is the operator runbook for diagnosing and correcting that failure.
+
+### Minimum window size and preflight checks
+
+Perform these checks **before** launching `add-bot-lobby` or any composite recipe
+that includes an Add Bot step (`full-game`, `round-loop`):
+
+| Check | Requirement | How to verify |
+| --- | --- | --- |
+| Client window width | ≥ 1280 px physical | Read `status.json` → `window_width` after the client starts |
+| Client window height | ≥ 720 px physical | Read `status.json` → `window_height` after the client starts |
+| `CCGS_DEBUG_UI=1` | Required — Add Bot control does not render without it | Set before client launch; recipe exits 4 (`local.block`) if unset |
+| Add Bot button visible at `lobby-loaded` | Must be fully on-screen | Inspect the `lobby-loaded` checkpoint screenshot before the recipe continues |
+
+> If `status.json` is not yet available (client still starting), open the first
+> screenshot in the run's `screenshots/` folder. If the Add Bot button is not
+> fully visible, stop the recipe, resize or maximise the client window, and
+> re-launch.
+
+### Coordinate capture procedure
+
+Use this procedure when default fractional coordinates do not land on the Add Bot
+button (symptoms: `bot-added` checkpoint absent, lobby screenshot shows no state
+change after the click).
+
+1. **Launch the client** with `CCGS_DEBUG_UI=1` and navigate to the lobby screen
+   manually, or run the `lobby-create` recipe to reach the lobby.
+
+2. **Request a screenshot** via the driver:
+   ```powershell
+   python tools/autoplay/driver.py --one-shot screenshot --reason "add-bot-measure"
+   ```
+   The PNG lands in `production/qa/evidence/autoplay-runs/driver/screenshots/`.
+
+3. **Open the screenshot** in any image viewer that reports pixel coordinates when
+   you hover. Locate the visual centre of the Add Bot button.
+
+4. **Record the pixel coordinates** `(px, py)` for the button centre.
+
+5. **Read the window physical dimensions** from `status.json` in the same run
+   folder (`window_width`, `window_height`). Use those values, not your monitor
+   resolution — they reflect what Bevy actually rendered into.
+
+6. **Convert to fractional coordinates:**
+   ```
+   fx = px / window_width
+   fy = py / window_height
+   ```
+   Both values must be in `[0.0, 1.0]`. If either is outside that range the button
+   is off-screen — resize the window and restart from step 1.
+
+7. **Set the override and re-run:**
+   ```powershell
+   $env:CCGS_AUTOPLAY_ADD_BOT_BTN = "0.50,0.65"   # replace with measured values
+   pwsh -File tools/autoplay/Run-AutoplaySmoke.ps1 -Recipe add-bot-lobby
+   ```
+
+8. **Confirm** that `checkpoints.jsonl` now contains `bot-added`. If it does not,
+   inspect the new `lobby-loaded` screenshot and repeat from step 3.
+
+### When to re-measure
+
+Re-measure Add Bot button coordinates after any of:
+
+- OS display scaling change (e.g., 100% → 125% DPI)
+- Monitor resolution change
+- Client window default size changed in `WindowPlugin` configuration
+- Lobby UI layout change (new lobby controls added, existing controls repositioned)
+- Moving to a machine with a different display configuration
+
+Coordinates are machine- and session-specific because they depend on the physical
+pixel size of the Bevy window at the moment the recipe runs.
+
+### Evidence to collect when clicks miss or land offscreen
+
+If `bot-added` is absent from `checkpoints.jsonl`, attach **all five** of these
+artefacts to the bug report or PROMPT report:
+
+| Artefact | What to capture | What to look for |
+| --- | --- | --- |
+| `screenshots/` — `lobby-loaded` checkpoint | Screenshot taken immediately after the lobby appeared | Is the Add Bot button visible? Partially clipped? Entirely absent? |
+| `screenshots/` — frame after the Add Bot click | Screenshot taken when the recipe sent the click | Did the lobby state change? Is a new element visible? |
+| `status.json` | Full file from the run folder | `window_width` × `window_height` — confirm ≥ 1280 × 720 |
+| `driver.log` | All `autoplay/input` calls with cursor coordinates | Note the absolute pixel coords sent; compare to measured button position |
+| `checkpoints.jsonl` | Full file | Confirm `lobby-loaded` present; confirm `bot-added` absent |
+
+### Add Bot-specific failures quick-reference
+
+| Symptom | Likely cause | Fix |
+| --- | --- | --- |
+| `bot-added` absent; lobby screenshot unchanged | Window too small — button below visible area | Confirm `window_height` ≥ 720; resize/maximise and re-run |
+| `bot-added` absent; click lands on wrong element | Default fractional coords misaligned | Re-measure using the procedure above; set `CCGS_AUTOPLAY_ADD_BOT_BTN` |
+| Recipe exits 4 (`local.block`) before any click | `CCGS_DEBUG_UI=1` not set | Expected behaviour — set `CCGS_DEBUG_UI=1` before client launch |
+| Override env var ignored (`local.note` parse failure) | Malformed `CCGS_AUTOPLAY_ADD_BOT_BTN` value | Fix format: `"fx,fy"` — two floats separated by comma, no spaces, both in `[0.0, 1.0]` |
+| Fractional coords > 1.0 after measurement | Button is partially off-screen | Resize the window so the button is fully visible; re-measure |
+
 ## Env vars
 
 | Var | Default | Purpose |
@@ -270,6 +375,7 @@ checkpoint-screenshot review is the job of the QA snapshot harness
 | `CCGS_AUTOPLAY_ARTIFACT_DIR` | `production/qa/evidence/autoplay-runs/<timestamp>` | Artifact root. |
 | `CCGS_AUTOPLAY_DRIVER_ARTIFACT_DIR` | `production/qa/evidence/autoplay-runs/driver` | Override the driver-side artifact dir (used when the driver is launched manually, outside `Run-AutoplaySmoke.ps1`). |
 | `CCGS_AUTOPLAY_BOT_ROOM_READY` | unset | Set to `1` once the bot-vs-bot soak room is live; required by `full-game` and `round-loop`. |
+| `CCGS_AUTOPLAY_ADD_BOT_BTN` | per `_coords.DEFAULTS` | Fractional screen position `"fx,fy"` for the Add Bot button in `add-bot-lobby`. Re-measure when window size or DPI changes; see §Add Bot Coordinate Measurement Protocol. |
 | `CCGS_AUTOPLAY_<KEY>` (button frac) | per `_coords.DEFAULTS` | Per-recipe fractional coordinate overrides; see `tools/autoplay/README.md`. |
 | `CCGS_AUTOPLAY_AUCTION_MOUNT_WAIT` | 12 ticks | Ticks the `draft-auction-probe` recipe waits after the shop confirm click before clicking the bid CTA. |
 | `CCGS_AUTOPLAY_AUCTION_BID_WAIT` | 10 ticks | Ticks the `draft-auction-probe` recipe waits between the bid click and the ready click. |
