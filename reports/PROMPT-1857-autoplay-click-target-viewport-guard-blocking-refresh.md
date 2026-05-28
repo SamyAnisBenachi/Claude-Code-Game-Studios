@@ -136,4 +136,45 @@ All three gaps are now closed with abort semantics.
 
 ---
 
+---
+
+## Addendum — AC-VPT-02 / AC-VPT-08 from PROMPT 1842 (2026-05-28)
+
+Updated after user clarification. Two open ACs from PROMPT 1842 were explicitly
+scoped into this work:
+
+### AC-VPT-02 (per-tick drift check)
+Already implemented in the initial commit via `_check_window_drift()`. Confirmed
+compliant: per-tick `window_logical_size` is compared against `recipe_build_win_size`
+(the size baked into `RecipeContext` at first-tick build). Drift > 10 px → abort rc=5.
+
+### AC-VPT-08 (post-foreground DWM shrink)
+**New in this addendum.** After `ensure_foreground(log)` + `time.sleep(0.12)`,
+the driver re-polls `autoplay/status` and calls `_check_window_minimum()` on the
+fresh window size. If DWM SW_RESTORE shrank the height below 720, the driver:
+1. Logs `VIEWPORT-GUARD ABORT: post-foreground window shrank below minimum`
+2. Emits `viewport_shrink_abort` checkpoint to `checkpoints.jsonl`
+3. Sets `rc = EXIT_VIEWPORT_GUARD` and breaks — **no clean PASS possible**
+
+The re-poll uses a 2 s timeout; if it fails, the tick-start size is used as the
+conservative fallback (preserving the drift already caught at tick start).
+
+### Checkpoint Emission (local.block-style, as suggested by PROMPT 1842)
+
+All four guard conditions now emit to `checkpoints.jsonl` in addition to rc=5:
+
+| Checkpoint kind | Trigger |
+|---|---|
+| `viewport_drift` | Mid-run drift > 10 px (AC-VPT-02) |
+| `viewport_shrink_abort` | Post-foreground height < 720 (AC-VPT-08) |
+| `viewport_guard_cursor_none` | cursor_logical = None before autoplay/input |
+| `viewport_guard_oob` | Click target screen coords outside window |
+
+Each checkpoint row includes `tick`, `kind`, `reason`, size fields, and `elapsed_secs`
+— matching the `local.block` schema so composite/analysis tools can parse them.
+
+### Updated test count: 66/66 pass
+
+Commit: f2afa1bb
+
 1857: AUTOPLAY-CLICK-TARGET-VIEWPORT-GUARD-BLOCKING-REFRESH: SHIPPED
