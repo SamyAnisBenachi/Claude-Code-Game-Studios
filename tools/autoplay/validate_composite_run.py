@@ -78,6 +78,11 @@ RECIPE_REQUIRED_CHECKPOINTS: dict[str, list[str]] = {
                             "class-select-loaded",
                             "placement-loaded", "placement-submitted"],
     "round-loop":          ["round-loop-complete"],
+    # vs-bot uses add-bot-lobby instead of lobby-create; require the same
+    # phase bookends that are always present regardless of env flag overrides.
+    "vs-bot":              ["lobby-loaded", "bot-added", "lobby-confirmed",
+                            "class-select-loaded",
+                            "placement-loaded", "placement-submitted"],
 }
 
 # Outcomes that indicate the run was blocked before the recipe ran; skip
