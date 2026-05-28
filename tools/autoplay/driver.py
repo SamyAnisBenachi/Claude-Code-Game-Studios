@@ -289,6 +289,7 @@ def main() -> int:
                         # Bevy window to the foreground so its GPU backbuffer
                         # is actively composited when the screenshot fires.
                         ensure_foreground(log)
+                        time.sleep(0.12)  # allow DWM to composite the foregrounded window
                         # Win32 driver-side capture (PROMPT 1794): capture the
                         # DWM-composited window BEFORE the Bevy RPC fires so
                         # evidence reflects what is actually visible on screen.
@@ -297,7 +298,8 @@ def main() -> int:
                         # stale when the window is not actively composited.
                         # capture_game_window is a no-op on non-Windows.
                         _win32_shot = artifact_dir / f"win32_tick_{tick:06d}.png"
-                        _win32_capture(_win32_shot, log)
+                        _win32_ok = _win32_capture(_win32_shot, log)
+                        log(f"tick={tick} win32_capture={'OK' if _win32_ok else 'FAILED'} path={_win32_shot.name}")
                     try:
                         result = rpc(url, method, params)
                         action_results.append(result)
