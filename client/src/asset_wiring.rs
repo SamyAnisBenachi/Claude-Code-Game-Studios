@@ -44,8 +44,15 @@ pub const SHOP_PANEL_CHROME_ASSET: &str = "art/ui/shop/ui_shop_panel_chrome.png"
 pub const SHOP_SLOT_WELL_IDLE_ASSET: &str = "art/ui/shop/ui_slot_well_idle.png";
 
 pub const BID_BUTTON_NORMAL_ASSET: &str = "art/ui/auction/ui_bid_button_active.png";
-// NO ANALOGUE on disk — repointed to universal placeholder.
-pub const BID_BUTTON_HOVER_ASSET: &str = "art/characters/ui_unit_placeholder_default_board.png";
+// PROMPT 2038 — no dedicated hover PNG exists on disk
+// (`ui_bid_button_hover.png` was authored in the asset spec but never landed).
+// Previously this re-pointed at the universal `?` placeholder, so hovering the
+// bid button replaced the live chrome with a question-mark glyph (V1-010 /
+// UX-007 "broken placeholders on first-round shop surfaces"). Falling back to
+// the active-state PNG keeps the chrome stable on hover — visually identical
+// to Normal until a real hover variant is authored. Tracked under the missing
+// asset inventory in reports/PROMPT-2038-*.
+pub const BID_BUTTON_HOVER_ASSET: &str = BID_BUTTON_NORMAL_ASSET;
 pub const BID_BUTTON_DISABLED_ASSET: &str = "art/ui/auction/ui_bid_button_disabled.png";
 
 // ── Auction tier-border chrome (SLICE-B) ──────────────────────────────────────
