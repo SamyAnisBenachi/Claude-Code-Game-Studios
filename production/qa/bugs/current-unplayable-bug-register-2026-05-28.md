@@ -1,7 +1,7 @@
 # Current Unplayable Bug Register
 
 Date: 2026-05-28
-Source of truth when written: `origin/main@24d1d871`
+Source of truth when updated: `origin/main@e1a61376`
 
 This register consolidates bugs found by the current forensic audit wave so they
 are not lost in worker reports or chat history.
@@ -14,11 +14,15 @@ Primary sources:
 - `reports/PROMPT-2027-autoplay-input-click-target-forensic-audit.md`
 - `reports/PROMPT-2028-player-flow-unplayable-bug-classification.md`
 - `reports/PROMPT-2029-qa-evidence-tools-truthfulness-audit.md`
+- User live-play report in orchestrator chat on 2026-05-28
+- `reports/PROMPT-2030-client-phase-sync-p0-repair.md`
+- `reports/PROMPT-2031-server-draft-hand-awarding-p0-repair.md`
+- `reports/PROMPT-2032-bot-placement-failsafe-spinloop-p0-repair.md`
 - `reports/PROMPT-2033-server-board-gameover-vacuous-flow-p0-repair.md`
-
-Pending sources to merge later:
-
-- Repair outcomes from `PROMPT 2030-2032`
+- `reports/PROMPT-2035-live-ui-visual-audit-redo.md`
+- `reports/PROMPT-2036-placement-dragdrop-legal-cell-feedback-repair.md`
+- `reports/PROMPT-2038-card-asset-shop-placeholder-binding-repair.md`
+- `reports/PROMPT-2039-board-unit-combat-presentation-audit-repair-map.md`
 
 ## Executive State
 
@@ -27,9 +31,13 @@ The game is currently unplayable end to end.
 The most important confirmed failure is that the client never transitions from
 Lobby to InSession in the audited autoplay runs. The server advances through a
 vacuous two-round match, but the visible client stays in Lobby for every
-checkpoint. In parallel, the server/bot path shows missing bot hand state, empty
-placement failsafes, no board units, no combat, and GameOver with all objectives
-still full HP.
+checkpoint. After PROMPT 2031 and PROMPT 2032, two server/bot-side blockers have
+landed: bot draft hand awarding no longer permanently debounces before
+`PlayerEconomy` exists, and placement failsafe timing is armed on Placement
+entry. These are real fixes, but they do not close the game. PROMPT 2030 was
+diagnostic/partial only, and the visible UI remains unplayable until client
+phase sync, drag/drop, board presentation, card assets, and fresh evidence all
+agree.
 
 ## P0 Blockers
 
@@ -38,15 +46,17 @@ still full HP.
 | P0-001 | Client never transitions to InSession | All three autoplay driver timelines: `client_state_label: "Lobby"` and `phase_label: "Lobby"` for all ticks | Confirmed |
 | P0-002 | No in-game screen ever renders | PROMPT 2026 screenshots: shop, auction, placement, resolution, and post-resolution checkpoints all show Lobby | Confirmed |
 | P0-003 | Server advances a match the client does not visually join | PROMPT 2025: server snapshots progress DraftInitial -> Placement -> Resolution -> DraftShop -> Placement -> Resolution -> GameOver while client remains Lobby | Confirmed |
-| P0-004 | Bot player has no hand | PROMPT 2025 snapshots from first Placement onward contain hand for player 1 only; bot hand missing | Confirmed |
-| P0-005 | Draft/card awarding broken | Player 1 keeps one card `[5]`; bot has no hand; DraftInitial and DraftShop do not award usable cards | Confirmed |
-| P0-006 | Bot placement failsafe spin-loop | `empty_placement_failsafe` logged about 16,229 times in a two-round game, roughly 1/ms | Confirmed |
-| P0-007 | No units ever reach board | Board counts stay zero across minions/traps/structures/fields; `per_player_minions` empty | Root-caused by PROMPT 2033 as upstream client phase sync + bot hand/placement cascade; pending 2030/2031/2032 |
+| P0-004 | Bot player has no hand | PROMPT 2025 snapshots from first Placement onward contain hand for player 1 only; bot hand missing | Server-side debounce race fixed by PROMPT 2031; needs fresh post-2031/2032 evidence |
+| P0-005 | Draft/card awarding broken | Player 1 keeps one card `[5]`; bot has no hand; DraftInitial and DraftShop do not award usable cards | Bot auto-pick retry fixed by PROMPT 2031; broader visible draft/shop UX still open |
+| P0-006 | Bot placement failsafe spin-loop | `empty_placement_failsafe` logged about 16,229 times in a two-round game, roughly 1/ms | Placement phase timing fixed by PROMPT 2032; needs fresh post-2032 evidence |
+| P0-007 | No units ever reach board | Board counts stay zero across minions/traps/structures/fields; `per_player_minions` empty | Root-caused by PROMPT 2033 as upstream client phase sync + bot hand/placement cascade; still open until fresh board/unit evidence |
 | P0-008 | No combat occurs | Resolution phases run with empty board and all objectives unchanged | Root-caused by PROMPT 2033 as cascade of P0-007; pending post-repair verification |
 | P0-009 | GameOver fires vacuously | GameOver after two empty rounds with all 10 objectives at 5/5 HP, none destroyed | Reclassified by PROMPT 2033: normal win-condition path is guarded; observed GameOver is soak max-round cap plus no-board cascade |
 | P0-010 | Phase timers are bypassed | DraftInitial, DraftShop, and Resolution transition in milliseconds despite 30-60s configured timers | Resolution portion root-caused by PROMPT 2033 as no-units cascade; broader draft/shop timer behavior still open for post-repair verification |
 | P0-011 | No successful human GUI end-to-end flow on record | PROMPT 2028/1883: no verified human flow through room, session, draft/shop, placement, resolution, GameOver | Confirmed coverage blocker |
 | P0-012 | Human two-client stale binary protocol panic | PROMPT 1883: stale `client.exe` vs fresh `server.exe` caused Lightyear protocol mismatch before UI | Confirmed operational blocker; rebuild mitigates stale-binary case |
+| P0-013 | Client phase sync repair is not complete | PROMPT 2030 shipped diagnostics/regressions only; it identified silent RSM sender drop and missing `C2SCreateBotRoom` in autoplay, but did not close P0-001/P0-003 | Confirmed P0 follow-up |
+| P0-014 | Integrated client remains visually untrusted after server fixes | User live report plus PROMPT 2035/2036/2039: drag/drop, card assets, board presentation, and UI anchoring still fail even if server state advances | Confirmed P0 UI/playability follow-up |
 
 ## P1 Major Gameplay And State Bugs
 
@@ -58,17 +68,23 @@ still full HP.
 | P1-004 | Class confirmation status never clears | PROMPT 2026 screenshots show `not confirmed` after class-confirmed checkpoint | Confirmed |
 | P1-005 | Placement ACK missing; client relies on heuristic | PROMPT 2028 references PROMPT 1937 GAP-7: `S2CPlacementAck` still not shipped | Confirmed design gap |
 | P1-006 | Result screen does not project win/loss/draw outcome | PROMPT 2028 references PROMPT 1937 GAP-1/GAP-2 and result-screen gap | Confirmed design/evidence gap |
-| P1-007 | Player gold drops without recorded purchase | PROMPT 2025: player 1 gold 5 -> 3 at DraftInitial -> Placement without charge evidence | Confirmed |
-| P1-008 | `draft_ready` logs `legal_action_count: null` | PROMPT 2025: DraftInitial and DraftShop bot decisions use null legal count | Confirmed |
-| P1-009 | `draft_ready_players` never records ready players | PROMPT 2025 snapshots show empty list despite `draft_ready` decisions | Confirmed |
+| P1-007 | Player gold drops without recorded purchase | PROMPT 2025: player 1 gold 5 -> 3 at DraftInitial -> Placement without charge evidence | Open; re-check after PROMPT 2031 fresh run |
+| P1-008 | `draft_ready` logs `legal_action_count: null` | PROMPT 2025: DraftInitial and DraftShop bot decisions use null legal count | Open; re-check after PROMPT 2031 fresh run |
+| P1-009 | `draft_ready_players` never records ready players | PROMPT 2025 snapshots show empty list despite `draft_ready` decisions | Open; re-check after PROMPT 2031 fresh run |
 | P1-010 | `submissions_received` leaks into next round | PROMPT 2025: `[1]` persists into round 2 DraftShop | Fixed by PROMPT 2033; `Resolution -> DraftShop/DraftAuction` now clears stale submissions |
 | P1-011 | Bot RNG path not consumed | PROMPT 2025: `rng_word_counter` remains 0 despite thousands of bot decisions | Confirmed |
-| P1-012 | Bot decision timestamps/deadlines stale or null | PROMPT 2025: `last_decision_at_ms` stuck; `next_decision_at_ms` and `failsafe_deadline_ms` null during spin-loop | Confirmed |
+| P1-012 | Bot decision timestamps/deadlines stale or null | PROMPT 2025: `last_decision_at_ms` stuck; `next_decision_at_ms` and `failsafe_deadline_ms` null during spin-loop | Placement failsafe deadline fixed by PROMPT 2032; remaining timestamp behavior needs fresh evidence |
 | P1-013 | Final GameOver snapshot loses session | PROMPT 2025: final GameOver snapshot has `session: null` | Root-caused by PROMPT 2033 as GameOver teardown/snapshot ordering; follow-up observability repair needed |
 | P1-014 | `client_exit_code` never observed | PROMPT 2025: all launcher statuses have `client_exit_code: null` while outcome is `ok` | Confirmed |
 | P1-015 | Autoplay `outcome: ok` is misleading | Checkpoints can pass while client stays Lobby and no real visible game occurs | Confirmed |
 | P1-016 | Placement recipe coordinates are fragile near bottom edge | PROMPT 2028 references FRAG-01: hand/submit coords at `fy=0.92`, about 58px from 720p bottom | Confirmed fragility |
 | P1-017 | Old autoplay run clicked stale 720p coordinates after mid-run resize | PROMPT 2027 run `20260528-090613-Z`: window grew from 720px to 1076px high; auction/drag/submit clicks landed 302-328px above intended targets | Confirmed in old evidence; mitigated by PROMPT 1880 drift guard, needs fresh guarded run |
+| P1-018 | Client-side placement hard-gating missing | User live report and PROMPT 2036 partial: invalid card drops can be staged visually and only fail at confirm, instead of being blocked at legal cells | Confirmed UX/gameplay blocker |
+| P1-019 | Placement rejection feedback is missing or too weak | User live report and PROMPT 2036 partial: the player cannot tell why placement is invalid or what changed after rejection | Confirmed UX/gameplay blocker |
+| P1-020 | Drag/drop can get stuck or lose focus | PROMPT 2036 partial lists stuck-drop focus edge as remaining gap after live ghost overlay work | Confirmed follow-up |
+| P1-021 | Combat damage does not mutate visible board HP | PROMPT 2039: `CombatDamage` replay never mutates `BoardUnitStats` at `board_rendering.rs:1728-1754`; HP bars are dormant during resolution | Confirmed presentation bug |
+| P1-022 | Placement reveal can silently abort | PROMPT 2039: reveal presentation aborts on missing `BoardLayout` or `CardAtlas` instead of surfacing a visible/error state | Confirmed silent-failure bug |
+| P1-023 | Out-of-bounds board units are silently dropped | PROMPT 2039: `visible_unit_cell` drops OOB units without a visible/debuggable error path | Confirmed silent-failure bug |
 
 ## P1 Visual Bugs
 
@@ -82,6 +98,26 @@ still full HP.
 | V1-006 | Auction baseline lacks card art and strong visual context | PROMPT 2026 older auction capture: text-focused card, sparse locked slots | Confirmed baseline issue |
 | V1-007 | Room code input looks like debug text | PROMPT 2026: `Type room code: -------- - idle` without input styling | Confirmed |
 | V1-008 | Snapshot QA button visible in play view | PROMPT 2026: top-right Snapshot button visible; acceptable only if QA flag is intentionally enabled | Advisory |
+| V1-009 | Card art falls back to placeholders/question marks/empty labels | User live report and PROMPT 2038: many cards/shop entries show default placeholders, `?`, or `[]` instead of intended card art | Confirmed |
+| V1-010 | Drag preview does not stick to cursor | User live report: dragged card appears offset/approximate, can freeze in one place, and does not behave like a cursor-attached card | Confirmed |
+| V1-011 | Legal placement cells are not clearly highlighted | User live report and PROMPT 2036 partial: valid cells/invalid target feedback is incomplete; cyan/red overlay work is partial only | Confirmed |
+| V1-012 | Hand fan spreads cards across the entire hand rectangle | User live report: cards distribute to the sides instead of clustering as a readable fan around a central hand area | Confirmed |
+| V1-013 | Cards lack readable combat/stat/cost information | User live report: attack, HP, cost, class/type, and important labels are not visible enough on cards/units | Confirmed |
+| V1-014 | Board units and combat have no convincing visible action | User live report plus PROMPT 2039: placed cards do not clearly become units, units do not visibly advance/fight/attack, and resolution looks inert | Confirmed |
+| V1-015 | Global Bevy UI anchoring/layout is unreliable | User live report: shop, hand, board, confirm buttons, and multiple screens appear offset, clipped, or positioned from unstable boxes | Confirmed |
+| V1-016 | Krosmaga asset and audio library is not fully wired into gameplay | User live report: imported Krosmaga-style card art, sprites, and sounds are not consistently used by the live game surfaces | Confirmed |
+
+## Placement UX Bugs From User Report And PROMPT 2036
+
+| ID | Title | Evidence | Current status |
+|---|---|---|---|
+| UX-001 | Drag/drop interaction does not match card-game expectation | User live report: the card should remain under the cursor and drop only on legal targets; current behavior is approximate and confusing | Confirmed |
+| UX-002 | Invalid placement is allowed too late | User live report: illegal locations can be chosen visually, then confirmation rejects with bad placement | Confirmed |
+| UX-003 | Valid placement affordance is insufficient | User live report and PROMPT 2036: legal-cell highlight/ghost preview exists only partially and still needs hard-gating/rejection/banner/scaling/focus work | Partial repair by PROMPT 2036 |
+| UX-004 | Placement phase is too short for a human to understand and act | User live report: placement expires quickly while the UI gives too little feedback | Confirmed |
+| UX-005 | Confirm/place buttons do not communicate state | User live report: confirm behavior gives unclear success/failure and does not show why the chosen placement is legal or illegal | Confirmed |
+| UX-006 | Shop first-round card presentation is broken | User live report and PROMPT 2038: card images/loaders in shop fail or show placeholder labels | Confirmed |
+| UX-007 | Board/combat feedback is missing after placement | User live report: after cards are submitted, there is no satisfying or clear spawn/combat/resolution flow | Confirmed |
 
 ## P1/P2 Tooling And Evidence Bugs
 
@@ -246,19 +282,31 @@ Required follow-up:
 
 ## Repair Wave Mapping
 
-Remaining active repair workers after PROMPT 2033:
+Repair workers after PROMPT 2033:
 
-- `PROMPT 2030`: client phase sync P0 repair. Targets P0-001, P0-002, P0-003.
-- `PROMPT 2031`: server draft/hand awarding P0 repair. Targets P0-004, P0-005, P1-007, P1-008, P1-009.
-- `PROMPT 2032`: bot placement failsafe spin-loop P0 repair. Targets P0-006, P1-011, P1-012, T-014.
+- `PROMPT 2030`: client phase sync P0 repair. Outcome PARTIAL/diagnostic; still targets P0-001, P0-002, P0-003, and P0-013.
+- `PROMPT 2031`: server draft/hand awarding P0 repair. Landed on main at `28482bd5`; targets P0-004/P0-005 server-side bot hand awarding race.
+- `PROMPT 2032`: bot placement failsafe spin-loop P0 repair. Landed on main at `e1a61376`; targets P0-006 and placement failsafe timing.
+- `PROMPT 2036`: placement drag/drop legal-cell feedback repair. Outcome PARTIAL; added live ghost/legal-cell overlay but left hard-gating, rejection banner, scaling drift, and stuck-drop focus gaps.
+- `PROMPT 2038`: card asset/shop placeholder binding repair. Outcome SHIPPED; still needs fresh visual verification because user reports broad placeholder/art failures.
+- `PROMPT 2039`: board unit/combat presentation audit map. Outcome SHIPPED audit only; no code repair yet for combat HP mutation/reveal silent failures.
 
 Completed repair outcomes:
 
 - `PROMPT 2033`: server board/GameOver vacuous-flow P0 repair. Fixed P1-010,
   root-caused P0-007, P0-008, P0-009, P0-010, and P1-013.
+- `PROMPT 2031`: fixed bot draft auto-pick debounce before `PlayerEconomy`.
+- `PROMPT 2032`: fixed placement failsafe phase timing arming on Placement entry.
 
 Repair workers not yet launched from this register:
 
+- Client phase sync repair follow-up from PROMPT 2030 diagnostics for P0-001 through P0-003 and P0-013.
+- Placement hard-gating/rejection UX/focus repair for P1-018 through P1-020 and UX-001 through UX-005.
+- Board/combat presentation repair for P1-021 through P1-023 and V1-014.
+- Card art/shop placeholder verification and follow-up repair for V1-009 and UX-006 after PROMPT 2038.
+- Hand fan/card readability/layout repair for V1-012/V1-013.
+- Global UI anchoring/layout audit and repair for V1-015.
+- Asset/audio wiring audit and repair for V1-016.
 - Disconnect tracker initialization repair for P1-001.
 - Placement ACK protocol repair for P1-005.
 - Result outcome projection/snapshot repair for P1-006 and T-008.
@@ -277,6 +325,6 @@ Repair workers not yet launched from this register:
 - Add new bug IDs instead of renumbering existing IDs.
 - If a bug is fixed, change `Current status` to `Fixed by PROMPT N` and add the
   verifying report path.
-- Merge repair outcomes from `PROMPT 2030-2033` into this file when they land.
+- Merge repair outcomes from `PROMPT 2030+` into this file when they land.
 - Do not treat driver checkpoint success as proof of visible game progress unless
   screenshots, driver timeline, server snapshots, and logs agree.

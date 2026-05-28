@@ -1,5 +1,74 @@
 # Codex Orchestrator State
 
+## Current Resume Snapshot (2026-05-28, post-2032 bot placement failsafe mainland)
+
+Source-of-truth at this snapshot:
+
+- Root checkout: `D:\_DEV\Work\Claude-Code-Game-Studios`
+- Current main source: `origin/main@e1a61376`
+  (`PROMPT 2032` bot placement failsafe spin-loop P0 repair).
+- Root checkout caveat: the root local checkout may be dirty/stale and must not
+  be treated as the source of truth for integration. Use clean worktrees based
+  on `origin/main` for repair, refresh, and report work.
+
+Forensic/gameplay state:
+
+- The game remains unplayable end to end. Server-side fixes have landed, but
+  the client/visible UI is not closed.
+- `PROMPT 2033` landed first and fixed stale `submissions_received` leaking
+  from Resolution into the next round. It also proved the observed empty
+  GameOver was a max-round/no-board cascade, not a normal objective
+  win-condition bypass.
+- `PROMPT 2031` landed at `28482bd5`: bot draft auto-pick no longer burns its
+  debounce key before `PlayerEconomy` exists. This fixes a real bot hand
+  awarding race, but it does not prove the visible draft/shop UI works.
+- `PROMPT 2032` landed at `e1a61376`: placement failsafe timing is armed on
+  Placement entry. Focused placement tests passed; fresh evidence is still
+  required to prove board units and non-empty combat are visible.
+- `PROMPT 2030` is not a full fix. Treat it as PARTIAL/diagnostic: it found
+  client phase-sync risks including missing autoplay `C2SCreateBotRoom` and a
+  silent RSM dispatch drop when the sender is absent.
+- User live-play report escalates UI/UX to P0/P1: drag/drop is approximate and
+  not cursor-attached, legal cells are unclear, invalid drops are only rejected
+  late, card/shop art falls back to placeholders or empty labels, hand cards are
+  spread across the whole hand region, cards lack readable stats/costs, placed
+  cards do not clearly become units, combat/resolution is visually inert, and
+  global Bevy UI anchoring/layout is unreliable.
+
+Bug register:
+
+- Consolidated tracker:
+  `production/qa/bugs/current-unplayable-bug-register-2026-05-28.md`.
+- It now includes forensic audit reports `2024-2029`, server repairs
+  `2031-2033`, user live-play UI/UX findings, and follow-up findings from
+  `2035/2036/2038/2039`.
+- Do not launch more generic audits unless new evidence exists. The next work
+  should be concrete repair lanes from the register.
+
+Worker disposition:
+
+- Cleared: `PROMPT 2031`, `PROMPT 2032`, `PROMPT 2035`, `PROMPT 2036`,
+  `PROMPT 2038`, `PROMPT 2039`.
+- `PROMPT 2030` reported PARTIAL and must not be represented as a closure.
+- Active/tentative lanes to verify or relaunch: `PROMPT 2034` bug-ledger
+  backfill, `PROMPT 2037` hand fan/card readability repair, `PROMPT 2040`
+  Bevy UI layout reference architecture audit. If status pings fail, relaunch
+  from current `origin/main@e1a61376`.
+
+Immediate next actions:
+
+1. Status-ping or relaunch `2034/2037/2040`; keep at least one real worker
+   active.
+2. Launch concrete repair lanes for the remaining P0/P1 items:
+   client phase-sync follow-up from `2030`, placement hard-gating/rejection UX
+   after `2036`, board/combat presentation repair after `2039`, and card
+   asset/shop placeholder verification after `2038`.
+3. Broad Cargo or live GUI verification should run in separate VERIFY lanes.
+   Implementation workers should stay scoped and use clean worktrees.
+4. For every mainland action, run `MAINLAND_LIST` first and enqueue only
+   strict fast-forward branches that preserve current reports and bug-register
+   updates.
+
 ## Current Resume Snapshot (2026-05-28, post-1758 autoplay-vs-bot live GUI PASS)
 
 Source-of-truth at this snapshot:
