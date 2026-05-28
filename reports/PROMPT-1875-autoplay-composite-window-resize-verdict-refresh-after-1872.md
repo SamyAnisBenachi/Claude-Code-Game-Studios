@@ -1,8 +1,8 @@
 # PROMPT 1875 — Autoplay Composite Window-Resize Verdict Refresh After PROMPT 1872
 
-**Date:** 2026-05-28  
-**Branch:** `integrate/autoplay-composite-window-resize-verdict-1875`  
-**Base:** `origin/main@2ce3dc6b` (PROMPT 1872)  
+**Date:** 2026-05-28
+**Branch:** `integrate/autoplay-composite-window-resize-verdict-1875`
+**Base:** `origin/main@2ce3dc6b` (PROMPT 1872)
 **Method:** Cherry-pick of `8da9e2e2` (PROMPT 1873 commit) onto latest main
 
 ---
