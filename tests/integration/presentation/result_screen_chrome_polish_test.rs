@@ -1,4 +1,5 @@
 //! PROMPT 1538 -- Result screen Krosmaga chrome polish.
+//! PROMPT 1896 -- Result screen 720px overflow scroll guard fix.
 //!
 //! Focused tests for the chrome-only polish added on top of PROMPT 1481:
 //!
@@ -12,6 +13,9 @@
 //!   `min_height` so the dismiss CTA stays reachable on 1280x720.
 //! - Outer panel uses `Overflow::clip()` as a safety net against the
 //!   objective grid spilling outside the framed modal on small viewports.
+//! - Inner scroll pane wrapping the step indicator and hero/accounting panels
+//!   enables `overflow_y: Scroll` so content taller than the 720px viewport
+//!   can be scrolled without the Return-to-Lobby CTA scrolling out of reach.
 //!
 //! These are scoped to the visual chrome only; they assert markers and node
 //! properties and never touch the data contract or focus order.
@@ -21,9 +25,9 @@ use bevy::state::app::StatesPlugin;
 use bevy::ui::OverflowAxis;
 use client::presentation::result_screen::{
     result_screen_outcome_accent, ResultScreenEntities, ResultScreenPlugin,
-    ResultScreenSectionDivider, ResultScreenStep, ResultScreenStepActionRequest,
-    ResultScreenStepIndicator, ResultScreenStepState, ResultScreenTitleDivider,
-    ResultScreenViewState,
+    ResultScreenSectionDivider, ResultScreenScrollPane, ResultScreenStep,
+    ResultScreenStepActionRequest, ResultScreenStepIndicator, ResultScreenStepState,
+    ResultScreenTitleDivider, ResultScreenViewState,
 };
 use client::presentation::PresentationGameSnapshotMessage;
 use client::state::{ClientSessionIdentity, ClientState, CurrentClientPhase};
@@ -167,6 +171,63 @@ fn panel_clips_overflow_as_safety_net() {
         node.overflow.y,
         OverflowAxis::Clip,
         "panel must clip vertical overflow as a Krosmaga-style framing safety net"
+    );
+}
+
+#[test]
+fn scroll_pane_enables_overflow_scroll_so_content_reachable_on_720p() {
+    // PROMPT 1896: 1280x720 overflow guard.
+    //
+    // The scroll pane wraps the step indicator and hero/accounting panels
+    // inside the result panel. On viewports as short as 720 px the accounting
+    // content (resources, ledger, 10 objective rows) can exceed the available
+    // height. The scroll pane must enable overflow-y scrolling so users can
+    // reach all content; and it must grow to fill available space while the
+    // actions row stays pinned below it.
+    test_helpers::init_test_tracing();
+    let mut app = result_screen_app();
+    open_result_screen(
+        &mut app,
+        Some(result(Some(player(2)), GameOverReason::ObjectivesDestroyed)),
+    );
+
+    assert_eq!(
+        query_count::<ResultScreenScrollPane>(&mut app),
+        1,
+        "exactly one scroll pane must wrap the step indicator and hero/accounting panels"
+    );
+
+    let scroll_pane_entity = app
+        .world_mut()
+        .query::<(Entity, &ResultScreenScrollPane)>()
+        .iter(app.world())
+        .next()
+        .map(|(entity, _)| entity)
+        .expect("ResultScreenScrollPane entity must exist");
+
+    let node = app
+        .world()
+        .get::<Node>(scroll_pane_entity)
+        .expect("scroll pane must carry a Node component");
+
+    assert_eq!(
+        node.overflow.y,
+        OverflowAxis::Scroll,
+        "scroll pane must enable overflow_y scroll so accounting content is \
+         reachable on 1280x720 without hiding the Return-to-Lobby CTA"
+    );
+    assert!(
+        (node.flex_grow - 1.0).abs() < f32::EPSILON,
+        "scroll pane must flex_grow to fill available space above the pinned \
+         actions row; got flex_grow={:?}",
+        node.flex_grow
+    );
+    assert_eq!(
+        node.min_height,
+        Val::Px(0.0),
+        "scroll pane min_height must be 0 px so it can shrink below its \
+         intrinsic content height on short viewports, allowing the layout \
+         engine to honour the actions row flex_shrink: 0 constraint"
     );
 }
 
