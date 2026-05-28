@@ -45,6 +45,7 @@ from . import (
     resolution_observe,
     round_loop,
     smoke,
+    vs_bot,
 )
 
 
@@ -79,6 +80,7 @@ REGISTRY: dict[str, tuple[str, Builder]] = {
     game_over_observe.NAME: (game_over_observe.DESCRIPTION, game_over_observe.build),
     round_loop.NAME: (round_loop.DESCRIPTION, round_loop.build),
     full_game.NAME: (full_game.DESCRIPTION, full_game.build),
+    vs_bot.NAME: (vs_bot.DESCRIPTION, vs_bot.build),
 }
 
 

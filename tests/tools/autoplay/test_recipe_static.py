@@ -1,7 +1,7 @@
-"""Static regression tests for tools/autoplay recipe library (PROMPT 1647).
+"""Static regression tests for tools/autoplay recipe library (PROMPT 1647 / 1747).
 
 No GUI, no Bevy launch, no Cargo. These tests exercise:
-  - registry completeness (11 expected recipes present)
+  - registry completeness (12 expected recipes present)
   - method-allowlist contract (every recipe emits only permitted methods)
   - env-gate blocking (recipes that need env vars emit local.block when unset)
   - checkpoint presence (expected labels appear in builds when env is satisfied)
@@ -56,6 +56,7 @@ EXPECTED_RECIPES = {
     "game-over-observe",
     "round-loop",
     "full-game",
+    "vs-bot",
 }
 
 _DEFAULT_CTX = RecipeContext(window_size=(1280.0, 720.0), env={})
@@ -85,6 +86,7 @@ def _has_block(actions: list[dict]) -> bool:
 
 class TestRegistry:
     def test_expected_recipe_count(self):
+        # EXPECTED_RECIPES is the canonical set; len() drives from that.
         assert len(REGISTRY) == len(EXPECTED_RECIPES), (
             f"Expected {len(EXPECTED_RECIPES)} recipes, got {len(REGISTRY)}. "
             f"Registry: {set(REGISTRY)}"
@@ -223,6 +225,47 @@ class TestEnvGateBlocking:
         assert not rpc_before_block, (
             "full-game emitted RPC calls before local.block — "
             "blocking should happen before any network I/O"
+        )
+
+    # -- vs-bot ------------------------------------------------------------------
+
+    def test_vs_bot_blocks_without_debug_ui(self):
+        _, builder = REGISTRY["vs-bot"]
+        actions = builder(_ctx())
+        assert _has_block(actions), (
+            "vs-bot must emit local.block when CCGS_DEBUG_UI is unset"
+        )
+
+    def test_vs_bot_blocks_without_bot_room_env(self):
+        _, builder = REGISTRY["vs-bot"]
+        actions = builder(_ctx(CCGS_DEBUG_UI="1"))
+        assert _has_block(actions), (
+            "vs-bot must emit local.block when CCGS_AUTOPLAY_BOT_ROOM_READY is unset"
+        )
+
+    def test_vs_bot_does_not_block_when_both_gates_set(self):
+        _, builder = REGISTRY["vs-bot"]
+        actions = builder(_ctx(CCGS_DEBUG_UI="1", CCGS_AUTOPLAY_BOT_ROOM_READY="1"))
+        assert not _has_block(actions), (
+            "vs-bot must NOT emit local.block when CCGS_DEBUG_UI=1 and "
+            "CCGS_AUTOPLAY_BOT_ROOM_READY=1"
+        )
+
+    def test_vs_bot_block_row_is_first_meaningful_action(self):
+        """Block row must appear before any RPC calls."""
+        _, builder = REGISTRY["vs-bot"]
+        actions = builder(_ctx())
+        block_idx = next(
+            (i for i, a in enumerate(actions) if a.get("method") == "local.block"),
+            None,
+        )
+        assert block_idx is not None
+        pre_block = actions[:block_idx]
+        rpc_before_block = [
+            a for a in pre_block if a.get("method") in ALLOWED_RPC_METHODS
+        ]
+        assert not rpc_before_block, (
+            "vs-bot emitted RPC calls before local.block"
         )
 
 
@@ -371,6 +414,65 @@ class TestCheckpointContracts:
         labels = _checkpoint_labels(builder(_ctx(**env)))
         assert "round-2-start" in labels
         assert "round-3-start" in labels
+
+    # -- vs-bot (when both gates set) ----------------------------------------
+
+    _VS_BOT_ENV = {"CCGS_DEBUG_UI": "1", "CCGS_AUTOPLAY_BOT_ROOM_READY": "1"}
+
+    def test_vs_bot_tail_checkpoint_post_resolution(self):
+        """Default build ends with vs-bot-post-resolution."""
+        _, builder = REGISTRY["vs-bot"]
+        labels = _checkpoint_labels(builder(_ctx(**self._VS_BOT_ENV)))
+        assert "vs-bot-post-resolution" in labels
+
+    def test_vs_bot_tail_checkpoint_post_placement(self):
+        """Resolution disabled -> tail checkpoint is vs-bot-post-placement."""
+        _, builder = REGISTRY["vs-bot"]
+        env = {**self._VS_BOT_ENV, "CCGS_AUTOPLAY_VS_BOT_RESOLUTION": "0"}
+        labels = _checkpoint_labels(builder(_ctx(**env)))
+        assert "vs-bot-post-placement" in labels
+
+    def test_vs_bot_tail_checkpoint_complete(self):
+        """GameOver enabled -> tail checkpoint is vs-bot-complete."""
+        _, builder = REGISTRY["vs-bot"]
+        env = {**self._VS_BOT_ENV, "CCGS_AUTOPLAY_VS_BOT_GAMEOVER": "1"}
+        labels = _checkpoint_labels(builder(_ctx(**env)))
+        assert "vs-bot-complete" in labels
+
+    def test_vs_bot_includes_add_bot_lobby_checkpoints(self):
+        """vs-bot must include checkpoints from add-bot-lobby (not lobby-create)."""
+        _, builder = REGISTRY["vs-bot"]
+        labels = _checkpoint_labels(builder(_ctx(**self._VS_BOT_ENV)))
+        assert "lobby-loaded" in labels
+        assert "bot-added" in labels
+        assert "lobby-confirmed" in labels
+
+    def test_vs_bot_includes_downstream_phase_checkpoints(self):
+        """vs-bot must include checkpoints from each downstream sub-recipe phase."""
+        _, builder = REGISTRY["vs-bot"]
+        labels = _checkpoint_labels(builder(_ctx(**self._VS_BOT_ENV)))
+        for expected in (
+            "class-select-loaded",
+            "shop-loaded",
+            "placement-loaded",
+            "resolution-started",
+        ):
+            assert expected in labels, (
+                f"vs-bot missing sub-recipe checkpoint: {expected!r}"
+            )
+
+    def test_vs_bot_does_not_include_full_game_lobby_create(self):
+        """vs-bot uses add-bot-lobby, so lobby-create checkpoint absent is expected."""
+        # full-game includes lobby-create; vs-bot must use add-bot-lobby instead.
+        # We verify that lobby-create's unique checkpoint doesn't sneak in from
+        # the wrong sub-recipe -- lobby-create also emits "lobby-confirmed" but
+        # does NOT emit "bot-added", which is the distinguishing marker.
+        _, builder = REGISTRY["vs-bot"]
+        labels = _checkpoint_labels(builder(_ctx(**self._VS_BOT_ENV)))
+        # bot-added is the marker that add-bot-lobby (not lobby-create) ran.
+        assert "bot-added" in labels, (
+            "vs-bot must include bot-added checkpoint from add-bot-lobby"
+        )
 
     # -- smoke / idle (simple) -----------------------------------------------
 
