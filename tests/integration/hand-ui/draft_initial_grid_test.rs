@@ -448,6 +448,9 @@ fn qa_metrics() -> FanLayoutMetrics {
         fan_half_spread: 280.0,
         arc_height: 10.0,
         max_rotation_deg: 10.0,
+        // PROMPT 2037 — INFINITY disables the pitch cap so this helper keeps
+        // exercising the historical pure-spread formula.
+        max_card_pitch: f32::INFINITY,
     }
 }
 
