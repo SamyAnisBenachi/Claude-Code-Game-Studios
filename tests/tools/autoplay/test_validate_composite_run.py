@@ -595,3 +595,81 @@ class TestUtf8BomTolerance:
         # Assert
         assert not result.ok
         assert any("INVALID JSON" in f for f in result.failures)
+
+
+# ---------------------------------------------------------------------------
+# UTF-8 BOM tolerance for autoplay-run-path.txt (PROMPT 1785)
+# PowerShell Set-Content -Encoding utf8 prepends a BOM; the validator must
+# strip it before comparing paths to avoid false PATH MISMATCH failures.
+# ---------------------------------------------------------------------------
+
+class TestRunPathBomTolerance:
+    def _write_bom_run_path(self, evidence_dir: Path, artifact_dir: Path) -> None:
+        """Write autoplay-run-path.txt with a UTF-8 BOM prefix (mimicking PowerShell)."""
+        content = str(artifact_dir).encode("utf-8")
+        (evidence_dir / RUN_PATH_FILENAME).write_bytes(_UTF8_BOM + content)
+
+    def test_run_path_bom_prefix_does_not_cause_path_mismatch(self, tmp_path):
+        """BOM in autoplay-run-path.txt must not trigger PATH MISMATCH failure."""
+        checkpoints = _checkpoint_rows(
+            "lobby-loaded", "lobby-confirmed",
+            "class-select-loaded",
+            "placement-loaded", "placement-submitted",
+        )
+        evidence_dir, artifact_dir = _make_evidence_dir(
+            tmp_path, artifact_checkpoints=checkpoints
+        )
+        # Overwrite the run-path file with a BOM-prefixed version
+        self._write_bom_run_path(evidence_dir, artifact_dir)
+        result = validate(evidence_dir)
+        assert result.ok, (
+            f"BOM-prefixed autoplay-run-path.txt should not cause PATH MISMATCH; "
+            f"failures: {result.failures}"
+        )
+
+    def test_run_path_bom_prefix_with_trailing_newline_passes(self, tmp_path):
+        """BOM + path + newline (common PowerShell output) must pass path comparison."""
+        checkpoints = _checkpoint_rows(
+            "lobby-loaded", "lobby-confirmed",
+            "class-select-loaded",
+            "placement-loaded", "placement-submitted",
+        )
+        evidence_dir, artifact_dir = _make_evidence_dir(
+            tmp_path, artifact_checkpoints=checkpoints
+        )
+        content = str(artifact_dir) + "\n"
+        (evidence_dir / RUN_PATH_FILENAME).write_bytes(_UTF8_BOM + content.encode("utf-8"))
+        result = validate(evidence_dir)
+        assert result.ok, (
+            f"BOM + trailing newline in autoplay-run-path.txt should pass; "
+            f"failures: {result.failures}"
+        )
+
+    def test_run_path_bom_with_wrong_path_still_fails(self, tmp_path):
+        """BOM stripping must not suppress a genuine path mismatch."""
+        evidence_dir, artifact_dir = _make_evidence_dir(tmp_path)
+        # Write BOM + a completely different path
+        wrong_path = "/some/completely/different/path"
+        (evidence_dir / RUN_PATH_FILENAME).write_bytes(
+            _UTF8_BOM + wrong_path.encode("utf-8")
+        )
+        result = validate(evidence_dir)
+        assert not result.ok
+        assert any("PATH MISMATCH" in f for f in result.failures), (
+            f"BOM stripping must not hide a real path mismatch; failures: {result.failures}"
+        )
+
+    def test_run_path_missing_with_bom_summary_fails(self, tmp_path):
+        """Missing autoplay-run-path.txt is still an error even when summary has BOM."""
+        evidence_dir, artifact_dir = _make_evidence_dir(
+            tmp_path, include_run_path=False
+        )
+        # Overwrite summary with BOM version
+        summary = dict(_VALID_SUMMARY)
+        summary["autoplay_artifact_dir"] = str(artifact_dir)
+        summary["evidence_dir"] = str(evidence_dir)
+        payload = json.dumps(summary).encode("utf-8")
+        (evidence_dir / SUMMARY_FILENAME).write_bytes(_UTF8_BOM + payload)
+        result = validate(evidence_dir)
+        assert not result.ok
+        assert any(RUN_PATH_FILENAME in f for f in result.failures)

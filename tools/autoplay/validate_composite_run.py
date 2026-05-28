@@ -174,7 +174,8 @@ def _check_run_path_file(
         result.fail(f"MISSING: {RUN_PATH_FILENAME} not found in {evidence_dir}")
         return
 
-    rp_text = rp_path.read_text(encoding="utf-8").strip()
+    # utf-8-sig strips an optional UTF-8 BOM written by PowerShell Set-Content -Encoding utf8
+    rp_text = rp_path.read_text(encoding="utf-8-sig").strip()
     summary_dir = (summary.get("autoplay_artifact_dir") or "").strip()
     if rp_text and summary_dir and Path(rp_text) != Path(summary_dir):
         result.fail(
@@ -316,19 +317,29 @@ def validate(
     return result
 
 
+def _safe_print(text: str) -> None:
+    """Print text, replacing un-encodable characters for narrow console codepages (e.g. CP1252)."""
+    try:
+        print(text)
+    except UnicodeEncodeError:
+        print(text.encode(sys.stdout.encoding or "ascii", errors="replace").decode(
+            sys.stdout.encoding or "ascii"
+        ))
+
+
 def _print_result(result: _Result, evidence_dir: Path) -> None:
     if result.warnings:
-        print(f"[validate_composite_run] WARNINGS ({len(result.warnings)}):")
+        _safe_print(f"[validate_composite_run] WARNINGS ({len(result.warnings)}):")
         for w in result.warnings:
-            print(f"  WARN: {w}")
+            _safe_print(f"  WARN: {w}")
 
     if result.ok:
-        print(f"[validate_composite_run] PASS: {evidence_dir}")
+        _safe_print(f"[validate_composite_run] PASS: {evidence_dir}")
     else:
-        print(f"[validate_composite_run] FAIL: {evidence_dir}")
-        print(f"  {len(result.failures)} check(s) failed:")
+        _safe_print(f"[validate_composite_run] FAIL: {evidence_dir}")
+        _safe_print(f"  {len(result.failures)} check(s) failed:")
         for f in result.failures:
-            print(f"  FAIL: {f}")
+            _safe_print(f"  FAIL: {f}")
 
 
 def main(argv: list[str] | None = None) -> int:
