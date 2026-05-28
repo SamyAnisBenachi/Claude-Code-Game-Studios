@@ -12,7 +12,9 @@ use shared::session::PlayerId;
 
 use crate::asset_wiring::{
     apply_card_display_art, bid_button_asset, clear_card_display_art, default_client_card_catalog,
-    BidButtonChromeState, SHOP_PANEL_CHROME_ASSET, SHOP_SLOT_WELL_IDLE_ASSET,
+    BidButtonChromeState, AUCTION_TIER_BORDER_1_ASSET, AUCTION_TIER_BORDER_2_ASSET,
+    AUCTION_TIER_BORDER_3_ASSET, AUCTION_TIER_BORDER_4_ASSET, SHOP_PANEL_CHROME_ASSET,
+    SHOP_SLOT_WELL_IDLE_ASSET,
 };
 use crate::card_animations::{
     AuctionPanelTransitionRequested, CardAcquiredAnimReady, SettlementOverlayRequested,
@@ -4160,6 +4162,24 @@ pub fn sync_auction_panel_system(
             }),
             BorderColor::all(auction_featured_card_lead_loss_color(featured_card_state)),
         ));
+        // PROMPT 1853 SLICE-B — bind tier-border texture to the featured card
+        // frame overlay. Asset selection follows Formula D.6
+        // (`auction_border_color_tier`) so the visual intensity of the frame
+        // escalates with the current bid price, reinforcing the bidding tension.
+        let tier_border_path = match auction_border_color_tier(auction_state.current_price) {
+            AuctionBorderColorTier::PaleInkBlue => AUCTION_TIER_BORDER_1_ASSET,
+            AuctionBorderColorTier::AuctionAmber => AUCTION_TIER_BORDER_2_ASSET,
+            AuctionBorderColorTier::DeepAmber => AUCTION_TIER_BORDER_3_ASSET,
+            AuctionBorderColorTier::CrimsonAmber => AUCTION_TIER_BORDER_4_ASSET,
+        };
+        if let Some(ref srv) = asset_server {
+            commands
+                .entity(entities.auction_featured_card_frame)
+                .insert(ImageNode {
+                    image: srv.load(tier_border_path),
+                    ..default()
+                });
+        }
     }
 
     {
