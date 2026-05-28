@@ -249,6 +249,14 @@ pub struct ResultScreenRoot;
 #[derive(Component, Debug, Clone, Copy)]
 pub struct ResultScreenPanel;
 
+/// Marker on the inner scrollable pane that wraps the step indicator and
+/// hero/accounting panels. Fills available vertical space between the panel
+/// top and the pinned actions row; enables `overflow_y: scroll` so content
+/// taller than the 720 px-tall viewport can be scrolled without hiding the
+/// Return-to-Lobby CTA.
+#[derive(Component, Debug, Clone, Copy)]
+pub struct ResultScreenScrollPane;
+
 /// Marker on the hero/outcome sub-panel rendered during
 /// [`ResultScreenStep::Hero`].
 #[derive(Component, Debug, Clone, Copy)]
@@ -826,6 +834,29 @@ fn spawn_result_screen_system(
         ))
         .id();
 
+    // Scrollable pane: wraps the step indicator and hero/accounting panels.
+    // Fills all vertical space not reserved by the pinned actions row so that
+    // on 720 px-tall viewports users can scroll the content area without the
+    // Return-to-Lobby CTA scrolling out of reach.
+    let scroll_pane = commands
+        .spawn((
+            Name::new("Result scroll pane"),
+            ResultScreenScrollPane,
+            ChildOf(content),
+            Node {
+                display: Display::Flex,
+                flex_direction: FlexDirection::Column,
+                flex_grow: 1.0,
+                // min_height: 0 lets the pane shrink below its intrinsic
+                // content height so the actions row is never clipped.
+                min_height: Val::Px(0.0),
+                row_gap: Val::Px(14.0),
+                overflow: Overflow::scroll_y(),
+                ..default()
+            },
+        ))
+        .id();
+
     // Compact step indicator pill ("Step 1 of 2" / "Step 2 of 2") at the top
     // of the content column. Telegraphs the two-step hero -> accounting
     // reveal so Continue reads as progression, not dismissal.
@@ -833,7 +864,7 @@ fn spawn_result_screen_system(
         .spawn((
             Name::new("Result step indicator"),
             ResultScreenStepIndicator,
-            ChildOf(content),
+            ChildOf(scroll_pane),
             Node {
                 display: Display::Flex,
                 align_self: AlignSelf::FlexEnd,
@@ -863,7 +894,7 @@ fn spawn_result_screen_system(
         .spawn((
             Name::new("Result hero panel"),
             ResultScreenHeroPanel,
-            ChildOf(content),
+            ChildOf(scroll_pane),
             Node {
                 display: Display::Flex,
                 flex_direction: FlexDirection::Column,
@@ -970,7 +1001,7 @@ fn spawn_result_screen_system(
         .spawn((
             Name::new("Result accounting panel"),
             ResultScreenAccountingPanel,
-            ChildOf(content),
+            ChildOf(scroll_pane),
             Node {
                 display: Display::None,
                 flex_direction: FlexDirection::Column,
