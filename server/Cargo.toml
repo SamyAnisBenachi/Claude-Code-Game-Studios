@@ -448,6 +448,11 @@ path = "../tests/unit/bot/bot_debug_push_test.rs"
 name = "bot_soak_config_test"
 path = "../tests/unit/bot/bot_soak_config_test.rs"
 
+# PROMPT 1743 — CCGS_BOT_SOAK_ENABLED entrypoint gate unit tests.
+[[test]]
+name = "bot_soak_entrypoint_gate_test"
+path = "../tests/unit/bot/bot_soak_entrypoint_gate_test.rs"
+
 # PROMPT 1629/1645 — bot-vs-bot soak entrypoint integration test scaffold.
 [[test]]
 name = "bot_soak_entrypoint_test"

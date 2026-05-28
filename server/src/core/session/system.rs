@@ -27,6 +27,7 @@ use crate::core::session::{
     SessionCancelledReason, SessionConfig, SessionId, SessionNetworkOutbox, SessionReady,
     SessionSlot, SessionSlots,
 };
+use crate::feature::bot::is_bot_soak_enabled;
 use crate::foundation::config::GameConfig;
 use crate::foundation::rng::ServerRng;
 
@@ -613,6 +614,11 @@ pub fn handle_create_room(
 }
 
 /// Sole drainer for `MessageReceiver<C2SCreateBotRoom>`.
+///
+/// Gated by `CCGS_BOT_SOAK_ENABLED=1` (PROMPT 1743 / BOT-SOAK-ENTRYPOINT-001
+/// AC6).  When the env var is absent or not `"1"` the handler silently drains
+/// all incoming messages without creating a room, preventing accidental
+/// entrypoint exposure in release/operator environments.
 #[allow(clippy::too_many_arguments)]
 pub fn handle_create_bot_room(
     time: Res<Time>,
@@ -624,6 +630,18 @@ pub fn handle_create_bot_room(
     server: Query<&Server>,
     mut sender: Option<ServerMultiMessageSender>,
 ) {
+    if !is_bot_soak_enabled() {
+        // Drain without acting — env gate not set.
+        for (_remote, mut receiver) in receivers.iter_mut() {
+            for _msg in receiver.receive() {
+                tracing::warn!(
+                    "c2s_create_bot_room: request blocked — CCGS_BOT_SOAK_ENABLED not set"
+                );
+            }
+        }
+        return;
+    }
+
     let now = time.elapsed().as_secs_f64();
     let lobby_timeout_seconds = config
         .as_ref()
