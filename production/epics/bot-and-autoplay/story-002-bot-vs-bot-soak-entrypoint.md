@@ -2,7 +2,7 @@
 
 > **Epic**: Bot & Autoplay
 > **Story ID**: BOT-SOAK-ENTRYPOINT-001
-> **Status**: Draft -- Sprint 19 candidate; PROMPT 1603 worker shipped; integration refresh PROMPT 1607 active (not yet confirmed main-landed)
+> **Status**: Draft -- Sprint 19 candidate; PROMPT 1603 worker shipped; PROMPT 1607 confirmed main-landed (PROMPT 1762, `origin/main@7ca41fc4`); implementation lineage 1603–1743 present on `origin/main`
 > **Layer**: Integration -- server-side debug-only soak room + PowerShell harness
 > **Type**: Integration -- new debug-only `Start-BotVsBotSoak.ps1` + `--bot-vs-bot-max-rounds` flag candidate
 > **Sprint**: Sprint 19 candidate (NOT activated)
@@ -15,10 +15,13 @@
 
 This story is authored as a **Sprint 19 candidate** to track the
 bot-vs-bot soak entrypoint that PROMPT 1603 began shipping. PROMPT 1607
-is the active integration refresh; it is **NOT confirmed main-landed**
-at the PROMPT 1608 authoring source-of-truth.
+is the integration refresh; it is **confirmed main-landed** as of PROMPT
+1762 (`origin/main@7ca41fc4`, 2026-05-28). Full implementation lineage
+1603–1743 is present on `origin/main`. The earlier "not yet confirmed
+main-landed" text was accurate only at the PROMPT 1608 authoring tip
+(`576fbe8c`); this banner was repaired by PROMPT 1769.
 
-PROMPT 1608 does NOT:
+PROMPT 1608 does NOT (preserved verbatim — authoring-time non-claims):
 
 - Activate Sprint 19.
 - Modify any code, Cargo, Trunk, or CI artifact.
@@ -76,22 +79,24 @@ intermittent crashes, infinite-loop heuristics, or auction-pool drift.
 | PROMPT | Branch | Status |
 |---|---|---|
 | 1603 | `work/bot-flow-two-bot-soak-entrypoint-1603` | Worker shipped |
-| 1607 | `integrate/bot-flow-two-bot-soak-entrypoint-1607` | Integration refresh active; main-land not yet confirmed at this authoring tip |
+| 1607 | `integrate/bot-flow-two-bot-soak-entrypoint-1607` | Confirmed main-landed — PROMPT 1762 (`origin/main@7ca41fc4`, 2026-05-28) |
+| 1603–1743 | (full lineage) | All implementation commits confirmed on `origin/main` by PROMPT 1762 |
 
-The Sprint 19 readiness step MUST verify which artifacts actually exist
-on `origin/main`. If PROMPT 1607 has main-landed by then, the story may
-be a paperwork-only `/story-done`; if not, the story is `/dev-story`
-work over the remaining gap.
+PROMPT 1762 confirmed all AC1–AC6 deliverables are present on `origin/main`.
+The story is implementation-complete; remaining gates are Sprint 19 activation
+and `/story-done` paperwork (see PROMPT 1768 readiness report for full detail).
 
 ---
 
 ## Recommended Sprint 19 Follow-Up Prompts
 
-1. Confirm PROMPT 1607 main-land status (or supersede with a fresh
-   integration prompt against the Sprint 19 activation tip).
-2. `/story-readiness BOT-SOAK-ENTRYPOINT-001`.
-3. `/story-done` or `/dev-story` depending on the verdict.
-4. (Optional) A CI smoke wiring follow-up that runs a bounded soak on
+1. ~~Confirm PROMPT 1607 main-land status~~ — **DONE** (PROMPT 1762 confirmed;
+   PROMPT 1769 repaired this banner).
+2. Sprint 18 close-out → Sprint 19 planning + activation (PROMPT 1768 Blocker 2).
+3. `/story-readiness BOT-SOAK-ENTRYPOINT-001` once Sprint 19 row exists.
+4. `/story-done` — paperwork-only (all implementation on `origin/main`); reference
+   PROMPT 1678 and PROMPT 1758 as live soak evidence.
+5. (Optional) A CI smoke wiring follow-up that runs a bounded soak on
    each merge to `main`; this is a separate story, not in scope here.
 
 ---
@@ -101,7 +106,7 @@ work over the remaining gap.
 - Logic: bot decision determinism tests (existing under
   `tests/unit/bot/`); soak determinism harness deferred.
 - Integration: bot-vs-bot soak integration test under
-  `tests/integration/bot/` (deferred until PROMPT 1607 main-lands or a
-  successor lands).
+  `tests/integration/bot/` (PROMPT 1607 confirmed main-landed; integration
+  tests present per PROMPT 1762 AC5 evidence at commit `c84f03be`).
 - Manual: orchestrator-driven bounded soak (e.g. `--max-rounds 5`)
   with captured QA snapshot under `production/qa/evidence/`.
