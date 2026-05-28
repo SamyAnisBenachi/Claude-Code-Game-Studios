@@ -1,8 +1,8 @@
-# PROMPT 1879 — Autoplay Window-Size Default Repair Refresh After PROMPT 1872
+﻿# PROMPT 1879 â€” Autoplay Window-Size Default Repair Refresh After PROMPT 1872
 
-**Date:** 2026-05-28  
-**Branch:** `integrate/autoplay-window-size-default-1879`  
-**Base:** `origin/main` @ `2ce3dc6b` (PROMPT 1872)  
+**Date:** 2026-05-28
+**Branch:** `integrate/autoplay-window-size-default-1879`
+**Base:** `origin/main` @ `2ce3dc6b` (PROMPT 1872)
 **Status:** SHIPPED
 
 ---
@@ -31,8 +31,8 @@ cherry-applies only the AC-VPT-01 owned-scope changes.
 
 2. **`enforce_autoplay_window_size_system`** (new Startup system):
    - Reads `CCGS_WINDOW_WIDTH` / `CCGS_WINDOW_HEIGHT` from env (optional).
-   - Falls back to `AUTOPLAY_MIN_WINDOW_W` / `AUTOPLAY_MIN_WINDOW_H` (1280×720).
-   - Applies `max(current, target)` — never shrinks an already-larger window.
+   - Falls back to `AUTOPLAY_MIN_WINDOW_W` / `AUTOPLAY_MIN_WINDOW_H` (1280Ã—720).
+   - Applies `max(current, target)` â€” never shrinks an already-larger window.
    - Registered via `app.add_systems(Startup, enforce_autoplay_window_size_system)` inside `AutoplayPlugin::build`.
 
 3. **Unit test** `autoplay_window_size_constants_match_dev_floor`:
@@ -55,9 +55,9 @@ Defensive (Rust fallback already applies same floor), provides a log trail.
 
 ## Files NOT Touched
 
-- `tools/autoplay/driver.py` — AC-VPT-02/08 blocking guards are separate work.
+- `tools/autoplay/driver.py` â€” AC-VPT-02/08 blocking guards are separate work.
 - `production/session-state/**`, `production/sprints/**`, sprint-status.yaml.
-- PROMPT 1845/1846/1858/1859/1872 report files — all preserved on latest main.
+- PROMPT 1845/1846/1858/1859/1872 report files â€” all preserved on latest main.
 
 ---
 
@@ -65,10 +65,10 @@ Defensive (Rust fallback already applies same floor), provides a log trail.
 
 | Check | Result |
 |---|---|
-| `git diff --check` | PASS — no whitespace errors |
-| PS1 parse (static review) | PASS — syntax is identical to 1865 branch payload |
+| `git diff --check` | PASS â€” no whitespace errors |
+| PS1 parse (static review) | PASS â€” syntax is identical to 1865 branch payload |
 | `git diff --name-status origin/main..HEAD` | `M client/src/autoplay.rs`, `M tools/autoplay/Run-AutoplaySmoke.ps1`, `A reports/PROMPT-1879-...md` only |
-| PROMPT 1845/1846/1858/1859/1872 artifacts present | PASS — untouched on base main |
+| PROMPT 1845/1846/1858/1859/1872 artifacts present | PASS â€” untouched on base main |
 | No deletions of existing reports | PASS |
 
 ---
