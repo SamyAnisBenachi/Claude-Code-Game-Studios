@@ -265,7 +265,8 @@ if (-not $SkipSoakLaunch -and -not $DryRun) {
         '-ExecutionPolicy', 'Bypass',
         '-File', $soakScript,
         '-Port', $chosenPort,
-        '-DurationSeconds', $SoakDurationSeconds
+        '-DurationSeconds', $SoakDurationSeconds,
+        '-PlayRepoRoot', $RepoRoot
     )
     if ($Release) { $soakArgs += '-Release' }
     Write-Host "pwsh $($soakArgs -join ' ')"
@@ -291,7 +292,7 @@ if (-not $SkipSoakLaunch -and -not $DryRun) {
     Write-Host "Soak server bound on port $chosenPort."
 } elseif (-not $SkipSoakLaunch -and $DryRun) {
     Write-Section "Starting soak server (DRY RUN -- skipped)"
-    Write-Host "[DRY RUN] would launch: powershell -ExecutionPolicy Bypass -File $soakScript -Port $chosenPort -DurationSeconds $SoakDurationSeconds"
+    Write-Host "[DRY RUN] would launch: powershell -ExecutionPolicy Bypass -File $soakScript -Port $chosenPort -DurationSeconds $SoakDurationSeconds -PlayRepoRoot $RepoRoot"
 }
 
 # ---- 7. Run autoplay smoke launcher -----------------------------------------
@@ -303,9 +304,15 @@ $autoplayArtifactDir = Join-Path $RepoRoot "production/qa/evidence/autoplay-runs
 $env:CCGS_AUTOPLAY_BOT_ROOM_READY = '1'
 $env:SERVER_PORT                  = "$chosenPort"
 $env:SERVER_URL                   = "ws://127.0.0.1:$chosenPort"
+# vs-bot recipe requires CCGS_DEBUG_UI=1 to expose the Add Bot button in the
+# Bevy client lobby (client/src/ui/lobby.rs `is_debug_ui_enabled`). The
+# composite launcher sets it here so both the client binary and the Python
+# driver (ctx.env) see it; without it the recipe emits local.block (exit 4).
+if ($Recipe -eq 'vs-bot') { $env:CCGS_DEBUG_UI = '1' }
 Write-Host "CCGS_AUTOPLAY_BOT_ROOM_READY = 1"
 Write-Host "SERVER_PORT                  = $chosenPort"
 Write-Host "SERVER_URL                   = ws://127.0.0.1:$chosenPort"
+Write-Host "CCGS_DEBUG_UI                = $(if ($Recipe -eq 'vs-bot') { '1 (set for vs-bot recipe)' } else { '(not set by launcher)' })"
 Write-Host "Autoplay artifact dir:       $autoplayArtifactDir"
 
 if (-not $DryRun) {
