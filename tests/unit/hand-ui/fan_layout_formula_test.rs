@@ -156,6 +156,59 @@ fn expect_px(value: Val) -> f32 {
     }
 }
 
+/// Card display height in px — mirrors the private constant in hand/mod.rs.
+const CARD_H: f32 = 150.0;
+/// Right-side badge footprint width in px: 24% of 108px card width ≈ 25.92 px.
+const RIGHT_BADGE_W: f32 = 108.0 * 0.24;
+
+/// PROMPT 1854 (STAGE3-D) — 10-card readability invariants at 1280×720.
+///
+/// Two structural guarantees on `HandFanLayoutConfig::default()`:
+///
+/// 1. **No bottom clip**: every card's local-strip bottom (card_y + CARD_H) stays
+///    within `HAND_FAN_STRIP_HEIGHT_PX` so ATK/HP badges are never cut off at the
+///    viewport bottom edge.
+///
+/// 2. **Right-badge visible**: spacing between adjacent card left edges exceeds the
+///    right-badge width, so the AR/HP badges (rightmost 24% of the card) are not
+///    occluded by the neighbour card.
+#[test]
+fn default_config_10_cards_at_1280x720_readability_invariants() {
+    let config = HandFanLayoutConfig::default();
+    let viewport = HandFanViewport {
+        width_px: 1280.0,
+        height_px: 720.0,
+    };
+    let metrics = config.metrics_for_viewport(viewport);
+
+    let layouts: Vec<_> = (0..HAND_FAN_SLOT_COUNT)
+        .map(|i| {
+            compute_fan_slot_layout(i, HAND_FAN_SLOT_COUNT, metrics)
+                .expect("all 10 slots must produce a layout")
+        })
+        .collect();
+
+    // Invariant 1: no card bottom clips below the strip.
+    for (i, layout) in layouts.iter().enumerate() {
+        let card_bottom = layout.card_y + CARD_H;
+        assert!(
+            card_bottom <= HAND_FAN_STRIP_HEIGHT_PX + EPSILON,
+            "slot {i}: card bottom {card_bottom:.1} exceeds strip height {HAND_FAN_STRIP_HEIGHT_PX} — ATK/HP badges off-screen",
+        );
+    }
+
+    // Invariant 2: adjacent card spacing > right-badge width so AR/HP badges are
+    // not hidden behind the next card.
+    for i in 0..HAND_FAN_SLOT_COUNT - 1 {
+        let spacing = layouts[i + 1].card_x - layouts[i].card_x;
+        assert!(
+            spacing > RIGHT_BADGE_W,
+            "slot {i}→{}: spacing {spacing:.1} px is less than right-badge width {RIGHT_BADGE_W:.1} — AR/HP badges hidden",
+            i + 1,
+        );
+    }
+}
+
 fn app_with_hand_ui_in_session(hand_count: usize) -> App {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins);
