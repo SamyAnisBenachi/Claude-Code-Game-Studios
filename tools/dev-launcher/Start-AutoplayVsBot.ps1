@@ -295,6 +295,31 @@ if (-not $SkipSoakLaunch -and -not $DryRun) {
     Write-Host "[DRY RUN] would launch: powershell -ExecutionPolicy Bypass -File $soakScript -Port $chosenPort -DurationSeconds $SoakDurationSeconds -PlayRepoRoot $RepoRoot"
 }
 
+# ---- 6b. Stale-pyc guard (PROMPT 1814) --------------------------------------
+# Run-AutoplaySmoke.ps1 owns the guard inside its process, but the composite
+# launcher must also clear __pycache__ and set PYTHONDONTWRITEBYTECODE=1 so
+# live-verify reports can confirm the guard fired at the composite layer.
+Write-Section "Stale-pyc guard"
+$autoplayToolsDir   = Join-Path $LauncherRoot 'tools\autoplay'
+$pycDirs = @(
+    (Join-Path $autoplayToolsDir '__pycache__'),
+    (Join-Path $autoplayToolsDir 'recipes\__pycache__')
+)
+foreach ($pycDir in $pycDirs) {
+    if (Test-Path $pycDir) {
+        if (-not $DryRun) {
+            Remove-Item -Recurse -Force $pycDir -ErrorAction SilentlyContinue
+            Write-Host "[stale-pyc-guard] cleared: $pycDir"
+        } else {
+            Write-Host "[DRY RUN] would clear stale pyc: $pycDir"
+        }
+    } else {
+        Write-Host "[stale-pyc-guard] not present (skip): $pycDir"
+    }
+}
+$env:PYTHONDONTWRITEBYTECODE = '1'
+Write-Host "[stale-pyc-guard] PYTHONDONTWRITEBYTECODE=1 (composite stale-pyc guard active)"
+
 # ---- 7. Run autoplay smoke launcher -----------------------------------------
 Write-Section "Autoplay smoke (recipe=$Recipe)"
 
