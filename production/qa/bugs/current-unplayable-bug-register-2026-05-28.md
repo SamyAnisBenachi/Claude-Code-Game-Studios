@@ -1,7 +1,7 @@
 # Current Unplayable Bug Register
 
 Date: 2026-05-28
-Source of truth when written: `origin/main@41a7bbc9`
+Source of truth when written: `origin/main@24d1d871`
 
 This register consolidates bugs found by the current forensic audit wave so they
 are not lost in worker reports or chat history.
@@ -13,10 +13,10 @@ Primary sources:
 - `reports/PROMPT-2026-visible-screen-screenshot-visual-bug-audit.md`
 - `reports/PROMPT-2027-autoplay-input-click-target-forensic-audit.md`
 - `reports/PROMPT-2028-player-flow-unplayable-bug-classification.md`
+- `reports/PROMPT-2029-qa-evidence-tools-truthfulness-audit.md`
 
 Pending sources to merge later:
 
-- `PROMPT 2029` QA evidence/tooling truthfulness audit
 - Repair outcomes from `PROMPT 2030-2033`
 
 ## Executive State
@@ -105,6 +105,20 @@ still full HP.
 | T-017 | Future autoplay evidence must prove current driver is active | PROMPT 2027: trusted runs should log `build_win=(1280x720)` and abort on `viewport_drift`; old runs did not have this field | Required verification gate |
 | T-018 | Click OOB guard alone is insufficient | PROMPT 2027: stale 720p clicks remained technically in-bounds at 1076px height, but hit wrong UI locations | Covered by drift guard, not by OOB guard alone |
 | T-019 | Intra-tick resize race remains theoretical | PROMPT 2027: resize after status poll but before action dispatch could evade a 10Hz drift check for about 100ms | Low severity, not actionable unless reproduced |
+| T-020 | Screenshot validators lack semantic content checks | PROMPT 2029: analyzer requires exit 0, screenshot existence, and non-frozen/non-black pixels, but no expected UI text/regions/cards/HUD/phase content | Confirmed QA false-positive risk |
+| T-021 | Recipe checkpoints are time-based, not state-based | PROMPT 2029: labels like `placement-submitted` mean ticks elapsed, not that placement UI was visible or server accepted action | Confirmed QA false-positive risk |
+| T-022 | Static fractional click targets can miss silently | PROMPT 2029: recipes use fixed fractions and status API exposes no element geometry; missed clicks are not detected | Confirmed QA false-positive risk |
+| T-023 | Two-client-runtime PASS does not validate visuals | PROMPT 2029: harness uses `MinimalPlugins`; no rendering, windowing, bevy_ui, sprites, HUD, or hand fan are exercised | Confirmed evidence taxonomy bug |
+| T-024 | Harness empty-placement path bypasses placement UI | PROMPT 2029: friend-game harness accepts empty placements; bot-soak only attempts limited real placement, so drag/drop UI is mostly untested | Confirmed coverage gap |
+| T-025 | `NEEDS_HUMAN_GUI` is not a blocking gate | PROMPT 2029: exit code 3 and `live_pass_status: NOT-CLAIMED` allow reports to continue without clean visual proof | Confirmed process bug |
+| T-026 | Frozen-frame detection downgrades instead of failing | PROMPT 2029: frozen PrintWindow/BitBlt evidence leads to fallback or NEEDS_HUMAN_GUI, not hard FAIL | Confirmed QA false-positive risk |
+| T-027 | Smoke recipe proves RPC substrate only | PROMPT 2029: smoke sends one key/click and checks screenshot creation, not game UI correctness | Confirmed evidence taxonomy bug |
+| T-028 | Foreground failure can still capture stale frames | PROMPT 2029: `ensure_foreground()` failure falls through with warning, so DWM stale content may be captured | Confirmed QA false-positive risk |
+| T-029 | Report-chain churn creates false progress signal | PROMPT 2029: many PROMPT-19xx/20xx commits are report reapplications, not new gameplay implementation or visual runs | Confirmed orchestration risk |
+| T-030 | Harness-only Chrome screenshots are treated as integrated game evidence | PROMPT 2029: `production/qa/evidence/captures/**` visual artifacts are Chrome DevTools harness captures, not live Bevy game client sessions | Confirmed evidence taxonomy bug |
+| T-031 | S8/S9 QA labels are misleading | PROMPT 2029: S8 `PASS WITH WARNINGS` was headless protocol trace only; S9 `No product defects found` meant no client GUI was reached | Confirmed misleading label |
+| T-032 | `sau-011` focus screenshots are byte-identical across distinct scenarios | PROMPT 2029: four focus-state PNGs have identical 19390-byte size despite expected visual differences; harness self-report is not pixel proof | Confirmed harness evidence bug |
+| T-033 | No recent real two-client visual baseline exists | PROMPT 2029: only real native two-client evidence is from 2026-05-12 around `f08b2c8`, hundreds of commits behind current main | Confirmed coverage blocker |
 
 ## Autoplay Click/Window Findings From PROMPT 2027
 
@@ -131,6 +145,55 @@ Required future evidence before trusting autoplay as QA:
 - No `viewport_drift` aborts appear in `checkpoints.jsonl`.
 - `phase_label` progresses through real phases instead of staying `Lobby`.
 - BitBlt or equivalent live capture exists per checkpoint.
+
+## QA Evidence Truthfulness Findings From PROMPT 2029
+
+PROMPT 2029 explains why many previous PASS/SHIPPED labels did not match the
+visible state of the game. The audit separates tooling health from playable
+game evidence.
+
+Key facts:
+
+- No clean automated gameplay PASS exists for the audited autoplay game runs.
+  The available 2026-05-28 bot-game runs are PARTIAL/NEEDS_HUMAN_GUI, not
+  proof that gameplay works.
+- The current validators check artifact existence, exit codes, rough brightness,
+  and frozen-frame patterns. They do not assert that the right screen, cards,
+  hand, HUD, board, or phase-specific UI is visible.
+- Recipe checkpoints are mostly time-based. A checkpoint label can be emitted
+  after a wait even if the click missed, the phase never changed, or the client
+  stayed in Lobby.
+- `two-client-runtime` uses Bevy `MinimalPlugins`, so a PASS there proves
+  protocol/server flow only. It does not exercise rendering or UI.
+- Chrome harness captures validate isolated widget layouts, not the integrated
+  Bevy game client connected to a live server.
+- The only real native two-client visual evidence found is from 2026-05-12,
+  around commit `f08b2c8`, far behind the current main lineage.
+
+Six misleading labels/artifact classes specifically flagged by PROMPT 2029:
+
+- S8 friend-game smoke `PASS WITH WARNINGS`: no native/browser two-client GUI
+  run was attempted; only controlled protocol traces ran.
+- S9 manual game-over `No product defects found`: the client GUI was never
+  launched, so no product path was exercised.
+- UI screenshots under `production/qa/evidence/captures/**`: Chrome harness
+  captures, not live integrated game-client captures.
+- `sau-011` focus screenshots: distinct focus scenarios produced identical PNG
+  byte counts, so harness self-report outran pixel evidence.
+- Real two-client evidence: last genuine native two-client session is stale
+  evidence from 2026-05-12, not current main.
+- PROMPT-19xx/20xx report chains: many are administrative report refreshes
+  after NOT_FF rejections, not new gameplay evidence.
+
+Required evidence taxonomy before accepting future Done/PASS claims:
+
+- For interactive gameplay, require at least one artifact from a real running
+  Bevy client, not only headless protocol tests or HTML harness captures.
+- Treat `NEEDS_HUMAN_GUI` as blocking until a human/operator review is actually
+  attached.
+- Add semantic visual validators: phase-gated recipes, checkpoint phase labels,
+  region/pixel assertions for HUD/hand/board, phase-to-phase screenshot
+  distinctness, and click/placement acceptance checks.
 
 ## Flow Matrix
 
@@ -166,12 +229,15 @@ Repair workers not yet launched from this register:
 - Class art/Neutral clipping/lobby polish repair for V1-001 through V1-004.
 - Capture/window evidence hardening for T-001 through T-007 and verification
   gates for T-016 through T-019.
+- QA evidence truthfulness hardening for T-020 through T-033, especially
+  semantic screenshot validation, phase-gated checkpoints, real-client evidence
+  taxonomy, and blocking treatment for `NEEDS_HUMAN_GUI`.
 
 ## Rules For Future Updates
 
 - Add new bug IDs instead of renumbering existing IDs.
 - If a bug is fixed, change `Current status` to `Fixed by PROMPT N` and add the
   verifying report path.
-- Merge `PROMPT 2029` findings into this file when they land.
+- Merge repair outcomes from `PROMPT 2030-2033` into this file when they land.
 - Do not treat driver checkpoint success as proof of visible game progress unless
   screenshots, driver timeline, server snapshots, and logs agree.
