@@ -1,8 +1,8 @@
 # PROMPT 2004 — Autoplay Placement-Reject Recipe Refresh After 1980
 
-**Date:** 2026-05-28  
-**Branch:** work/PROMPT-2004  
-**Commit:** 2e23e85b8772cbd79f64218c5ae3a8775f556795  
+**Date:** 2026-05-28
+**Branch:** work/PROMPT-2004
+**Commit:** 2e23e85b8772cbd79f64218c5ae3a8775f556795
 **Base origin/main SHA:** f16d60416651cbbaa9443ec76da25fae2f552af9
 
 ## Summary
