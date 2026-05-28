@@ -1265,16 +1265,19 @@ class TestDriverDesktopBitbltFallback:
             "driver.py must alias capture_game_window_desktop_bitblt as _desktop_bitblt_capture"
         )
 
-    def test_driver_calls_desktop_bitblt_after_win32_failure(self):
+    def test_driver_calls_desktop_bitblt_via_frozen_check(self):
+        # PROMPT 1818: the "if not _win32_ok:" guard was replaced by
+        # _frozen_win32_check which covers both API failure and frozen-frame
+        # cases. Verify the _need_bitblt gate drives the fallback call.
         src = self._DRIVER_SOURCE
-        # The fallback must be inside the "if not _win32_ok" guard
-        assert "if not _win32_ok:" in src, (
-            "driver.py must have 'if not _win32_ok:' guard before the BitBlt fallback"
+        assert "_need_bitblt" in src, (
+            "driver.py must use _need_bitblt (returned by _frozen_win32_check) "
+            "as the BitBlt fallback gate"
         )
-        win32_fail_idx = src.index("if not _win32_ok:")
+        need_bitblt_idx = src.index("if _need_bitblt:")
         bitblt_call_idx = src.index("_desktop_bitblt_capture(")
-        assert bitblt_call_idx > win32_fail_idx, (
-            "_desktop_bitblt_capture must be called inside the 'if not _win32_ok:' block"
+        assert bitblt_call_idx > need_bitblt_idx, (
+            "_desktop_bitblt_capture must be called inside the 'if _need_bitblt:' block"
         )
 
     def test_driver_logs_desktop_bitblt_result(self):
@@ -1299,4 +1302,192 @@ class TestDriverDesktopBitbltFallback:
         bitblt_idx = src.index("_desktop_bitblt_capture(")
         assert bitblt_idx > win32_idx, (
             "desktop_bitblt fallback must appear after win32_printwindow attempt"
+        )
+
+
+# ---------------------------------------------------------------------------
+# 12. TestFrozenWin32Check (PROMPT 1818) — frozen-frame detection logic
+# ---------------------------------------------------------------------------
+
+_DRIVER_MODULE_PATH = _TOOLS_AUTOPLAY / "driver.py"
+
+# _TOOLS_AUTOPLAY is already on sys.path (added at line 37 above) so a direct
+# import picks up the real driver module without polluting sys.modules with
+# partial stubs that would break the monkeypatch tests above.
+import driver as _driver_mod  # noqa: E402
+
+_frozen_win32_check_fn = _driver_mod._frozen_win32_check
+
+
+class TestFrozenWin32Check:
+    """Unit tests for _frozen_win32_check (PROMPT 1818 frozen-frame detection)."""
+
+    def test_frozen_win32_check_first_capture_no_bitblt_without_prior_hash(self, tmp_path):
+        # Arrange: a file exists (success), but last_hash is None (first capture)
+        png = tmp_path / "win32_tick_000001.png"
+        png.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 64)
+
+        # Act
+        need_bitblt, reason, new_hash = _frozen_win32_check_fn(png, True, None)
+
+        # Assert: no BitBlt on first capture even though file is "the same as nothing"
+        assert need_bitblt is False, (
+            "First capture must not trigger BitBlt (no previous hash to compare)"
+        )
+        assert new_hash is not None, "First capture must store a hash for future comparisons"
+
+    def test_frozen_win32_check_identical_hash_triggers_bitblt(self, tmp_path):
+        # Arrange: two successive captures produce identical file content
+        png = tmp_path / "win32_tick_000002.png"
+        content = b"\x89PNG\r\n\x1a\n" + b"\xAB" * 64
+        png.write_bytes(content)
+
+        import hashlib
+        first_hash = hashlib.md5(content).hexdigest()
+
+        # Act: second tick — same file content, same hash
+        need_bitblt, reason, new_hash = _frozen_win32_check_fn(png, True, first_hash)
+
+        # Assert
+        assert need_bitblt is True, (
+            "Repeated identical PrintWindow hashes must trigger BitBlt fallback"
+        )
+        assert reason == "frozen_printwindow", (
+            f"Reason must be 'frozen_printwindow', got {reason!r}"
+        )
+
+    def test_frozen_win32_check_changed_hash_no_bitblt(self, tmp_path):
+        # Arrange: previous hash differs from current file content
+        png = tmp_path / "win32_tick_000003.png"
+        png.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\xCD" * 64)
+
+        prior_hash = "aabbccddeeff00112233445566778899"  # different from file
+
+        # Act
+        need_bitblt, reason, new_hash = _frozen_win32_check_fn(png, True, prior_hash)
+
+        # Assert
+        assert need_bitblt is False, (
+            "Changed PrintWindow hash must not trigger BitBlt fallback"
+        )
+        assert reason == "", f"reason must be empty when no fallback needed, got {reason!r}"
+
+    def test_frozen_win32_check_logs_reason_is_frozen_printwindow(self, tmp_path):
+        # Arrange: identical successive frames
+        png = tmp_path / "win32_tick_000004.png"
+        content = b"\x89PNG\r\n\x1a\n" + b"\x77" * 32
+        png.write_bytes(content)
+
+        import hashlib
+        known_hash = hashlib.md5(content).hexdigest()
+
+        # Act
+        need_bitblt, reason, _ = _frozen_win32_check_fn(png, True, known_hash)
+
+        # Assert: reason string is exactly what driver logs
+        assert reason == "frozen_printwindow", (
+            f"Frozen-frame reason must be 'frozen_printwindow' for log output, got {reason!r}"
+        )
+
+    def test_frozen_win32_check_printwindow_failure_triggers_bitblt(self, tmp_path):
+        # Arrange: PrintWindow API returned False (win32_ok=False)
+        png = tmp_path / "win32_tick_000005.png"
+        # File may or may not exist; doesn't matter when win32_ok=False
+
+        # Act
+        need_bitblt, reason, new_hash = _frozen_win32_check_fn(png, False, None)
+
+        # Assert: existing failure path still triggers BitBlt
+        assert need_bitblt is True, (
+            "PrintWindow API failure must always trigger BitBlt fallback"
+        )
+        assert reason == "win32_printwindow_failed", (
+            f"Failure reason must be 'win32_printwindow_failed', got {reason!r}"
+        )
+
+    def test_frozen_win32_check_updated_hash_stored_after_first_capture(self, tmp_path):
+        # Arrange: first-ever capture (last_hash=None)
+        png = tmp_path / "win32_tick_000006.png"
+        content = b"\x89PNG\r\n\x1a\n" + b"\x55" * 48
+        png.write_bytes(content)
+
+        import hashlib
+        expected_hash = hashlib.md5(content).hexdigest()
+
+        # Act
+        _, _, new_hash = _frozen_win32_check_fn(png, True, None)
+
+        # Assert: returned hash matches the file
+        assert new_hash == expected_hash, (
+            f"updated_last_hash must be MD5 of the captured file, "
+            f"expected {expected_hash}, got {new_hash}"
+        )
+
+    def test_frozen_win32_check_hash_unchanged_on_printwindow_failure(self, tmp_path):
+        # Arrange: PrintWindow failed; prior hash exists
+        png = tmp_path / "win32_tick_000007.png"
+        prior_hash = "deadbeef" * 4
+
+        # Act: win32_ok=False
+        _, _, new_hash = _frozen_win32_check_fn(png, False, prior_hash)
+
+        # Assert: last_hash not overwritten on failure
+        assert new_hash == prior_hash, (
+            "last_win32_hash must not change when PrintWindow fails "
+            "(so the next tick's frozen check still has the previous good hash)"
+        )
+
+
+# ---------------------------------------------------------------------------
+# 13. TestDriverFrozenPrintWindowStructural (PROMPT 1818) — driver.py wiring
+# ---------------------------------------------------------------------------
+
+class TestDriverFrozenPrintWindowStructural:
+    """Structural checks: driver.py calls _frozen_win32_check and logs the reason."""
+
+    _DRIVER_SOURCE = (_TOOLS_AUTOPLAY / "driver.py").read_text(encoding="utf-8")
+
+    def test_driver_imports_hashlib(self):
+        assert "import hashlib" in self._DRIVER_SOURCE, (
+            "driver.py must import hashlib for frozen-frame hash computation"
+        )
+
+    def test_driver_defines_frozen_win32_check(self):
+        assert "def _frozen_win32_check(" in self._DRIVER_SOURCE, (
+            "driver.py must define the _frozen_win32_check helper"
+        )
+
+    def test_driver_initialises_last_win32_hash(self):
+        assert "last_win32_hash: str | None = None" in self._DRIVER_SOURCE, (
+            "driver.py main() must initialise last_win32_hash to None "
+            "so the first capture never false-triggers"
+        )
+
+    def test_driver_calls_frozen_win32_check_in_screenshot_branch(self):
+        src = self._DRIVER_SOURCE
+        screenshot_idx = src.index('method == "autoplay/screenshot"')
+        # Search for the call site specifically (assignment form), not the def line.
+        call_idx = src.index("= _frozen_win32_check(")
+        assert call_idx > screenshot_idx, (
+            "_frozen_win32_check call must be inside the autoplay/screenshot branch"
+        )
+
+    def test_driver_logs_frozen_printwindow_reason(self):
+        assert "frozen_printwindow" in self._DRIVER_SOURCE, (
+            "driver.py must log 'frozen_printwindow' reason when BitBlt fires due to frozen frame"
+        )
+
+    def test_driver_logs_desktop_bitblt_with_reason(self):
+        assert "reason={_bitblt_reason}" in self._DRIVER_SOURCE, (
+            "driver.py must include reason= in the desktop_bitblt log line"
+        )
+
+    def test_driver_bitblt_still_fires_on_printwindow_api_failure(self):
+        src = self._DRIVER_SOURCE
+        # The old guard "if not _win32_ok:" is replaced by _frozen_win32_check
+        # which returns need_bitblt=True for win32_ok=False.  Verify the new
+        # structure: _need_bitblt is used as the BitBlt gate.
+        assert "_need_bitblt" in src, (
+            "driver.py must use _need_bitblt as the BitBlt gate "
+            "(covers both API failure and frozen-frame paths)"
         )

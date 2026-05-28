@@ -34,6 +34,7 @@ Exit codes:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import sys
@@ -75,6 +76,34 @@ EXIT_OK = 0
 EXIT_RPC_ERROR = 1
 EXIT_NO_SERVER = 2
 EXIT_BLOCKED = 4
+
+
+def _frozen_win32_check(
+    win32_shot: Path,
+    win32_ok: bool,
+    last_hash: str | None,
+) -> tuple[bool, str, str | None]:
+    """Decide whether the desktop BitBlt fallback should fire after a win32 capture attempt.
+
+    Returns ``(need_bitblt, reason, updated_last_hash)``:
+    - ``need_bitblt``: True when the fallback should run this tick.
+    - ``reason``: log-friendly label (``"win32_printwindow_failed"`` or
+      ``"frozen_printwindow"``).
+    - ``updated_last_hash``: the MD5 to store as the new *last_hash* for the
+      next tick.  Unchanged when *win32_ok* is False (frozen detection resets
+      only on a successful, changed capture).
+
+    Frozen-frame detection requires at least one prior successful capture
+    (``last_hash is not None``) so the very first tick never false-triggers.
+    """
+    if not win32_ok:
+        return True, "win32_printwindow_failed", last_hash
+    if not win32_shot.exists():
+        return False, "", last_hash
+    current_hash = hashlib.md5(win32_shot.read_bytes()).hexdigest()  # noqa: S324
+    if last_hash is not None and current_hash == last_hash:
+        return True, "frozen_printwindow", current_hash
+    return False, "", current_hash
 
 
 def rpc(url: str, method: str, params: dict[str, Any] | None = None, timeout: float = 5.0) -> Any:
@@ -171,6 +200,10 @@ def main() -> int:
     # can verify the renderer produced at least one new frame before the next
     # capture.  Initialised to -1 so the first screenshot always passes.
     last_screenshot_frame: int = -1
+    # Frozen-frame detection (PROMPT 1818): MD5 of the last successful
+    # win32_printwindow PNG.  None until the first successful capture so
+    # the first tick never false-triggers the BitBlt fallback.
+    last_win32_hash: str | None = None
 
     _desc, build_fn = get_recipe(args.recipe)
 
@@ -291,17 +324,30 @@ def main() -> int:
                         # is actively composited when the screenshot fires.
                         ensure_foreground(log)
                         time.sleep(0.12)  # allow DWM to composite the foregrounded window
-                        # Driver-side capture chain (PROMPT 1794 / PROMPT 1813):
+                        # Driver-side capture chain (PROMPT 1794 / PROMPT 1813 / PROMPT 1818):
                         # Attempt win32_printwindow first; fall back to
-                        # desktop_bitblt when it fails (frozen/blank frames).
+                        # desktop_bitblt when it fails OR when it returns OK
+                        # but repeatedly produces the same frozen frame (frozen-
+                        # frame detection introduced by PROMPT 1818).
                         # Both are no-ops on non-Windows.
                         _win32_shot = artifact_dir / f"win32_tick_{tick:06d}.png"
                         _win32_ok = _win32_capture(_win32_shot, log)
                         log(f"tick={tick} win32_printwindow={'OK' if _win32_ok else 'FAILED'} path={_win32_shot.name}")
-                        if not _win32_ok:
+                        _need_bitblt, _bitblt_reason, last_win32_hash = _frozen_win32_check(
+                            _win32_shot, _win32_ok, last_win32_hash
+                        )
+                        if _bitblt_reason == "frozen_printwindow":
+                            log(
+                                f"tick={tick} win32_printwindow=FROZEN "
+                                f"hash={last_win32_hash} — triggering desktop_bitblt fallback"
+                            )
+                        if _need_bitblt:
                             _bitblt_shot = artifact_dir / f"bitblt_tick_{tick:06d}.png"
                             _bitblt_ok = _desktop_bitblt_capture(_bitblt_shot, log)
-                            log(f"tick={tick} desktop_bitblt={'OK' if _bitblt_ok else 'FAILED'} path={_bitblt_shot.name}")
+                            log(
+                                f"tick={tick} desktop_bitblt={'OK' if _bitblt_ok else 'FAILED'} "
+                                f"reason={_bitblt_reason} path={_bitblt_shot.name}"
+                            )
                     try:
                         result = rpc(url, method, params)
                         action_results.append(result)
