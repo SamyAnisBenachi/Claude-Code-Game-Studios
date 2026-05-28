@@ -51,6 +51,7 @@ if str(_HERE) not in sys.path:
     sys.path.insert(0, str(_HERE))
 
 from recipes import RecipeContext, REGISTRY, get as get_recipe, names as recipe_names  # noqa: E402
+from screenshot_poll import wait_for_screenshot_file  # noqa: E402
 from win_foreground import ensure_foreground  # noqa: E402
 
 
@@ -294,6 +295,18 @@ def main() -> int:
                             f"tick={tick} action method={method} "
                             f"params_keys={sorted(params.keys())}"
                         )
+                        # File-ready poll (PROMPT 1793 / GAP-SCR-02): the RPC
+                        # returns immediately after queuing the screenshot command;
+                        # save_to_disk is async so the PNG may not exist yet.
+                        # Wait up to 3 s for the file to land before continuing.
+                        if method == "autoplay/screenshot" and isinstance(result, dict):
+                            rel = result.get("relative_path")
+                            if rel:
+                                wait_for_screenshot_file(
+                                    artifact_dir / rel,
+                                    tick,
+                                    log,
+                                )
                     except (urllib.error.URLError, RuntimeError, ConnectionError, TimeoutError) as err:
                         log(f"action RPC failed on tick {tick}: {err}")
                         rc = EXIT_RPC_ERROR
