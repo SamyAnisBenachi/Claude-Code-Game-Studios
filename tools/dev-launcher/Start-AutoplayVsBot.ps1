@@ -427,4 +427,38 @@ if ($smokeExit -eq 0) {
     Write-Host -ForegroundColor Red "Composite run FAILED (smoke exit=$smokeExit). Review $autoplayArtifactDir\launcher-status.json."
 }
 
+# ---- 10. Fast-lane evidence paths + window-size visibility (PROMPT 1837 / refreshed PROMPT 1874) ----
+# Always print evidence paths and active window config at the very end so the
+# operator does not need to scroll back through build/soak output to find them.
+# Window-size vars are set by PROMPT 1842 (default-size repair); this block
+# surfaces them regardless so operators can confirm the viewport was correct.
+Write-Host ""
+Write-Host "---- Evidence paths ----" -ForegroundColor Cyan
+Write-Host "Composite dir:  $evidenceDir"
+Write-Host "Autoplay run:   $autoplayArtifactDir"
+Write-Host "Summary JSON:   $compositeSummaryPath"
+if (-not $DryRun -and $smokeExit -eq 0) {
+    $validateScript = Join-Path $LauncherRoot 'tools\autoplay\validate_composite_run.py'
+    if (Test-Path $validateScript) {
+        Write-Host ""
+        Write-Host "  Validate: python `"$validateScript`" `"$evidenceDir`"" -ForegroundColor DarkCyan
+    }
+}
+Write-Host ""
+Write-Host "---- Window config ----" -ForegroundColor Cyan
+$winW = if ($env:CCGS_WINDOW_WIDTH)           { $env:CCGS_WINDOW_WIDTH }           else { '(not set)' }
+$winH = if ($env:CCGS_WINDOW_HEIGHT)          { $env:CCGS_WINDOW_HEIGHT }          else { '(not set)' }
+$winS = if ($env:WINIT_X11_SCALE_FACTOR)      { $env:WINIT_X11_SCALE_FACTOR }      else { '(not set)' }
+$winPos = if ($env:CCGS_WINDOW_POSITION)      { $env:CCGS_WINDOW_POSITION }        else { '(not set)' }
+Write-Host "CCGS_WINDOW_WIDTH         = $winW"
+Write-Host "CCGS_WINDOW_HEIGHT        = $winH"
+Write-Host "CCGS_WINDOW_POSITION      = $winPos"
+Write-Host "WINIT_X11_SCALE_FACTOR    = $winS"
+if ($winW -eq '(not set)' -or $winH -eq '(not set)') {
+    Write-Host -ForegroundColor Yellow "  WARNING: window size not set by launcher; game opens at OS default. Bot click targets may be offscreen if the window is too small (< 1280x720). See PROMPT 1842 default-size repair."
+} else {
+    Write-Host -ForegroundColor Green "  Window size set by launcher: ${winW}x${winH}"
+}
+Write-Host "-----------------------" -ForegroundColor Cyan
+
 exit $smokeExit
