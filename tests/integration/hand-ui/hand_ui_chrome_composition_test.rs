@@ -39,7 +39,9 @@ const LAYOUT_CONVERGENCE_FRAMES: usize = 4;
 const VIEWPORT_WIDTH: f32 = 1280.0;
 const VIEWPORT_HEIGHT: f32 = 720.0;
 
-const EXPECTED_STAT_BADGE_PERCENT: f32 = 24.0;
+// PROMPT 2037 — V1-009 / UX-006: stat badges bumped from 24% to 30% of the
+// 108×150 hand-card slot so the ATK/HP/MP/AR labels are readable at 1280×720.
+const EXPECTED_STAT_BADGE_PERCENT: f32 = 30.0;
 const EXPECTED_ICON_PERCENT: f32 = 15.0;
 const EXPECTED_ICON_CENTER_LEFT_PERCENT: f32 = (100.0 - EXPECTED_ICON_PERCENT) / 2.0;
 

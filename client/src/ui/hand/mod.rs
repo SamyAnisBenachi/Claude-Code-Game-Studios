@@ -116,6 +116,16 @@ pub struct HandFanLayoutConfig {
     pub fan_half_spread_px: f32,
     pub arc_height_px: f32,
     pub max_rotation_deg: f32,
+    /// PROMPT 2037 — maximum horizontal pitch (centre-to-centre distance) between
+    /// adjacent fan cards. The effective half-spread is capped to
+    /// `(count - 1) * max_card_pitch_px / 2`. This prevents the fan from
+    /// spreading across the full viewport when the hand is small (3-5 cards):
+    /// without the cap, `fan_half_spread_px` divides into huge per-card gaps as
+    /// hand-count shrinks. With a default of 78 px (card width 108 px minus a
+    /// 30 px overlap), cards always cluster around `fan_center_x` at a readable
+    /// pitch — at 10 cards `9 * 78 / 2 = 351` is still under the 380 px cap so
+    /// 10-card layout is effectively unchanged.
+    pub max_card_pitch_px: f32,
 }
 
 impl Default for HandFanLayoutConfig {
@@ -125,6 +135,7 @@ impl Default for HandFanLayoutConfig {
             fan_half_spread_px: 380.0,
             arc_height_px: 30.0,
             max_rotation_deg: 8.0,
+            max_card_pitch_px: 78.0,
         }
     }
 }
@@ -726,6 +737,8 @@ pub struct FanLayoutMetrics {
     pub fan_half_spread: f32,
     pub arc_height: f32,
     pub max_rotation_deg: f32,
+    /// PROMPT 2037 — see [`HandFanLayoutConfig::max_card_pitch_px`].
+    pub max_card_pitch: f32,
 }
 
 impl HandFanLayoutConfig {
@@ -755,6 +768,7 @@ impl HandFanLayoutConfig {
             fan_half_spread: self.fan_half_spread_px,
             arc_height: self.arc_height_px,
             max_rotation_deg: self.max_rotation_deg,
+            max_card_pitch: self.max_card_pitch_px,
         }
     }
 }
@@ -1419,9 +1433,20 @@ pub fn compute_fan_slot_layout(
         (index as f32 - half_span) / half_span
     };
 
+    // PROMPT 2037 — cap effective half-spread so small hands cluster instead of
+    // stretching across the whole strip. `max_card_pitch` is centre-to-centre
+    // distance between adjacent slots; the effective half-spread is the lesser
+    // of the configured `fan_half_spread` and `(count - 1) * pitch / 2`.
+    let pitch_limited_half_spread = if count > 1 && metrics.max_card_pitch.is_finite() {
+        (count - 1) as f32 * metrics.max_card_pitch * 0.5
+    } else {
+        metrics.fan_half_spread
+    };
+    let effective_half_spread = metrics.fan_half_spread.min(pitch_limited_half_spread);
+
     Some(FanSlotLayout {
         t,
-        card_x: metrics.fan_center_x + t * metrics.fan_half_spread,
+        card_x: metrics.fan_center_x + t * effective_half_spread,
         card_y: metrics.fan_base_y - metrics.arc_height * t * t,
         card_rotation_deg: metrics.max_rotation_deg * t,
     })
@@ -1476,8 +1501,13 @@ pub fn apply_fan_layout_system(
         transform.translation.x = layout.card_x;
         transform.translation.y = layout.card_y;
         transform.rotation = layout.bevy_rotation();
-        node.left = Val::Px(layout.card_x);
-        node.top = Val::Px(layout.card_y);
+        // PROMPT 2037 — `layout.card_x` / `layout.card_y` are the card CENTRE in
+        // HandFanRoot-local coords. `Node.left` / `Node.top` are top-left
+        // anchors, so subtract half of the card's display size to keep the fan
+        // visually centred on `fan_center_x` (otherwise the fan shifts right by
+        // ~½ card width — visible at any hand count).
+        node.left = Val::Px(layout.card_x - HAND_CARD_DISPLAY_WIDTH_PX * 0.5);
+        node.top = Val::Px(layout.card_y - HAND_CARD_DISPLAY_HEIGHT_PX * 0.5);
         node.width = Val::Px(HAND_CARD_DISPLAY_WIDTH_PX);
         node.height = Val::Px(HAND_CARD_DISPLAY_HEIGHT_PX);
         tracing::debug!(
@@ -4863,7 +4893,9 @@ enum SlotIconAnchor {
 
 /// Stat badge footprint inside a fan slot — kept symmetric so badges read at
 /// the four corners (MP top-left, AR top-right, ATK bottom-left, HP bottom-right).
-const FAN_SLOT_STAT_BADGE_PERCENT: f32 = 24.0;
+// PROMPT 2037 — bumped from 24% to 30% so the ATK/HP/MP/AR badges (and their
+// numeric labels) are readable at 1280×720 over a 108×150 card slot.
+const FAN_SLOT_STAT_BADGE_PERCENT: f32 = 30.0;
 /// Rarity / type icon footprint — smaller than stat badges so the top-center
 /// rarity glyph stays visually distinct from the corner badges flanking it.
 const FAN_SLOT_ICON_PERCENT: f32 = 15.0;
@@ -4926,8 +4958,12 @@ fn stat_badge_label_node() -> Node {
 /// `HAND_CARD_DISPLAY_HEIGHT_PX` card. Using the token instead of a literal
 /// font size keeps typography review in one place.
 fn stat_badge_label_text_font() -> TextFont {
+    // PROMPT 2037 — V1-009 / UX-006: numeric ATK/HP/MP/AR labels were unreadable
+    // at 16 px inside a 26 px badge. Bumped to BODY+5 (=20 px) to clear the
+    // hairline-on-icon legibility floor at 1280×720; pairs with the 30% badge
+    // size bump on `FAN_SLOT_STAT_BADGE_PERCENT`.
     TextFont {
-        font_size: typography::BODY + 1.0,
+        font_size: typography::BODY + 5.0,
         ..default()
     }
 }

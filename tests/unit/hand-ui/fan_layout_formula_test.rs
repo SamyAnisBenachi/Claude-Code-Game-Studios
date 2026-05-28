@@ -209,6 +209,65 @@ fn default_config_10_cards_at_1280x720_readability_invariants() {
     }
 }
 
+/// PROMPT 2037 — small hands must cluster around `fan_center_x` instead of
+/// stretching to the full `fan_half_spread`. With the default
+/// `max_card_pitch_px = 78` the effective half-spread is `(count - 1) * 78 / 2`
+/// until it hits `fan_half_spread_px = 380`. At 3 cards the half-spread caps
+/// at 78 (centres at 562, 640, 718 in a 1280-wide viewport), not the legacy
+/// ±380.
+#[test]
+fn default_config_3_cards_at_1280x720_cluster_around_center() {
+    let config = HandFanLayoutConfig::default();
+    let viewport = HandFanViewport {
+        width_px: 1280.0,
+        height_px: 720.0,
+    };
+    let metrics = config.metrics_for_viewport(viewport);
+
+    let left = compute_fan_slot_layout(0, 3, metrics).expect("slot 0");
+    let middle = compute_fan_slot_layout(1, 3, metrics).expect("slot 1");
+    let right = compute_fan_slot_layout(2, 3, metrics).expect("slot 2");
+
+    assert_approx(middle.card_x, 640.0);
+    let pitch_left = middle.card_x - left.card_x;
+    let pitch_right = right.card_x - middle.card_x;
+    assert_approx(pitch_left, 78.0);
+    assert_approx(pitch_right, 78.0);
+    assert!(
+        pitch_left < 100.0,
+        "3-card pitch {pitch_left:.1} must stay clustered (< 100 px) rather than spreading the \
+         whole 760 px half_spread; small hands were spreading to the viewport edges before \
+         PROMPT 2037",
+    );
+}
+
+/// PROMPT 2037 — at 10 cards the pitch cap (`9 * 78 / 2 = 351`) is below the
+/// configured `fan_half_spread_px = 380`, so the cap engages and per-card
+/// spacing is 78 px — well above the 30%-wide right-badge so AR/HP stay
+/// readable, and below the 108 px card width so the fan visually overlaps
+/// instead of leaving gaps.
+#[test]
+fn default_config_10_cards_at_1280x720_pitch_is_clamped_to_max_card_pitch() {
+    let config = HandFanLayoutConfig::default();
+    let viewport = HandFanViewport {
+        width_px: 1280.0,
+        height_px: 720.0,
+    };
+    let metrics = config.metrics_for_viewport(viewport);
+
+    let layouts: Vec<_> = (0..HAND_FAN_SLOT_COUNT)
+        .map(|i| compute_fan_slot_layout(i, HAND_FAN_SLOT_COUNT, metrics).expect("all 10 slots"))
+        .collect();
+
+    for i in 0..HAND_FAN_SLOT_COUNT - 1 {
+        let spacing = layouts[i + 1].card_x - layouts[i].card_x;
+        assert_approx(spacing, 78.0);
+    }
+    let fan_center_x = viewport.width_px / 2.0;
+    let span_centre = (layouts.first().unwrap().card_x + layouts.last().unwrap().card_x) / 2.0;
+    assert_approx(span_centre, fan_center_x);
+}
+
 fn app_with_hand_ui_in_session(hand_count: usize) -> App {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins);
@@ -221,6 +280,10 @@ fn app_with_hand_ui_in_session(hand_count: usize) -> App {
         fan_half_spread_px: 280.0,
         arc_height_px: 10.0,
         max_rotation_deg: 10.0,
+        // PROMPT 2037 — pre-clustering tests assert the historical pure-spread
+        // formula. Setting INFINITY disables the pitch cap so the existing
+        // expectations (`card_x = 680` at t=1 for 5 cards) still hold.
+        max_card_pitch_px: f32::INFINITY,
     });
     app.insert_resource(HandFanViewport {
         width_px: 800.0,
@@ -249,6 +312,9 @@ fn qa_metrics() -> FanLayoutMetrics {
         fan_half_spread: 280.0,
         arc_height: 10.0,
         max_rotation_deg: 10.0,
+        // PROMPT 2037 — disable the pitch cap so pre-clustering formula tests
+        // keep their historical expectations.
+        max_card_pitch: f32::INFINITY,
     }
 }
 
