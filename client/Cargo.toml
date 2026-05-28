@@ -196,6 +196,10 @@ name = "hand_ui_draft_initial_grid_test"
 path = "../tests/integration/hand-ui/draft_initial_grid_test.rs"
 
 [[test]]
+name = "hand_ui_draft_grid_container_layout_test"
+path = "../tests/unit/hand-ui/draft_grid_container_layout_test.rs"
+
+[[test]]
 name = "placement_entry_post_acquisition_test"
 path = "../tests/integration/hand-ui/placement_entry_post_acquisition_test.rs"
 
