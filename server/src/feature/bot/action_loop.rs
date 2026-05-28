@@ -78,6 +78,7 @@ use crate::feature::board::{
 use crate::feature::bot::state::{
     BotDecisionEntry, BotDecisionKind, BotDecisionLog, BotPlayers, PlacementCoord,
     BOT_AUCTION_PASS_THRESHOLD_MS, BOT_AUCTION_VALUATION_NOISE_DENOMINATOR,
+    BOT_PLACEMENT_FAILSAFE_WINDOW_MS,
 };
 use crate::foundation::config::CardCatalog;
 use shared::card::{CardId, CardType};
@@ -874,11 +875,33 @@ pub fn bot_action_loop(
 
             for player_id in &bot_players {
                 if round_state.submissions_received.contains(player_id) {
+                    // RSM accepted the submission; tear down this round's
+                    // scheduling state so snapshots show a clean idle state.
+                    if let Some(state) = bots.get_mut(*player_id) {
+                        state.phase_timing.next_decision_at_ms = None;
+                        state.phase_timing.failsafe_deadline_ms = None;
+                    }
                     continue;
                 }
+
+                let debounce_key = (*player_id, round);
+
+                // BUG-19 fix: arm phase_timing on first entry for this
+                // (bot, round) so QA snapshots show non-null scheduling fields.
+                // next_decision_at_ms = now (bot decides immediately);
+                // failsafe_deadline_ms = now + BOT_PLACEMENT_FAILSAFE_WINDOW_MS.
+                if !placement_submitted.contains(&debounce_key) {
+                    if let Some(state) = bots.get_mut(*player_id) {
+                        if state.phase_timing.failsafe_deadline_ms.is_none() {
+                            state.phase_timing.next_decision_at_ms = Some(ts);
+                            state.phase_timing.failsafe_deadline_ms =
+                                Some(ts.saturating_add(BOT_PLACEMENT_FAILSAFE_WINDOW_MS));
+                        }
+                    }
+                }
+
                 // Local debounce: emit at most once per (bot, round) regardless
                 // of whether the downstream handler has updated submissions_received.
-                let debounce_key = (*player_id, round);
                 if placement_submitted.contains(&debounce_key) {
                     continue;
                 }
@@ -936,6 +959,10 @@ pub fn bot_action_loop(
                 });
                 if let Some(state) = bots.get_mut(*player_id) {
                     state.last_decision_at_ms = Some(ts);
+                    // Decision executed; clear next_decision_at_ms so snapshots
+                    // show "no pending decision" (failsafe_deadline remains until
+                    // RSM confirms or phase transitions to Resolution/Lobby).
+                    state.phase_timing.next_decision_at_ms = None;
                 }
 
                 if placements_len == 0 {
@@ -960,6 +987,18 @@ pub fn bot_action_loop(
         RoundPhase::Lobby | RoundPhase::Resolution | RoundPhase::GameOver => {
             // No bot participation in these phases for wave1. Lobby is owned by
             // `bot_lobby_auto_confirm`; Resolution/GameOver have no bot inputs.
+            // Clear placement phase_timing so snapshots show a clean idle state
+            // when the bot is between rounds (BUG-19 cleanup).
+            for player_id in &bot_players {
+                if let Some(state) = bots.get_mut(*player_id) {
+                    if state.phase_timing.next_decision_at_ms.is_some()
+                        || state.phase_timing.failsafe_deadline_ms.is_some()
+                    {
+                        state.phase_timing.next_decision_at_ms = None;
+                        state.phase_timing.failsafe_deadline_ms = None;
+                    }
+                }
+            }
         }
     }
 }
@@ -1649,6 +1688,62 @@ mod tests {
         assert!(
             state.last_decision_at_ms.is_some(),
             "last_decision_at_ms must be set after auction pass decision"
+        );
+    }
+
+    // =========================================================================
+    // PROMPT 2032 — BUG-19: phase_timing fields populated in Placement phase
+    // =========================================================================
+
+    #[test]
+    fn placement_arms_failsafe_deadline_on_entry() {
+        // BUG-19 regression: failsafe_deadline_ms must be non-null after the
+        // bot's first tick of Placement (was permanently null pre-PROMPT-2032).
+        let mut app = make_app(RoundPhase::Placement, 1);
+        app.update();
+
+        let bots = app.world().resource::<BotPlayers>();
+        let state = bots.get(BOT_ID).expect("bot must exist");
+
+        assert!(
+            state.phase_timing.failsafe_deadline_ms.is_some(),
+            "failsafe_deadline_ms must be armed on first Placement tick (BUG-19)"
+        );
+        // next_decision_at_ms is cleared immediately after emission since the
+        // bot decides instantly — None means "no pending decision".
+        assert!(
+            state.phase_timing.next_decision_at_ms.is_none(),
+            "next_decision_at_ms must be cleared after placement submission"
+        );
+    }
+
+    #[test]
+    fn placement_phase_timing_cleared_on_resolution() {
+        // BUG-19 regression: phase_timing must reset to idle (both None) once
+        // the phase transitions away from Placement.
+        let mut app = make_app(RoundPhase::Placement, 1);
+        app.update(); // bot arms failsafe and emits placement
+
+        // Verify deadline was set.
+        {
+            let bots = app.world().resource::<BotPlayers>();
+            let state = bots.get(BOT_ID).expect("bot must exist");
+            assert!(state.phase_timing.failsafe_deadline_ms.is_some());
+        }
+
+        // Advance to Resolution phase.
+        app.world_mut().resource_mut::<RoundState>().phase = RoundPhase::Resolution;
+        app.update();
+
+        let bots = app.world().resource::<BotPlayers>();
+        let state = bots.get(BOT_ID).expect("bot must exist");
+        assert!(
+            state.phase_timing.next_decision_at_ms.is_none(),
+            "next_decision_at_ms must be None after Resolution phase"
+        );
+        assert!(
+            state.phase_timing.failsafe_deadline_ms.is_none(),
+            "failsafe_deadline_ms must be cleared on Resolution phase (BUG-19 cleanup)"
         );
     }
 
