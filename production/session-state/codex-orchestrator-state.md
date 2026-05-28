@@ -1,12 +1,12 @@
 # Codex Orchestrator State
 
-## Current Resume Snapshot (2026-05-28, post-2032 bot placement failsafe mainland)
+## Current Resume Snapshot (2026-05-28, post-2040 UI architecture audit mainland)
 
 Source-of-truth at this snapshot:
 
 - Root checkout: `D:\_DEV\Work\Claude-Code-Game-Studios`
-- Current main source: `origin/main@e1a61376`
-  (`PROMPT 2032` bot placement failsafe spin-loop P0 repair).
+- Current main source: `origin/main@158d0efe`
+  (`PROMPT 2040` Bevy UI layout reference architecture audit report).
 - Root checkout caveat: the root local checkout may be dirty/stale and must not
   be treated as the source of truth for integration. Use clean worktrees based
   on `origin/main` for repair, refresh, and report work.
@@ -25,6 +25,13 @@ Forensic/gameplay state:
 - `PROMPT 2032` landed at `e1a61376`: placement failsafe timing is armed on
   Placement entry. Focused placement tests passed; fresh evidence is still
   required to prove board units and non-empty combat are visible.
+- `PROMPT 2037` landed at `dbab6e81`: hand fan readability repair clusters
+  cards, centers card nodes, and increases stat badge readability. It targets
+  the user-reported hand cards spreading across the entire hand rectangle.
+- `PROMPT 2040` landed at `158d0efe`: Bevy UI architecture audit says the UI
+  foundation is salvageable, not a total rewrite, but identifies concrete
+  repair targets: draft grid hardcoded pixel offsets, drag ghost world-space
+  sprite boundary violation, viewport floor/test gaps.
 - `PROMPT 2030` is not a full fix. Treat it as PARTIAL/diagnostic: it found
   client phase-sync risks including missing autoplay `C2SCreateBotRoom` and a
   silent RSM dispatch drop when the sender is absent.
@@ -48,21 +55,23 @@ Bug register:
 Worker disposition:
 
 - Cleared: `PROMPT 2031`, `PROMPT 2032`, `PROMPT 2035`, `PROMPT 2036`,
-  `PROMPT 2038`, `PROMPT 2039`.
+  `PROMPT 2037`, `PROMPT 2038`, `PROMPT 2039`, `PROMPT 2040`.
 - `PROMPT 2030` reported PARTIAL and must not be represented as a closure.
-- Active/tentative lanes to verify or relaunch: `PROMPT 2034` bug-ledger
-  backfill, `PROMPT 2037` hand fan/card readability repair, `PROMPT 2040`
-  Bevy UI layout reference architecture audit. If status pings fail, relaunch
-  from current `origin/main@e1a61376`.
+- Active repair lanes: `PROMPT 2042` client/autoplay phase-sync/create-bot-room
+  repair, `PROMPT 2043` server RSM/S2C missing-sender hardening,
+  `PROMPT 2044` board combat presentation/HP mutation repair, `PROMPT 2045`
+  card/shop placeholder asset binding repair, and `PROMPT 2046` draft-grid
+  responsive layout plus UI-owned drag ghost repair.
+- Tentative lane: `PROMPT 2034` bug-ledger backfill was pinged earlier but has
+  not reported in this snapshot.
 
 Immediate next actions:
 
-1. Status-ping or relaunch `2034/2037/2040`; keep at least one real worker
-   active.
-2. Launch concrete repair lanes for the remaining P0/P1 items:
-   client phase-sync follow-up from `2030`, placement hard-gating/rejection UX
-   after `2036`, board/combat presentation repair after `2039`, and card
-   asset/shop placeholder verification after `2038`.
+1. Monitor `2042/2043/2044/2045/2046` and clear/integrate exact worker ids as
+   they report.
+2. Launch additional repair lanes only when their write scopes are disjoint:
+   disconnect tracker init (`P1-001`), placement ACK protocol (`P1-005`), result
+   outcome projection (`P1-006`), and lobby visible state (`P1-002..P1-004`).
 3. Broad Cargo or live GUI verification should run in separate VERIFY lanes.
    Implementation workers should stay scoped and use clean worktrees.
 4. For every mainland action, run `MAINLAND_LIST` first and enqueue only
