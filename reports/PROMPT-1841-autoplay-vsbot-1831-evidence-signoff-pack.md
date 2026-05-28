@@ -132,8 +132,9 @@ the table is a transcription error in the report; the artifact is the authority.
 
 | ID | Caveat | Severity |
 |----|--------|---------|
+| **C0** | **HUMAN OBSERVATION — Window too small / offscreen clicks (BLOCKING):** During the autoplay/bot run the game window opened too small. The full UI was not visible; the bot moved the mouse and clicked in empty or offscreen space instead of real UI controls. Capture PASS and checkpoint PASS are not sufficient to declare a run valid unless the operator can confirm the window was large enough, no required control was outside the visible area, and observed click coordinates align with visible UI elements. If evidence is inconclusive on this point, AUTOPLAY-VS-BOT-QA-001 requires a viewport-size repair or a new run after the fix before sign-off can proceed. | **BLOCKING** |
 | C1 | `client_exit_code = null` — launcher does not monitor the game client process. Driver exit 0 is authoritative; client crash post-run would not be caught. | Low |
-| C2 | Window resized mid-session at tick ~138 (759 → 1115 height). Capture continued correctly. Cause unknown (DPI event, maximize, or monitor scaling). Human should visually check the bitblt PNGs around tick 147 for visual integrity. | Advisory |
+| C2 | Window resized mid-session at tick ~138 (759 → 1115 height). Capture continued correctly. Cause unknown (DPI event, maximize, or monitor scaling). Operator must visually check the bitblt PNGs around tick 147 for visual integrity. Note: the resize from 759 to 1115 height could itself be evidence of window expansion mid-session — but the initial 759 px height may have clipped the UI before the resize. | Advisory |
 | C3 | No continuous video — operator cannot watch the session playback. Static PNGs at checkpoints are the only visual record. | Informational |
 | C4 | AUTOPLAY-VS-BOT-QA-001 closure is **not** declared here. This is a human signoff preparation pack only. | Gate |
 
@@ -142,22 +143,59 @@ the table is a transcription error in the report; the artifact is the authority.
 ## Human Operator Yes/No Checklist
 
 Instructions: open the evidence dir (`production/qa/evidence/autoplay-runs/20260528-090613-Z`)
-and step through each item. Check YES or NO.
+and step through each item. Check YES or NO. **Items marked BLOCKING must all be YES
+before AUTOPLAY-VS-BOT-QA-001 can be advanced.**
 
 ```
+--- BLOCKING items ---
+
+[ ] 0a. Open screenshots/000000.png (lobby, tick=1, window 1280×720) — is the full
+        lobby UI visible with no clipping? Are all CTAs (e.g. "Add Bot", "Confirm")
+        within the visible window area?
+
+[ ] 0b. Open screenshots/000007.png through 000030.png (early phase) — do the
+        observed mouse cursor positions (if visible) land on real UI controls?
+        OR: review driver-timeline.jsonl for click coordinates and confirm they
+        fall within the window logical size reported at that tick.
+
+[ ] 0c. If the initial window (1280×720) clipped required UI controls: mark this
+        run FAIL for viewport reasons. A new run is required after viewport-size
+        repair before QA-001 sign-off can proceed.
+
+--- Standard items ---
+
 [ ] 1. Open launcher-status.json — confirm "outcome": "ok" and "driver_exit_code": 0
+
 [ ] 2. Open driver.log — search for "win32_capture=OK" — confirm zero hits
-[ ] 3. Open driver.log — confirm "win32_printwindow=FROZEN" lines present with "triggering desktop_bitblt fallback"
-[ ] 4. Open bitblt_tick_000051.png through bitblt_tick_000259.png — confirm images show live game content (not a black screen or frozen frame)
+
+[ ] 3. Open driver.log — confirm "win32_printwindow=FROZEN" lines present with
+        "triggering desktop_bitblt fallback"
+
+[ ] 4. Open bitblt_tick_000051.png through bitblt_tick_000259.png — confirm images
+        show live game content (not a black screen or frozen frame)
+
 [ ] 5. Open screenshots/000000.png (lobby) — confirm game UI is visible
-[ ] 6. Open screenshots/000057.png (final) — confirm post-resolution screen is visible
-[ ] 7. C2 check: open bitblt_tick_000147.png and bitblt_tick_000164.png — confirm window resize did not corrupt capture
-[ ] 8. Open checkpoints.jsonl — confirm 15 entries, last label = "vs-bot-post-resolution"
-[ ] 9. OVERALL: Given the above, does this run constitute a PASS for the post-1818 vs-bot smoke run?
+
+[ ] 6. Open screenshots/000057.png (final) — confirm post-resolution screen is
+        visible
+
+[ ] 7. C2 check: open bitblt_tick_000147.png and bitblt_tick_000164.png — confirm
+        window resize did not corrupt capture
+
+[ ] 8. Open checkpoints.jsonl — confirm 15 entries, last label =
+        "vs-bot-post-resolution"
+
+--- Final gate ---
+
+[ ] 9. OVERALL: All BLOCKING items above are YES AND capture chain verified AND
+        checkpoints complete — does this run constitute a PASS for the post-1818
+        vs-bot smoke run?
 ```
 
 **Gate**: AUTOPLAY-VS-BOT-QA-001 may only be advanced after a human operator
-completes the above checklist and records YES on item 9 in a QA sign-off document.
+completes the above checklist and records YES on items 0a, 0b, and 9 in a QA
+sign-off document. If 0c applies (viewport clipping confirmed), record FAIL and
+open a viewport-repair story before re-running.
 
 ---
 
@@ -168,8 +206,14 @@ launcher ok, driver exit 0, post-1818 labels active, old label absent, bitblt
 fallback working at 11 ticks, 10 distinct live hashes (≥ 3 required), all 15
 checkpoints reached through `vs-bot-post-resolution`.
 
+**However:** a human observation (added post-artifact-analysis) reports that the
+game window opened too small and the bot clicked in blank/offscreen space. This
+is a BLOCKING caveat (C0) that screenshot/capture PASS alone cannot clear. The
+operator must complete checklist items 0a–0c to determine if this run is valid
+or if a viewport-size repair + rerun is required.
+
 One minor report discrepancy: PROMPT 1831 table says "13 checkpoints" (body says 15;
-artifacts say 15). Informational only — does not affect PASS determination.
+artifacts say 15). Informational only.
 
 No source was edited. No evidence was mutated. QA-001 closure not claimed.
 
