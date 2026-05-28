@@ -51,9 +51,9 @@ $launcherStatusPath = Join-Path $ArtifactDir "launcher-status.json"
 Write-Host "[autoplay-smoke] repo=$repoRoot port=$Port artifact_dir=$ArtifactDir"
 
 # Build first so the client launch does not have to wait inside the timeout window.
-Write-Host "[autoplay-smoke] cargo build -p client --features autoplay-remote"
+Write-Host "[autoplay-smoke] cargo build -p client --bin client --features autoplay-remote"
 $build = Start-Process -FilePath "cargo" -ArgumentList @(
-    "build","-p","client","--features","autoplay-remote"
+    "build","-p","client","--bin","client","--features","autoplay-remote"
 ) -NoNewWindow -PassThru -Wait
 if ($build.ExitCode -ne 0) {
     Write-Error "cargo build failed with exit code $($build.ExitCode)"
