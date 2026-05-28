@@ -1,7 +1,7 @@
 # PROMPT-1798 — Autoplay Screenshot Validator Integration Refresh After 1795
 
-**Date:** 2026-05-28  
-**Author:** PROMPT-1798 worker  
+**Date:** 2026-05-28
+**Author:** PROMPT-1798 worker
 **Status:** SHIPPED
 
 ## Summary
