@@ -7,7 +7,16 @@ Summarizes an autoplay run without mutating any evidence files:
     (win32_capture, win32_printwindow, desktop_bitblt, FROZEN)
   - Screenshot counts: root win32_tick_*.png vs screenshots/ Bevy dir
   - Distinct pixel_hash count and values (from driver.log)
+  - Window size tracking from driver-timeline.jsonl:
+    initial_window_size, final_window_size, window_resize_event_count,
+    min_window_height_seen
+  - Win32 capture quality: GOOD / PARTIAL_FROZEN / ALL_FROZEN / UNKNOWN
   - Likely verdict: PASS / PARTIAL / FAIL / NEEDS_HUMAN_GUI
+
+NEEDS_HUMAN_GUI is emitted when:
+  - Mid-run window resize was detected (window_resize_event_count > 0)
+  - Window height dropped below MIN_WINDOW_HEIGHT during the run
+  - All win32 PrintWindow captures were frozen or failed (ALL_FROZEN quality)
 
 Usage:
     python tools/autoplay/analyze_evidence_run.py <run-dir>
@@ -36,7 +45,13 @@ from typing import Optional
 
 LAUNCHER_STATUS_FILE = "launcher-status.json"
 DRIVER_LOG_FILE = "driver.log"
+DRIVER_TIMELINE_FILE = "driver-timeline.jsonl"
 SCREENSHOTS_SUBDIR = "screenshots"
+
+# Minimum window height (px) below which a run is flagged for human review.
+# The expected game resolution is 1280x720; a height below 600 indicates the
+# window was resized/obscured mid-run in a way that invalidates capture evidence.
+MIN_WINDOW_HEIGHT: int = 600
 
 # Regex patterns for driver.log lines
 _RE_PIXEL_HASH = re.compile(r"pixel_hash=(0x[0-9a-fA-F]+)")
@@ -44,6 +59,9 @@ _RE_CAPTURE_LABEL = re.compile(
     r"\b(win32_printwindow|win32_capture|desktop_bitblt)\b"
 )
 _RE_FROZEN_LABEL = re.compile(r"\bFROZEN\b")
+# win32 PrintWindow result lines emitted by driver.py
+_RE_WIN32_OK = re.compile(r"\bwin32_printwindow=OK\b")
+_RE_WIN32_FAILED_OR_FROZEN = re.compile(r"\bwin32_printwindow=(?:FAILED|FROZEN)\b")
 
 # Blocked-run outcomes that mean the game GUI was never reached
 _BLOCKED_HUMAN_GUI_OUTCOMES = {
@@ -76,12 +94,22 @@ class EvidenceSummary:
         self.capture_labels: set[str] = set()      # e.g. {"win32_capture"}
         self.frozen_labels_count: int = 0
 
+        # Win32 PrintWindow capture quality (PROMPT 1850)
+        self.win32_ok_count: int = 0               # win32_printwindow=OK lines
+        self.win32_failed_or_frozen_count: int = 0  # win32_printwindow=FAILED/FROZEN lines
+
         # pixel_hash tracking
         self.pixel_hashes: list[str] = []          # in order of appearance
 
         # Screenshot counts
         self.root_win32_png_count: int = 0         # win32_tick_*.png at run root
         self.bevy_screenshot_count: int = 0        # screenshots/*.png
+
+        # Window size tracking from driver-timeline.jsonl (PROMPT 1850)
+        self.initial_window_size: Optional[tuple[int, int]] = None
+        self.final_window_size: Optional[tuple[int, int]] = None
+        self.window_resize_event_count: int = 0
+        self.min_window_height_seen: Optional[int] = None
 
         # Parse errors / warnings
         self.warnings: list[str] = []
@@ -106,6 +134,18 @@ class EvidenceSummary:
     def is_frozen(self) -> bool:
         """True if all pixel_hashes are the same (frozen renderer)."""
         return len(self.pixel_hashes) >= 2 and len(set(self.pixel_hashes)) == 1
+
+    @property
+    def win32_capture_quality(self) -> str:
+        """GOOD / PARTIAL_FROZEN / ALL_FROZEN / UNKNOWN based on driver.log counts."""
+        total = self.win32_ok_count + self.win32_failed_or_frozen_count
+        if total == 0:
+            return "UNKNOWN"
+        if self.win32_failed_or_frozen_count == 0:
+            return "GOOD"
+        if self.win32_ok_count == 0:
+            return "ALL_FROZEN"
+        return "PARTIAL_FROZEN"
 
 
 # ---------------------------------------------------------------------------
@@ -150,6 +190,12 @@ def _parse_driver_log(run_dir: Path, summary: EvidenceSummary) -> None:
         if _RE_FROZEN_LABEL.search(line):
             summary.frozen_labels_count += 1
 
+        # Win32 PrintWindow quality tracking
+        if _RE_WIN32_OK.search(line):
+            summary.win32_ok_count += 1
+        elif _RE_WIN32_FAILED_OR_FROZEN.search(line):
+            summary.win32_failed_or_frozen_count += 1
+
         # pixel_hash values
         for m in _RE_PIXEL_HASH.finditer(line):
             summary.pixel_hashes.append(m.group(1).lower())
@@ -165,6 +211,60 @@ def _count_screenshots(run_dir: Path, summary: EvidenceSummary) -> None:
         summary.bevy_screenshot_count = len(list(scr_dir.glob("*.png")))
 
 
+def _parse_driver_timeline(run_dir: Path, summary: EvidenceSummary) -> None:
+    """Extract window size history from driver-timeline.jsonl (PROMPT 1850).
+
+    Populates initial_window_size, final_window_size, window_resize_event_count,
+    and min_window_height_seen on *summary*.  A "resize event" is any tick where
+    window_logical_size differs from the previous tick's value.
+    """
+    path = run_dir / DRIVER_TIMELINE_FILE
+    if not path.exists():
+        # Not all runs produce a timeline; warn but do not fail.
+        summary.warnings.append(f"MISSING: {DRIVER_TIMELINE_FILE} — window size tracking unavailable")
+        return
+    try:
+        text = path.read_text(encoding="utf-8", errors="replace")
+    except Exception as exc:
+        summary.warnings.append(f"UNREADABLE {DRIVER_TIMELINE_FILE}: {exc}")
+        return
+
+    last_size: Optional[tuple[int, int]] = None
+    parse_errors = 0
+    for line in text.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            row = json.loads(line)
+        except json.JSONDecodeError:
+            parse_errors += 1
+            continue
+        status = row.get("status") or {}
+        raw_size = status.get("window_logical_size")
+        if not isinstance(raw_size, (list, tuple)) or len(raw_size) != 2:
+            continue
+        try:
+            w, h = int(raw_size[0]), int(raw_size[1])
+        except (ValueError, TypeError):
+            continue
+        size = (w, h)
+        if summary.initial_window_size is None:
+            summary.initial_window_size = size
+        if last_size is not None and size != last_size:
+            summary.window_resize_event_count += 1
+        last_size = size
+        if summary.min_window_height_seen is None or h < summary.min_window_height_seen:
+            summary.min_window_height_seen = h
+
+    summary.final_window_size = last_size
+
+    if parse_errors:
+        summary.warnings.append(
+            f"{parse_errors} line(s) in {DRIVER_TIMELINE_FILE} could not be parsed as JSON."
+        )
+
+
 # ---------------------------------------------------------------------------
 # Verdict logic
 # ---------------------------------------------------------------------------
@@ -177,6 +277,38 @@ def _compute_verdict(summary: EvidenceSummary) -> tuple[str, str]:
     # NEEDS_HUMAN_GUI: run was blocked before the game GUI was reached
     if outcome in _BLOCKED_HUMAN_GUI_OUTCOMES:
         return "NEEDS_HUMAN_GUI", f"launcher outcome={outcome!r} — run never reached game GUI"
+
+    # NEEDS_HUMAN_GUI: window resize / capture quality issues (PROMPT 1850)
+    # These conditions mean captured evidence cannot be trusted as clean PASS.
+    needs_human_reasons: list[str] = []
+
+    if summary.window_resize_event_count > 0:
+        needs_human_reasons.append(
+            f"mid-run window resize detected: {summary.window_resize_event_count} resize event(s); "
+            f"initial={summary.initial_window_size}, final={summary.final_window_size}, "
+            f"min_height_seen={summary.min_window_height_seen}px"
+        )
+
+    if (
+        summary.min_window_height_seen is not None
+        and summary.min_window_height_seen < MIN_WINDOW_HEIGHT
+        and summary.window_resize_event_count == 0
+    ):
+        # Standalone below-minimum height (e.g. window launched too small) without a resize event.
+        needs_human_reasons.append(
+            f"window height below minimum throughout run: "
+            f"min_height_seen={summary.min_window_height_seen}px < threshold={MIN_WINDOW_HEIGHT}px"
+        )
+
+    if summary.win32_capture_quality == "ALL_FROZEN":
+        needs_human_reasons.append(
+            f"all win32 PrintWindow captures were frozen/failed "
+            f"(ok={summary.win32_ok_count}, failed_or_frozen={summary.win32_failed_or_frozen_count})"
+            f" — capture evidence unreliable; win32_capture_quality=ALL_FROZEN"
+        )
+
+    if needs_human_reasons:
+        return "NEEDS_HUMAN_GUI", "; ".join(needs_human_reasons)
 
     # FAIL conditions (hard)
     fail_reasons: list[str] = []
@@ -239,9 +371,19 @@ def _format_human(run_dir: Path, summary: EvidenceSummary, verdict: str, reason:
         f"  driver_exit_code : {summary.driver_exit_code}",
         f"  client_exit_code : {summary.client_exit_code}",
         "",
+        "--- Window Size (driver-timeline.jsonl) ---",
+        f"  initial_window_size    : {summary.initial_window_size}",
+        f"  final_window_size      : {summary.final_window_size}",
+        f"  window_resize_events   : {summary.window_resize_event_count}",
+        f"  min_window_height_seen : {summary.min_window_height_seen}px"
+        f"  (threshold={MIN_WINDOW_HEIGHT}px)",
+        "",
         "--- Capture Labels ---",
         f"  families seen    : {sorted(summary.capture_labels) or '(none)'}",
         f"  FROZEN lines     : {summary.frozen_labels_count}",
+        f"  win32_ok_count   : {summary.win32_ok_count}",
+        f"  win32_fail/frozen: {summary.win32_failed_or_frozen_count}",
+        f"  win32_quality    : {summary.win32_capture_quality}",
         "",
         "--- Screenshots ---",
         f"  root win32_tick  : {summary.root_win32_png_count} PNG(s)",
@@ -277,9 +419,19 @@ def _format_json(run_dir: Path, summary: EvidenceSummary, verdict: str, reason: 
             "driver_exit_code": summary.driver_exit_code,
             "client_exit_code": summary.client_exit_code,
         },
+        "window": {
+            "initial_window_size": list(summary.initial_window_size) if summary.initial_window_size else None,
+            "final_window_size": list(summary.final_window_size) if summary.final_window_size else None,
+            "window_resize_event_count": summary.window_resize_event_count,
+            "min_window_height_seen": summary.min_window_height_seen,
+            "min_window_height_threshold": MIN_WINDOW_HEIGHT,
+        },
         "capture": {
             "label_families": sorted(summary.capture_labels),
             "frozen_log_lines": summary.frozen_labels_count,
+            "win32_ok_count": summary.win32_ok_count,
+            "win32_failed_or_frozen_count": summary.win32_failed_or_frozen_count,
+            "win32_capture_quality": summary.win32_capture_quality,
         },
         "screenshots": {
             "root_win32_png_count": summary.root_win32_png_count,
@@ -313,6 +465,7 @@ def analyze(run_dir: Path) -> tuple[EvidenceSummary, str, str]:
 
     _parse_launcher_status(run_dir, summary)
     _parse_driver_log(run_dir, summary)
+    _parse_driver_timeline(run_dir, summary)
     _count_screenshots(run_dir, summary)
 
     verdict, reason = _compute_verdict(summary)
