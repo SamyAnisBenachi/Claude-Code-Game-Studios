@@ -186,6 +186,25 @@ class RecipeBuilder:
         self._next()
         return self
 
+    def poll_phase(self, label: str, max_ticks: int = 30) -> "RecipeBuilder":
+        """Emit a phase-polling pseudo-action.
+
+        The driver will call ``autoplay/status`` repeatedly, checking
+        ``status["phase"]``, until the value matches ``label`` or
+        ``max_ticks`` polls have elapsed.  On timeout the driver logs a
+        warning and emits a checkpoint row with ``timed_out=True``, then
+        continues rather than aborting — replacing a brittle ``wait()``
+        with a semantic phase gate that resolves as early as possible.
+
+        ``max_ticks`` (default 30) caps how many status polls are issued
+        at the driver's configured Hz rate (~100 ms each at 10 Hz →
+        default 3 s window).  Pass a larger value for slow phase
+        transitions.
+        """
+        self._emit("local.poll_phase", {"label": label, "max_ticks": int(max_ticks)})
+        self._next()
+        return self
+
     # --- finalize -----------------------------------------------------
     def build(self) -> list[dict]:
         return list(self.actions)

@@ -72,6 +72,7 @@ LOCAL_METHODS = {
     "local.checkpoint",
     "local.note",
     "local.block",
+    "local.poll_phase",
 }
 
 EXIT_OK = 0
@@ -218,6 +219,75 @@ def _check_window_drift(
         log_fn(msg)
         return False, msg
     return True, ""
+
+
+def _poll_for_phase(
+    current_status: Any,
+    url: str,
+    label: str,
+    max_ticks: int,
+    tick_secs: float,
+    tick: int,
+    started: float,
+    log_fn: Any,
+    emit_checkpoint_fn: Any,
+    *,
+    _rpc: Any = None,
+    _sleep: Any = None,
+) -> bool:
+    """Poll ``autoplay/status`` until ``status["phase"]`` matches ``label``.
+
+    ``current_status`` is the status snapshot already fetched at the start of
+    this tick — checked first so a recipe that arrives exactly at the right
+    phase costs zero extra RPCs.  Subsequent polls sleep ``tick_secs`` each.
+
+    Returns ``True`` if ``label`` was matched; ``False`` on timeout.
+    Emits a ``poll_phase`` checkpoint row in both cases so the timeline
+    records the outcome.
+    """
+    _rpc_fn = _rpc if _rpc is not None else rpc
+    _sleep_fn = _sleep if _sleep is not None else time.sleep
+
+    for poll_n in range(max_ticks):
+        if poll_n == 0:
+            status = current_status
+        else:
+            _sleep_fn(tick_secs)
+            try:
+                status = _rpc_fn(url, "autoplay/status")
+            except (urllib.error.URLError, RuntimeError, ConnectionError, TimeoutError):
+                status = None
+        phase = status.get("phase") if isinstance(status, dict) else None
+        if phase == label:
+            elapsed = round(time.monotonic() - started, 3)
+            emit_checkpoint_fn({
+                "tick": tick,
+                "kind": "poll_phase",
+                "label": label,
+                "matched": True,
+                "polls": poll_n + 1,
+                "elapsed_secs": elapsed,
+            })
+            log_fn(
+                f"tick={tick} poll_phase label={label!r} matched after {poll_n + 1} poll(s)"
+            )
+            return True
+
+    elapsed = round(time.monotonic() - started, 3)
+    emit_checkpoint_fn({
+        "tick": tick,
+        "kind": "poll_phase",
+        "label": label,
+        "matched": False,
+        "polls": max_ticks,
+        "elapsed_secs": elapsed,
+        "timed_out": True,
+    })
+    log_fn(
+        f"tick={tick} poll_phase TIMEOUT label={label!r} "
+        f"not matched after {max_ticks} poll(s)"
+    )
+    return False
 
 
 def rpc(url: str, method: str, params: dict[str, Any] | None = None, timeout: float = 5.0) -> Any:
@@ -438,6 +508,21 @@ def main() -> int:
                         blocked_reason = reason
                         rc = EXIT_BLOCKED
                         action_results.append({"local": method, "reason": reason, "hint": hint})
+                    elif method == "local.poll_phase":
+                        _pp_label = str(params.get("label", ""))
+                        _pp_max_ticks = int(params.get("max_ticks", 30))
+                        _poll_for_phase(
+                            status,
+                            url,
+                            _pp_label,
+                            _pp_max_ticks,
+                            tick_secs,
+                            tick,
+                            started,
+                            log,
+                            emit_checkpoint,
+                        )
+                        action_results.append({"local": method, "label": _pp_label})
                 else:
                     # Frame-advance barrier (GAP-SCR-01 / PROMPT 1766): before
                     # issuing a screenshot RPC, verify that Bevy has rendered at
