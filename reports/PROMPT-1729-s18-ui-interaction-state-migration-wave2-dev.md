@@ -1,9 +1,9 @@
 # PROMPT-1729 — S18-UI-INTERACTION-STATE-MIGRATION-WAVE2-DEV
 
-**Status**: SHIPPED  
-**Branch**: `work/s18-ui-interaction-state-migration-wave-2`  
-**Commit**: `32572a04`  
-**Base**: `origin/main@cbf4479d`  
+**Status**: SHIPPED
+**Branch**: `work/s18-ui-interaction-state-migration-wave-2`
+**Commit**: `32572a04`
+**Base**: `origin/main@cbf4479d`
 **Story**: `production/epics/ui-clean-pass/story-025-ui-interaction-state-migration-wave-2.md`
 
 ---
