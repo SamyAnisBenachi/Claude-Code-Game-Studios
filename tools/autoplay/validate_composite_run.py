@@ -24,6 +24,12 @@ Checks performed:
         - Not all PNGs may be byte-identical (IDENTICAL-SCREENSHOTS).
         - No PNG may have mean brightness below the near-black threshold
           (NEAR-BLACK-SCREENSHOT).
+     d. Window integrity guard (PROMPT 1850): reads ``driver-timeline.jsonl``
+        and ``driver.log`` to detect:
+        - Mid-run window resize (WINDOW-RESIZE-DETECTED) — FAIL
+        - Window height below threshold (WINDOW-HEIGHT-TOO-SMALL) — FAIL
+        - All win32 PrintWindow captures frozen/failed (WIN32-ALL-FROZEN) — FAIL
+        These conditions prevent a run from being reported as a clean PASS.
   When ``--strict`` is set, a missing artifact directory is an error rather
   than a warning.
 
@@ -105,6 +111,17 @@ BLOCKED_OUTCOMES = {
 # ---------------------------------------------------------------------------
 
 SCREENSHOTS_SUBDIR = "screenshots"
+DRIVER_TIMELINE_FILE = "driver-timeline.jsonl"
+DRIVER_LOG_FILE = "driver.log"
+
+# Minimum window height (px) below which a run is flagged as WINDOW-HEIGHT-TOO-SMALL.
+# Mirrors the threshold in analyze_evidence_run.py (PROMPT 1850).
+MIN_WINDOW_HEIGHT: int = 600
+
+# Regex for driver.log win32 PrintWindow result lines (PROMPT 1850)
+import re as _re
+_RE_WIN32_OK = _re.compile(r"\bwin32_printwindow=OK\b")
+_RE_WIN32_FAILED_OR_FROZEN = _re.compile(r"\bwin32_printwindow=(?:FAILED|FROZEN)\b")
 
 # Mean pixel brightness (0–255 greyscale) below which a screenshot is
 # considered near-black / visually useless.
@@ -302,6 +319,121 @@ def _check_checkpoints(
 
 
 # ---------------------------------------------------------------------------
+# Window integrity and capture quality guard (PROMPT 1850)
+# ---------------------------------------------------------------------------
+
+def _check_window_and_capture_integrity(artifact_dir: Path, result: _Result) -> None:
+    """Detect mid-run window resize and frozen win32 captures in *artifact_dir*.
+
+    Reads ``driver-timeline.jsonl`` for window size changes and ``driver.log``
+    for win32 PrintWindow quality.  Any of the following conditions adds a
+    hard FAIL so the run cannot be reported as a clean PASS:
+
+    - WINDOW-RESIZE-DETECTED  : window_logical_size changed between ticks
+    - WINDOW-HEIGHT-TOO-SMALL : min height seen < MIN_WINDOW_HEIGHT
+    - WIN32-ALL-FROZEN        : all win32 PrintWindow attempts were frozen/failed
+    """
+    # --- window size from driver-timeline.jsonl ---
+    timeline_path = artifact_dir / DRIVER_TIMELINE_FILE
+    if timeline_path.exists():
+        try:
+            text = timeline_path.read_text(encoding="utf-8", errors="replace")
+        except Exception as exc:
+            result.warn(f"UNREADABLE {DRIVER_TIMELINE_FILE}: {exc}")
+            text = ""
+
+        last_size: Optional[tuple[int, int]] = None
+        initial_size: Optional[tuple[int, int]] = None
+        min_height: Optional[int] = None
+        resize_count = 0
+        parse_errors = 0
+
+        for line in text.splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                row = json.loads(line)
+            except json.JSONDecodeError:
+                parse_errors += 1
+                continue
+            status = row.get("status") or {}
+            raw_size = status.get("window_logical_size")
+            if not isinstance(raw_size, (list, tuple)) or len(raw_size) != 2:
+                continue
+            try:
+                w, h = int(raw_size[0]), int(raw_size[1])
+            except (ValueError, TypeError):
+                continue
+            size = (w, h)
+            if initial_size is None:
+                initial_size = size
+            if last_size is not None and size != last_size:
+                resize_count += 1
+            last_size = size
+            if min_height is None or h < min_height:
+                min_height = h
+
+        if parse_errors:
+            result.warn(
+                f"{parse_errors} line(s) in {DRIVER_TIMELINE_FILE} "
+                "could not be parsed as JSON — window size tracking may be incomplete."
+            )
+
+        final_size = last_size
+
+        if resize_count > 0:
+            result.fail(
+                f"WINDOW-RESIZE-DETECTED: window_logical_size changed {resize_count} time(s) "
+                f"during run; initial={initial_size}, final={final_size}, "
+                f"min_height_seen={min_height}px. "
+                "Run cannot be reported as a clean PASS — window resize invalidates "
+                "time-based checkpoint evidence. "
+                "NEEDS_HUMAN_GUI downgrade applied."
+            )
+        elif min_height is not None and min_height < MIN_WINDOW_HEIGHT:
+            result.fail(
+                f"WINDOW-HEIGHT-TOO-SMALL: min window height seen={min_height}px "
+                f"< threshold={MIN_WINDOW_HEIGHT}px; "
+                f"initial={initial_size}, final={final_size}. "
+                "Run cannot be reported as a clean PASS — window was below minimum "
+                "acceptable size throughout the run. "
+                "NEEDS_HUMAN_GUI downgrade applied."
+            )
+    else:
+        result.warn(
+            f"{DRIVER_TIMELINE_FILE} not found in {artifact_dir}; "
+            "skipping window size integrity check."
+        )
+
+    # --- win32 capture quality from driver.log ---
+    log_path = artifact_dir / DRIVER_LOG_FILE
+    if log_path.exists():
+        try:
+            log_text = log_path.read_text(encoding="utf-8", errors="replace")
+        except Exception as exc:
+            result.warn(f"UNREADABLE {DRIVER_LOG_FILE}: {exc}")
+            log_text = ""
+
+        win32_ok = sum(1 for line in log_text.splitlines() if _RE_WIN32_OK.search(line))
+        win32_bad = sum(1 for line in log_text.splitlines() if _RE_WIN32_FAILED_OR_FROZEN.search(line))
+
+        if win32_bad > 0 and win32_ok == 0:
+            result.fail(
+                f"WIN32-ALL-FROZEN: all {win32_bad} win32 PrintWindow capture attempt(s) "
+                f"were frozen or failed (ok={win32_ok}). "
+                "Desktop BitBlt fallback may have run but primary capture is unreliable. "
+                "Run cannot be reported as a clean PASS. "
+                "NEEDS_HUMAN_GUI downgrade applied."
+            )
+    else:
+        result.warn(
+            f"{DRIVER_LOG_FILE} not found in {artifact_dir}; "
+            "skipping win32 capture quality check."
+        )
+
+
+# ---------------------------------------------------------------------------
 # Screenshot quality checks (PROMPT 1796)
 # ---------------------------------------------------------------------------
 
@@ -440,6 +572,7 @@ def validate(
         if recipe:
             _check_checkpoints(artifact_dir, recipe, outcome, result)
         _check_screenshot_quality(artifact_dir, result)
+        _check_window_and_capture_integrity(artifact_dir, result)
 
     return result
 
