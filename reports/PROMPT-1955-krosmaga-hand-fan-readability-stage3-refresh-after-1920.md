@@ -1,8 +1,8 @@
 # PROMPT 1955 — Krosmaga Hand Fan Readability Stage3-D Refresh After PROMPT 1920
 
-**Date:** 2026-05-28  
-**Branch:** integrate/krosmaga-hand-fan-readability-1955  
-**Base:** origin/main @ 1c4981a65f02422de7d01505ce029d1c1551a3a8 (PROMPT 1920)  
+**Date:** 2026-05-28
+**Branch:** integrate/krosmaga-hand-fan-readability-1955
+**Base:** origin/main @ 1c4981a65f02422de7d01505ce029d1c1551a3a8 (PROMPT 1920)
 **Prior ref:** origin/integrate/krosmaga-hand-fan-readability-1947 @ 4a067f40 (stale — not strict-FF vs current main)
 
 ---
