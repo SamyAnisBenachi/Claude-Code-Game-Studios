@@ -528,3 +528,70 @@ class TestVsBotCheckpointValidation:
         )
         result = validate(evidence_dir)
         assert result.ok, f"Blocked vs-bot run should pass checkpoint check: {result.failures}"
+
+
+# ---------------------------------------------------------------------------
+# UTF-8 BOM tolerance (PROMPT 1778)
+# PowerShell writes UTF-8-BOM JSON by default; the validator must accept it.
+# ---------------------------------------------------------------------------
+
+_UTF8_BOM = b"\xef\xbb\xbf"
+
+
+class TestUtf8BomTolerance:
+    def _write_bom_summary(self, evidence_dir: Path, summary: dict) -> None:
+        payload = json.dumps(summary).encode("utf-8")
+        (evidence_dir / SUMMARY_FILENAME).write_bytes(_UTF8_BOM + payload)
+
+    def test_validate_composite_run_bom_prefixed_summary_passes(self, tmp_path):
+        # Arrange: build a valid evidence dir, then overwrite the summary with a BOM prefix
+        checkpoints = _checkpoint_rows(
+            "lobby-loaded", "lobby-confirmed",
+            "class-select-loaded",
+            "placement-loaded", "placement-submitted",
+        )
+        evidence_dir, artifact_dir = _make_evidence_dir(
+            tmp_path, artifact_checkpoints=checkpoints
+        )
+        summary = dict(_VALID_SUMMARY)
+        summary["autoplay_artifact_dir"] = str(artifact_dir)
+        summary["evidence_dir"] = str(evidence_dir)
+        self._write_bom_summary(evidence_dir, summary)
+        # Act
+        result = validate(evidence_dir)
+        # Assert: BOM must not cause INVALID JSON failure
+        assert result.ok, (
+            f"BOM-prefixed composite-summary.json should parse cleanly; "
+            f"failures: {result.failures}"
+        )
+
+    def test_validate_composite_run_bom_prefixed_summary_wrong_schema_still_fails(
+        self, tmp_path
+    ):
+        # Arrange: BOM + wrong schema — BOM tolerance must not mask real failures
+        evidence_dir, artifact_dir = _make_evidence_dir(
+            tmp_path, include_artifact_dir=False
+        )
+        bad_summary = dict(_VALID_SUMMARY)
+        bad_summary["autoplay_artifact_dir"] = str(artifact_dir)
+        bad_summary["evidence_dir"] = str(evidence_dir)
+        bad_summary["schema"] = "wrong_schema_v0"
+        self._write_bom_summary(evidence_dir, bad_summary)
+        # Act
+        result = validate(evidence_dir)
+        # Assert: schema check must still fire even with BOM
+        assert not result.ok
+        assert any("SCHEMA MISMATCH" in f for f in result.failures)
+
+    def test_validate_composite_run_bom_plus_malformed_json_fails_with_invalid_json(
+        self, tmp_path
+    ):
+        # Arrange: BOM followed by garbage bytes — must surface INVALID JSON, not crash
+        evidence_dir = tmp_path / "bom-bad-json"
+        evidence_dir.mkdir()
+        (evidence_dir / SUMMARY_FILENAME).write_bytes(_UTF8_BOM + b"not { valid json }")
+        # Act
+        result = validate(evidence_dir)
+        # Assert
+        assert not result.ok
+        assert any("INVALID JSON" in f for f in result.failures)

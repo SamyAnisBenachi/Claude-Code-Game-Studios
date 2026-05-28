@@ -125,7 +125,9 @@ def _load_summary(evidence_dir: Path, result: _Result) -> Optional[dict]:
         result.fail(f"MISSING: {SUMMARY_FILENAME} not found in {evidence_dir}")
         return None
     try:
-        with summary_path.open(encoding="utf-8") as fh:
+        # utf-8-sig strips an optional UTF-8 BOM (written by PowerShell by default)
+        # without affecting files that have no BOM.
+        with summary_path.open(encoding="utf-8-sig") as fh:
             return json.load(fh)
     except json.JSONDecodeError as exc:
         result.fail(f"INVALID JSON: {SUMMARY_FILENAME}: {exc}")
