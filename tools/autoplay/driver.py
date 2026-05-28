@@ -29,6 +29,8 @@ Exit codes:
     1  -- RPC error during the run
     2  -- unable to reach the RPC server at startup
     4  -- recipe emitted ``local.block`` (upstream prerequisite missing)
+    5  -- window drifted from recipe build size before a mouse click
+         (PROMPT 1844 NEEDS_HUMAN_GUI; run must NOT be marked clean PASS)
 """
 
 from __future__ import annotations
@@ -76,6 +78,7 @@ EXIT_OK = 0
 EXIT_RPC_ERROR = 1
 EXIT_NO_SERVER = 2
 EXIT_BLOCKED = 4
+EXIT_WINDOW_MISMATCH = 5  # PROMPT 1844: window drifted from recipe build size
 
 
 def _frozen_win32_check(
@@ -140,6 +143,84 @@ def _validate_cursor_coords(
     )
     log_fn(msg)
     return False, msg
+
+
+def _check_window_stable_for_mouseclick(
+    current_win: tuple[float, float],
+    build_win: tuple[float, float],
+    cursor_logical: Any,
+    last_cursor_screen: tuple[float, float] | None,
+    tick: int,
+    log_fn: Any,
+    drift_px: float = 10.0,
+    min_height: float = 720.0,
+) -> tuple[bool, str]:
+    """Pre-click safety gate fired before every mouse_down / mouse_up dispatch.
+
+    Checks four invariants that, if violated, mean baked recipe coordinates are
+    no longer valid for the live window — reproducing the PROMPT-1844 failure
+    mode where a resize at tick 115 made 720-baked coords click offscreen.
+
+    Returns ``(safe, reason)``.  When ``safe`` is False the driver MUST abort
+    (nonzero exit) rather than continuing with stale coordinates.
+
+    Invariants (all must hold):
+    1. Size drift: |current_w - build_w| <= drift_px AND
+                   |current_h - build_h| <= drift_px
+    2. Minimum height: current_h >= min_height (720 px)
+    3. cursor_logical not None (window has focus / cursor is tracked)
+    4. Last cursor screen position within current window bounds
+    """
+    cw, ch = current_win
+    bw, bh = build_win
+
+    # 1. Window-size drift vs recipe build size
+    dw = abs(cw - bw)
+    dh = abs(ch - bh)
+    if dw > drift_px or dh > drift_px:
+        reason = (
+            f"tick={tick} ABORT WINDOW-DRIFT "
+            f"build=({bw:.0f}x{bh:.0f}) current=({cw:.0f}x{ch:.0f}) "
+            f"drift=({dw:.0f}w,{dh:.0f}h) threshold={drift_px:.0f}px — "
+            "recipe coords are stale; run marked NEEDS_HUMAN_GUI"
+        )
+        log_fn(reason)
+        return False, reason
+
+    # 2. Minimum height
+    if ch < min_height:
+        reason = (
+            f"tick={tick} ABORT WINDOW-TOO-SMALL "
+            f"current_h={ch:.0f} < min_height={min_height:.0f} — "
+            "UI is likely clipped; run marked NEEDS_HUMAN_GUI"
+        )
+        log_fn(reason)
+        return False, reason
+
+    # 3. cursor_logical not None
+    if cursor_logical is None:
+        reason = (
+            f"tick={tick} ABORT CURSOR-LOGICAL-NONE "
+            "status.cursor_logical is None — "
+            "window may not have focus; run marked NEEDS_HUMAN_GUI"
+        )
+        log_fn(reason)
+        return False, reason
+
+    # 4. Last cursor screen coords within current window bounds
+    if last_cursor_screen is not None:
+        cx, cy = last_cursor_screen
+        if not (0.0 <= cx < cw and 0.0 <= cy < ch):
+            reason = (
+                f"tick={tick} ABORT CLICK-OOB-AT-MOUSEDOWN "
+                f"cursor=({cx:.1f},{cy:.1f}) window=({cw:.0f}x{ch:.0f}) — "
+                "last cursor move targeted outside current viewport; "
+                "run marked NEEDS_HUMAN_GUI"
+            )
+            log_fn(reason)
+            return False, reason
+
+    return True, ""
 
 
 def rpc(url: str, method: str, params: dict[str, Any] | None = None, timeout: float = 5.0) -> Any:
@@ -240,6 +321,13 @@ def main() -> int:
     # win32_printwindow PNG.  None until the first successful capture so
     # the first tick never false-triggers the BitBlt fallback.
     last_win32_hash: str | None = None
+    # Window-drift guard (PROMPT 1844): the window size at recipe build time,
+    # used to detect mid-run resizes that invalidate baked coordinates.
+    # None until the recipe is first built.
+    recipe_build_win_size: tuple[float, float] | None = None
+    # Last cursor.screen position sent via autoplay/input so the mouse_down
+    # guard can verify the pending click is within the current viewport.
+    last_cursor_screen: tuple[float, float] | None = None
 
     _desc, build_fn = get_recipe(args.recipe)
 
@@ -272,6 +360,7 @@ def main() -> int:
                 if not isinstance(size, list) or len(size) != 2:
                     size = [1280.0, 720.0]
                 ctx = RecipeContext(window_size=(float(size[0]), float(size[1])), env=dict(os.environ))
+                recipe_build_win_size = ctx.window_size  # PROMPT 1844: snapshot build-time size
                 recipe_actions = build_fn(ctx)
                 # Validate methods up-front so a malformed recipe fails before any RPC.
                 for action in recipe_actions:
@@ -396,18 +485,49 @@ def main() -> int:
                     # Click-target viewport guard (PROMPT 1843): validate cursor
                     # coords before dispatching so off-screen clicks are logged
                     # clearly rather than silently landing on blank space.
+                    # Also tracks last_cursor_screen for the PROMPT 1844 gate.
                     if method == "autoplay/input":
                         _cursor_field = params.get("cursor")
                         if isinstance(_cursor_field, dict):
                             _screen_xy = _cursor_field.get("screen")
                             if isinstance(_screen_xy, list) and len(_screen_xy) == 2:
-                                _validate_cursor_coords(
-                                    float(_screen_xy[0]),
-                                    float(_screen_xy[1]),
-                                    _tick_win_size,
-                                    tick,
-                                    log,
-                                )
+                                _cx = float(_screen_xy[0])
+                                _cy = float(_screen_xy[1])
+                                _validate_cursor_coords(_cx, _cy, _tick_win_size, tick, log)
+                                last_cursor_screen = (_cx, _cy)
+
+                    # Window-drift / click-safety guard (PROMPT 1844): before
+                    # mouse_down or mouse_up, verify the window has not been
+                    # resized since the recipe was built.  A size drift >10 px
+                    # (or height <720, or cursor_logical None, or click OOB)
+                    # means baked recipe coords are stale — abort with
+                    # EXIT_WINDOW_MISMATCH so the run is NOT marked clean PASS.
+                    if method == "autoplay/input" and (
+                        "mouse_down" in params or "mouse_up" in params
+                    ):
+                        if recipe_build_win_size is not None:
+                            _cursor_logical = (
+                                status.get("cursor_logical")
+                                if isinstance(status, dict)
+                                else None
+                            )
+                            _safe, _reason = _check_window_stable_for_mouseclick(
+                                current_win=_tick_win_size,
+                                build_win=recipe_build_win_size,
+                                cursor_logical=_cursor_logical,
+                                last_cursor_screen=last_cursor_screen,
+                                tick=tick,
+                                log_fn=log,
+                            )
+                            if not _safe:
+                                emit_checkpoint({
+                                    "tick": tick,
+                                    "kind": "NEEDS_HUMAN_GUI",
+                                    "reason": _reason,
+                                    "elapsed_secs": round(now - started, 3),
+                                })
+                                rc = EXIT_WINDOW_MISMATCH
+                                break
 
                     try:
                         result = rpc(url, method, params)
@@ -445,6 +565,10 @@ def main() -> int:
 
             if rc == EXIT_BLOCKED:
                 log(f"recipe BLOCKED on tick {tick}; reason={blocked_reason}")
+                break
+
+            if rc == EXIT_WINDOW_MISMATCH:
+                log(f"recipe NEEDS_HUMAN_GUI on tick {tick}; window drifted from build size")
                 break
 
             ticks_cap = args.ticks if args.ticks > 0 else (last_recipe_tick + 2 if last_recipe_tick else 10)
