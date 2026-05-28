@@ -19,6 +19,11 @@ Checks performed:
      a. ``launcher-status.json`` is present inside it.
      b. If ``checkpoints.jsonl`` is present, the expected checkpoint labels
         for the recipe are a subset of the observed labels.
+     c. If ``screenshots/`` is present, screenshot quality checks run:
+        - At least one PNG must exist (MISSING-SCREENSHOTS).
+        - Not all PNGs may be byte-identical (IDENTICAL-SCREENSHOTS).
+        - No PNG may have mean brightness below the near-black threshold
+          (NEAR-BLACK-SCREENSHOT).
   When ``--strict`` is set, a missing artifact directory is an error rather
   than a warning.
 
@@ -27,7 +32,7 @@ Exit codes:
   1  one or more checks failed (details printed to stdout)
   2  evidence directory not found or composite-summary.json missing/unparseable
 
-Pure Python 3 stdlib only. No Cargo, no GUI.
+Stdlib + optional Pillow (for brightness). No Cargo, no GUI.
 
 Usage:
     python tools/autoplay/validate_composite_run.py <evidence-dir>
@@ -38,6 +43,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -93,6 +99,25 @@ BLOCKED_OUTCOMES = {
     "blocked-precondition",
     "blocked-soak-timeout",
 }
+
+# ---------------------------------------------------------------------------
+# Screenshot quality constants (PROMPT 1796)
+# ---------------------------------------------------------------------------
+
+SCREENSHOTS_SUBDIR = "screenshots"
+
+# Mean pixel brightness (0–255 greyscale) below which a screenshot is
+# considered near-black / visually useless.
+NEAR_BLACK_BRIGHTNESS_THRESHOLD: int = 15
+
+# Minimum number of PNG files that must exist in screenshots/ for the check
+# to be considered meaningful.  Zero PNGs is always a failure when the
+# directory is present.
+MIN_SCREENSHOT_COUNT: int = 1
+
+# When there are ≥2 screenshots, the number of *distinct* content hashes
+# must be ≥ MIN_UNIQUE_HASH_COUNT to reject byte-identical captures.
+MIN_UNIQUE_HASH_COUNT: int = 2
 
 
 # ---------------------------------------------------------------------------
@@ -277,6 +302,106 @@ def _check_checkpoints(
 
 
 # ---------------------------------------------------------------------------
+# Screenshot quality checks (PROMPT 1796)
+# ---------------------------------------------------------------------------
+
+def _file_md5(path: Path) -> str:
+    """Return hex MD5 of a file's raw bytes."""
+    h = hashlib.md5()
+    with path.open("rb") as fh:
+        for chunk in iter(lambda: fh.read(65536), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def _mean_brightness(path: Path) -> Optional[float]:
+    """Return mean greyscale brightness 0–255, or None if Pillow is unavailable."""
+    try:
+        from PIL import Image  # type: ignore
+        with Image.open(path) as img:
+            gray = img.convert("L")
+            data = gray.tobytes()  # bytes of 0-255 pixel values for L-mode image
+            return sum(data) / len(data) if data else 0.0
+    except Exception:
+        return None
+
+
+def _check_screenshot_quality(artifact_dir: Path, result: _Result) -> None:
+    """Validate screenshot evidence quality inside *artifact_dir/screenshots/*.
+
+    Checks (only run when screenshots/ directory exists):
+      - At least MIN_SCREENSHOT_COUNT PNGs must be present.
+      - When ≥2 PNGs are present, unique content hashes ≥ MIN_UNIQUE_HASH_COUNT
+        (catches byte-identical captures that indicate a frozen/broken renderer).
+      - Each PNG's mean greyscale brightness must be ≥ NEAR_BLACK_BRIGHTNESS_THRESHOLD
+        (catches near-black / all-zero captures).
+
+    If screenshots/ is absent, this check is skipped with a warning — not all
+    recipes produce screenshots.
+    """
+    screenshots_dir = artifact_dir / SCREENSHOTS_SUBDIR
+    if not screenshots_dir.exists():
+        result.warn(
+            f"screenshots/ not found in {artifact_dir}; "
+            "skipping screenshot quality check."
+        )
+        return
+
+    pngs = sorted(screenshots_dir.glob("*.png"))
+
+    # --- count check ---
+    if len(pngs) < MIN_SCREENSHOT_COUNT:
+        result.fail(
+            f"MISSING-SCREENSHOTS: screenshots/ exists but contains {len(pngs)} PNG(s); "
+            f"expected >= {MIN_SCREENSHOT_COUNT}. "
+            f"Directory: {screenshots_dir}"
+        )
+        return  # no point running hash/brightness without files
+
+    # --- byte-identity check ---
+    hashes = {p: _file_md5(p) for p in pngs}
+    unique_hashes = set(hashes.values())
+    if len(pngs) >= MIN_UNIQUE_HASH_COUNT and len(unique_hashes) < MIN_UNIQUE_HASH_COUNT:
+        identical_names = [p.name for p in pngs]
+        result.fail(
+            f"IDENTICAL-SCREENSHOTS: all {len(pngs)} PNG(s) in screenshots/ share "
+            f"the same content hash ({next(iter(unique_hashes))}). "
+            "Renderer may have produced frozen/repeated frames. "
+            f"Files: {identical_names}"
+        )
+
+    # --- brightness check (via Pillow; degraded to warning if unavailable) ---
+    pil_unavailable = False
+    for png in pngs:
+        brightness = _mean_brightness(png)
+        if brightness is None:
+            pil_unavailable = True
+            continue
+        if brightness < NEAR_BLACK_BRIGHTNESS_THRESHOLD:
+            result.fail(
+                f"NEAR-BLACK-SCREENSHOT: {png.name} has mean brightness "
+                f"{brightness:.1f}/255 (threshold: {NEAR_BLACK_BRIGHTNESS_THRESHOLD}). "
+                "Screenshot appears near-black — capture may be broken. "
+                f"Path: {png}"
+            )
+
+    if pil_unavailable:
+        result.warn(
+            "Pillow (PIL) not available or failed to open one or more PNGs; "
+            "near-black brightness check was skipped for affected files. "
+            "Install Pillow for full screenshot quality validation."
+        )
+
+    # --- summary diagnostic (info only) ---
+    result.warnings.append(  # always-visible metric line, not an error
+        f"SCREENSHOT-METRICS: {len(pngs)} PNG(s), "
+        f"{len(unique_hashes)} unique hash(es), "
+        f"near-black threshold={NEAR_BLACK_BRIGHTNESS_THRESHOLD}. "
+        f"Dir: {screenshots_dir}"
+    ) if False else None  # disabled — emit only on failure to keep output clean
+
+
+# ---------------------------------------------------------------------------
 # Top-level entry point
 # ---------------------------------------------------------------------------
 
@@ -311,8 +436,10 @@ def validate(
     recipe = recipe_override or summary.get("recipe") or ""
     outcome = summary.get("outcome") or ""
 
-    if artifact_dir is not None and recipe:
-        _check_checkpoints(artifact_dir, recipe, outcome, result)
+    if artifact_dir is not None:
+        if recipe:
+            _check_checkpoints(artifact_dir, recipe, outcome, result)
+        _check_screenshot_quality(artifact_dir, result)
 
     return result
 
