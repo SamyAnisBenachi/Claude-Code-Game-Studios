@@ -15,6 +15,7 @@ Primary sources:
 - `reports/PROMPT-2028-player-flow-unplayable-bug-classification.md`
 - `reports/PROMPT-2029-qa-evidence-tools-truthfulness-audit.md`
 - `reports/PROMPT-2033-server-board-gameover-vacuous-flow-p0-repair.md`
+- `reports/PROMPT-2034-user-live-ui-ux-bug-ledger-backfill.md`
 
 Pending sources to merge later:
 
@@ -47,6 +48,8 @@ still full HP.
 | P0-010 | Phase timers are bypassed | DraftInitial, DraftShop, and Resolution transition in milliseconds despite 30-60s configured timers | Resolution portion root-caused by PROMPT 2033 as no-units cascade; broader draft/shop timer behavior still open for post-repair verification |
 | P0-011 | No successful human GUI end-to-end flow on record | PROMPT 2028/1883: no verified human flow through room, session, draft/shop, placement, resolution, GameOver | Confirmed coverage blocker |
 | P0-012 | Human two-client stale binary protocol panic | PROMPT 1883: stale `client.exe` vs fresh `server.exe` caused Lightyear protocol mismatch before UI | Confirmed operational blocker; rebuild mitigates stale-binary case |
+| P0-013 | Placement drag preview does not follow the cursor | PROMPT 2034 user live observation 2026-05-28: when picking up a hand card and moving across the board, the visual drag preview does not track the mouse position; player cannot see what they are about to place where | Confirmed by user live play; not previously listed |
+| P0-014 | Placed cards never become visible units on the board | PROMPT 2034 user live observation 2026-05-28: even when a card is dropped on a cell and confirm does not reject it, no unit sprite/HUD entity appears on that cell during Placement or Resolution; aligns with P0-007 board-empty cascade but is here promoted as a user-visible blocker, not only a server-side board-count fact | Confirmed by user live play; consistent with P0-007 |
 
 ## P1 Major Gameplay And State Bugs
 
@@ -82,6 +85,35 @@ still full HP.
 | V1-006 | Auction baseline lacks card art and strong visual context | PROMPT 2026 older auction capture: text-focused card, sparse locked slots | Confirmed baseline issue |
 | V1-007 | Room code input looks like debug text | PROMPT 2026: `Type room code: -------- - idle` without input styling | Confirmed |
 | V1-008 | Snapshot QA button visible in play view | PROMPT 2026: top-right Snapshot button visible; acceptable only if QA flag is intentionally enabled | Advisory |
+| V1-009 | Hand fan does not fan; cards spread across the whole hand rectangle | PROMPT 2034 user live observation 2026-05-28: hand cards lay out uniformly across the full bottom hand-area rectangle instead of overlapping/fanning around a focal arc; spacing depends on the rectangle width, not card count | Confirmed by user live play |
+| V1-010 | Card and shop slot images render as placeholders (question marks / empty brackets `[]`) | PROMPT 2034 user live observation 2026-05-28: many draft, shop, hand and auction card faces show generic placeholder glyphs (`?`, `[]`) instead of class art; not limited to the V1-001 all-black class-card case | Confirmed by user live play; superset of V1-001 |
+| V1-011 | Card stats are missing or unreadable | PROMPT 2034 user live observation 2026-05-28: power, HP, cost, class and effect text on hand and shop cards is missing, cropped, or rendered at a size/contrast that is not legible at the actual window scale | Confirmed by user live play |
+| V1-012 | First-round shop visuals are broken | PROMPT 2034 user live observation 2026-05-28: the very first DraftShop slot panel of a match renders with missing/placeholder art, missing prices, and/or empty slots that are clickable; later rounds look less broken, suggesting an initialization-order issue | Confirmed by user live play |
+| V1-013 | Resolution phase has no visible combat presentation | PROMPT 2034 user live observation 2026-05-28: when Resolution runs there is no visible combat animation, no projectile/strike/damage cue, and no objective-damage feedback; the player only sees state change with no readable battle; consistent with P0-008/P0-007 cascade but here promoted as a visible-UI bug | Confirmed by user live play |
+| V1-014 | Global bevy_ui anchoring/positioning is unreliable | PROMPT 2034 user live observation 2026-05-28: panels, hand rectangle, HUD chrome, shop slots and result panels do not anchor consistently as the window changes size; relative positions shift in ways that look unintentional rather than responsive | Confirmed by user live play; related to V1-004 and T-005 |
+| V1-015 | Valid placement cells are not highlighted | PROMPT 2034 user live observation 2026-05-28: while dragging a card, the board does not highlight legal target cells (or mark illegal cells); the player cannot tell where a placement will be accepted before releasing | Confirmed by user live play |
+
+## P1 User-Observed Interaction Bugs (UX-*)
+
+These IDs capture the 2026-05-28 user-live UI/UX failures so each behavior has a
+stable handle even where it overlaps a P0/V1 entry above. Repair workers should
+treat the UX-* row as the user-facing acceptance criterion and the linked
+P0/V1/T row as the technical cause.
+
+| ID | Title | Evidence | Linked IDs | Current status |
+|---|---|---|---|---|
+| UX-001 | Drag preview does not track the cursor during placement | User live 2026-05-28: hand card lifted, mouse moved across board, preview lags or stays anchored | P0-013 | Confirmed by user live play |
+| UX-002 | Invalid placement cells appear acceptable, then confirm rejects | User live 2026-05-28: drop onto a cell that looks like a valid target, server/client then rejects at confirm; no pre-confirm visual cue distinguishes legal vs illegal cells | P1-005, V1-015 | Confirmed by user live play |
+| UX-003 | No hover/highlight feedback on legal placement cells | User live 2026-05-28: dragging gives no visible signal which cells will accept the card | V1-015 | Confirmed by user live play |
+| UX-004 | No drop feedback when a card is placed | User live 2026-05-28: releasing the mouse over a target produces no animation, no sfx cue, no state cue that the card landed | P0-014, P1-005 | Confirmed by user live play |
+| UX-005 | Hand cards spread across the full hand rectangle instead of fanning | User live 2026-05-28: 1-7 cards spread evenly across the bottom hand strip; no fan curve, no focal overlap | V1-009 | Confirmed by user live play |
+| UX-006 | Card faces show `?`/`[]` placeholders instead of art | User live 2026-05-28: draft, shop, hand and auction slots commonly show placeholder glyphs | V1-001, V1-010 | Confirmed by user live play |
+| UX-007 | Card stats and labels are unreadable or missing | User live 2026-05-28: power/HP/cost/class/effect lines absent, cropped, or illegible at the actual rendered size | V1-011 | Confirmed by user live play |
+| UX-008 | First-round shop is visually broken | User live 2026-05-28: initial DraftShop panel shows missing art, missing prices, empty-but-clickable slots | V1-012 | Confirmed by user live play |
+| UX-009 | Placed cards do not appear as visible units on the board | User live 2026-05-28: even when placement is not rejected, the board remains empty visually through Placement and into Resolution | P0-014, P0-007 | Confirmed by user live play |
+| UX-010 | Combat/Resolution is visually absent | User live 2026-05-28: Resolution advances state with no visible attacks, no damage flashes, no death animations, no objective HP feedback | V1-013, P0-008 | Confirmed by user live play |
+| UX-011 | UI anchors inconsistently across window sizes | User live 2026-05-28: panels and chrome do not hold their intended relative anchors when the window resizes or starts at non-720p sizes | V1-014, V1-004, T-005, T-006 | Confirmed by user live play |
+| UX-012 | Prior audit/test PASS labels overclaimed correctness vs live UX | PROMPT 2029 truthfulness audit + PROMPT 2034 user live observation: many prior PASS/SHIPPED markers (S8/S9, harness captures, recipe checkpoints) do not match what the user actually sees in a live two-client run | T-020..T-033 | Confirmed by user live play and prior audit |
 
 ## P1/P2 Tooling And Evidence Bugs
 
@@ -271,6 +303,23 @@ Repair workers not yet launched from this register:
   taxonomy, and blocking treatment for `NEEDS_HUMAN_GUI`.
 - GameOver snapshot ordering repair for P1-013 if fresh post-repair evidence
   still requires non-null session data in final snapshots.
+- Placement drag/preview repair for P0-013, UX-001, UX-003, UX-004, V1-015.
+- Placement legality preview / pre-confirm rejection feedback repair for
+  P0-013, P1-005, V1-015, UX-002, UX-003.
+- Board unit visibility repair for P0-014, UX-009 (downstream of P0-007 board
+  cascade but must own the visible-unit acceptance criterion).
+- Hand fan layout repair for V1-009, UX-005.
+- Card art and stats rendering repair for V1-001, V1-010, V1-011, UX-006,
+  UX-007 (covers placeholder glyphs and missing/illegible stats across draft,
+  hand, shop, and auction).
+- First-round shop initialization/visual repair for V1-012, UX-008.
+- Resolution/combat visualization repair for V1-013, UX-010 (visible attacks,
+  damage feedback, objective HP cues).
+- Global bevy_ui anchoring/responsive layout repair for V1-014, V1-004, UX-011,
+  with cross-checks against T-005/T-006 window-size tracking.
+- Audit/test label truthfulness backstop repair for UX-012, reinforcing the
+  T-020..T-033 evidence-taxonomy work with explicit user-facing acceptance
+  criteria before any future PASS/SHIPPED label is honored.
 
 ## Rules For Future Updates
 
