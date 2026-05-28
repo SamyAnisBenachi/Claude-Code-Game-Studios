@@ -37,6 +37,9 @@ use shared::card::ClassId;
 #[path = "../../test_helpers.rs"]
 mod test_helpers;
 
+/// UI-1280: narrow viewport where the 7-column grid has the tightest margin.
+/// Explicitly covered after PROMPT 1856 confirmed live clipping at 1280×720.
+const VIEWPORT_1280: (f32, f32) = (1280.0, 720.0);
 const VIEWPORT_MIN: (f32, f32) = (1366.0, 768.0);
 const VIEWPORT_HD: (f32, f32) = (1920.0, 1080.0);
 
@@ -269,9 +272,14 @@ fn ac3_ac4_grid_columns_fit_minimum_and_hd_viewports() {
 
     let required_width = LOBBY_CLASS_PICKER_GRID_COLUMNS as f32 * LOBBY_CLASS_PICKER_CELL_WIDTH_PX
         + (LOBBY_CLASS_PICKER_GRID_COLUMNS - 1) as f32 * SPACING_SM;
-    for (label, (viewport_width, _viewport_height)) in
-        [("1366x768", VIEWPORT_MIN), ("1920x1080", VIEWPORT_HD)]
-    {
+    // UI-1280: 1280×720 is now explicitly covered — PROMPT 1856 found live 7th-cell
+    // clipping at this resolution. Cells use flex_shrink=1 (CSS default) so minor
+    // pixel-rounding deficits are absorbed without hard overflow.
+    for (label, (viewport_width, _viewport_height)) in [
+        ("1280x720", VIEWPORT_1280),
+        ("1366x768", VIEWPORT_MIN),
+        ("1920x1080", VIEWPORT_HD),
+    ] {
         let panel_width =
             (LOBBY_PANEL_WIDTH_PERCENT / 100.0 * viewport_width).min(LOBBY_PANEL_MAX_WIDTH_PX);
         let content_width = panel_width - (2.0 * SPACING_LG);
