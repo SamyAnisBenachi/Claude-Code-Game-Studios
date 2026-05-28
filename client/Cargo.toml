@@ -776,6 +776,13 @@ path = "../tests/integration/playable_client/lobby_bot_controls_test.rs"
 name = "playable_client_lobby_create_bot_room_test"
 path = "../tests/integration/playable_client/lobby_create_bot_room_test.rs"
 
+# PROMPT 2042 (CLIENT-PHASE-SYNC-CREATE-BOT-ROOM-P0-REPAIR) —
+# autoplay-gated lobby autopilot that emits CreateBotRoom + ConfirmClass
+# without relying on pixel-guessed UI clicks.
+[[test]]
+name = "playable_client_lobby_autopilot_test"
+path = "../tests/integration/playable_client/lobby_autopilot_test.rs"
+
 [[test]]
 name = "playable_client_lobby_confirm_state_text_test"
 path = "../tests/integration/playable_client/lobby_confirm_state_text_test.rs"
