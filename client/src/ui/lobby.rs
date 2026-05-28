@@ -2723,7 +2723,11 @@ fn lobby_class_picker_cell_node() -> Node {
         border_radius: BorderRadius::all(Val::Px(6.0)),
         align_items: AlignItems::Center,
         justify_content: JustifyContent::Center,
-        flex_shrink: 0.0,
+        // UI-1280: allow cells to compress proportionally at narrow viewports
+        // (e.g. 1280×720) where the 7×108px grid fits with only a 4px margin.
+        // flex_shrink=1 (CSS default) lets Taffy absorb pixel-rounding deficits
+        // without hard-overflowing the 7th cell past the panel edge.
+        // Cells keep their preferred width at all well-sized viewports.
         ..default()
     }
 }
