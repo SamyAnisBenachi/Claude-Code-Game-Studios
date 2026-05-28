@@ -106,6 +106,12 @@ impl Plugin for AutoplayPlugin {
             "AutoplayPlugin enabled (low-level input only; no gameplay mutation)"
         );
 
+        // Force continuous Update even when the window is unfocused so that
+        // status.frame advances and screenshots are not stale during automated
+        // runs (default WinitSettings::desktop_app() throttles to ~1 tick/5s
+        // when unfocused — PROMPT 1774).
+        app.insert_resource(bevy::winit::WinitSettings::game());
+
         app.insert_resource(AutoplayShared::handle(Arc::clone(&shared)))
             .insert_resource(cfg)
             .add_systems(Update, (drain_commands_system, publish_status_system));
