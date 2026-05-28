@@ -79,6 +79,11 @@ use client::ui::lobby::{
 #[path = "../../test_helpers.rs"]
 mod test_helpers;
 
+/// UI-1280 narrow viewport — added post-PROMPT 1856 to cover the live class-picker
+/// 7th-cell clipping issue found at 1280×720. Panel resolves to 860px (max_width
+/// clamp) at this width, giving the 7-column grid an 8px margin.
+const VIEWPORT_1280: (f32, f32) = (1280.0, 720.0);
+
 /// Minimum supported viewport per Sprint 14 viewport-invariant matrix
 /// (`tests/integration/helpers/ui_viewport.rs::CANONICAL_VIEWPORTS[0]`).
 const VIEWPORT_MIN: (f32, f32) = (1366.0, 768.0);
@@ -286,7 +291,11 @@ fn ac3_ac4_panel_sizing_matches_prompt_933_option_a_literals() {
 #[test]
 fn ac3_ac4_panel_fits_within_viewport_at_minimum_and_hd() {
     test_helpers::init_test_tracing();
-    for (label, (vw, vh)) in &[("1366x768", VIEWPORT_MIN), ("1920x1080", VIEWPORT_HD)] {
+    for (label, (vw, vh)) in &[
+        ("1280x720", VIEWPORT_1280),
+        ("1366x768", VIEWPORT_MIN),
+        ("1920x1080", VIEWPORT_HD),
+    ] {
         let resolved_width = (LOBBY_PANEL_WIDTH_PERCENT / 100.0 * vw).min(LOBBY_PANEL_MAX_WIDTH_PX);
         let resolved_height = LOBBY_PANEL_MAX_HEIGHT_PERCENT / 100.0 * vh;
 
