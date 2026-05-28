@@ -1,6 +1,6 @@
 # PROMPT 1837 — DEV-LAUNCHER-AUTOPLAY-EVIDENCE-UX-FAST-LANE
 
-_Generated: 2026-05-28 | Branch: `wt-1837-dev-launcher-evidence-ux` | Commit: d0c28cd7_
+_Generated: 2026-05-28 | Branch: `wt-1837-dev-launcher-evidence-ux` | Final commit: f256fb85_
 
 ---
 
@@ -48,6 +48,41 @@ on setups where the validator is missing.
 
 ---
 
+## Addendum — Window-Size Visibility (human observation post-ship)
+
+**Observation:** autoplay opened the game window too small; UI was clipped and
+the bot clicked blank/offscreen space.
+
+**Division with PROMPT 1842:** 1842 owns the actual window-size **repair**
+(setting `CCGS_WINDOW_WIDTH`/`CCGS_WINDOW_HEIGHT` or equivalent in the launch
+path). 1837 owns **diagnostic visibility** — surfacing whatever size is active
+so operators can confirm the viewport at a glance.
+
+**Addendum change (commit f256fb85):** Section 10 extended with a
+`---- Window config ----` block that always prints:
+
+```
+---- Window config ----
+CCGS_WINDOW_WIDTH         = (not set)   ← or value once PROMPT 1842 lands
+CCGS_WINDOW_HEIGHT        = (not set)
+CCGS_WINDOW_POSITION      = (not set)
+WINIT_X11_SCALE_FACTOR    = (not set)
+  WARNING: window size not set by launcher; game opens at OS default.
+           Bot click targets may be offscreen if the window is too small (< 1280x720).
+           See PROMPT 1842 default-size repair.
+-----------------------
+```
+
+When 1842 sets the env vars in the earlier launch section, this block will
+automatically switch to the green confirmation line instead of the warning.
+No edits needed in the same launch-section lines that 1842 will touch — zero
+merge conflict risk.
+
+**Conflict check:** 1842's edits are in sections 1–9 (launch args / env injection).
+Section 10 is append-only. No overlapping lines.
+
+---
+
 ## Validation
 
 - `git diff --check` — clean (no trailing-whitespace issues)
@@ -62,8 +97,8 @@ on setups where the validator is missing.
 
 | File | Action |
 |---|---|
-| `tools/dev-launcher/Start-AutoplayVsBot.ps1` | +17 lines (section 10 — evidence fast-lane) |
-| `reports/PROMPT-1837-dev-launcher-autoplay-evidence-ux-fast-lane.md` | new — this report |
+| `tools/dev-launcher/Start-AutoplayVsBot.ps1` | +17 lines section 10 evidence fast-lane (commit d0c28cd7); +21 lines window-config block (commit f256fb85) |
+| `reports/PROMPT-1837-dev-launcher-autoplay-evidence-ux-fast-lane.md` | new + addendum |
 
 ---
 
