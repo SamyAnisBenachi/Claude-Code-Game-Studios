@@ -187,6 +187,12 @@ pub fn build_card_inspect_view_from_card(data: &CardData) -> CardInspectView {
         Some(format_keywords(&data.keywords))
     };
 
+    let keyword_glossary: Vec<(String, String)> = data
+        .keywords
+        .iter()
+        .map(|kw| (format_keyword(kw), keyword_glossary_definition(kw)))
+        .collect();
+
     let rules_text = if data.effect_text.trim().is_empty() {
         "No card text.".to_string()
     } else {
@@ -199,7 +205,53 @@ pub fn build_card_inspect_view_from_card(data: &CardData) -> CardInspectView {
         attack,
         health,
         keyword,
+        keyword_glossary,
         rules_text,
+    }
+}
+
+/// Returns a short player-readable definition for a keyword variant.
+/// Used to populate the glossary panel in the inspect overlay.
+pub fn keyword_glossary_definition(keyword: &Keyword) -> String {
+    match keyword {
+        Keyword::Simple(simple) => simple_keyword_definition(*simple).to_string(),
+        Keyword::RangeX { max_range } => {
+            format!("Attacks enemies up to {max_range} cells away.")
+        }
+        Keyword::ChargeXMove { cells } => {
+            format!("Can move up to {cells} extra cells per activation.")
+        }
+        Keyword::ResistanceX { value } => format!("Reduces incoming damage by {value}."),
+        Keyword::VulnerabilityX { value } => format!("Increases incoming damage by {value}."),
+        Keyword::RepelX { distance } => format!("Pushes the target up to {distance} cells away."),
+        Keyword::AttractX { distance } => {
+            format!("Pulls the target up to {distance} cells closer.")
+        }
+    }
+}
+
+fn simple_keyword_definition(keyword: SimpleKeyword) -> &'static str {
+    match keyword {
+        SimpleKeyword::Appearance => "Triggers when this unit enters the board.",
+        SimpleKeyword::Death => "Triggers when this unit dies.",
+        SimpleKeyword::FinalBlow => "Triggers when this unit scores the killing blow.",
+        SimpleKeyword::Counterattack => "Retaliates when damaged by an attacker.",
+        SimpleKeyword::StartOfTurn => "Triggers at the start of your turn.",
+        SimpleKeyword::EndOfTurn => "Triggers at the end of your turn.",
+        SimpleKeyword::FirstStrike => "Deals damage before normal units in combat.",
+        SimpleKeyword::Haste => "Can attack the turn it is summoned.",
+        SimpleKeyword::Wall => "Cannot move or be pushed past the center line.",
+        SimpleKeyword::Bodyguard => "Nearby allies cannot be targeted while this unit is alive.",
+        SimpleKeyword::Irremovable => "Cannot be displaced by push, pull, or teleport.",
+        SimpleKeyword::Untargetable => "Cannot be directly targeted by spells or abilities.",
+        SimpleKeyword::Shield => "Blocks the next source of damage, then consumed.",
+        SimpleKeyword::Leader => "Gains the stats of the weakest enemy in this lane.",
+        SimpleKeyword::Outnumbered => "Gains a bonus when outnumbered in this lane.",
+        SimpleKeyword::ArmorPiercing => "Ignores enemy Resistance when dealing damage.",
+        SimpleKeyword::Silence => "Removes all keyword abilities from the target.",
+        SimpleKeyword::Stun => "Prevents the target from acting this round.",
+        SimpleKeyword::Teleport => "Moves this unit to any empty cell on the board.",
+        SimpleKeyword::ChangeLane => "This unit can move to an adjacent lane.",
     }
 }
 
@@ -311,6 +363,40 @@ mod tests {
         assert!(keyword.contains("Haste"));
         assert!(keyword.contains("Resistance 2"));
         assert_eq!(view.rules_text, "Charges into the lane.");
+    }
+
+    #[test]
+    fn glossary_entries_non_empty_for_keyworded_minion() {
+        let view = build_card_inspect_view_from_card(&minion_fixture());
+        // Minion fixture has Haste + ResistanceX{2} — must produce 2 glossary entries.
+        assert_eq!(
+            view.keyword_glossary.len(),
+            2,
+            "expected one glossary entry per keyword"
+        );
+        let (haste_label, haste_def) = &view.keyword_glossary[0];
+        assert_eq!(haste_label, "Haste");
+        assert!(!haste_def.is_empty(), "Haste definition must not be empty");
+
+        let (resist_label, resist_def) = &view.keyword_glossary[1];
+        assert_eq!(resist_label, "Resistance 2");
+        assert!(
+            !resist_def.is_empty(),
+            "ResistanceX definition must not be empty"
+        );
+        assert!(
+            resist_def.contains('2'),
+            "ResistanceX definition should include the value"
+        );
+    }
+
+    #[test]
+    fn glossary_empty_for_keyword_free_card() {
+        let view = build_card_inspect_view_from_card(&spell_fixture());
+        assert!(
+            view.keyword_glossary.is_empty(),
+            "card with no keywords must have empty glossary"
+        );
     }
 
     #[test]
