@@ -69,7 +69,7 @@ $env:CCGS_AUTOPLAY_ARTIFACT_DIR = (Resolve-Path $ArtifactDir).Path
 
 Write-Host "[autoplay-smoke] launching client (env CCGS_AUTOPLAY=1 CCGS_AUTOPLAY_PORT=$Port)"
 $client = Start-Process -FilePath "cargo" -ArgumentList @(
-    "run","-p","client","--features","autoplay-remote"
+    "run","-p","client","--bin","client","--features","autoplay-remote"
 ) -NoNewWindow -PassThru -RedirectStandardOutput $logPath -RedirectStandardError "$logPath.err"
 
 # Wait for the RPC port to accept connections, capped at $ClientStartupSecs.
