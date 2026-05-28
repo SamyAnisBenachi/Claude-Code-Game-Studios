@@ -271,11 +271,21 @@ fn test_objective_dot_selector_covers_all_variants() {
     );
 }
 
-/// Selector sanity: bid_button_asset covers all BidButtonChromeState variants.
+/// Selector sanity: bid_button_asset covers all BidButtonChromeState variants
+/// without ever routing through the universal `?` placeholder.
+///
+/// PROMPT 2038 (V1-010 / UX-007): the prior assertion required a distinct path
+/// per variant; that guard was intended to catch "missing constant" but it also
+/// blessed the previous behaviour of routing `Hover` through the universal
+/// placeholder so the path stayed distinct. Hover currently falls back to
+/// `Normal` (no `ui_bid_button_hover.png` on disk yet) — the right invariant
+/// is "no variant resolves to the universal `?` placeholder", not "all three
+/// paths differ". When a real hover PNG lands, repointing the constant
+/// re-introduces three distinct paths automatically.
 #[test]
-fn test_bid_button_selector_covers_all_variants() {
+fn test_bid_button_selector_never_routes_to_placeholder() {
     test_helpers::init_test_tracing();
-    use client::asset_wiring::bid_button_asset;
+    use client::asset_wiring::{bid_button_asset, PLACEHOLDER_FALLBACK_ASSET};
 
     let all_variants = [
         BidButtonChromeState::Normal,
@@ -283,12 +293,12 @@ fn test_bid_button_selector_covers_all_variants() {
         BidButtonChromeState::Disabled,
     ];
 
-    let mut paths: Vec<&str> = all_variants.iter().map(|&s| bid_button_asset(s)).collect();
-    paths.sort_unstable();
-    paths.dedup();
-    assert_eq!(
-        paths.len(),
-        all_variants.len(),
-        "bid_button_asset must return a distinct path per BidButtonChromeState variant"
-    );
+    for state in all_variants {
+        let path = bid_button_asset(state);
+        assert!(!path.is_empty(), "bid_button_asset({state:?}) must be non-empty");
+        assert_ne!(
+            path, PLACEHOLDER_FALLBACK_ASSET,
+            "bid_button_asset({state:?}) must not resolve to the universal `?` placeholder"
+        );
+    }
 }
