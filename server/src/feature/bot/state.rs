@@ -49,6 +49,12 @@ pub const BOT_THINK_DELAY_MAX_MS: u32 = 1_200;
 pub const BOT_SAFETY_MARGIN_MS: u32 = 800;
 /// Auction-pass cutoff: with less time than this remaining the bot will not bid.
 pub const BOT_AUCTION_PASS_THRESHOLD_MS: u32 = 500;
+/// Window (ms) from placement-phase entry within which the bot's fail-safe
+/// MUST fire if the bot has not yet submitted. Used to arm
+/// `BotPhaseTiming::failsafe_deadline_ms` at phase entry so QA snapshots show
+/// a non-null deadline (BUG-19 fix). Value matches the default server placement
+/// timer (10 000 ms) so the fail-safe deadline always falls within the phase.
+pub const BOT_PLACEMENT_FAILSAFE_WINDOW_MS: u64 = 10_000;
 
 /// Wave-2 valuation noise denominator for the auction bid heuristic.
 ///
