@@ -19,6 +19,7 @@ Primary sources:
 - `reports/PROMPT-2031-server-draft-hand-awarding-p0-repair.md`
 - `reports/PROMPT-2032-bot-placement-failsafe-spinloop-p0-repair.md`
 - `reports/PROMPT-2033-server-board-gameover-vacuous-flow-p0-repair.md`
+- `reports/PROMPT-2034-user-live-ui-ux-bug-ledger-backfill.md`
 - `reports/PROMPT-2035-live-ui-visual-audit-redo.md`
 - `reports/PROMPT-2036-placement-dragdrop-legal-cell-feedback-repair.md`
 - `reports/PROMPT-2038-card-asset-shop-placeholder-binding-repair.md`
@@ -57,6 +58,8 @@ agree.
 | P0-012 | Human two-client stale binary protocol panic | PROMPT 1883: stale `client.exe` vs fresh `server.exe` caused Lightyear protocol mismatch before UI | Confirmed operational blocker; rebuild mitigates stale-binary case |
 | P0-013 | Client phase sync repair is not complete | PROMPT 2030 shipped diagnostics/regressions only; it identified silent RSM sender drop and missing `C2SCreateBotRoom` in autoplay, but did not close P0-001/P0-003 | Confirmed P0 follow-up |
 | P0-014 | Integrated client remains visually untrusted after server fixes | User live report plus PROMPT 2035/2036/2039: drag/drop, card assets, board presentation, and UI anchoring still fail even if server state advances | Confirmed P0 UI/playability follow-up |
+| P0-015 | Placement drag preview does not follow the cursor | PROMPT 2034 user live observation 2026-05-28: when picking up a hand card and moving across the board, the visual drag preview does not track the mouse position; player cannot see what they are about to place where | Confirmed by user live play |
+| P0-016 | Placed cards never become visible units on the board | PROMPT 2034 user live observation 2026-05-28: even when a card is dropped on a cell and confirm does not reject it, no unit sprite/HUD entity appears on that cell during Placement or Resolution | Confirmed by user live play; consistent with P0-007 |
 
 ## P1 Major Gameplay And State Bugs
 
@@ -107,17 +110,29 @@ agree.
 | V1-015 | Global Bevy UI anchoring/layout is unreliable | User live report: shop, hand, board, confirm buttons, and multiple screens appear offset, clipped, or positioned from unstable boxes | Confirmed |
 | V1-016 | Krosmaga asset and audio library is not fully wired into gameplay | User live report: imported Krosmaga-style card art, sprites, and sounds are not consistently used by the live game surfaces | Confirmed |
 
-## Placement UX Bugs From User Report And PROMPT 2036
+## P1 User-Observed Interaction Bugs (UX-*)
 
-| ID | Title | Evidence | Current status |
-|---|---|---|---|
-| UX-001 | Drag/drop interaction does not match card-game expectation | User live report: the card should remain under the cursor and drop only on legal targets; current behavior is approximate and confusing | Confirmed |
-| UX-002 | Invalid placement is allowed too late | User live report: illegal locations can be chosen visually, then confirmation rejects with bad placement | Confirmed |
-| UX-003 | Valid placement affordance is insufficient | User live report and PROMPT 2036: legal-cell highlight/ghost preview exists only partially and still needs hard-gating/rejection/banner/scaling/focus work | Partial repair by PROMPT 2036 |
-| UX-004 | Placement phase is too short for a human to understand and act | User live report: placement expires quickly while the UI gives too little feedback | Confirmed |
-| UX-005 | Confirm/place buttons do not communicate state | User live report: confirm behavior gives unclear success/failure and does not show why the chosen placement is legal or illegal | Confirmed |
-| UX-006 | Shop first-round card presentation is broken | User live report and PROMPT 2038: card images/loaders in shop fail or show placeholder labels | Confirmed |
-| UX-007 | Board/combat feedback is missing after placement | User live report: after cards are submitted, there is no satisfying or clear spawn/combat/resolution flow | Confirmed |
+These IDs capture the 2026-05-28 user-live UI/UX failures so each behavior has a
+stable handle even where it overlaps a P0/V1 entry above. Repair workers should
+treat the UX-* row as the user-facing acceptance criterion and the linked
+P0/V1/T row as the technical cause.
+
+| ID | Title | Evidence | Linked IDs | Current status |
+|---|---|---|---|---|
+| UX-001 | Drag preview does not track the cursor during placement | User live 2026-05-28: hand card lifted, mouse moved across board, preview lags or stays anchored | P0-013 | Confirmed by user live play |
+| UX-002 | Invalid placement cells appear acceptable, then confirm rejects | User live 2026-05-28: drop onto a cell that looks like a valid target, server/client then rejects at confirm; no pre-confirm visual cue distinguishes legal vs illegal cells | P1-005, V1-015 | Confirmed by user live play |
+| UX-003 | No hover/highlight feedback on legal placement cells | User live 2026-05-28: dragging gives no visible signal which cells will accept the card | V1-015 | Confirmed by user live play |
+| UX-004 | No drop feedback when a card is placed | User live 2026-05-28: releasing the mouse over a target produces no animation, no sfx cue, no state cue that the card landed | P0-014, P1-005 | Confirmed by user live play |
+| UX-005 | Hand cards spread across the full hand rectangle instead of fanning | User live 2026-05-28: 1-7 cards spread evenly across the bottom hand strip; no fan curve, no focal overlap | V1-009 | Confirmed by user live play |
+| UX-006 | Card faces show `?`/`[]` placeholders instead of art | User live 2026-05-28: draft, shop, hand and auction slots commonly show placeholder glyphs | V1-001, V1-010 | Confirmed by user live play |
+| UX-007 | Card stats and labels are unreadable or missing | User live 2026-05-28: power/HP/cost/class/effect lines absent, cropped, or illegible at the actual rendered size | V1-011 | Confirmed by user live play |
+| UX-008 | First-round shop is visually broken | User live 2026-05-28: initial DraftShop panel shows missing art, missing prices, empty-but-clickable slots | V1-012 | Confirmed by user live play |
+| UX-009 | Placed cards do not appear as visible units on the board | User live 2026-05-28: even when placement is not rejected, the board remains empty visually through Placement and into Resolution | P0-014, P0-007 | Confirmed by user live play |
+| UX-010 | Combat/Resolution is visually absent | User live 2026-05-28: Resolution advances state with no visible attacks, no damage flashes, no death animations, no objective HP feedback | V1-013, P0-008 | Confirmed by user live play |
+| UX-011 | UI anchors inconsistently across window sizes | User live 2026-05-28: panels and chrome do not hold their intended relative anchors when the window resizes or starts at non-720p sizes | V1-014, V1-004, T-005, T-006 | Confirmed by user live play |
+| UX-012 | Prior audit/test PASS labels overclaimed correctness vs live UX | PROMPT 2029 truthfulness audit + PROMPT 2034 user live observation: many prior PASS/SHIPPED markers (S8/S9, harness captures, recipe checkpoints) do not match what the user actually sees in a live two-client run | T-020..T-033 | Confirmed by user live play and prior audit |
+| UX-013 | Placement phase is too short for a human to understand and act | User live report: placement expires quickly while the UI gives too little feedback | P0-010 | Confirmed by user live play |
+| UX-014 | Confirm/place buttons do not communicate state | User live report: confirm behavior gives unclear success/failure and does not show why the chosen placement is legal or illegal | P1-019 | Confirmed by user live play |
 
 ## P1/P2 Tooling And Evidence Bugs
 
@@ -319,6 +334,23 @@ Repair workers not yet launched from this register:
   taxonomy, and blocking treatment for `NEEDS_HUMAN_GUI`.
 - GameOver snapshot ordering repair for P1-013 if fresh post-repair evidence
   still requires non-null session data in final snapshots.
+- Placement drag/preview repair for P0-013, UX-001, UX-003, UX-004, V1-015.
+- Placement legality preview / pre-confirm rejection feedback repair for
+  P0-013, P1-005, V1-015, UX-002, UX-003.
+- Board unit visibility repair for P0-014, UX-009 (downstream of P0-007 board
+  cascade but must own the visible-unit acceptance criterion).
+- Hand fan layout repair for V1-009, UX-005.
+- Card art and stats rendering repair for V1-001, V1-010, V1-011, UX-006,
+  UX-007 (covers placeholder glyphs and missing/illegible stats across draft,
+  hand, shop, and auction).
+- First-round shop initialization/visual repair for V1-012, UX-008.
+- Resolution/combat visualization repair for V1-013, UX-010 (visible attacks,
+  damage feedback, objective HP cues).
+- Global bevy_ui anchoring/responsive layout repair for V1-014, V1-004, UX-011,
+  with cross-checks against T-005/T-006 window-size tracking.
+- Audit/test label truthfulness backstop repair for UX-012, reinforcing the
+  T-020..T-033 evidence-taxonomy work with explicit user-facing acceptance
+  criteria before any future PASS/SHIPPED label is honored.
 
 ## Rules For Future Updates
 
