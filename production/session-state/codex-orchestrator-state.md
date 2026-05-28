@@ -1,13 +1,14 @@
 # Codex Orchestrator State
 
-## Current Resume Snapshot (2026-05-28, post-2040 UI architecture audit mainland)
+## Current Resume Snapshot (2026-05-29, post-2041 verify report backfill)
 
 Source-of-truth at this snapshot:
 
 - Root checkout: `D:\_DEV\Work\Claude-Code-Game-Studios`
-- Current main source: `origin/main@6fa4bc0b`
-  (`PROMPT 2040` Bevy UI architecture audit plus post-2040 orchestrator
-  state snapshot).
+- Current main source: `origin/main@61dc0952`
+  (`PROMPT 2041` server draft-hand post-mainland verify report backfill,
+  after `PROMPT 2040` Bevy UI architecture audit and orchestrator state
+  updates).
 - Root checkout caveat: the root local checkout may be dirty/stale and must not
   be treated as the source of truth for integration. Use clean worktrees based
   on `origin/main` for repair, refresh, and report work.
@@ -33,6 +34,11 @@ Forensic/gameplay state:
   foundation is salvageable, not a total rewrite, but identifies concrete
   repair targets: draft grid hardcoded pixel offsets, drag ghost world-space
   sprite boundary violation, viewport floor/test gaps.
+- `PROMPT 2041` reported PASS for server draft-hand post-mainland verify, but
+  its original report artifact and branch were missing. The orchestrator
+  created a truthful report backfill and mainlanded it at `61dc0952`; the
+  backfill verifies that `PROMPT 2031` commit `28482bd5` is an ancestor of
+  current main and records the missing original artifacts explicitly.
 - `PROMPT 2030` is not a full fix. Treat it as PARTIAL/diagnostic: it found
   client phase-sync risks including missing autoplay `C2SCreateBotRoom` and a
   silent RSM dispatch drop when the sender is absent.
@@ -56,7 +62,7 @@ Bug register:
 Worker disposition:
 
 - Cleared: `PROMPT 2031`, `PROMPT 2032`, `PROMPT 2035`, `PROMPT 2036`,
-  `PROMPT 2037`, `PROMPT 2038`, `PROMPT 2039`, `PROMPT 2040`.
+  `PROMPT 2037`, `PROMPT 2038`, `PROMPT 2039`, `PROMPT 2040`, `PROMPT 2041`.
 - `PROMPT 2030` reported PARTIAL and must not be represented as a closure.
 - Active repair lanes: `PROMPT 2042` client/autoplay phase-sync/create-bot-room
   repair, `PROMPT 2043` server RSM/S2C missing-sender hardening,
@@ -67,8 +73,20 @@ Worker disposition:
   `PROMPT 2048` disconnect tracker initialization repair and `PROMPT 2049`
   result outcome projection repair.
 - `PROMPT 2047` failed/tombstoned during launch and is not counted active.
+- `PROMPT 2050` was attempted as a report-recovery worker for missing `2041`
+  artifacts, but dispatcher responses timed out. The orchestrator completed the
+  report-only recovery manually in a clean worktree, mainlanded it, then cleared
+  `PROMPT 2050`; do not count it active.
 - Tentative lane: `PROMPT 2034` bug-ledger backfill was pinged earlier but has
   not reported in this snapshot.
+
+Infrastructure note:
+
+- On 2026-05-29 both C: and D: reached 0 bytes free, blocking new worker
+  worktree creation. The orchestrator deleted only verified Cargo `target/`
+  build artifacts under known repo/worktree roots, restoring approximately
+  142 GB free on C: and 589 GB free on D:. Active worker source worktrees were
+  left intact.
 
 Immediate next actions:
 
