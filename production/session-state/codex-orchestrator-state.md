@@ -1,14 +1,13 @@
 # Codex Orchestrator State
 
-## Current Resume Snapshot (2026-05-29, post-2041 verify report backfill)
+## Current Resume Snapshot (2026-05-29, post-2050 report recovery)
 
 Source-of-truth at this snapshot:
 
 - Root checkout: `D:\_DEV\Work\Claude-Code-Game-Studios`
-- Current main source: `origin/main@61dc0952`
-  (`PROMPT 2041` server draft-hand post-mainland verify report backfill,
-  after `PROMPT 2040` Bevy UI architecture audit and orchestrator state
-  updates).
+- Current main source: `origin/main@b8b29597`
+  (`PROMPT 2050` server draft-hand verify report recovery, after the integrated
+  `PROMPT 2034/2042/2043/2044/2045/2046/2048/2049` repair pack).
 - Root checkout caveat: the root local checkout may be dirty/stale and must not
   be treated as the source of truth for integration. Use clean worktrees based
   on `origin/main` for repair, refresh, and report work.
@@ -39,6 +38,22 @@ Forensic/gameplay state:
   created a truthful report backfill and mainlanded it at `61dc0952`; the
   backfill verifies that `PROMPT 2031` commit `28482bd5` is an ancestor of
   current main and records the missing original artifacts explicitly.
+- `PROMPT 2034/2042/2043/2044/2045/2046/2048/2049` were integrated as one
+  repair pack and mainlanded at `a0b113b8`. The pack includes:
+  client phase-sync/create-bot-room repair, RSM missing-sender hardening, board
+  combat HP mutation repair, shop/card placeholder visual repair, draft-grid and
+  UI drag-ghost architecture repair, disconnect tracker field repair, and result
+  outcome projection repair.
+- Pack validation was focused and passed: `git diff --check`, server
+  `rsm_dispatch_missing_sender_test` 3/3, client
+  `hand_ui_draft_grid_container_layout_test` 4/4,
+  `result_screen_snapshot_projection_test` 7/7,
+  `asset_wiring_foundation_test` 9/9,
+  `board_rendering_resolution_combat_feedback_test` 10/10, and
+  `playable_client_lobby_autopilot_test` 7/7.
+- `PROMPT 2050` was then refreshed as report-only and mainlanded at
+  `b8b29597`, adding the missing `PROMPT 2050` self-report without duplicating
+  the already-present `PROMPT 2041` report.
 - `PROMPT 2030` is not a full fix. Treat it as PARTIAL/diagnostic: it found
   client phase-sync risks including missing autoplay `C2SCreateBotRoom` and a
   silent RSM dispatch drop when the sender is absent.
@@ -62,23 +77,20 @@ Bug register:
 Worker disposition:
 
 - Cleared: `PROMPT 2031`, `PROMPT 2032`, `PROMPT 2035`, `PROMPT 2036`,
-  `PROMPT 2037`, `PROMPT 2038`, `PROMPT 2039`, `PROMPT 2040`, `PROMPT 2041`.
+  `PROMPT 2037`, `PROMPT 2038`, `PROMPT 2039`, `PROMPT 2040`, `PROMPT 2041`,
+  `PROMPT 2042`, `PROMPT 2043`, `PROMPT 2044`, `PROMPT 2045`, `PROMPT 2046`,
+  `PROMPT 2048`, `PROMPT 2049`, `PROMPT 2050`, and stale `PROMPT 2053`.
 - `PROMPT 2030` reported PARTIAL and must not be represented as a closure.
-- Active repair lanes: `PROMPT 2042` client/autoplay phase-sync/create-bot-room
-  repair, `PROMPT 2043` server RSM/S2C missing-sender hardening,
-  `PROMPT 2044` board combat presentation/HP mutation repair, `PROMPT 2045`
-  card/shop placeholder asset binding repair, and `PROMPT 2046` draft-grid
-  responsive layout plus UI-owned drag ghost repair.
-- Additional active repair lanes launched after this state landed:
-  `PROMPT 2048` disconnect tracker initialization repair and `PROMPT 2049`
-  result outcome projection repair.
+- `PROMPT 2053` reported `FAIL_NOT_LANDED` against stale
+  `origin/main@450e3908`; that report predated the repair pack landing. It was
+  cleared as stale evidence, and `PROMPT 2055` was launched to verify board
+  combat presentation on current `origin/main@b8b29597`.
+- Active workers at this snapshot: `PROMPT 2051` post-2042/2043 flow-sync
+  verify, `PROMPT 2052` hand/HUD card-placeholder repair map, and `PROMPT 2055`
+  board combat current-main verify after the stale 2053 report.
 - `PROMPT 2047` failed/tombstoned during launch and is not counted active.
-- `PROMPT 2050` was attempted as a report-recovery worker for missing `2041`
-  artifacts, but dispatcher responses timed out. The orchestrator completed the
-  report-only recovery manually in a clean worktree, mainlanded it, then cleared
-  `PROMPT 2050`; do not count it active.
-- Tentative lane: `PROMPT 2034` bug-ledger backfill was pinged earlier but has
-  not reported in this snapshot.
+- `PROMPT 2054` failed to spawn with `PermissionError(13)` and is not counted
+  active.
 
 Infrastructure note:
 
@@ -90,14 +102,16 @@ Infrastructure note:
 
 Immediate next actions:
 
-1. Monitor `2042/2043/2044/2045/2046/2048/2049` and clear/integrate exact
-   worker ids as they report.
-2. Launch additional repair lanes only when their write scopes are disjoint:
-   disconnect tracker init (`P1-001`), placement ACK protocol (`P1-005`), result
-   outcome projection (`P1-006`), and lobby visible state (`P1-002..P1-004`).
-3. Broad Cargo or live GUI verification should run in separate VERIFY lanes.
+1. Monitor `2051/2052/2055` and clear/integrate exact worker ids as they
+   report.
+2. Treat `2053` as stale-main evidence unless `2055` disproves current main.
+3. Launch additional repair lanes only when their write scopes are disjoint:
+   placement ACK/protocol feedback, remaining hand/HUD placeholder ownership,
+   lobby visible-state repairs, and live GUI verification after current P0
+   repairs.
+4. Broad Cargo or live GUI verification should run in separate VERIFY lanes.
    Implementation workers should stay scoped and use clean worktrees.
-4. For every mainland action, run `MAINLAND_LIST` first and enqueue only
+5. For every mainland action, run `MAINLAND_LIST` first and enqueue only
    strict fast-forward branches that preserve current reports and bug-register
    updates.
 
