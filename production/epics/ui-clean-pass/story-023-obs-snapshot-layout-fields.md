@@ -2,21 +2,22 @@
 
 > **Epic**: UI Clean-Pass
 > **Story ID**: S18-OBS-SNAPSHOT-LAYOUT-FIELDS-001
-> **Status**: Draft -- future Sprint 18 candidate; NOT activated by this authoring run
+> **Status**: Done — closed by PROMPT 2019 on `origin/main@05014373` (2026-05-28)
 > **Layer**: Presentation -- QA snapshot tooling (`client/src/presentation/qa_snapshot.rs` only)
 > **Type**: Tech Debt -- observability extension
-> **Sprint**: Future Sprint 18 candidate per PROMPT 1180 §6 Lane D.
+> **Sprint**: Sprint 18 (active)
 > **Authored**: 2026-05-18 by PROMPT 1189
 > **Authoring source-of-truth**: `origin/main@efb698e`
 > **Estimated effort**: ~0.4d
+> **Completed**: 2026-05-28
 > **Source audit**: PROMPT 1180 §4 (Q-01..Q-10), §6 Lane D (PROMPT 1193 candidate)
-> **Active impl PROMPT**: PROMPT 1186. If 1186 lands first, this story may close via `/story-done`.
+> **Impl PROMPT**: PROMPT 1186 (`d75db1af`) Q-01..Q-10 primary + PROMPT 1533 (`03342873`) Q-05 partial closure
 
 ---
 
 ## Status / No-Claim Banner
 
-Future Sprint 18 candidate. **No sprint activated.** No claim on release readiness, `QA-COND-*`, `PAW-TD-*-a`, 24 PROMPT 1022 findings, or any audit finding outside Lane D.
+**DONE** — closed by PROMPT 2019 on `origin/main@05014373` (2026-05-28). Sprint 18 active / stage Polish UNCHANGED. No claim on release readiness, `QA-COND-*`, `PAW-TD-*-a`, 24 PROMPT 1022 findings, or any audit finding outside Lane D. Q-05 per-glyph `clipped_chars` and Q-06 image aspect ratios are documented as known gaps (AC13 evidence at `production/qa/evidence/sprint-18-snapshot-layout-fields/evidence.md`); not claimed as closed.
 
 ## Problem Class / Prevention Target
 
@@ -76,15 +77,15 @@ Q-* enumeration:
 
 ## Acceptance Criteria
 
-- [ ] AC1..AC10 -- Each Q-01..Q-10 field emitted per the enumeration above; `null` allowed where ECS data missing.
-- [ ] AC11 -- `layout_field_coverage_test.rs` (NEW) spawns minimal scene per marker family, drives ≥3 frames, asserts presence of every Q-* field (null-emission path exercised where applicable).
-- [ ] AC12 -- `CCGS_QA_SNAPSHOT=1` contract preserved.
-- [ ] AC13 -- No invented values; evidence note lists every `null`-emitted field + missing-query file:line.
-- [ ] AC14 -- `liv-bevy-018` activated.
-- [ ] AC15 -- Cargo resource policy applied.
-- [ ] AC16 -- No accept-risk closure; 24 PROMPT 1022 findings preserved.
-- [ ] AC17 -- Sprint disposition preserved.
-- [ ] AC18 -- Worker branch scope contained; slug `work/s18-obs-snapshot-layout-fields`.
+- [x] AC1..AC10 -- Each Q-01..Q-10 field emitted per the enumeration above; `null` allowed where ECS data missing. PASS (Q-05 best-effort, Q-06 null-with-documented-gap per AC13; all other fields emitted. See evidence.md.)
+- [x] AC11 -- `layout_field_coverage_test.rs` (NEW) spawns minimal scene per marker family, drives ≥3 frames, asserts presence of every Q-* field (null-emission path exercised where applicable). PASS — 14/14 tests at PROMPT 1186 `d75db1af`.
+- [x] AC12 -- `CCGS_QA_SNAPSHOT=1` contract preserved. PASS — additive schema extension only.
+- [x] AC13 -- No invented values; evidence note lists every `null`-emitted field + missing-query file:line. PASS — `production/qa/evidence/sprint-18-snapshot-layout-fields/evidence.md` created by PROMPT 2019; Q-05/Q-06/Q-07 gaps documented with file:line.
+- [x] AC14 -- `liv-bevy-018` activated. PASS — PROMPT 1186 used Bevy 0.18 ECS patterns (`ComputedNode`, `GlobalTransform`, `GlobalZIndex`).
+- [x] AC15 -- Cargo resource policy applied. PASS — PROMPT 1186 commit message records `CARGO_TARGET_DIR=D:/_DEV/cargo-target/ccgs-msvc-1186`, `CARGO_PROFILE_{DEV,TEST}_DEBUG=0`, `CARGO_INCREMENTAL=0`, `RUSTFLAGS='-C debuginfo=0 -C link-arg=/DEBUG:NONE'`.
+- [x] AC16 -- No accept-risk closure; 24 PROMPT 1022 findings preserved. PASS.
+- [x] AC17 -- Sprint disposition preserved. PASS — Sprint 18 active / stage Polish UNCHANGED.
+- [x] AC18 -- Worker branch scope contained; slug `work/s18-obs-snapshot-layout-fields`. PASS — branch `s18-obs-snapshot-layout-fields` confirmed in `git log --all`.
 
 ## Implementation Notes
 
@@ -111,3 +112,16 @@ Q-* enumeration:
 5. Cargo resource policy env vars.
 6. Targeted tests only.
 7. Push worker branch only.
+
+## Completion Notes (PROMPT 2019)
+
+Paperwork-only /story-done closure. Implementation pre-landed on `origin/main` before Sprint 18 activation.
+
+**Implementation commits on origin/main:**
+- PROMPT 1186 (`d75db1af`) — primary Q-01..Q-10 layout fields: `LayoutSnapshot` struct with `ViewportLayoutSnapshot`, 19-surface `SurfaceLayoutSnapshot` vector, `ButtonAffordanceSnapshot` vector, `LayoutCollisionsSnapshot` (Q-09/Q-10); `layout_field_coverage_test.rs` (NEW, 14 tests); `CCGS_QA_SNAPSHOT=1` contract preserved.
+- PROMPT 1533 (`03342873`) — Q-05 partial closure: semantic `role` token added to text markers in `ui_text_markers[]`.
+- PROMPT 1229 (`e68ac4f`) — placement_state / auction_state / current_phase.timer_remaining_ms added to snapshot (separate feature; also updated layout_field_coverage_test.rs struct constructions).
+
+**AC13 evidence**: `production/qa/evidence/sprint-18-snapshot-layout-fields/evidence.md` — documents Q-05 per-glyph clipping gap, Q-06 image aspect ratio gap, Q-07 disabled-state limitation, each with file:line reference in `client/src/presentation/qa_snapshot.rs`.
+
+**Source-of-truth at closure**: `origin/main@05014373` (PROMPT 2018 tip).
