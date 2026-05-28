@@ -1,7 +1,7 @@
 # PROMPT 1743 — BOT-SOAK-ENTRYPOINT-AC6-SERVER-GATE-REPAIR
 
-**Date:** 2026-05-28  
-**Branch:** `work/bot-soak-entrypoint-ac6-1743`  
+**Date:** 2026-05-28
+**Branch:** `work/bot-soak-entrypoint-ac6-1743`
 **Base:** `origin/main` @ `511b193e`
 
 ---
