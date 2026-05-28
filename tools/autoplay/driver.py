@@ -162,6 +162,11 @@ def main() -> int:
     rc = EXIT_OK
     deadline = time.monotonic() + args.timeout
     blocked_reason: str | None = None
+    # Frame-advance barrier (GAP-SCR-01 / PROMPT 1766): track the Bevy
+    # ``status.frame`` value at the time of the last screenshot dispatch so we
+    # can verify the renderer produced at least one new frame before the next
+    # capture.  Initialised to -1 so the first screenshot always passes.
+    last_screenshot_frame: int = -1
 
     _desc, build_fn = get_recipe(args.recipe)
 
@@ -214,6 +219,7 @@ def main() -> int:
                             "label": label,
                             "elapsed_secs": round(now - started, 3),
                             "screenshot": bool(params.get("screenshot", True)),
+                            "frame": status.get("frame") if isinstance(status, dict) else None,
                         })
                         log(f"tick={tick} checkpoint label={label}")
                         action_results.append({"local": method, "label": label})
@@ -244,6 +250,38 @@ def main() -> int:
                         rc = EXIT_BLOCKED
                         action_results.append({"local": method, "reason": reason, "hint": hint})
                 else:
+                    # Frame-advance barrier (GAP-SCR-01 / PROMPT 1766): before
+                    # issuing a screenshot RPC, verify that Bevy has rendered at
+                    # least one new frame since the last screenshot.  Poll
+                    # status up to 5 times (250 ms) and proceed with a warning
+                    # if the frame counter does not advance (renderer may be
+                    # throttled because the window is unfocused or minimised).
+                    if method == "autoplay/screenshot":
+                        current_frame = (
+                            status.get("frame", 0) if isinstance(status, dict) else 0
+                        )
+                        if current_frame <= last_screenshot_frame:
+                            for _retry in range(5):
+                                time.sleep(0.05)
+                                try:
+                                    fresh = rpc(url, "autoplay/status", timeout=2.0)
+                                    current_frame = (
+                                        fresh.get("frame", current_frame)
+                                        if isinstance(fresh, dict)
+                                        else current_frame
+                                    )
+                                except (urllib.error.URLError, RuntimeError, ConnectionError, TimeoutError):
+                                    break
+                                if current_frame > last_screenshot_frame:
+                                    break
+                            else:
+                                log(
+                                    f"tick={tick} WARNING screenshot frame-advance barrier: "
+                                    f"frame stuck at {current_frame} "
+                                    f"(last_screenshot_frame={last_screenshot_frame}); "
+                                    "renderer may not be producing new frames"
+                                )
+                        last_screenshot_frame = current_frame
                     try:
                         result = rpc(url, method, params)
                         action_results.append(result)

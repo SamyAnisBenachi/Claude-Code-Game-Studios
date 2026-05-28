@@ -134,16 +134,31 @@ class RecipeBuilder:
         return self
 
     # --- driver-local pseudo-primitives ------------------------------
-    def checkpoint(self, label: str, screenshot: bool = True) -> "RecipeBuilder":
+    def checkpoint(
+        self,
+        label: str,
+        screenshot: bool = True,
+        settle_ticks: int = 3,
+    ) -> "RecipeBuilder":
         """Emit a labelled checkpoint row to ``checkpoints.jsonl`` (driver-side)
         and, by default, request a screenshot named after the checkpoint.
         Used to delimit major phases in a recipe's timeline so reviewers
         can locate the lobby/draft/placement boundary without grepping
         ``driver-timeline.jsonl``.
+
+        ``settle_ticks`` (default 3) inserts idle driver ticks between the
+        checkpoint event and the screenshot request so the Bevy renderer has
+        time to produce a frame that reflects the current game state.  At the
+        default driver rate of 10 Hz each tick is ~100 ms, giving 300 ms of
+        settle time.  Pass ``settle_ticks=0`` to restore the immediate
+        (pre-PROMPT-1766) behaviour.  See GAP-SCR-01 / PROMPT 1763 for the
+        stale-frame bug this parameter addresses.
         """
         self._emit("local.checkpoint", {"label": label, "screenshot": bool(screenshot)})
         self._next()
         if screenshot:
+            if settle_ticks > 0:
+                self._next(settle_ticks)
             self._emit("autoplay/screenshot", {"reason": f"checkpoint:{label}"})
             self._next()
         return self
