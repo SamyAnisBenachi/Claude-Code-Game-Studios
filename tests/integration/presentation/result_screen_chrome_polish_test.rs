@@ -21,9 +21,9 @@ use bevy::state::app::StatesPlugin;
 use bevy::ui::OverflowAxis;
 use client::presentation::result_screen::{
     result_screen_outcome_accent, ResultScreenEntities, ResultScreenPlugin,
-    ResultScreenSectionDivider, ResultScreenStep, ResultScreenStepActionRequest,
-    ResultScreenStepIndicator, ResultScreenStepState, ResultScreenTitleDivider,
-    ResultScreenViewState,
+    ResultScreenScrollPane, ResultScreenSectionDivider, ResultScreenStep,
+    ResultScreenStepActionRequest, ResultScreenStepIndicator, ResultScreenStepState,
+    ResultScreenTitleDivider, ResultScreenViewState,
 };
 use client::presentation::PresentationGameSnapshotMessage;
 use client::state::{ClientSessionIdentity, ClientState, CurrentClientPhase};
@@ -167,6 +167,50 @@ fn panel_clips_overflow_as_safety_net() {
         node.overflow.y,
         OverflowAxis::Clip,
         "panel must clip vertical overflow as a Krosmaga-style framing safety net"
+    );
+}
+
+#[test]
+fn scroll_pane_enables_overflow_scroll_so_content_reachable_on_720p() {
+    test_helpers::init_test_tracing();
+    let mut app = result_screen_app();
+    open_result_screen(
+        &mut app,
+        Some(result(Some(player(2)), GameOverReason::ObjectivesDestroyed)),
+    );
+
+    assert_eq!(
+        query_count::<ResultScreenScrollPane>(&mut app),
+        1,
+        "exactly one scroll pane must wrap the step indicator and hero/accounting panels"
+    );
+
+    let scroll_pane_entity = app
+        .world_mut()
+        .query::<(Entity, &ResultScreenScrollPane)>()
+        .iter(app.world())
+        .map(|(e, _)| e)
+        .next()
+        .expect("scroll pane entity must be present");
+
+    let node = app
+        .world()
+        .get::<Node>(scroll_pane_entity)
+        .expect("scroll pane must carry a Node component");
+    assert_eq!(
+        node.overflow.y,
+        OverflowAxis::Scroll,
+        "scroll pane must enable scroll_y so content is reachable on 720 px-tall viewports"
+    );
+    assert!(
+        (node.flex_grow - 1.0).abs() < f32::EPSILON,
+        "scroll pane must flex_grow: 1.0 to fill available space; got {:?}",
+        node.flex_grow
+    );
+    assert_eq!(
+        node.min_height,
+        Val::Px(0.0),
+        "scroll pane min_height must be 0 so the actions row is never clipped"
     );
 }
 
