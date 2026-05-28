@@ -614,3 +614,247 @@ class TestDriverWin32CaptureWiring:
             "_win32_capture must be called after ensure_foreground "
             "so the window is foregrounded before capture"
         )
+
+
+# ---------------------------------------------------------------------------
+# 6. TestCaptureHwndRestoreBeforeCapture (PROMPT 1803)
+# ---------------------------------------------------------------------------
+
+class TestCaptureHwndRestoreBeforeCapture:
+    """Tests that ShowWindow and SetForegroundWindow are called before PrintWindow."""
+
+    def _make_happy_user32_with_restore(self, width=4, height=2) -> MagicMock:
+        """Return a user32 mock that succeeds and tracks ShowWindow/SetForeground calls."""
+        user32 = MagicMock()
+
+        def _fill_rect(hwnd, byref_rect):
+            r = byref_rect._obj
+            r.left, r.top, r.right, r.bottom = 0, 0, width, height
+            return 1
+
+        user32.GetWindowRect.side_effect = _fill_rect
+        user32.GetDC.return_value = 0x100
+        user32.ReleaseDC.return_value = 1
+        user32.PrintWindow.return_value = 1
+        user32.ShowWindow.return_value = 1
+        user32.SetForegroundWindow.return_value = 1
+        return user32
+
+    def _make_happy_gdi32(self, width=4, height=2) -> MagicMock:
+        gdi32 = MagicMock()
+        gdi32.CreateCompatibleDC.return_value = 0x200
+        gdi32.CreateCompatibleBitmap.return_value = 0x300
+        gdi32.SelectObject.return_value = 0x400
+        gdi32.DeleteObject.return_value = 1
+        gdi32.DeleteDC.return_value = 1
+
+        def _getdibits(_mem_dc, _bmp, _start, _nlines, pixel_buf, _bi, _mode):
+            for i in range(width * height):
+                pixel_buf[i * 4] = 128
+                pixel_buf[i * 4 + 1] = 64
+                pixel_buf[i * 4 + 2] = 32
+                pixel_buf[i * 4 + 3] = 255
+            return height
+
+        gdi32.GetDIBits.side_effect = _getdibits
+        return gdi32
+
+    def test_win32_capture_hwnd_calls_show_window_before_printwindow(self, tmp_path):
+        # Arrange
+        user32 = self._make_happy_user32_with_restore()
+        gdi32 = self._make_happy_gdi32()
+        call_order: list[str] = []
+
+        original_sw = user32.ShowWindow
+        original_pw = user32.PrintWindow
+
+        def _track_sw(hwnd, cmd):
+            call_order.append("ShowWindow")
+            return 1
+
+        def _track_pw(hwnd, dc, flags):
+            call_order.append("PrintWindow")
+            return 1
+
+        user32.ShowWindow.side_effect = _track_sw
+        user32.PrintWindow.side_effect = _track_pw
+
+        lines, log = _log()
+
+        # Act
+        result = _capture_hwnd_to_png(0x1001, tmp_path / "out.png", log, user32=user32, gdi32=gdi32)
+
+        # Assert
+        assert result is True
+        sw_pos = call_order.index("ShowWindow")
+        pw_pos = call_order.index("PrintWindow")
+        assert sw_pos < pw_pos, "ShowWindow must be called before PrintWindow"
+
+    def test_win32_capture_hwnd_logs_show_window_result(self, tmp_path):
+        # Arrange
+        user32 = self._make_happy_user32_with_restore()
+        gdi32 = self._make_happy_gdi32()
+        lines, log = _log()
+
+        # Act
+        _capture_hwnd_to_png(0x1001, tmp_path / "out.png", log, user32=user32, gdi32=gdi32)
+
+        # Assert
+        assert any("ShowWindow" in l for l in lines), (
+            "A log line containing 'ShowWindow' must appear"
+        )
+
+    def test_win32_capture_hwnd_logs_setforegroundwindow_result(self, tmp_path):
+        # Arrange
+        user32 = self._make_happy_user32_with_restore()
+        gdi32 = self._make_happy_gdi32()
+        lines, log = _log()
+
+        # Act
+        _capture_hwnd_to_png(0x1001, tmp_path / "out.png", log, user32=user32, gdi32=gdi32)
+
+        # Assert
+        assert any("SetForegroundWindow" in l for l in lines), (
+            "A log line containing 'SetForegroundWindow' must appear"
+        )
+
+    def test_win32_capture_hwnd_proceeds_even_when_setforeground_returns_zero(self, tmp_path):
+        # Arrange: SetForegroundWindow returns 0 (may fail in non-interactive sessions)
+        user32 = self._make_happy_user32_with_restore()
+        user32.SetForegroundWindow.return_value = 0
+        gdi32 = self._make_happy_gdi32()
+        lines, log = _log()
+
+        # Act
+        result = _capture_hwnd_to_png(0x1001, tmp_path / "out.png", log, user32=user32, gdi32=gdi32)
+
+        # Assert: capture must still succeed
+        assert result is True, "Capture must succeed even when SetForegroundWindow returns 0"
+        assert any("SetForegroundWindow ret=0" in l for l in lines), (
+            "Must log the zero return value"
+        )
+
+
+# ---------------------------------------------------------------------------
+# 7. TestCaptureHwndPixelHash (PROMPT 1803)
+# ---------------------------------------------------------------------------
+
+class TestCaptureHwndPixelHash:
+    """Tests the pixel hash logging after a successful GetDIBits."""
+
+    def _make_happy_user32(self, width=4, height=2) -> MagicMock:
+        user32 = MagicMock()
+
+        def _fill_rect(hwnd, byref_rect):
+            r = byref_rect._obj
+            r.left, r.top, r.right, r.bottom = 0, 0, width, height
+            return 1
+
+        user32.GetWindowRect.side_effect = _fill_rect
+        user32.GetDC.return_value = 0x100
+        user32.ReleaseDC.return_value = 1
+        user32.PrintWindow.return_value = 1
+        user32.ShowWindow.return_value = 1
+        user32.SetForegroundWindow.return_value = 1
+        return user32
+
+    def _make_gdi32_with_fill(self, width, height, fill_value: int = 128) -> MagicMock:
+        gdi32 = MagicMock()
+        gdi32.CreateCompatibleDC.return_value = 0x200
+        gdi32.CreateCompatibleBitmap.return_value = 0x300
+        gdi32.SelectObject.return_value = 0x400
+        gdi32.DeleteObject.return_value = 1
+        gdi32.DeleteDC.return_value = 1
+
+        def _getdibits(_mem_dc, _bmp, _start, _nlines, pixel_buf, _bi, _mode):
+            for i in range(width * height * 4):
+                pixel_buf[i] = fill_value
+            return height
+
+        gdi32.GetDIBits.side_effect = _getdibits
+        return gdi32
+
+    def test_win32_capture_hwnd_logs_pixel_hash_on_success(self, tmp_path):
+        # Arrange
+        width, height = 4, 2
+        user32 = self._make_happy_user32(width, height)
+        gdi32 = self._make_gdi32_with_fill(width, height, fill_value=100)
+        lines, log = _log()
+
+        # Act
+        result = _capture_hwnd_to_png(0x1001, tmp_path / "out.png", log, user32=user32, gdi32=gdi32)
+
+        # Assert
+        assert result is True
+        assert any("pixel_hash=" in l for l in lines), (
+            "A log line containing 'pixel_hash=' must appear after successful capture"
+        )
+
+    def test_win32_capture_hwnd_pixel_hash_differs_between_captures(self, tmp_path):
+        # Arrange: two captures with different pixel data
+        width, height = 4, 2
+
+        user32_a = self._make_happy_user32(width, height)
+        gdi32_a = self._make_gdi32_with_fill(width, height, fill_value=50)
+        lines_a, log_a = _log()
+
+        user32_b = self._make_happy_user32(width, height)
+        gdi32_b = self._make_gdi32_with_fill(width, height, fill_value=200)
+        lines_b, log_b = _log()
+
+        # Act
+        _capture_hwnd_to_png(0x1001, tmp_path / "cap_a.png", log_a, user32=user32_a, gdi32=gdi32_a)
+        _capture_hwnd_to_png(0x1002, tmp_path / "cap_b.png", log_b, user32=user32_b, gdi32=gdi32_b)
+
+        # Extract hash values from log lines
+        def _extract_hash(lines: list[str]) -> str:
+            for l in lines:
+                if "pixel_hash=" in l:
+                    # e.g. "win32_capture: pixel_hash=0x12345678 width=..."
+                    for token in l.split():
+                        if token.startswith("pixel_hash="):
+                            return token.split("=", 1)[1]
+            return ""
+
+        hash_a = _extract_hash(lines_a)
+        hash_b = _extract_hash(lines_b)
+
+        # Assert
+        assert hash_a != "", "First capture must log a pixel_hash"
+        assert hash_b != "", "Second capture must log a pixel_hash"
+        assert hash_a != hash_b, (
+            f"Captures with different pixel data must produce different hashes "
+            f"(got hash_a={hash_a}, hash_b={hash_b})"
+        )
+
+
+# ---------------------------------------------------------------------------
+# 8. TestDriverWin32CaptureOrchestration (PROMPT 1803)
+# ---------------------------------------------------------------------------
+
+class TestDriverWin32CaptureOrchestration:
+    """Structural tests for driver.py capture orchestration additions."""
+
+    _DRIVER_SOURCE = (_TOOLS_AUTOPLAY / "driver.py").read_text(encoding="utf-8")
+
+    def test_driver_captures_win32_return_value(self):
+        # Assert: driver.py assigns the return value of _win32_capture
+        assert "_win32_ok = _win32_capture(" in self._DRIVER_SOURCE, (
+            "driver.py must capture the return value: _win32_ok = _win32_capture(...)"
+        )
+
+    def test_driver_logs_win32_capture_result(self):
+        # Assert: driver.py logs win32_capture=OK/FAILED after the call
+        assert "win32_capture=" in self._DRIVER_SOURCE, (
+            "driver.py must log win32_capture=OK/FAILED after the _win32_capture call"
+        )
+
+    def test_driver_has_dwm_settle_sleep_after_ensure_foreground(self):
+        # Assert: time.sleep(0.12) appears between ensure_foreground and _win32_capture
+        src = self._DRIVER_SOURCE
+        fg_idx = src.index("ensure_foreground(log)")
+        capture_idx = src.index("_win32_ok = _win32_capture(")
+        sleep_idx = src.index("time.sleep(0.12)", fg_idx)
+        assert fg_idx < sleep_idx < capture_idx, (
+            "time.sleep(0.12) must appear after ensure_foreground and before _win32_capture"
+        )

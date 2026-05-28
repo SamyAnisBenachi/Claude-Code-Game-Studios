@@ -33,6 +33,10 @@ _PW_RENDERFULLCONTENT = 2  # PrintWindow: capture DWM-composited content (Win8+)
 _DIB_RGB_COLORS = 0
 _BITMAPINFOHEADER_SIZE = 40
 
+# ShowWindow / SetForegroundWindow constants
+_SW_RESTORE = 9          # Restores a minimised window to its normal size/position
+_SW_SHOWNOACTIVATE = 4   # Displays a window without activating it
+
 
 # ---------------------------------------------------------------------------
 # Minimal PNG encoder — no PIL/Pillow required
@@ -81,6 +85,12 @@ def _capture_hwnd_to_png(
         user32 = ctypes.windll.user32  # type: ignore[attr-defined]
     if gdi32 is None:
         gdi32 = ctypes.windll.gdi32  # type: ignore[attr-defined]
+
+    # Restore / foreground the window before capture so DWM composites it.
+    sw_ret = user32.ShowWindow(hwnd, _SW_RESTORE)
+    log(f"win32_capture: ShowWindow ret={sw_ret} hwnd={hwnd:#010x}")
+    sfg_ret = user32.SetForegroundWindow(hwnd)
+    log(f"win32_capture: SetForegroundWindow ret={sfg_ret} hwnd={hwnd:#010x}")
 
     rect = ctypes.wintypes.RECT()
     if not user32.GetWindowRect(hwnd, ctypes.byref(rect)):
@@ -151,6 +161,11 @@ def _capture_hwnd_to_png(
 
                 # Convert GDI BGRA → PNG RGB (one row at a time)
                 raw = bytes(pixel_buf)
+                pixel_hash = zlib.adler32(raw[:min(4096, len(raw))]) & 0xFFFFFFFF
+                log(
+                    f"win32_capture: pixel_hash={pixel_hash:#010x} "
+                    f"width={width} height={height}"
+                )
                 stride = width * 4
                 rgb_rows: list[bytes] = []
                 for row_idx in range(height):
