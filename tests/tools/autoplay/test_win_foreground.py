@@ -1,4 +1,4 @@
-"""Unit tests for tools/autoplay/win_foreground.py (PROMPT 1776).
+"""Unit tests for tools/autoplay/win_foreground.py (PROMPT 1776, PROMPT 1786).
 
 All tests run without a GUI, without a live Bevy client, and without Cargo.
 ctypes boundaries are mocked via unittest.mock so the suite passes headlessly.
@@ -24,6 +24,7 @@ from win_foreground import (  # noqa: E402
     _WINDOW_TITLE_HINTS,
     _find_candidate,
     _foreground_window,
+    _format_diag_titles,
     ensure_foreground,
 )
 
@@ -94,9 +95,67 @@ class TestFindCandidate:
         ]
         assert _find_candidate(non_matching) is None
 
+    def test_win_foreground_find_candidate_matches_lanes_and_lies_title(self):
+        # Regression: the actual client title from client/src/main.rs was
+        # "Lanes and Lies" but the hints list previously only had "ccgs"/"bevy"
+        # substrings, causing every screenshot foreground attempt to miss.
+        windows = [(0x3001, "Lanes and Lies"), (0x3002, "Notepad")]
+        result = _find_candidate(windows)
+        assert result == (0x3001, "Lanes and Lies")
+
+    def test_win_foreground_find_candidate_matches_lanes_and_lies_case_insensitive(self):
+        windows = [(0x3001, "LANES AND LIES")]
+        result = _find_candidate(windows)
+        assert result is not None
+        assert result[0] == 0x3001
+
+    def test_win_foreground_find_candidate_matches_lanes_substring(self):
+        # "lanes" hint covers hypothetical shorter title variants.
+        windows = [(0x3001, "Lanes — Debug")]
+        result = _find_candidate(windows)
+        assert result is not None
+
     def test_win_foreground_hints_constant_is_not_empty(self):
         assert len(_WINDOW_TITLE_HINTS) >= 1
         assert all(isinstance(h, str) and h for h in _WINDOW_TITLE_HINTS)
+
+    def test_win_foreground_hints_contains_lanes_and_lies(self):
+        assert "lanes and lies" in _WINDOW_TITLE_HINTS
+
+
+# ---------------------------------------------------------------------------
+# 1b. _format_diag_titles — pure Python diagnostic helper (PROMPT 1786)
+# ---------------------------------------------------------------------------
+
+class TestFormatDiagTitles:
+    def test_win_foreground_diag_titles_empty_list(self):
+        result = _format_diag_titles([])
+        assert result == "[]"
+
+    def test_win_foreground_diag_titles_single_window(self):
+        result = _format_diag_titles([(1, "Notepad")])
+        assert "Notepad" in result
+
+    def test_win_foreground_diag_titles_respects_limit(self):
+        windows = [(i, f"Window {i}") for i in range(50)]
+        result = _format_diag_titles(windows, limit=10)
+        assert "(+40 more)" in result
+
+    def test_win_foreground_diag_titles_no_suffix_when_under_limit(self):
+        windows = [(i, f"App {i}") for i in range(5)]
+        result = _format_diag_titles(windows, limit=10)
+        assert "more" not in result
+
+    def test_win_foreground_diag_titles_truncates_long_titles(self):
+        long_title = "A" * 100
+        result = _format_diag_titles([(1, long_title)], limit=10)
+        # Truncated to 60 chars, shown inside repr()
+        assert "A" * 60 in result
+        assert "A" * 61 not in result
+
+    def test_win_foreground_diag_titles_returns_string(self):
+        result = _format_diag_titles([(1, "Chrome"), (2, "Explorer")])
+        assert isinstance(result, str)
 
 
 # ---------------------------------------------------------------------------
@@ -250,3 +309,50 @@ class TestEnsureForeground:
             ensure_foreground(log)
 
         assert any("7" in line for line in lines)
+
+    def test_win_foreground_ensure_logs_hints_when_no_match(self, monkeypatch):
+        # PROMPT 1786: no-match log line must include the hints list so the
+        # mismatch is diagnosable without re-reading the source.
+        monkeypatch.setattr(win_foreground, "_IS_WINDOWS", True)
+        monkeypatch.setattr(win_foreground, "_list_visible_windows", lambda _u: [])
+
+        with patch("ctypes.windll") as mock_windll:
+            mock_windll.user32 = MagicMock()
+            lines, log = _log()
+            ensure_foreground(log)
+
+        assert any("hints=" in line for line in lines)
+
+    def test_win_foreground_ensure_logs_visible_titles_when_no_match(self, monkeypatch):
+        # PROMPT 1786: no-match log line must include the visible title list.
+        monkeypatch.setattr(win_foreground, "_IS_WINDOWS", True)
+        fake_windows = [(0x5001, "Notepad"), (0x5002, "Chrome")]
+        monkeypatch.setattr(win_foreground, "_list_visible_windows", lambda _u: fake_windows)
+
+        with patch("ctypes.windll") as mock_windll:
+            mock_windll.user32 = MagicMock()
+            lines, log = _log()
+            ensure_foreground(log)
+
+        assert any("Notepad" in line for line in lines)
+
+    def test_win_foreground_ensure_matches_lanes_and_lies_window(self, monkeypatch):
+        # Regression: "Lanes and Lies" must now be matched and foregrounded.
+        monkeypatch.setattr(win_foreground, "_IS_WINDOWS", True)
+        fake_windows = [(0x6001, "Lanes and Lies")]
+        monkeypatch.setattr(win_foreground, "_list_visible_windows", lambda _u: fake_windows)
+
+        called_with: list[tuple] = []
+
+        def _fake_foreground(user32, hwnd, log):
+            called_with.append((hwnd,))
+            return True
+
+        monkeypatch.setattr(win_foreground, "_foreground_window", _fake_foreground)
+
+        with patch("ctypes.windll") as mock_windll:
+            mock_windll.user32 = MagicMock()
+            lines, log = _log()
+            ensure_foreground(log)
+
+        assert called_with == [(0x6001,)]
