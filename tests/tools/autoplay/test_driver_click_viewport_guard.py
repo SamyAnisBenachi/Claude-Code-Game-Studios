@@ -370,3 +370,31 @@ class TestDriverViewportGuardStructure:
 
     def test_driver_stores_recipe_build_win_size(self):
         assert "recipe_build_win_size" in self._DRIVER_SOURCE
+
+    # AC-VPT-08: post-foreground shrink check
+    def test_driver_checks_post_foreground_window_size(self):
+        assert "viewport_shrink_abort" in self._DRIVER_SOURCE, (
+            "driver must emit viewport_shrink_abort checkpoint when post-ensure_foreground "
+            "window drops below minimum (AC-VPT-08)"
+        )
+
+    def test_driver_post_foreground_check_after_ensure_foreground(self):
+        src = self._DRIVER_SOURCE
+        fg_idx = src.index("ensure_foreground(log)")
+        shrink_idx = src.index("viewport_shrink_abort", fg_idx)
+        assert shrink_idx > fg_idx, (
+            "viewport_shrink_abort must appear after ensure_foreground call"
+        )
+
+    # Checkpoint emission for all guard conditions
+    def test_driver_emits_viewport_drift_checkpoint(self):
+        assert '"viewport_drift"' in self._DRIVER_SOURCE or "'viewport_drift'" in self._DRIVER_SOURCE
+
+    def test_driver_emits_viewport_shrink_abort_checkpoint(self):
+        assert '"viewport_shrink_abort"' in self._DRIVER_SOURCE or "'viewport_shrink_abort'" in self._DRIVER_SOURCE
+
+    def test_driver_emits_cursor_none_checkpoint(self):
+        assert "viewport_guard_cursor_none" in self._DRIVER_SOURCE
+
+    def test_driver_emits_oob_checkpoint(self):
+        assert "viewport_guard_oob" in self._DRIVER_SOURCE

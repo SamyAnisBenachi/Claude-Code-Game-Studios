@@ -374,7 +374,7 @@ def main() -> int:
                     f"build_win=({recipe_build_win_size[0]:.0f}x{recipe_build_win_size[1]:.0f})"
                 )
             else:
-                # Mid-run drift check: abort if window was resized beyond tolerance.
+                # Mid-run drift check (AC-VPT-02): abort if window was resized beyond tolerance.
                 assert recipe_build_win_size is not None
                 _drift_ok, _drift_diag = _check_window_drift(
                     recipe_build_win_size, _tick_win_size, tick, log
@@ -384,6 +384,14 @@ def main() -> int:
                         f"VIEWPORT-GUARD ABORT: mid-run window resize invalidated recipe coords; "
                         f"diag={_drift_diag!r}"
                     )
+                    emit_checkpoint({
+                        "tick": tick,
+                        "kind": "viewport_drift",
+                        "reason": _drift_diag,
+                        "build_size": list(recipe_build_win_size),
+                        "current_size": list(_tick_win_size) if _tick_win_size else None,
+                        "elapsed_secs": round(now - started, 3),
+                    })
                     rc = EXIT_VIEWPORT_GUARD
                     break
 
@@ -468,6 +476,33 @@ def main() -> int:
                         # is actively composited when the screenshot fires.
                         ensure_foreground(log)
                         time.sleep(0.12)  # allow DWM to composite the foregrounded window
+                        # Post-foreground viewport check (AC-VPT-08 / PROMPT 1857): DWM
+                        # SW_RESTORE can shrink the window; re-poll status and abort if
+                        # height dropped below minimum before capture.
+                        try:
+                            _post_fg_status = rpc(url, "autoplay/status", timeout=2.0)
+                            _post_fg_win = _parse_window_size(
+                                _post_fg_status.get("window_logical_size")
+                                if isinstance(_post_fg_status, dict) else None
+                            )
+                        except (urllib.error.URLError, RuntimeError, ConnectionError, TimeoutError):
+                            _post_fg_win = _tick_win_size  # use tick-start size if re-poll fails
+                        _post_fg_ok, _post_fg_diag = _check_window_minimum(_post_fg_win, tick, log)
+                        if not _post_fg_ok:
+                            log(
+                                f"VIEWPORT-GUARD ABORT: post-foreground window shrank below minimum; "
+                                f"diag={_post_fg_diag!r}"
+                            )
+                            emit_checkpoint({
+                                "tick": tick,
+                                "kind": "viewport_shrink_abort",
+                                "reason": _post_fg_diag,
+                                "post_fg_size": list(_post_fg_win) if _post_fg_win else None,
+                                "build_size": list(recipe_build_win_size) if recipe_build_win_size else None,
+                                "elapsed_secs": round(now - started, 3),
+                            })
+                            rc = EXIT_VIEWPORT_GUARD
+                            break
                         # Driver-side capture chain (PROMPT 1794 / PROMPT 1813 / PROMPT 1818):
                         # Attempt win32_printwindow first; fall back to
                         # desktop_bitblt when it fails OR when it returns OK
@@ -505,6 +540,12 @@ def main() -> int:
                                 f"(cursor outside window); aborting before input dispatch"
                             )
                             log(_guard_msg)
+                            emit_checkpoint({
+                                "tick": tick,
+                                "kind": "viewport_guard_cursor_none",
+                                "reason": "cursor_logical is None — cursor left the window",
+                                "elapsed_secs": round(now - started, 3),
+                            })
                             rc = EXIT_VIEWPORT_GUARD
                             break
 
@@ -525,6 +566,12 @@ def main() -> int:
                                         f"VIEWPORT-GUARD ABORT: click target OOB; "
                                         f"diag={_coords_diag!r}"
                                     )
+                                    emit_checkpoint({
+                                        "tick": tick,
+                                        "kind": "viewport_guard_oob",
+                                        "reason": _coords_diag,
+                                        "elapsed_secs": round(now - started, 3),
+                                    })
                                     rc = EXIT_VIEWPORT_GUARD
                                     break
 
