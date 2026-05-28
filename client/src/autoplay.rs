@@ -56,6 +56,17 @@ pub const AUTOPLAY_ARTIFACT_DIR_ENV: &str = "CCGS_AUTOPLAY_ARTIFACT_DIR";
 pub const AUTOPLAY_OFFSCREEN_ENV: &str = "CCGS_AUTOPLAY_OFFSCREEN";
 pub const DEFAULT_AUTOPLAY_PORT: u16 = 15873;
 
+/// Env var overrides for the autoplay window size (PROMPT 1842).
+/// When set, the Startup system uses these values; unset falls back to the
+/// minimum floor below.
+pub const AUTOPLAY_WINDOW_WIDTH_ENV: &str = "CCGS_WINDOW_WIDTH";
+pub const AUTOPLAY_WINDOW_HEIGHT_ENV: &str = "CCGS_WINDOW_HEIGHT";
+/// Minimum logical size for a reliable autoplay run (dev-floor viewport from
+/// `viewport_matrix.rs::SAFETY_VIEWPORT_DEV_FLOOR`). Recipes compute click
+/// targets as fractions of this size; a smaller window causes misses.
+pub const AUTOPLAY_MIN_WINDOW_W: f32 = 1280.0;
+pub const AUTOPLAY_MIN_WINDOW_H: f32 = 720.0;
+
 /// Schema/protocol version returned by `autoplay/capabilities`. Bump when
 /// the RPC surface changes in a backwards-incompatible way.
 pub const AUTOPLAY_RPC_VERSION: u32 = 2;
@@ -123,6 +134,10 @@ impl Plugin for AutoplayPlugin {
         // runs (default WinitSettings::desktop_app() throttles to ~1 tick/5s
         // when unfocused — PROMPT 1774).
         app.insert_resource(bevy::winit::WinitSettings::game());
+
+        // PROMPT 1842: enforce minimum 1280x720 logical window size so
+        // fractional-coordinate recipes have a full-size click target surface.
+        app.add_systems(Startup, enforce_autoplay_window_size_system);
 
         app.insert_resource(AutoplayShared::handle(Arc::clone(&shared)))
             .insert_resource(cfg.clone())
@@ -331,6 +346,40 @@ struct AutoplayStatusSnapshot {
 }
 
 // ---------- Bevy systems ----------
+
+/// Enforce a minimum logical window size for autoplay runs (PROMPT 1842).
+///
+/// Reads `CCGS_WINDOW_WIDTH` / `CCGS_WINDOW_HEIGHT` (both optional; fall back
+/// to `AUTOPLAY_MIN_WINDOW_W` / `AUTOPLAY_MIN_WINDOW_H`). Applies the maximum
+/// of the current size and the target so an already-larger window is never
+/// shrunk. Runs once at `Startup`, gated behind `AutoplayPlugin`.
+fn enforce_autoplay_window_size_system(
+    mut windows: Query<&mut Window, With<PrimaryWindow>>,
+) {
+    let target_w = std::env::var(AUTOPLAY_WINDOW_WIDTH_ENV)
+        .ok()
+        .and_then(|s| s.trim().parse::<f32>().ok())
+        .unwrap_or(AUTOPLAY_MIN_WINDOW_W);
+    let target_h = std::env::var(AUTOPLAY_WINDOW_HEIGHT_ENV)
+        .ok()
+        .and_then(|s| s.trim().parse::<f32>().ok())
+        .unwrap_or(AUTOPLAY_MIN_WINDOW_H);
+
+    if let Ok(mut window) = windows.single_mut() {
+        let cur_w = window.width();
+        let cur_h = window.height();
+        let new_w = cur_w.max(target_w);
+        let new_h = cur_h.max(target_h);
+        window.resolution.set(new_w, new_h);
+        tracing::info!(
+            target: "client::autoplay",
+            cur_w, cur_h, new_w, new_h,
+            target_w, target_h,
+            "autoplay window size: cur={}x{} target={}x{} applied={}x{}",
+            cur_w, cur_h, target_w, target_h, new_w, new_h,
+        );
+    }
+}
 
 /// Creates the offscreen `Image` render target and a secondary `Camera2d` that renders the game
 /// scene into it. Runs once at `Startup` (autoplay-enabled builds only).
@@ -1487,5 +1536,15 @@ mod tests {
         assert!(sf.get("phase_label").is_some());
         assert!(sf.get("round").is_some());
         assert!(sf.get("client_state_label").is_some());
+    }
+
+    #[test]
+    fn autoplay_window_size_constants_match_dev_floor() {
+        // PROMPT 1842: the autoplay minimum must equal SAFETY_VIEWPORT_DEV_FLOOR
+        // (1280x720) so recipe fractional coordinates land on visible UI elements.
+        assert_eq!(AUTOPLAY_MIN_WINDOW_W, 1280.0);
+        assert_eq!(AUTOPLAY_MIN_WINDOW_H, 720.0);
+        assert_eq!(AUTOPLAY_WINDOW_WIDTH_ENV, "CCGS_WINDOW_WIDTH");
+        assert_eq!(AUTOPLAY_WINDOW_HEIGHT_ENV, "CCGS_WINDOW_HEIGHT");
     }
 }
