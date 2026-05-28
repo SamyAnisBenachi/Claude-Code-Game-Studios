@@ -121,9 +121,19 @@ pub struct HandFanLayoutConfig {
 impl Default for HandFanLayoutConfig {
     fn default() -> Self {
         Self {
-            fan_base_margin_px: 100.0,
-            fan_half_spread_px: 280.0,
-            arc_height_px: 20.0,
+            // PROMPT 1854 (STAGE3-D): 100 → 150. At 1280×720 the old value placed card
+            // tops at local y=160 (strip-space), bottoms at y=310, clipping 50 px below
+            // the 260 px strip and hiding ATK/HP badges entirely. 150 puts card bottoms
+            // exactly at the strip bottom (y=260) so all chrome is visible.
+            fan_base_margin_px: 150.0,
+            // PROMPT 1854 (STAGE3-D): 280 → 380. At 1280×720 with 10 cards the old
+            // spread produced 62 px spacing and 46 px overlap, hiding the AR/HP
+            // right-side badges (badge width ≈ 26 px). 380 gives 84 px spacing and
+            // 24 px overlap so right-side badges clear the neighbouring card edge.
+            fan_half_spread_px: 380.0,
+            // PROMPT 1854 (STAGE3-D): 20 → 30. More pronounced arc now that the strip
+            // has vertical room (edge cards top at local y=80, bottom=230, within strip).
+            arc_height_px: 30.0,
             max_rotation_deg: 8.0,
         }
     }
