@@ -52,6 +52,7 @@ EXPECTED_RECIPES = {
     "class-select",
     "draft-auction-probe",
     "placement-drag-probe",
+    "placement-reject-probe",
     "resolution-observe",
     "game-over-observe",
     "round-loop",
@@ -472,6 +473,28 @@ class TestCheckpointContracts:
         # bot-added is the marker that add-bot-lobby (not lobby-create) ran.
         assert "bot-added" in labels, (
             "vs-bot must include bot-added checkpoint from add-bot-lobby"
+        )
+
+    # -- placement-reject-probe -----------------------------------------------
+
+    def test_placement_reject_probe_checkpoints(self):
+        _, builder = REGISTRY["placement-reject-probe"]
+        labels = _checkpoint_labels(builder(_ctx()))
+        assert "placement-reject-loaded" in labels
+        assert "placement-reject-feedback" in labels
+        assert "placement-reject-recovery-submitted" in labels
+
+    def test_placement_reject_probe_checkpoint_order(self):
+        _, builder = REGISTRY["placement-reject-probe"]
+        labels = _checkpoint_labels(builder(_ctx()))
+        assert labels.index("placement-reject-loaded") < labels.index("placement-reject-feedback")
+        assert labels.index("placement-reject-feedback") < labels.index("placement-reject-recovery-submitted")
+
+    def test_placement_reject_probe_does_not_block(self):
+        _, builder = REGISTRY["placement-reject-probe"]
+        actions = builder(_ctx())
+        assert not _has_block(actions), (
+            "placement-reject-probe must NOT emit local.block — it has no env gate"
         )
 
     # -- smoke / idle (simple) -----------------------------------------------
