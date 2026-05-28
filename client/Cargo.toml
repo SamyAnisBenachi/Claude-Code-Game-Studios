@@ -1064,6 +1064,13 @@ path = "../tests/integration/presentation/lobby_portrait_distinct_classes_test.r
 name = "card_display_art_helper_test"
 path = "../tests/unit/asset_wiring/card_display_art_helper_test.rs"
 
+# PROMPT 1853 SLICE-B — unit coverage for `auction_tier_border_asset` selector
+# and path allowlist for all 10 auction-scope asset constants (4 tier-border +
+# 6 gem icons introduced by this prompt).
+[[test]]
+name = "auction_tier_border_asset_test"
+path = "../tests/unit/asset_wiring/auction_tier_border_asset_test.rs"
+
 # Sprint 17 S17-UI-CARD-DISPLAY-ART-HELPER-001 (PROMPT 1113) — AC9 + AC10
 # integration coverage for chrome preservation under
 # `apply_card_display_art` / `clear_card_display_art` and for the
