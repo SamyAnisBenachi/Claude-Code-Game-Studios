@@ -34,8 +34,13 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
+use bevy::asset::RenderAssetUsages;
+use bevy::camera::RenderTarget;
 use bevy::input::mouse::{MouseScrollUnit, MouseWheel};
 use bevy::prelude::*;
+use bevy::render::render_resource::{
+    Extent3d, TextureDimension, TextureFormat, TextureUsages,
+};
 use bevy::render::view::screenshot::{save_to_disk, Screenshot};
 use bevy::window::{PrimaryWindow, Window};
 
@@ -114,6 +119,7 @@ impl Plugin for AutoplayPlugin {
 
         app.insert_resource(AutoplayShared::handle(Arc::clone(&shared)))
             .insert_resource(cfg)
+            .add_systems(Startup, setup_offscreen_target_system)
             .add_systems(Update, (drain_commands_system, publish_status_system));
     }
 }
@@ -144,6 +150,19 @@ impl AutoplayConfig {
         }
     }
 }
+
+/// Holds the `Handle<Image>` for the autoplay offscreen render target.
+/// Inserted by `setup_offscreen_target_system` at `Startup`.
+/// When present, `drain_commands_system` uses `Screenshot::image(handle)` instead
+/// of `Screenshot::primary_window()`, bypassing the OS swapchain stale-content issue.
+#[derive(Resource)]
+struct AutoplayOffscreenTarget {
+    handle: Handle<Image>,
+}
+
+/// Marker for the secondary camera that renders the game scene into the offscreen image.
+#[derive(Component)]
+struct AutoplayOffscreenCamera;
 
 fn default_artifact_dir() -> PathBuf {
     let now = SystemTime::now()
@@ -292,6 +311,69 @@ struct AutoplayStatusSnapshot {
 
 // ---------- Bevy systems ----------
 
+/// Creates the offscreen `Image` render target and a secondary `Camera2d` that renders the game
+/// scene into it. Runs once at `Startup` (autoplay-enabled builds only).
+///
+/// The resulting `Handle<Image>` is stored in `AutoplayOffscreenTarget` so that
+/// `drain_commands_system` can request `Screenshot::image(handle)` instead of
+/// `Screenshot::primary_window()`, bypassing the OS swapchain backbuffer stale-content issue.
+fn setup_offscreen_target_system(
+    mut commands: Commands,
+    mut images: ResMut<Assets<Image>>,
+    windows: Query<&Window, With<PrimaryWindow>>,
+) {
+    let (width, height) = if let Ok(window) = windows.single() {
+        (window.physical_width().max(1), window.physical_height().max(1))
+    } else {
+        (1280, 720)
+    };
+
+    let size = Extent3d {
+        width,
+        height,
+        depth_or_array_layers: 1,
+    };
+
+    let mut image = Image::new_fill(
+        size,
+        TextureDimension::D2,
+        &[0, 0, 0, 0],
+        TextureFormat::Rgba8UnormSrgb,
+        RenderAssetUsages::default(),
+    );
+    // The image must be a render attachment so the camera can write to it,
+    // and must support TEXTURE_BINDING + COPY_SRC so Screenshot::image can read it back.
+    image.texture_descriptor.usage = TextureUsages::TEXTURE_BINDING
+        | TextureUsages::COPY_DST
+        | TextureUsages::COPY_SRC
+        | TextureUsages::RENDER_ATTACHMENT;
+
+    let handle = images.add(image);
+
+    // Secondary camera that renders the scene into the offscreen image.
+    // In Bevy 0.18, RenderTarget is a Required Component of Camera — spawn it separately
+    // to override the default primary-window target. Rendered after the primary camera
+    // (order 1). UI follows IsDefaultUiCamera (primary camera, order 0); this camera
+    // captures the game scene without requiring a UI refactor.
+    commands.spawn((
+        Name::new("autoplay-offscreen-camera"),
+        AutoplayOffscreenCamera,
+        Camera2d,
+        Camera {
+            order: 1,
+            ..default()
+        },
+        RenderTarget::Image(handle.clone().into()),
+    ));
+
+    commands.insert_resource(AutoplayOffscreenTarget { handle });
+    tracing::info!(
+        target: "client::autoplay",
+        "AutoplayPlugin: offscreen render target created ({}x{}); screenshots will use Image path",
+        width, height,
+    );
+}
+
 fn drain_commands_system(
     handle: Res<AutoplaySharedHandle>,
     mut keys: ResMut<ButtonInput<KeyCode>>,
@@ -299,6 +381,7 @@ fn drain_commands_system(
     mut wheel: MessageWriter<MouseWheel>,
     mut windows: Query<(Entity, &mut Window), With<PrimaryWindow>>,
     mut commands: Commands,
+    offscreen: Option<Res<AutoplayOffscreenTarget>>,
 ) {
     let mut drained: Vec<AutoplayCommand> = Vec::new();
     {
@@ -383,9 +466,17 @@ fn drain_commands_system(
                 if let Err(err) = fs::write(&sidecar, sidecar_body) {
                     record_error(&handle, format!("screenshot sidecar failed: {err}"));
                 }
-                commands
-                    .spawn(Screenshot::primary_window())
-                    .observe(save_to_disk(abs_path.clone()));
+                // Prefer the offscreen render target to bypass OS swapchain stale content.
+                // Fall back to primary_window() if the offscreen resource isn't ready yet.
+                if let Some(ref target) = offscreen {
+                    commands
+                        .spawn(Screenshot::image(target.handle.clone()))
+                        .observe(save_to_disk(abs_path.clone()));
+                } else {
+                    commands
+                        .spawn(Screenshot::primary_window())
+                        .observe(save_to_disk(abs_path.clone()));
+                }
                 {
                     let mut inner = match handle.0.inner.lock() {
                         Ok(g) => g,
