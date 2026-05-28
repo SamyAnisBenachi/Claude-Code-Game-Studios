@@ -100,6 +100,15 @@ impl Plugin for LobbyUiPlugin {
             // S13-LATE-MSG-DEDUPE-001: ensure the dedupe ring exists even when
             // tests load this plugin in isolation.
             .init_resource::<ClientIdempotencyState>()
+            // PROMPT 2042 — autoplay-gated lobby autopilot state. `enabled` is
+            // resolved once at plugin build time from `CCGS_AUTOPLAY`, matching
+            // the `AutoplayPlugin` gate. Default-disabled in production.
+            .insert_resource(LobbyAutopilotState {
+                enabled: lobby_autopilot_enabled_from(
+                    std::env::var(LOBBY_AUTOPILOT_ENV).ok().as_deref(),
+                ),
+                ..Default::default()
+            })
             .add_message::<KeyboardInput>()
             .add_message::<LobbyCommand>()
             .add_message::<PlayerTeamMapUpdated>()
@@ -121,6 +130,9 @@ impl Plugin for LobbyUiPlugin {
                     // Runs after the action-handler so action dispatch and
                     // visual update land in the same tick.
                     lobby_create_join_interaction_overlay_system,
+                    // PROMPT 2042 — emit autopilot LobbyCommands BEFORE the
+                    // sender drains them this tick.
+                    lobby_autopilot_system,
                     send_lobby_commands_system,
                     refresh_lobby_ui_system,
                     refresh_confirm_button_visual_system,
@@ -3087,4 +3099,104 @@ pub fn refresh_confirm_button_visual_system(
         *border = next_border;
         *text_color = next_text;
     }
+}
+
+/// PROMPT 2042 — env var that arms the autoplay-gated lobby autopilot.
+/// Mirrors the `AutoplayPlugin` gate (`CCGS_AUTOPLAY=1`); the autopilot is a
+/// NO-OP in production unless this is set at plugin build time.
+pub const LOBBY_AUTOPILOT_ENV: &str = "CCGS_AUTOPLAY";
+
+/// PROMPT 2042 — pure env-var contract helper. Strict `"1"` match (whitespace
+/// trimmed) mirrors [`debug_ui_enabled_from`] so the gate is identical to the
+/// other autoplay/debug envs.
+pub fn lobby_autopilot_enabled_from(value: Option<&str>) -> bool {
+    matches!(value, Some(v) if v.trim() == "1")
+}
+
+/// PROMPT 2042 — single-shot latches for the autoplay-gated lobby autopilot.
+///
+/// `enabled` is resolved once at plugin build time. `create_bot_room_sent`
+/// and `confirm_class_sent` are per-step latches so the autopilot cannot
+/// double-emit the same `LobbyCommand` (which would trip the server-side
+/// `AlreadyInSession` / `ClassAlreadyLocked` rejections and stall the run).
+#[derive(Resource, Default, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct LobbyAutopilotState {
+    pub enabled: bool,
+    pub create_bot_room_sent: bool,
+    pub confirm_class_sent: bool,
+}
+
+/// PROMPT 2042 — pure step function. Drives the lobby through:
+///   (1) `CreateBotRoom`  — once handshake lands and no session exists;
+///   (2) `ConfirmClass`   — once a session exists and the local class is not
+///                          yet locked.
+///
+/// Both steps are guarded by per-step latches. Mirrors the human button-press
+/// helpers ([`request_create_bot_room`], [`request_confirm_class`]) so the
+/// dispatch path is the *same* `LobbyCommand` -> `send_lobby_commands_system`
+/// -> `C2S*` pipeline as a real click — the autopilot just bypasses the
+/// pixel-coordinate guess that lobby-clicking autoplay recipes rely on.
+pub fn lobby_autopilot_step(
+    state: &mut LobbyAutopilotState,
+    lobby: &mut LobbyViewState,
+    input: &mut LobbyInputState,
+    commands: &mut MessageWriter<LobbyCommand>,
+) {
+    if !state.enabled {
+        return;
+    }
+
+    // Stage 1: bootstrap a bot-vs-bot soak room. Mirrors
+    // `request_create_bot_room` (status string + LobbyCommand write).
+    if !state.create_bot_room_sent
+        && lobby.local_player_id.is_some()
+        && lobby.session_id.is_none()
+    {
+        tracing::info!(
+            stage = "create_bot_room",
+            local_player_id = ?lobby.local_player_id,
+            "lobby_autopilot: emit LobbyCommand::CreateBotRoom"
+        );
+        lobby.status = "Autopilot: creating 2-bot soak room".to_string();
+        commands.write(LobbyCommand::CreateBotRoom {
+            mode: GameMode::OneVOne,
+            bot_kind: BotKind::Default,
+        });
+        state.create_bot_room_sent = true;
+        return;
+    }
+
+    // Stage 2: confirm the locally-selected class so the server can leave
+    // the Lobby phase. Mirrors `request_confirm_class` (latch + status +
+    // LobbyCommand write). The in-flight latch is honoured so we cannot
+    // race the user clicking Confirm at the same instant.
+    if !state.confirm_class_sent
+        && lobby.session_id.is_some()
+        && lobby.locked_class.is_none()
+        && !input.class_confirm_in_flight
+    {
+        let class_id = input.selected_class;
+        tracing::info!(
+            stage = "confirm_class",
+            session_id = ?lobby.session_id,
+            class_id = ?class_id,
+            "lobby_autopilot: emit LobbyCommand::ConfirmClass"
+        );
+        input.class_confirm_in_flight = true;
+        lobby.status = format!("Autopilot: confirming {:?}", class_id);
+        commands.write(LobbyCommand::ConfirmClass { class_id });
+        state.confirm_class_sent = true;
+    }
+}
+
+/// PROMPT 2042 — autoplay-gated lobby autopilot system. Runs in
+/// `ClientState::Lobby` (via the chain `.run_if`) and is a no-op when
+/// `LobbyAutopilotState::enabled` is `false`.
+pub fn lobby_autopilot_system(
+    mut state: ResMut<LobbyAutopilotState>,
+    mut lobby: ResMut<LobbyViewState>,
+    mut input: ResMut<LobbyInputState>,
+    mut commands: MessageWriter<LobbyCommand>,
+) {
+    lobby_autopilot_step(&mut state, &mut lobby, &mut input, &mut commands);
 }
