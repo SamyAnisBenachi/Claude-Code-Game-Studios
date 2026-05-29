@@ -1,14 +1,15 @@
 # Codex Orchestrator State
 
-## Current Resume Snapshot (2026-05-29, post-2052 placeholder map)
+## Current Resume Snapshot (2026-05-29, post-2055 board verify)
 
 Source-of-truth at this snapshot:
 
 - Root checkout: `D:\_DEV\Work\Claude-Code-Game-Studios`
-- Current main source: `origin/main@b6205129`
-  (`PROMPT 2051` stale-main disposition plus active-worker state update,
-  after the `PROMPT 2050` server draft-hand verify report recovery and the
-  integrated `PROMPT 2034/2042/2043/2044/2045/2046/2048/2049` repair pack).
+- Current main source: `origin/main@e7360c4b`
+  (`PROMPT 2052` cleared as report-only placeholder map plus `PROMPT 2061`
+  active-worker state update, after the `PROMPT 2051` stale-main disposition
+  and the integrated `PROMPT 2034/2042/2043/2044/2045/2046/2048/2049` repair
+  pack).
 - Root checkout caveat: the root local checkout may be dirty/stale and must not
   be treated as the source of truth for integration. Use clean worktrees based
   on `origin/main` for repair, refresh, and report work.
@@ -84,8 +85,10 @@ Worker disposition:
 - `PROMPT 2030` reported PARTIAL and must not be represented as a closure.
 - `PROMPT 2053` reported `FAIL_NOT_LANDED` against stale
   `origin/main@450e3908`; that report predated the repair pack landing. It was
-  cleared as stale evidence, and `PROMPT 2055` was launched to verify board
-  combat presentation on current `origin/main@b8b29597`.
+  cleared as stale evidence. `PROMPT 2055` then verified current main and
+  reported PASS: the PROMPT 2044 board combat HP mutation/clamp and OOB reveal
+  warning payload is present on current main, so no board-combat follow-up is
+  required for the 2053 claim.
 - `PROMPT 2051` reported PARTIAL, but its report audited stale
   `origin/main@450e3908`, before the repair pack landed. It was cleared as
   stale-main evidence. `PROMPT 2059` was launched to redo the flow-sync verify
@@ -95,8 +98,7 @@ Worker disposition:
   `STAT_BADGE_AR_ASSET`, `HUD_PHASE_TIMER_BAR_ASSET`, and
   `HUD_OBJECTIVE_DOT_DESTROYED_ASSET`. It was cleared, and `PROMPT 2061` was
   launched to implement those constant re-points in one same-file repair lane.
-- Active workers at this snapshot: `PROMPT 2055` board combat current-main
-  verify after the stale 2053 report, `PROMPT 2056` placement drag/drop
+- Active workers at this snapshot: `PROMPT 2056` placement drag/drop
   cursor-legality P0 repair, `PROMPT 2057` lobby/class picker visible-state P0
   repair, `PROMPT 2058` current-main live UI evidence retest after the repair
   pack, `PROMPT 2059` current-main 2042/2043 flow-sync verify after stale
@@ -116,9 +118,10 @@ Infrastructure note:
 
 Immediate next actions:
 
-1. Monitor `2055/2056/2057/2058/2059/2060/2061` and clear/integrate exact
+1. Monitor `2056/2057/2058/2059/2060/2061` and clear/integrate exact
    worker ids as they report.
-2. Treat `2053` as stale-main evidence unless `2055` disproves current main.
+2. Treat `2053` as stale-main evidence; `2055` has now disproved the
+   current-main missing-payload claim.
 3. Launch additional repair lanes only when their write scopes are disjoint:
    placement ACK/protocol feedback, remaining hand/HUD placeholder ownership,
    lobby visible-state repairs, and live GUI verification after current P0
