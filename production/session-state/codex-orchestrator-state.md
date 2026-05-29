@@ -1,14 +1,13 @@
 # Codex Orchestrator State
 
-## Current Resume Snapshot (2026-05-29, post-2059 flow-sync verify)
+## Current Resume Snapshot (2026-05-29, post-2057 lobby visible-state repair)
 
 Source-of-truth at this snapshot:
 
 - Root checkout: `D:\_DEV\Work\Claude-Code-Game-Studios`
-- Current main source: `origin/main@bf8f7b42`
-  (`PROMPT 2058` GUI evidence gate state update, after the `PROMPT 2055`
-  board-combat current-main verify PASS state update, the `PROMPT 2052`
-  placeholder-map disposition, and the integrated
+- Current main source: `origin/main@49a777c6`
+  (`PROMPT 2057` lobby class-picker visible-state P0 repair refresh, after
+  the `PROMPT 2059` current-main flow-sync PASS state update and the integrated
   `PROMPT 2034/2042/2043/2044/2045/2046/2048/2049` repair pack).
 - Root checkout caveat: the root local checkout may be dirty/stale and must not
   be treated as the source of truth for integration. Use clean worktrees based
@@ -82,7 +81,7 @@ Worker disposition:
   `PROMPT 2037`, `PROMPT 2038`, `PROMPT 2039`, `PROMPT 2040`, `PROMPT 2041`,
   `PROMPT 2042`, `PROMPT 2043`, `PROMPT 2044`, `PROMPT 2045`, `PROMPT 2046`,
   `PROMPT 2048`, `PROMPT 2049`, `PROMPT 2050`, stale `PROMPT 2053`, and
-  `PROMPT 2059`.
+  `PROMPT 2057`, `PROMPT 2059`.
 - `PROMPT 2030` reported PARTIAL and must not be represented as a closure.
 - `PROMPT 2053` reported `FAIL_NOT_LANDED` against stale
   `origin/main@450e3908`; that report predated the repair pack landing. It was
@@ -110,9 +109,16 @@ Worker disposition:
   create one without an interactive Windows desktop. Required operator command
   from the report: `powershell -ExecutionPolicy Bypass -File
   tools\dev-launcher\Start-AutoplayVsBot.ps1 -Recipe full-game`.
+- `PROMPT 2057` reported DONE, was cleared, then refreshed and mainlanded at
+  `49a777c6`: lobby status copy now prefers server-authoritative slot and
+  locked class, and the class-picker grid/button widths were reduced to keep
+  the Neutral class card inside the 1280x720 panel. Validation: `git diff
+  --check` clean and `cargo test -p client --lib ui::lobby::prompt_2057` passed
+  5/5. The worker's branch was stale, so the orchestrator cherry-picked only
+  the 2057 code/report commits and preserved the PROMPT 2042 autopilot block.
 - Active workers at this snapshot: `PROMPT 2056` placement drag/drop
-  cursor-legality P0 repair, `PROMPT 2057` lobby/class picker visible-state P0
-  repair, `PROMPT 2060` RSM dispatch diagnostics registration repair, and
+  cursor-legality P0 repair, `PROMPT 2060` RSM dispatch diagnostics
+  registration repair, and
   `PROMPT 2061` hand/HUD placeholder constant repair.
 - `PROMPT 2047` failed/tombstoned during launch and is not counted active.
 - `PROMPT 2054` failed to spawn with `PermissionError(13)` and is not counted
@@ -128,7 +134,7 @@ Infrastructure note:
 
 Immediate next actions:
 
-1. Monitor `2056/2057/2060/2061` and clear/integrate exact
+1. Monitor `2056/2060/2061` and clear/integrate exact
    worker ids as they report.
 2. Treat `2053` as stale-main evidence; `2055` has now disproved the
    current-main missing-payload claim.
