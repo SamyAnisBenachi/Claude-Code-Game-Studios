@@ -67,7 +67,17 @@ pub const LOBBY_REQUESTED_SLOT_BUTTON_WIDTH_PX: f32 = 80.0;
 pub const LOBBY_REQUESTED_SLOT_BUTTON_HEIGHT_PX: f32 = LOBBY_BUTTON_HEIGHT_PX;
 pub const LOBBY_CLASS_PICKER_GRID_COLUMNS: usize = 7;
 pub const LOBBY_CLASS_PICKER_SELECTABLE_COUNT: usize = 6;
-pub const LOBBY_CLASS_PICKER_CELL_WIDTH_PX: f32 = 108.0;
+// PROMPT 2057 — class-picker cell width reduced from 108 → 104 px so the
+// 7-column NoWrap grid fits the lobby panel content area at the minimum
+// 1280×720 viewport without clipping the trailing Neutral
+// reconciliation cell. Math at 1280×720: panel = min(88% × (1280 −
+// 2·SPACING_LG), LOBBY_PANEL_MAX_WIDTH_PX) = 860 px, content area = 860
+// − 2·SPACING_LG = 812 px. Required grid width = 7·104 + 6·SPACING_SM
+// = 776 px (down from 804 px), leaving 36 px of slack instead of 8.
+// The +28 px margin absorbs sub-pixel rounding, browser chrome on Web
+// targets, and the JustifyContent::Center grid centring without
+// pushing Neutral past the panel border.
+pub const LOBBY_CLASS_PICKER_CELL_WIDTH_PX: f32 = 104.0;
 pub const LOBBY_CLASS_PICKER_CELL_HEIGHT_PX: f32 = 132.0;
 pub const LOBBY_CLASS_PICKER_CELL_PADDING_PX: f32 = 6.0;
 pub const LOBBY_CLASS_PICKER_PORTRAIT_WIDTH_PX: f32 = 64.0;
@@ -82,7 +92,14 @@ pub const LOBBY_SELECTED_CLASS_PORTRAIT_HEIGHT_PX: f32 = 64.0;
 /// SHA-256 fingerprints), giving the picker an at-a-glance class identity
 /// while the canonical lobby portrait slot still hosts a generic stand-in.
 pub const LOBBY_CLASS_PICKER_EMBLEM_PX: f32 = 24.0;
-pub const LOBBY_CLASS_PICKER_BUTTON_WIDTH_PX: f32 = 96.0;
+// PROMPT 2057 — class-picker button width reduced from 96 → 92 px to
+// remain ≤ cell content area (cell width 104 − 2·CELL_PADDING_PX 6 =
+// 92 inner content). Inner button width after the canonical 16 px
+// horizontal padding is 76 px, which still fits the longest selected
+// class label ("Sacrier *" / "Ecaflip *" = 9 chars at typography::BODY
+// 15 px ≈ 70.2 px) without ellipsis (see
+// `lobby_class_picker_layout_test::ac3_ac4_grid_columns_fit_minimum_and_hd_viewports`).
+pub const LOBBY_CLASS_PICKER_BUTTON_WIDTH_PX: f32 = 92.0;
 pub const LOBBY_CLASS_PICKER_BUTTON_HEIGHT_PX: f32 = LOBBY_BUTTON_HEIGHT_PX;
 pub const LOBBY_CONFIRM_BUTTON_WIDTH_PERCENT: f32 = 100.0;
 pub const LOBBY_CONFIRM_BUTTON_HEIGHT_PX: f32 = LOBBY_BUTTON_HEIGHT_PX;
@@ -2464,18 +2481,41 @@ pub fn lobby_status_copy(lobby: &LobbyViewState, input: &LobbyInputState) -> Str
         .locked_class
         .map(|class_id| format!("{:?}", class_id))
         .unwrap_or_else(|| "not confirmed".to_string());
+    // PROMPT 2057 — prefer the server-authoritative seat assignment for the
+    // local player once the join ack has landed (mirrors the
+    // [`lobby_own_slot_label_text`] PROMPT 1178 fix). Without this, the
+    // banner kept reading "Slot 1" after a row-click that placed the
+    // player in slot 2 because `LobbyInputState::default()` seeds
+    // `requested_slot = 1` and the row-click only updates it on a hot
+    // click path. Falls back to the input-side mirror in the
+    // pre-handshake / typed-join staging window where `slots` is empty.
+    let resolved_slot = lobby
+        .local_player_id
+        .and_then(|local| {
+            lobby
+                .slots
+                .iter()
+                .find(|s| s.player_id == Some(local))
+                .map(|s| s.slot)
+        })
+        .unwrap_or(input.requested_slot);
     let slot_segment = if input.join_room_code.is_empty() {
-        format!("Slot {}", input.requested_slot)
+        format!("Slot {}", resolved_slot)
     } else {
-        format!(
-            "Joining {} · Slot {}",
-            input.join_room_code, input.requested_slot
-        )
+        format!("Joining {} · Slot {}", input.join_room_code, resolved_slot)
     };
+    // PROMPT 2057 — once the local class is server-locked, the trailing
+    // `Class: {selected_class}` substring stopped tracking truth: the
+    // banner read `Class: Iop` even after the player confirmed Sacrier
+    // because `input.selected_class` is the in-flight preview, not the
+    // server-confirmed identity. Preferring `locked_class` when set
+    // closes that ambiguity and matches the selected-class identity
+    // panel (`lobby_selected_class_identity_text`) post-confirmation.
+    let active_class = lobby.locked_class.unwrap_or(input.selected_class);
 
     format!(
         "{}  ·  Room: {}  ·  Players: {}/{}\n{}  ·  Class: {:?}  ·  {}",
-        lobby.status, room, joined, total, slot_segment, input.selected_class, locked
+        lobby.status, room, joined, total, slot_segment, active_class, locked
     )
 }
 
@@ -3199,4 +3239,170 @@ pub fn lobby_autopilot_system(
     mut commands: MessageWriter<LobbyCommand>,
 ) {
     lobby_autopilot_step(&mut state, &mut lobby, &mut input, &mut commands);
+}
+// ─── PROMPT 2057 visible-state repair unit tests ────────────────────────────
+//
+// Pure-function projection tests guarding the lobby/class-picker
+// visible-state P0 repair. Friend-game scope: these prove the
+// projection invariants (banner reads server-authoritative slot /
+// class once confirmed; 1280×720 fits the 7-column class grid). They
+// do not advance Standard-tier accessibility or playtest validation.
+
+#[cfg(test)]
+mod prompt_2057_visible_state_repair_tests {
+    use super::*;
+    use crate::ui::design_tokens::spacing::{SPACING_LG, SPACING_SM};
+    use shared::session::PlayerId;
+
+    fn slot(slot_index: u8, player_id: Option<PlayerId>) -> SessionSlot {
+        SessionSlot {
+            slot: slot_index,
+            team: if slot_index < 2 { 0 } else { 1 },
+            player_id,
+            class_id: None,
+            class_confirmed: false,
+            is_bot: false,
+        }
+    }
+
+    #[test]
+    fn test_status_copy_uses_server_slot_when_seats_assigned() {
+        // Arrange — player joined slot 2 on the server, but the input
+        // mirror still carries the default requested_slot = 1.
+        let local = PlayerId(7);
+        let lobby = LobbyViewState {
+            local_player_id: Some(local),
+            session_id: Some("session-x".to_string()),
+            room_code: Some("ABCDEF".to_string()),
+            slots: vec![slot(1, Some(PlayerId(99))), slot(2, Some(local))],
+            ..LobbyViewState::default()
+        };
+        let input = LobbyInputState {
+            requested_slot: 1,
+            ..LobbyInputState::default()
+        };
+
+        // Act
+        let banner = lobby_status_copy(&lobby, &input);
+
+        // Assert — banner reads slot 2 (server truth), not slot 1
+        // (input mirror). Stops the user from staring at "Slot 1" after
+        // joining seat 2 via the existing-rooms browser.
+        assert!(
+            banner.contains("Slot 2"),
+            "banner should reflect server-authoritative slot: {banner}"
+        );
+        assert!(
+            !banner.contains("Slot 1"),
+            "banner must not echo stale input.requested_slot: {banner}"
+        );
+        assert!(
+            banner.contains("Players: 2/2"),
+            "banner should still carry the Players: N/M substring: {banner}"
+        );
+    }
+
+    #[test]
+    fn test_status_copy_falls_back_to_input_slot_before_join_ack() {
+        // Arrange — pre-join window: local_player_id set by handshake
+        // but no slot assignment yet.
+        let lobby = LobbyViewState {
+            local_player_id: Some(PlayerId(7)),
+            ..LobbyViewState::default()
+        };
+        let input = LobbyInputState {
+            requested_slot: 3,
+            ..LobbyInputState::default()
+        };
+
+        // Act
+        let banner = lobby_status_copy(&lobby, &input);
+
+        // Assert — without a server seat, banner falls back to the
+        // input mirror so the typed-join surface still echoes the
+        // user's seat preference.
+        assert!(banner.contains("Slot 3"), "banner: {banner}");
+    }
+
+    #[test]
+    fn test_status_copy_uses_locked_class_after_confirmation() {
+        // Arrange — user previewed Iop, confirmed Sacrier; locked_class
+        // reflects the server-confirmed identity.
+        let lobby = LobbyViewState {
+            local_player_id: Some(PlayerId(7)),
+            session_id: Some("session-x".to_string()),
+            locked_class: Some(ClassId::Sacrier),
+            slots: vec![slot(1, Some(PlayerId(7)))],
+            ..LobbyViewState::default()
+        };
+        let input = LobbyInputState {
+            selected_class: ClassId::Iop,
+            ..LobbyInputState::default()
+        };
+
+        // Act
+        let banner = lobby_status_copy(&lobby, &input);
+
+        // Assert — trailing `Class:` segment now tracks the locked
+        // class, not the stale preview. Closes the AUDIT-style "banner
+        // says Iop after I confirmed Sacrier" surprise.
+        assert!(
+            banner.contains("Class: Sacrier"),
+            "banner should reflect locked_class: {banner}"
+        );
+        assert!(
+            !banner.contains("Class: Iop"),
+            "banner must not echo stale input.selected_class once locked: {banner}"
+        );
+        // Locked summary segment is unchanged (regression guard).
+        assert!(banner.contains("Sacrier"), "banner: {banner}");
+    }
+
+    #[test]
+    fn test_class_picker_grid_fits_1280x720_panel_content_area() {
+        // Arrange — minimum supported web viewport. Bug ledger flagged
+        // the trailing Neutral reconciliation cell clipping past the
+        // panel's right border at this resolution.
+        const VIEWPORT_WIDTH: f32 = 1280.0;
+        let scrim_content_width = VIEWPORT_WIDTH - 2.0 * SPACING_LG;
+        let panel_width = (LOBBY_PANEL_WIDTH_PERCENT / 100.0 * scrim_content_width)
+            .min(LOBBY_PANEL_MAX_WIDTH_PX);
+        let panel_content_width = panel_width - 2.0 * SPACING_LG;
+
+        // Act — required grid width: 7 cells + 6 inter-cell gaps.
+        let required = LOBBY_CLASS_PICKER_GRID_COLUMNS as f32 * LOBBY_CLASS_PICKER_CELL_WIDTH_PX
+            + (LOBBY_CLASS_PICKER_GRID_COLUMNS - 1) as f32 * SPACING_SM;
+
+        // Assert — full grid (incl. Neutral) fits with non-trivial
+        // slack so sub-pixel rounding / browser chrome does not push
+        // the rightmost cell past the panel border.
+        assert!(
+            required <= panel_content_width,
+            "PROMPT 2057: 7-column class grid required {required}px exceeds \
+             1280×720 panel content width {panel_content_width}px — Neutral \
+             cell will clip"
+        );
+        let slack = panel_content_width - required;
+        assert!(
+            slack >= 16.0,
+            "PROMPT 2057: only {slack}px of slack at 1280×720; expected ≥ 16px \
+             to absorb sub-pixel rounding and browser chrome"
+        );
+    }
+
+    #[test]
+    fn test_class_picker_button_fits_inside_cell_content_area() {
+        // PROMPT 2057 — when we shrink the cell to make the grid fit
+        // at 1280×720, the per-cell button must still fit inside the
+        // cell's padding-adjusted content area. Otherwise the button
+        // overflows the cell rect horizontally.
+        let cell_inner_width =
+            LOBBY_CLASS_PICKER_CELL_WIDTH_PX - 2.0 * LOBBY_CLASS_PICKER_CELL_PADDING_PX;
+        assert!(
+            LOBBY_CLASS_PICKER_BUTTON_WIDTH_PX <= cell_inner_width,
+            "class-picker button width {} must fit inside cell content area {}",
+            LOBBY_CLASS_PICKER_BUTTON_WIDTH_PX,
+            cell_inner_width
+        );
+    }
 }
