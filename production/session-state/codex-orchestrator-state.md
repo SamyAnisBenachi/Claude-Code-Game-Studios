@@ -86,8 +86,11 @@ Worker disposition:
   cleared as stale evidence, and `PROMPT 2055` was launched to verify board
   combat presentation on current `origin/main@b8b29597`.
 - Active workers at this snapshot: `PROMPT 2051` post-2042/2043 flow-sync
-  verify, `PROMPT 2052` hand/HUD card-placeholder repair map, and `PROMPT 2055`
-  board combat current-main verify after the stale 2053 report.
+  verify, `PROMPT 2052` hand/HUD card-placeholder repair map, `PROMPT 2055`
+  board combat current-main verify after the stale 2053 report, `PROMPT 2056`
+  placement drag/drop cursor-legality P0 repair, `PROMPT 2057` lobby/class
+  picker visible-state P0 repair, and `PROMPT 2058` current-main live UI
+  evidence retest after the repair pack.
 - `PROMPT 2047` failed/tombstoned during launch and is not counted active.
 - `PROMPT 2054` failed to spawn with `PermissionError(13)` and is not counted
   active.
@@ -102,8 +105,8 @@ Infrastructure note:
 
 Immediate next actions:
 
-1. Monitor `2051/2052/2055` and clear/integrate exact worker ids as they
-   report.
+1. Monitor `2051/2052/2055/2056/2057/2058` and clear/integrate exact worker ids
+   as they report.
 2. Treat `2053` as stale-main evidence unless `2055` disproves current main.
 3. Launch additional repair lanes only when their write scopes are disjoint:
    placement ACK/protocol feedback, remaining hand/HUD placeholder ownership,
