@@ -1,12 +1,13 @@
 # Codex Orchestrator State
 
-## Current Resume Snapshot (2026-05-29, post-2060 RSM diagnostics registration repair)
+## Current Resume Snapshot (2026-05-29, post-2056 placement drag/drop legality repair)
 
 Source-of-truth at this snapshot:
 
 - Root checkout: `D:\_DEV\Work\Claude-Code-Game-Studios`
-- Current main source: `origin/main@a4c38fcd`
-  (`PROMPT 2060` RSM dispatch diagnostics registration P1 repair, after
+- Current main source: `origin/main@9868805b`
+  (`PROMPT 2056` placement drag/drop cursor-legality P0 repair, after
+  `PROMPT 2060` RSM dispatch diagnostics registration P1 repair,
   `PROMPT 2057` lobby class-picker visible-state P0 repair refresh, the
   `PROMPT 2059` current-main flow-sync PASS state update, and the integrated
   `PROMPT 2034/2042/2043/2044/2045/2046/2048/2049` repair pack).
@@ -82,7 +83,7 @@ Worker disposition:
   `PROMPT 2037`, `PROMPT 2038`, `PROMPT 2039`, `PROMPT 2040`, `PROMPT 2041`,
   `PROMPT 2042`, `PROMPT 2043`, `PROMPT 2044`, `PROMPT 2045`, `PROMPT 2046`,
   `PROMPT 2048`, `PROMPT 2049`, `PROMPT 2050`, stale `PROMPT 2053`, and
-  `PROMPT 2057`, `PROMPT 2059`, `PROMPT 2060`.
+  `PROMPT 2056`, `PROMPT 2057`, `PROMPT 2059`, `PROMPT 2060`.
 - `PROMPT 2030` reported PARTIAL and must not be represented as a closure.
 - `PROMPT 2053` reported `FAIL_NOT_LANDED` against stale
   `origin/main@450e3908`; that report predated the repair pack landing. It was
@@ -123,8 +124,13 @@ Worker disposition:
   from stale `PROMPT 2051` evidence. Validation: `git diff --check` clean and
   `cargo test -p server --test rsm_dispatch_diagnostics_registration_test
   --test rsm_dispatch_missing_sender_test` passed 5/5.
-- Active workers at this snapshot: `PROMPT 2056` placement drag/drop
-  cursor-legality P0 repair and `PROMPT 2061` hand/HUD placeholder constant
+- `PROMPT 2056` reported SHIPPED, was cleared, then refreshed and mainlanded at
+  `9868805b`: Minion placement drops now use the same legal-cell predicate as
+  the green placement highlight set, so occupied/objective/out-of-spawn-range
+  and already-staged cells resolve client-side to `None` instead of staging and
+  waiting for a later server rejection. Validation: `git diff --check` clean
+  and the focused hand UI placement suite passed 28/28.
+- Active workers at this snapshot: `PROMPT 2061` hand/HUD placeholder constant
   repair.
 - `PROMPT 2047` failed/tombstoned during launch and is not counted active.
 - `PROMPT 2054` failed to spawn with `PermissionError(13)` and is not counted
@@ -140,8 +146,7 @@ Infrastructure note:
 
 Immediate next actions:
 
-1. Monitor `2056/2061` and clear/integrate exact
-   worker ids as they report.
+1. Monitor `2061` and clear/integrate the exact worker id when it reports.
 2. Treat `2053` as stale-main evidence; `2055` has now disproved the
    current-main missing-payload claim.
 3. Do not relaunch live UI evidence until an interactive GUI is available and
