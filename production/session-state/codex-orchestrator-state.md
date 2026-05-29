@@ -1,13 +1,14 @@
 # Codex Orchestrator State
 
-## Current Resume Snapshot (2026-05-29, post-2058 GUI evidence gate)
+## Current Resume Snapshot (2026-05-29, post-2059 flow-sync verify)
 
 Source-of-truth at this snapshot:
 
 - Root checkout: `D:\_DEV\Work\Claude-Code-Game-Studios`
-- Current main source: `origin/main@49a6f973`
-  (`PROMPT 2055` board-combat current-main verify PASS state update, after
-  the `PROMPT 2052` placeholder-map disposition and the integrated
+- Current main source: `origin/main@bf8f7b42`
+  (`PROMPT 2058` GUI evidence gate state update, after the `PROMPT 2055`
+  board-combat current-main verify PASS state update, the `PROMPT 2052`
+  placeholder-map disposition, and the integrated
   `PROMPT 2034/2042/2043/2044/2045/2046/2048/2049` repair pack).
 - Root checkout caveat: the root local checkout may be dirty/stale and must not
   be treated as the source of truth for integration. Use clean worktrees based
@@ -80,7 +81,8 @@ Worker disposition:
 - Cleared: `PROMPT 2031`, `PROMPT 2032`, `PROMPT 2035`, `PROMPT 2036`,
   `PROMPT 2037`, `PROMPT 2038`, `PROMPT 2039`, `PROMPT 2040`, `PROMPT 2041`,
   `PROMPT 2042`, `PROMPT 2043`, `PROMPT 2044`, `PROMPT 2045`, `PROMPT 2046`,
-  `PROMPT 2048`, `PROMPT 2049`, `PROMPT 2050`, and stale `PROMPT 2053`.
+  `PROMPT 2048`, `PROMPT 2049`, `PROMPT 2050`, stale `PROMPT 2053`, and
+  `PROMPT 2059`.
 - `PROMPT 2030` reported PARTIAL and must not be represented as a closure.
 - `PROMPT 2053` reported `FAIL_NOT_LANDED` against stale
   `origin/main@450e3908`; that report predated the repair pack landing. It was
@@ -92,6 +94,10 @@ Worker disposition:
   `origin/main@450e3908`, before the repair pack landed. It was cleared as
   stale-main evidence. `PROMPT 2059` was launched to redo the flow-sync verify
   against current main.
+- `PROMPT 2059` reported PASS and was cleared: the `PROMPT 2042` create-bot-room
+  phase-sync payload (`96bc686e`) and `PROMPT 2043` RSM missing-sender payload
+  (`59b7f70d`) are present on current main. This supersedes the stale
+  `PROMPT 2051` partial report.
 - `PROMPT 2052` completed as a report-only hand/HUD card-placeholder repair
   map. It identified three remaining universal-placeholder routes:
   `STAT_BADGE_AR_ASSET`, `HUD_PHASE_TIMER_BAR_ASSET`, and
@@ -106,8 +112,7 @@ Worker disposition:
   tools\dev-launcher\Start-AutoplayVsBot.ps1 -Recipe full-game`.
 - Active workers at this snapshot: `PROMPT 2056` placement drag/drop
   cursor-legality P0 repair, `PROMPT 2057` lobby/class picker visible-state P0
-  repair, `PROMPT 2059` current-main 2042/2043 flow-sync verify after stale
-  2051, `PROMPT 2060` RSM dispatch diagnostics registration repair, and
+  repair, `PROMPT 2060` RSM dispatch diagnostics registration repair, and
   `PROMPT 2061` hand/HUD placeholder constant repair.
 - `PROMPT 2047` failed/tombstoned during launch and is not counted active.
 - `PROMPT 2054` failed to spawn with `PermissionError(13)` and is not counted
@@ -123,7 +128,7 @@ Infrastructure note:
 
 Immediate next actions:
 
-1. Monitor `2056/2057/2059/2060/2061` and clear/integrate exact
+1. Monitor `2056/2057/2060/2061` and clear/integrate exact
    worker ids as they report.
 2. Treat `2053` as stale-main evidence; `2055` has now disproved the
    current-main missing-payload claim.
