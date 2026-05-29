@@ -28,8 +28,18 @@ impl Plugin for ServerNetworkPlugin {
 
         app.add_plugins(economy_dispatch::EconomyNetworkPlugin);
 
-        app.init_resource::<PlayerConnectionMap>()
-            .add_systems(Startup, open_websocket_server)
+        app.init_resource::<PlayerConnectionMap>();
+        // PROMPT 2060: register the dispatch diagnostics counter so the
+        // partial-wiring warn branches in `rsm_dispatch::dispatch_*` (added
+        // by PROMPT 2043) can increment a real resource in production
+        // instead of silently `None`-skipping the `Option<ResMut<_>>`
+        // parameter. Extracted into a dedicated helper so a focused test can
+        // prove the registration without spinning the lightyear runtime
+        // (which binds a TCP listen port and is omitted from the test app
+        // factory; see `tests/helpers/production_server_app_factory.rs`).
+        register_rsm_dispatch_diagnostics(app);
+
+        app.add_systems(Startup, open_websocket_server)
             .add_systems(
                 Update,
                 (
@@ -52,6 +62,21 @@ pub fn register_lightyear_protocol(app: &mut App) {
 
     let mut registry = LightyearProtocolRegistry { app };
     protocol::register_protocol(&mut registry);
+}
+
+/// Registers the [`rsm_dispatch::RsmDispatchDiagnostics`] counter resource
+/// on the server `App`.
+///
+/// PROMPT 2060 repair: `dispatch_phase_changed` and
+/// `dispatch_opponent_disconnected` (PROMPT 2043) take the diagnostics as
+/// `Option<ResMut<_>>` and silently skip the increment when the resource
+/// is absent. Production needs the counter present so the warn branches
+/// are observable from outside the tracing stream (e.g. for health probes
+/// and post-mortem assertions). Extracted out of `ServerNetworkPlugin::build`
+/// so a focused test can verify the registration contract without spinning
+/// the lightyear runtime.
+pub fn register_rsm_dispatch_diagnostics(app: &mut App) {
+    app.init_resource::<rsm_dispatch::RsmDispatchDiagnostics>();
 }
 
 struct LightyearProtocolRegistry<'a> {
