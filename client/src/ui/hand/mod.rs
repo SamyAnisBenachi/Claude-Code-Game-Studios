@@ -3273,12 +3273,20 @@ pub fn handle_placement_drag_ended_system(
     mode: Res<HandUiMode>,
     viewport: Res<HandFanViewport>,
     board_layout: Option<Res<BoardLayout>>,
+    board_view: Res<PlacementBoardView>,
+    catalog: Res<HandCardCatalog>,
+    pending_placements: Res<PendingPlacements>,
     entities: Option<Res<HandUiEntities>>,
     mut ends: MessageReader<HandUiPlacementDragEnded>,
     mut active_drag: ResMut<ActivePlacementDrag>,
     mut disclosure_state: ResMut<PlacementDisclosureState>,
     fan_plates: Query<&Node, With<FanPlateDropZone>>,
     objectives: Query<(&ObjectiveCell, Option<&ObjectiveAlive>)>,
+    board_cells: Query<(
+        &LaneCell,
+        Option<&BoardCellOccupied>,
+        Option<&ObjectiveCell>,
+    )>,
     target_units: Query<(&PlacementTargetUnit, &GlobalTransform)>,
     mut drops: MessageWriter<HandUiPlacementDropResolved>,
 ) {
@@ -3305,6 +3313,26 @@ pub fn handle_placement_drag_ended_system(
                     .as_deref()
                     .zip(active_drag.cursor_world_position)
                     .and_then(|(layout, cursor)| cursor_to_lane_cell(cursor, layout))
+                    // PROMPT 2056 — client-side legality gate. Before this gate
+                    // the handler accepted any in-bounds (lane, cell) and the
+                    // server then rejected occupied / objective / out-of-spawn
+                    // cells with `PlacementRejectedReason::InvalidTarget`. The
+                    // user perceived this as "the drop landed and the card
+                    // disappeared then snapped back" with no early feedback.
+                    // Resolving invalid cells to `None` here makes the card
+                    // snap back to the fan the instant the user releases on
+                    // an illegal cell, matching the green highlight semantics
+                    // already shown during the drag.
+                    .filter(|(lane, cell)| {
+                        is_valid_minion_drop_cell(
+                            *lane,
+                            *cell,
+                            *board_view,
+                            &catalog,
+                            &pending_placements,
+                            &board_cells,
+                        )
+                    })
                     .map(|(lane, cell)| PlayTarget::BoardCell { lane, cell }),
                 Some(PlacementTargetKind::LaneWide) => board_layout
                     .as_deref()
@@ -6014,6 +6042,43 @@ fn lane_wide_highlight_cells(
             valid_cell.then_some(entity)
         })
         .collect()
+}
+
+/// PROMPT 2056 — client-side Minion drop legality check.
+///
+/// Mirrors the predicate in `minion_highlight_cells` (which decides whether a
+/// board cell receives the green valid-target highlight during drag): the cell
+/// must be a spawn cell for the local player's board view, must not already be
+/// occupied by a deployed unit, must not be an objective cell, and must not be
+/// already staged for a Minion this turn. Sharing the predicate keeps the
+/// "release here ⇒ accepted" contract aligned with the live drag overlay.
+pub(crate) fn is_valid_minion_drop_cell(
+    lane: u8,
+    cell: u8,
+    board_view: PlacementBoardView,
+    catalog: &HandCardCatalog,
+    pending_placements: &PendingPlacements,
+    board_cells: &Query<(
+        &LaneCell,
+        Option<&BoardCellOccupied>,
+        Option<&ObjectiveCell>,
+    )>,
+) -> bool {
+    if !board_view.is_spawn_cell(lane, cell) {
+        return false;
+    }
+    if staged_minion_cells(catalog, pending_placements).contains(&(lane, cell)) {
+        return false;
+    }
+    let Some((_lane_cell, occupied, objective)) = board_cells
+        .iter()
+        .find(|(lane_cell, _, _)| lane_cell.lane == lane && lane_cell.cell == cell)
+    else {
+        // No board cell entity for this coordinate — treat as invalid rather
+        // than letting the drop slip through to the server.
+        return false;
+    };
+    occupied.is_none() && objective.is_none()
 }
 
 fn staged_minion_cells(

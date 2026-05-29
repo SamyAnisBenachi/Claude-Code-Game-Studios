@@ -145,6 +145,14 @@ path = "../tests/unit/hand-ui/placement_submit_core_test.rs"
 name = "hand_ui_placement_drag_highlights_test"
 path = "../tests/unit/hand-ui/placement_drag_highlights_test.rs"
 
+# PROMPT 2056 — Placement drag/drop client-side legality gate. Covers the
+# `is_valid_minion_drop_cell` predicate added to
+# `handle_placement_drag_ended_system` so invalid Minion drops resolve to
+# `target=None` without round-tripping to the server.
+[[test]]
+name = "hand_ui_placement_drop_legality_test"
+path = "../tests/unit/hand-ui/placement_drop_legality_test.rs"
+
 [[test]]
 name = "hand_ui_placement_instant_staging_test"
 path = "../tests/unit/hand-ui/placement_instant_staging_test.rs"
